@@ -28,6 +28,8 @@ type
     mnuEstMovimentacao: TMenuItem;
     mnuEstInventario: TMenuItem;
     mnuEstKardex: TMenuItem;
+    mnuCompras: TMenuItem;
+    mnuComNotaEntrada: TMenuItem;
     mnuVendas: TMenuItem;
     mnuVenPedidos: TMenuItem;
     mnuVenOrcamentos: TMenuItem;
@@ -64,6 +66,7 @@ type
     procedure mnuEstMovimentacaoClick(Sender: TObject);
     procedure mnuEstInventarioClick(Sender: TObject);
     procedure mnuEstKardexClick(Sender: TObject);
+    procedure mnuComNotaEntradaClick(Sender: TObject);
     procedure mnuVenPedidosClick(Sender: TObject);
     procedure mnuVenOrcamentosClick(Sender: TObject);
     procedure mnuVenListaPedidosClick(Sender: TObject);
@@ -87,6 +90,7 @@ implementation
 uses
   uFrmClientes, uFrmFornecedores, uFrmProdutos, uFrmCategorias, uFrmUsuarios,
   uFrmMovEstoque, uFrmKardex, uFrmInventario,
+  uFrmNotaEntrada,
   uFrmPedidoVenda, uFrmListaPedidos, uFrmOrcamento,
   uFrmPDV, uFrmContasReceber, uFrmContasPagar,
   uFrmNFe, uFrmCopiloto;
@@ -185,6 +189,12 @@ end;
 procedure TfrmPrincipal.mnuEstKardexClick(Sender: TObject);
 begin
   AbrirFormulario(TfrmKardex);
+end;
+
+// === COMPRAS ===
+procedure TfrmPrincipal.mnuComNotaEntradaClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmNotaEntrada);
 end;
 
 // === VENDAS ===

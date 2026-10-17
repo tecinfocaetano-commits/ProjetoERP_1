@@ -44,6 +44,7 @@ type
     FConexao: TConexao;
     FQuery: TSQLQuery;
     procedure CarregarContas;
+    function  GarantirFinanceiro: Int64;
   end;
 
 var
@@ -155,6 +156,39 @@ begin
   lblTotalPago.Caption := 'Pago: R$ ' + FormatFloat('#,##0.00', LPago);
 end;
 
+// Localiza (ou cria) o plano financeiro "Contas a pagar" da empresa.
+// CONTA_PAGAR.FINANCEIRO_ID/FORNECEDOR_ID usam o domínio DM_ID (NOT NULL),
+// então precisam ser informados mesmo quando não existe vínculo.
+function TfrmContasPagar.GarantirFinanceiro: Int64;
+var
+  LQuery: TSQLQuery;
+begin
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := FConexao.Connection;
+    LQuery.Transaction := FConexao.Transaction;
+    LQuery.SQL.Text :=
+      'SELECT FIRST 1 ID FROM FINANCEIRO ' +
+      'WHERE EMPRESA_ID = :EMP AND TIPO = ''P'' ORDER BY ID';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.Open;
+    if not LQuery.IsEmpty then
+      Result := LQuery.FieldByName('ID').AsLargeInt
+    else
+    begin
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'INSERT INTO FINANCEIRO (EMPRESA_ID, TIPO, DESCRICAO, STATUS) ' +
+        'VALUES (:EMP, ''P'', ''Contas a pagar de compras'', ''A'') RETURNING ID';
+      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+      LQuery.Open;
+      Result := LQuery.FieldByName('ID').AsLargeInt;
+    end;
+  finally
+    LQuery.Free;
+  end;
+end;
+
 procedure TfrmContasPagar.btnNovoClick(Sender: TObject);
 var
   LDesc, LValor, LVenc: string;
@@ -169,10 +203,14 @@ begin
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
     FConexao.IniciarTransacao;
+    // FINANCEIRO_ID e FORNECEDOR_ID usam o domínio DM_ID (NOT NULL): precisam
+    // ser informados (0 = sem vínculo com fornecedor).
     LQuery.SQL.Text :=
-      'INSERT INTO CONTA_PAGAR (EMPRESA_ID, DESCRICAO, VALOR, DATA_VENCIMENTO, STATUS) ' +
-      'VALUES (:EMP, :DESC, :VLR, :VENC, ''A'')';
+      'INSERT INTO CONTA_PAGAR (EMPRESA_ID, FINANCEIRO_ID, FORNECEDOR_ID, DESCRICAO, ' +
+      '  VALOR, DATA_VENCIMENTO, STATUS, PARCELA) ' +
+      'VALUES (:EMP, :FIN, 0, :DESC, :VLR, :VENC, ''A'', 1)';
     LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.ParamByName('FIN').AsLargeInt := GarantirFinanceiro;
     LQuery.ParamByName('DESC').AsString := LDesc;
     LQuery.ParamByName('VLR').AsFloat := StrToFloatDef(LValor, 0);
     LQuery.ParamByName('VENC').AsDate := StrToDateDef(LVenc, Now + 30);

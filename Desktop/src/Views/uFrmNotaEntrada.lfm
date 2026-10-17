@@ -1,0 +1,753 @@
+object frmNotaEntrada: TfrmNotaEntrada
+  Left = 0
+  Height = 720
+  Top = 0
+  Width = 1150
+  Caption = 'Nota de Entrada (Compra de Mercadoria)'
+  ClientHeight = 720
+  ClientWidth = 1150
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '3.2.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 1150
+    Align = alTop
+    ClientHeight = 50
+    ClientWidth = 1150
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 28
+      Top = 12
+      Width = 528
+      Caption = 'Nota de Entrada - Compra de Mercadoria'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlFiltros: TPanel
+    Left = 0
+    Height = 40
+    Top = 50
+    Width = 1150
+    Align = alTop
+    ClientHeight = 40
+    ClientWidth = 1150
+    TabOrder = 1
+    object lblFiltroDe: TLabel
+      Left = 8
+      Height = 15
+      Top = 10
+      Width = 17
+      Caption = 'De:'
+    end
+    object edtFiltroDe: TEdit
+      Left = 40
+      Height = 23
+      Top = 7
+      Width = 110
+      TabOrder = 0
+    end
+    object lblFiltroAte: TLabel
+      Left = 165
+      Height = 15
+      Top = 10
+      Width = 21
+      Caption = 'Até:'
+    end
+    object edtFiltroAte: TEdit
+      Left = 198
+      Height = 23
+      Top = 7
+      Width = 110
+      TabOrder = 1
+    end
+    object lblFiltroStatus: TLabel
+      Left = 325
+      Height = 15
+      Top = 10
+      Width = 37
+      Caption = 'Status:'
+    end
+    object cmbFiltroStatus: TComboBox
+      Left = 372
+      Height = 23
+      Top = 7
+      Width = 190
+      ItemHeight = 15
+      ItemIndex = 0
+      Items.Strings = (
+        'Todos'
+        'Aberta (não processada)'
+        'Processada'
+        'Cancelada'
+      )
+      Style = csDropDownList
+      TabOrder = 2
+      Text = 'Todos'
+    end
+    object btnFiltrar: TBitBtn
+      Left = 578
+      Height = 28
+      Top = 5
+      Width = 90
+      Caption = 'Filtrar'
+      OnClick = btnFiltrarClick
+      TabOrder = 3
+    end
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 44
+    Top = 90
+    Width = 1150
+    Align = alTop
+    ClientHeight = 44
+    ClientWidth = 1150
+    TabOrder = 2
+    object btnNovaNota: TBitBtn
+      Left = 8
+      Height = 34
+      Top = 5
+      Width = 110
+      Caption = 'Nova'
+      OnClick = btnNovaNotaClick
+      TabOrder = 0
+    end
+    object btnAbrirNota: TBitBtn
+      Left = 124
+      Height = 34
+      Top = 5
+      Width = 110
+      Caption = 'Abrir'
+      OnClick = btnAbrirNotaClick
+      TabOrder = 1
+    end
+    object btnGravar: TBitBtn
+      Left = 240
+      Height = 34
+      Top = 5
+      Width = 100
+      Caption = 'Gravar'
+      OnClick = btnGravarClick
+      TabOrder = 2
+    end
+    object btnIncluirItem: TBitBtn
+      Left = 346
+      Height = 34
+      Top = 5
+      Width = 110
+      Caption = 'Incluir Item'
+      OnClick = btnIncluirItemClick
+      TabOrder = 3
+    end
+    object btnExcluirItem: TBitBtn
+      Left = 462
+      Height = 34
+      Top = 5
+      Width = 110
+      Caption = 'Excluir Item'
+      OnClick = btnExcluirItemClick
+      TabOrder = 4
+    end
+    object btnProcessar: TBitBtn
+      Left = 578
+      Height = 34
+      Top = 5
+      Width = 110
+      Caption = 'Processar'
+      Font.Style = [fsBold]
+      OnClick = btnProcessarClick
+      ParentFont = False
+      TabOrder = 5
+    end
+    object btnCancelarNota: TBitBtn
+      Left = 694
+      Height = 34
+      Top = 5
+      Width = 110
+      Caption = 'Cancelar Nota'
+      OnClick = btnCancelarNotaClick
+      TabOrder = 6
+    end
+    object btnImportarXML: TBitBtn
+      Left = 810
+      Height = 34
+      Top = 5
+      Width = 120
+      Caption = 'Importar XML'
+      OnClick = btnImportarXMLClick
+      TabOrder = 7
+    end
+    object btnFechar: TBitBtn
+      Left = 1050
+      Height = 34
+      Top = 5
+      Width = 90
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 8
+    end
+  end
+  object pnlLista: TPanel
+    Left = 0
+    Height = 586
+    Top = 134
+    Width = 1150
+    Align = alClient
+    ClientHeight = 586
+    ClientWidth = 1150
+    TabOrder = 3
+    object dbGridNotas: TDBGrid
+      Left = 1
+      Height = 584
+      Top = 1
+      Width = 1148
+      Align = alClient
+      Columns = <
+        item
+          Expanded = False
+          FieldName = 'NUMERO'
+          Title.Caption = 'Número'
+          Width = 70
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'SERIE'
+          Title.Caption = 'Série'
+          Width = 50
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'MODELO'
+          Title.Caption = 'Mod.'
+          Width = 45
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'FORNECEDOR'
+          Title.Caption = 'Fornecedor'
+          Width = 300
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DATA_ENTRADA'
+          Title.Caption = 'Entrada'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'STATUS_DESC'
+          Title.Caption = 'Status'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'VALOR_TOTAL'
+          Title.Caption = 'Total'
+          Width = 110
+          Visible = True
+        end>
+      DataSource = DataSourceNotas
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ReadOnly = True
+      TabOrder = 0
+      OnDblClick = dbGridNotasDblClick
+    end
+  end
+  object pnlEdicao: TPanel
+    Left = 0
+    Height = 586
+    Top = 134
+    Width = 1150
+    Align = alClient
+    ClientHeight = 586
+    ClientWidth = 1150
+    TabOrder = 4
+    Visible = False
+    object pnlCabecalho: TPanel
+      Left = 1
+      Height = 158
+      Top = 1
+      Width = 1148
+      Align = alTop
+      BevelOuter = bvLowered
+      ClientHeight = 158
+      ClientWidth = 1148
+      TabOrder = 0
+      object lblFornecedor: TLabel
+        Left = 12
+        Height = 15
+        Top = 8
+        Width = 168
+        Caption = 'Fornecedor (código, CNPJ ou nome):'
+      end
+      object edtFornecedor: TEdit
+        Left = 12
+        Height = 23
+        Top = 26
+        Width = 120
+        TabOrder = 0
+      end
+      object btnBuscarFornecedor: TBitBtn
+        Left = 136
+        Height = 26
+        Top = 25
+        Width = 32
+        Caption = '...'
+        OnClick = btnBuscarFornecedorClick
+        TabOrder = 1
+      end
+      object lblFornecedorDesc: TLabel
+        Left = 176
+        Height = 17
+        Top = 29
+        Width = 420
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object lblNumero: TLabel
+        Left = 620
+        Height = 15
+        Top = 8
+        Width = 41
+        Caption = 'Número:'
+      end
+      object edtNumero: TEdit
+        Left = 620
+        Height = 23
+        Top = 26
+        Width = 90
+        TabOrder = 2
+      end
+      object lblSerie: TLabel
+        Left = 720
+        Height = 15
+        Top = 8
+        Width = 31
+        Caption = 'Série:'
+      end
+      object edtSerie: TEdit
+        Left = 720
+        Height = 23
+        Top = 26
+        Width = 60
+        TabOrder = 3
+      end
+      object lblModelo: TLabel
+        Left = 790
+        Height = 15
+        Top = 8
+        Width = 40
+        Caption = 'Modelo:'
+      end
+      object edtModelo: TEdit
+        Left = 790
+        Height = 23
+        Top = 26
+        Width = 60
+        TabOrder = 4
+      end
+      object lblDataEmissao: TLabel
+        Left = 865
+        Height = 15
+        Top = 8
+        Width = 46
+        Caption = 'Emissão:'
+      end
+      object edtDataEmissao: TEdit
+        Left = 865
+        Height = 23
+        Top = 26
+        Width = 100
+        TabOrder = 5
+      end
+      object lblDataEntrada: TLabel
+        Left = 980
+        Height = 15
+        Top = 8
+        Width = 47
+        Caption = 'Entrada:'
+      end
+      object edtDataEntrada: TEdit
+        Left = 980
+        Height = 23
+        Top = 26
+        Width = 100
+        TabOrder = 6
+      end
+      object lblChave: TLabel
+        Left = 12
+        Height = 15
+        Top = 60
+        Width = 121
+        Caption = 'Chave de acesso (44):'
+      end
+      object edtChave: TEdit
+        Left = 12
+        Height = 23
+        Top = 78
+        Width = 380
+        TabOrder = 7
+      end
+      object lblNatureza: TLabel
+        Left = 410
+        Height = 15
+        Top = 60
+        Width = 115
+        Caption = 'Natureza da operação:'
+      end
+      object edtNatureza: TEdit
+        Left = 410
+        Height = 23
+        Top = 78
+        Width = 340
+        TabOrder = 8
+      end
+      object lblCfop: TLabel
+        Left = 765
+        Height = 15
+        Top = 60
+        Width = 31
+        Caption = 'CFOP:'
+      end
+      object edtCfop: TEdit
+        Left = 765
+        Height = 23
+        Top = 78
+        Width = 70
+        TabOrder = 9
+      end
+      object lblCondPagto: TLabel
+        Left = 850
+        Height = 15
+        Top = 60
+        Width = 96
+        Caption = 'Cond. pagamento:'
+      end
+      object cmbCondicaoPagamento: TComboBox
+        Left = 850
+        Height = 23
+        Top = 78
+        Width = 230
+        ItemHeight = 15
+        Style = csDropDownList
+        TabOrder = 10
+      end
+      object lblStatusNota: TLabel
+        Left = 12
+        Height = 17
+        Top = 116
+        Width = 300
+        Caption = 'Status: Aberta (não processada)'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+    end
+    object pnlTotais: TPanel
+      Left = 1
+      Height = 60
+      Top = 525
+      Width = 1148
+      Align = alBottom
+      BevelOuter = bvLowered
+      ClientHeight = 60
+      ClientWidth = 1148
+      TabOrder = 1
+      object lblFrete: TLabel
+        Left = 12
+        Height = 15
+        Top = 8
+        Width = 33
+        Caption = 'Frete:'
+      end
+      object edtFrete: TEdit
+        Left = 12
+        Height = 23
+        Top = 26
+        Width = 100
+        Alignment = taRightJustify
+        TabOrder = 0
+        Text = '0,00'
+      end
+      object lblSeguro: TLabel
+        Left = 124
+        Height = 15
+        Top = 8
+        Width = 40
+        Caption = 'Seguro:'
+      end
+      object edtSeguro: TEdit
+        Left = 124
+        Height = 23
+        Top = 26
+        Width = 100
+        Alignment = taRightJustify
+        TabOrder = 1
+        Text = '0,00'
+      end
+      object lblOutras: TLabel
+        Left = 236
+        Height = 15
+        Top = 8
+        Width = 38
+        Caption = 'Outras:'
+      end
+      object edtOutras: TEdit
+        Left = 236
+        Height = 23
+        Top = 26
+        Width = 100
+        Alignment = taRightJustify
+        TabOrder = 2
+        Text = '0,00'
+      end
+      object lblDesconto: TLabel
+        Left = 348
+        Height = 15
+        Top = 8
+        Width = 52
+        Caption = 'Desconto:'
+      end
+      object edtDesconto: TEdit
+        Left = 348
+        Height = 23
+        Top = 26
+        Width = 100
+        Alignment = taRightJustify
+        TabOrder = 3
+        Text = '0,00'
+      end
+      object lblTotalProdutos: TLabel
+        Left = 470
+        Height = 17
+        Top = 28
+        Width = 400
+      end
+      object lblTotalNota: TLabel
+        Left = 880
+        Height = 19
+        Top = 26
+        Width = 260
+        Caption = 'Total da Nota: R$ 0,00'
+        Font.Height = -16
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+    end
+    object pnlItem: TPanel
+      Left = 1
+      Height = 96
+      Top = 429
+      Width = 1148
+      Align = alBottom
+      BevelOuter = bvLowered
+      Caption = 'Novo item'
+      ClientHeight = 96
+      ClientWidth = 1148
+      TabOrder = 2
+      Visible = False
+      object lblItemProduto: TLabel
+        Left = 12
+        Height = 15
+        Top = 8
+        Width = 199
+        Caption = 'Produto (código, barras ou descrição):'
+      end
+      object edtProdutoItem: TEdit
+        Left = 12
+        Height = 23
+        Top = 26
+        Width = 160
+        TabOrder = 0
+      end
+      object btnBuscarProdutoItem: TBitBtn
+        Left = 176
+        Height = 26
+        Top = 25
+        Width = 32
+        Caption = '...'
+        OnClick = btnBuscarProdutoItemClick
+        TabOrder = 1
+      end
+      object lblItemDesc: TLabel
+        Left = 216
+        Height = 17
+        Top = 29
+        Width = 380
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object lblItemQtd: TLabel
+        Left = 620
+        Height = 15
+        Top = 8
+        Width = 30
+        Caption = 'Qtde:'
+      end
+      object edtItemQtd: TEdit
+        Left = 620
+        Height = 23
+        Top = 26
+        Width = 80
+        Alignment = taRightJustify
+        TabOrder = 2
+        Text = '1'
+      end
+      object lblItemValor: TLabel
+        Left = 710
+        Height = 15
+        Top = 8
+        Width = 49
+        Caption = 'Vl. Unit.:'
+      end
+      object edtItemValor: TEdit
+        Left = 710
+        Height = 23
+        Top = 26
+        Width = 100
+        Alignment = taRightJustify
+        TabOrder = 3
+        Text = '0,00'
+      end
+      object lblItemDesconto: TLabel
+        Left = 820
+        Height = 15
+        Top = 8
+        Width = 52
+        Caption = 'Desconto:'
+      end
+      object edtItemDesconto: TEdit
+        Left = 820
+        Height = 23
+        Top = 26
+        Width = 90
+        Alignment = taRightJustify
+        TabOrder = 4
+        Text = '0,00'
+      end
+      object lblItemInfo: TLabel
+        Left = 12
+        Height = 15
+        Top = 62
+        Width = 500
+      end
+      object btnConfirmarItem: TBitBtn
+        Left = 930
+        Height = 34
+        Top = 22
+        Width = 100
+        Caption = 'Confirmar'
+        Font.Style = [fsBold]
+        OnClick = btnConfirmarItemClick
+        ParentFont = False
+        TabOrder = 5
+      end
+      object btnCancelarItem: TBitBtn
+        Left = 1038
+        Height = 34
+        Top = 22
+        Width = 90
+        Caption = 'Cancelar'
+        OnClick = btnCancelarItemClick
+        TabOrder = 6
+      end
+    end
+    object dbGridItens: TDBGrid
+      Left = 1
+      Height = 270
+      Top = 159
+      Width = 1148
+      Align = alClient
+      Columns = <
+        item
+          Expanded = False
+          FieldName = 'CODIGO'
+          Title.Caption = 'Código'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DESCRICAO'
+          Title.Caption = 'Descrição'
+          Width = 300
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'QUANTIDADE'
+          Title.Caption = 'Qtde'
+          Width = 80
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'VALOR_UNITARIO'
+          Title.Caption = 'Vl. Unit.'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DESCONTO'
+          Title.Caption = 'Desconto'
+          Width = 80
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'TOTAL'
+          Title.Caption = 'Total'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'CFOP'
+          Title.Caption = 'CFOP'
+          Width = 60
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'AVISO'
+          Title.Caption = 'Observação'
+          Width = 120
+          Visible = True
+        end>
+      DataSource = DataSourceItens
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ReadOnly = True
+      TabOrder = 3
+      OnDblClick = dbGridItensDblClick
+    end
+  end
+  object DataSourceNotas: TDataSource
+    Left = 800
+    Top = 260
+  end
+  object DataSourceItens: TDataSource
+    Left = 860
+    Top = 260
+  end
+  object OpenDialog1: TOpenDialog
+    Left = 920
+    Top = 260
+  end
+end

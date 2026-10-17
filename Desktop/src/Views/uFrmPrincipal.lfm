@@ -102,6 +102,13 @@ object frmPrincipal: TfrmPrincipal
         OnClick = mnuEstKardexClick
       end
     end
+    object mnuCompras: TMenuItem
+      Caption = 'Compras'
+      object mnuComNotaEntrada: TMenuItem
+        Caption = 'Nota de Entrada'
+        OnClick = mnuComNotaEntradaClick
+      end
+    end
     object mnuVendas: TMenuItem
       Caption = 'Vendas'
       object mnuVenPedidos: TMenuItem
