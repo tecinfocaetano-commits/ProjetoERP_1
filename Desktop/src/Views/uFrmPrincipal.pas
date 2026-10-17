@@ -35,6 +35,7 @@ type
     mnuVenOrcamentos: TMenuItem;
     mnuSep3: TMenuItem;
     mnuVenListaPedidos: TMenuItem;
+    mnuVenNotaSaida: TMenuItem;
     mnuPDV: TMenuItem;
     mnuPDVAbrirPDV: TMenuItem;
     mnuFinanceiro: TMenuItem;
@@ -70,6 +71,7 @@ type
     procedure mnuVenPedidosClick(Sender: TObject);
     procedure mnuVenOrcamentosClick(Sender: TObject);
     procedure mnuVenListaPedidosClick(Sender: TObject);
+procedure mnuVenNotaSaidaClick(Sender: TObject);
     procedure mnuPDVAbrirPDVClick(Sender: TObject);
     procedure mnuFinContasReceberClick(Sender: TObject);
     procedure mnuFinContasPagarClick(Sender: TObject);
@@ -90,7 +92,7 @@ implementation
 uses
   uFrmClientes, uFrmFornecedores, uFrmProdutos, uFrmCategorias, uFrmUsuarios,
   uFrmMovEstoque, uFrmKardex, uFrmInventario,
-  uFrmNotaEntrada,
+  uFrmNotaEntrada, uFrmNotaSaida,
   uFrmPedidoVenda, uFrmListaPedidos, uFrmOrcamento,
   uFrmPDV, uFrmContasReceber, uFrmContasPagar,
   uFrmNFe, uFrmCopiloto;
@@ -211,6 +213,11 @@ end;
 procedure TfrmPrincipal.mnuVenListaPedidosClick(Sender: TObject);
 begin
   AbrirFormulario(TfrmListaPedidos);
+end;
+
+procedure TfrmPrincipal.mnuVenNotaSaidaClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmNotaSaida);
 end;
 
 // === PDV ===

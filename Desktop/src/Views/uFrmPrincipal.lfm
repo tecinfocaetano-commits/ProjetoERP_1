@@ -126,6 +126,10 @@ object frmPrincipal: TfrmPrincipal
         Caption = 'Lista de Pedidos'
         OnClick = mnuVenListaPedidosClick
       end
+      object mnuVenNotaSaida: TMenuItem
+        Caption = 'Nota de Saída'
+        OnClick = mnuVenNotaSaidaClick
+      end
     end
     object mnuPDV: TMenuItem
       Caption = 'PDV'

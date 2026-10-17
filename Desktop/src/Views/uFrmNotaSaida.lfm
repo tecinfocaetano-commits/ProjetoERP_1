@@ -1,0 +1,752 @@
+object frmNotaSaida: TfrmNotaSaida
+  Left = 0
+  Height = 720
+  Top = 0
+  Width = 1150
+  Caption = 'Nota de Saída (Faturamento de Venda)'
+  ClientHeight = 720
+  ClientWidth = 1150
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '3.2.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 1150
+    Align = alTop
+    ClientHeight = 50
+    ClientWidth = 1150
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 28
+      Top = 12
+      Width = 520
+      Caption = 'Nota de Saída - Faturamento de Venda'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlFiltros: TPanel
+    Left = 0
+    Height = 40
+    Top = 50
+    Width = 1150
+    Align = alTop
+    ClientHeight = 40
+    ClientWidth = 1150
+    TabOrder = 1
+    object lblFiltroDe: TLabel
+      Left = 8
+      Height = 15
+      Top = 10
+      Width = 17
+      Caption = 'De:'
+    end
+    object edtFiltroDe: TEdit
+      Left = 40
+      Height = 23
+      Top = 7
+      Width = 110
+      TabOrder = 0
+    end
+    object lblFiltroAte: TLabel
+      Left = 165
+      Height = 15
+      Top = 10
+      Width = 21
+      Caption = 'Até:'
+    end
+    object edtFiltroAte: TEdit
+      Left = 198
+      Height = 23
+      Top = 7
+      Width = 110
+      TabOrder = 1
+    end
+    object lblFiltroStatus: TLabel
+      Left = 325
+      Height = 15
+      Top = 10
+      Width = 37
+      Caption = 'Status:'
+    end
+    object cmbFiltroStatus: TComboBox
+      Left = 372
+      Height = 23
+      Top = 7
+      Width = 190
+      ItemHeight = 15
+      ItemIndex = 0
+      Items.Strings = (
+        'Todos'
+        'Aberta (não faturada)'
+        'Faturada'
+        'Cancelada'
+      )
+      Style = csDropDownList
+      TabOrder = 2
+      Text = 'Todos'
+    end
+    object btnFiltrar: TBitBtn
+      Left = 578
+      Height = 28
+      Top = 5
+      Width = 90
+      Caption = 'Filtrar'
+      OnClick = btnFiltrarClick
+      TabOrder = 3
+    end
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 44
+    Top = 90
+    Width = 1150
+    Align = alTop
+    ClientHeight = 44
+    ClientWidth = 1150
+    TabOrder = 2
+    object btnNovaDoPedido: TBitBtn
+      Left = 8
+      Height = 34
+      Top = 5
+      Width = 150
+      Caption = 'Nova do Pedido'
+      OnClick = btnNovaDoPedidoClick
+      TabOrder = 0
+    end
+    object btnAbrirNota: TBitBtn
+      Left = 164
+      Height = 34
+      Top = 5
+      Width = 100
+      Caption = 'Abrir'
+      OnClick = btnAbrirNotaClick
+      TabOrder = 1
+    end
+    object btnGravar: TBitBtn
+      Left = 270
+      Height = 34
+      Top = 5
+      Width = 100
+      Caption = 'Gravar'
+      OnClick = btnGravarClick
+      TabOrder = 2
+    end
+    object btnFaturar: TBitBtn
+      Left = 376
+      Height = 34
+      Top = 5
+      Width = 110
+      Caption = 'Faturar'
+      Font.Style = [fsBold]
+      OnClick = btnFaturarClick
+      ParentFont = False
+      TabOrder = 3
+    end
+    object btnCancelarNota: TBitBtn
+      Left = 492
+      Height = 34
+      Top = 5
+      Width = 130
+      Caption = 'Cancelar / Estornar'
+      OnClick = btnCancelarNotaClick
+      TabOrder = 4
+    end
+    object btnExportarXML: TBitBtn
+      Left = 628
+      Height = 34
+      Top = 5
+      Width = 120
+      Caption = 'Exportar XML'
+      OnClick = btnExportarXMLClick
+      TabOrder = 5
+    end
+    object btnFechar: TBitBtn
+      Left = 1050
+      Height = 34
+      Top = 5
+      Width = 90
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 6
+    end
+  end
+  object pnlLista: TPanel
+    Left = 0
+    Height = 586
+    Top = 134
+    Width = 1150
+    Align = alClient
+    ClientHeight = 586
+    ClientWidth = 1150
+    TabOrder = 3
+    object dbGridNotas: TDBGrid
+      Left = 1
+      Height = 584
+      Top = 1
+      Width = 1148
+      Align = alClient
+      Columns = <
+        item
+          Expanded = False
+          FieldName = 'NUMERO'
+          Title.Caption = 'Número'
+          Width = 70
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'SERIE'
+          Title.Caption = 'Série'
+          Width = 50
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'MODELO'
+          Title.Caption = 'Mod.'
+          Width = 45
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'CLIENTE'
+          Title.Caption = 'Cliente'
+          Width = 280
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DATA_SAIDA'
+          Title.Caption = 'Saída'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'STATUS_DESC'
+          Title.Caption = 'Status'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'CHAVE_ACESSO'
+          Title.Caption = 'Chave de acesso'
+          Width = 300
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'VALOR_TOTAL'
+          Title.Caption = 'Total'
+          Width = 110
+          Visible = True
+        end>
+      DataSource = DataSourceNotas
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ReadOnly = True
+      TabOrder = 0
+      OnDblClick = dbGridNotasDblClick
+    end
+  end
+  object pnlPedidos: TPanel
+    Left = 0
+    Height = 586
+    Top = 134
+    Width = 1150
+    Align = alClient
+    ClientHeight = 586
+    ClientWidth = 1150
+    TabOrder = 4
+    Visible = False
+    object lblPedidosTitulo: TLabel
+      Left = 12
+      Height = 17
+      Top = 12
+      Width = 700
+      Caption = 'Pedidos de venda pendentes de faturamento (duplo clique gera a nota de saída)'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object dbGridPedidos: TDBGrid
+      Left = 8
+      Height = 460
+      Top = 36
+      Width = 1132
+      Anchors = [akTop, akLeft, akRight, akBottom]
+      Columns = <
+        item
+          Expanded = False
+          FieldName = 'NUMERO'
+          Title.Caption = 'Pedido'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'CLIENTE'
+          Title.Caption = 'Cliente'
+          Width = 300
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DATA_EMISSAO'
+          Title.Caption = 'Emissão'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'ITENS'
+          Title.Caption = 'Itens'
+          Width = 60
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'CONDICAO'
+          Title.Caption = 'Cond. pagamento'
+          Width = 200
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'SITUACAO'
+          Title.Caption = 'Situação'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'TOTAL'
+          Title.Caption = 'Total'
+          Width = 110
+          Visible = True
+        end>
+      DataSource = DataSourcePedidos
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ReadOnly = True
+      TabOrder = 0
+      OnDblClick = dbGridPedidosDblClick
+    end
+    object btnGerarNota: TBitBtn
+      Left = 8
+      Height = 34
+      Top = 510
+      Width = 200
+      Caption = 'Gerar Nota de Saída'
+      Font.Style = [fsBold]
+      OnClick = btnGerarNotaClick
+      ParentFont = False
+      TabOrder = 1
+    end
+    object btnVoltarPedidos: TBitBtn
+      Left = 216
+      Height = 34
+      Top = 510
+      Width = 100
+      Caption = 'Voltar'
+      OnClick = btnVoltarPedidosClick
+      TabOrder = 2
+    end
+  end
+  object pnlEdicao: TPanel
+    Left = 0
+    Height = 586
+    Top = 134
+    Width = 1150
+    Align = alClient
+    ClientHeight = 586
+    ClientWidth = 1150
+    TabOrder = 5
+    Visible = False
+    object pnlCabecalho: TPanel
+      Left = 1
+      Height = 158
+      Top = 1
+      Width = 1148
+      Align = alTop
+      BevelOuter = bvLowered
+      ClientHeight = 158
+      ClientWidth = 1148
+      TabOrder = 0
+      object lblCliente: TLabel
+        Left = 12
+        Height = 15
+        Top = 8
+        Width = 190
+        Caption = 'Cliente (código, CPF/CNPJ ou nome):'
+      end
+      object edtCliente: TEdit
+        Left = 12
+        Height = 23
+        Top = 26
+        Width = 120
+        TabOrder = 0
+      end
+      object btnBuscarCliente: TBitBtn
+        Left = 136
+        Height = 26
+        Top = 25
+        Width = 32
+        Caption = '...'
+        OnClick = btnBuscarClienteClick
+        TabOrder = 1
+      end
+      object lblClienteDesc: TLabel
+        Left = 176
+        Height = 17
+        Top = 29
+        Width = 420
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object lblNumero: TLabel
+        Left = 620
+        Height = 15
+        Top = 8
+        Width = 41
+        Caption = 'Número:'
+      end
+      object edtNumero: TEdit
+        Left = 620
+        Height = 23
+        Top = 26
+        Width = 90
+        TabOrder = 2
+      end
+      object lblSerie: TLabel
+        Left = 720
+        Height = 15
+        Top = 8
+        Width = 31
+        Caption = 'Série:'
+      end
+      object edtSerie: TEdit
+        Left = 720
+        Height = 23
+        Top = 26
+        Width = 60
+        TabOrder = 3
+      end
+      object lblModelo: TLabel
+        Left = 790
+        Height = 15
+        Top = 8
+        Width = 40
+        Caption = 'Modelo:'
+      end
+      object edtModelo: TEdit
+        Left = 790
+        Height = 23
+        Top = 26
+        Width = 60
+        TabOrder = 4
+      end
+      object lblDataEmissao: TLabel
+        Left = 865
+        Height = 15
+        Top = 8
+        Width = 46
+        Caption = 'Emissão:'
+      end
+      object edtDataEmissao: TEdit
+        Left = 865
+        Height = 23
+        Top = 26
+        Width = 100
+        TabOrder = 5
+      end
+      object lblDataSaida: TLabel
+        Left = 980
+        Height = 15
+        Top = 8
+        Width = 35
+        Caption = 'Saída:'
+      end
+      object edtDataSaida: TEdit
+        Left = 980
+        Height = 23
+        Top = 26
+        Width = 100
+        TabOrder = 6
+      end
+      object lblChave: TLabel
+        Left = 12
+        Height = 15
+        Top = 60
+        Width = 121
+        Caption = 'Chave de acesso (44):'
+      end
+      object edtChave: TEdit
+        Left = 12
+        Height = 23
+        Top = 78
+        Width = 380
+        TabOrder = 7
+      end
+      object lblNatureza: TLabel
+        Left = 410
+        Height = 15
+        Top = 60
+        Width = 115
+        Caption = 'Natureza da operação:'
+      end
+      object edtNatureza: TEdit
+        Left = 410
+        Height = 23
+        Top = 78
+        Width = 340
+        TabOrder = 8
+      end
+      object lblCfop: TLabel
+        Left = 765
+        Height = 15
+        Top = 60
+        Width = 31
+        Caption = 'CFOP:'
+      end
+      object edtCfop: TEdit
+        Left = 765
+        Height = 23
+        Top = 78
+        Width = 70
+        TabOrder = 9
+      end
+      object lblCondPagto: TLabel
+        Left = 850
+        Height = 15
+        Top = 60
+        Width = 96
+        Caption = 'Cond. pagamento:'
+      end
+      object cmbCondicaoPagamento: TComboBox
+        Left = 850
+        Height = 23
+        Top = 78
+        Width = 230
+        ItemHeight = 15
+        Style = csDropDownList
+        TabOrder = 10
+      end
+      object lblStatusNota: TLabel
+        Left = 12
+        Height = 17
+        Top = 116
+        Width = 300
+        Caption = 'Status: Aberta (não faturada)'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object lblPedidoOrigem: TLabel
+        Left = 420
+        Height = 17
+        Top = 116
+        Width = 500
+      end
+    end
+    object pnlTotais: TPanel
+      Left = 1
+      Height = 60
+      Top = 525
+      Width = 1148
+      Align = alBottom
+      BevelOuter = bvLowered
+      ClientHeight = 60
+      ClientWidth = 1148
+      TabOrder = 1
+      object lblFrete: TLabel
+        Left = 12
+        Height = 15
+        Top = 8
+        Width = 33
+        Caption = 'Frete:'
+      end
+      object edtFrete: TEdit
+        Left = 12
+        Height = 23
+        Top = 26
+        Width = 100
+        Alignment = taRightJustify
+        TabOrder = 0
+        Text = '0,00'
+      end
+      object lblSeguro: TLabel
+        Left = 124
+        Height = 15
+        Top = 8
+        Width = 40
+        Caption = 'Seguro:'
+      end
+      object edtSeguro: TEdit
+        Left = 124
+        Height = 23
+        Top = 26
+        Width = 100
+        Alignment = taRightJustify
+        TabOrder = 1
+        Text = '0,00'
+      end
+      object lblOutras: TLabel
+        Left = 236
+        Height = 15
+        Top = 8
+        Width = 38
+        Caption = 'Outras:'
+      end
+      object edtOutras: TEdit
+        Left = 236
+        Height = 23
+        Top = 26
+        Width = 100
+        Alignment = taRightJustify
+        TabOrder = 2
+        Text = '0,00'
+      end
+      object lblDesconto: TLabel
+        Left = 348
+        Height = 15
+        Top = 8
+        Width = 52
+        Caption = 'Desconto:'
+      end
+      object edtDesconto: TEdit
+        Left = 348
+        Height = 23
+        Top = 26
+        Width = 100
+        Alignment = taRightJustify
+        Enabled = False
+        TabOrder = 3
+        Text = '0,00'
+      end
+      object lblTotalProdutos: TLabel
+        Left = 470
+        Height = 17
+        Top = 28
+        Width = 400
+      end
+      object lblTotalNota: TLabel
+        Left = 880
+        Height = 19
+        Top = 26
+        Width = 260
+        Caption = 'Total da Nota: R$ 0,00'
+        Font.Height = -16
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+    end
+    object dbGridItens: TDBGrid
+      Left = 1
+      Height = 366
+      Top = 159
+      Width = 1148
+      Align = alClient
+      Columns = <
+        item
+          Expanded = False
+          FieldName = 'CODIGO'
+          Title.Caption = 'Código'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DESCRICAO'
+          Title.Caption = 'Descrição'
+          Width = 280
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'UNIDADE'
+          Title.Caption = 'Un.'
+          Width = 45
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'QUANTIDADE'
+          Title.Caption = 'Qtde'
+          Width = 80
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'VALOR_UNITARIO'
+          Title.Caption = 'Vl. Unit.'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DESCONTO'
+          Title.Caption = 'Desconto'
+          Width = 80
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'TOTAL'
+          Title.Caption = 'Total'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'CFOP'
+          Title.Caption = 'CFOP'
+          Width = 60
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'SALDO_APOS'
+          Title.Caption = 'Saldo após'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'AVISO'
+          Title.Caption = 'Observação'
+          Width = 150
+          Visible = True
+        end>
+      DataSource = DataSourceItens
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ReadOnly = True
+      TabOrder = 2
+    end
+  end
+  object DataSourceNotas: TDataSource
+    Left = 800
+    Top = 260
+  end
+  object DataSourceItens: TDataSource
+    Left = 860
+    Top = 260
+  end
+  object DataSourcePedidos: TDataSource
+    Left = 920
+    Top = 260
+  end
+  object SaveDialog1: TSaveDialog
+    DefaultExt = 'xml'
+    Filter = 'XML (*.xml)|*.xml|Todos os arquivos (*.*)|*.*'
+    Left = 980
+    Top = 260
+  end
+end
