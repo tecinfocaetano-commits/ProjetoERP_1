@@ -1,0 +1,371 @@
+/* ============================================================
+   ERP 2026 - 012_producao.sql
+   ------------------------------------------------------------
+   Módulo 3: PRODUÇÃO
+     - Ficha técnica (composição do produto fabricado);
+     - Mapa de produção gerado a partir do pedido de venda;
+     - Talões com código de barras (Code128) e bipagem;
+     - Consumo de materiais (saída de estoque vinculada ao mapa).
+
+   Fluxo resumido:
+     1) o mapa nasce de um PEDIDO_VENDA (itens e quantidades,
+        inclusive parciais) e o pedido passa a EM PRODUÇÃO;
+     2) o mapa gera talões (por item, por unidade ou por lote);
+     3) cada talão é bipado até concluir; concluindo todos, o mapa
+        fica CONCLUIDO e o pedido passa a PRODUZIDO;
+     4) o consumo de materiais baixa o estoque dos insumos da ficha
+        técnica (MOVIMENTO_ESTOQUE tipo 'S').
+
+   Status do pedido (PEDIDO_VENDA.STATUS é CHAR(1), sem CHECK —
+   verificado no banco): mantidos 'P' (Pendente), 'A' (Aprovado),
+   'F' (Faturado) e 'C' (Cancelado) e acrescentados:
+       'E' = Em produção      'D' = Produzido
+   Assim nenhum fluxo existente é quebrado (as telas usam CASE com
+   ELSE e os filtros continuam válidos).
+
+   Observações:
+     - Script ADITIVO e de uso único;
+     - Sem chaves estrangeiras: segue a convenção do banco (a
+       integridade é garantida pelo Service);
+     - O saldo de ESTOQUE continua sendo mantido pelo trigger
+       TRG_MOVEST_AI.
+
+   Aplicar com:
+     isql -u SYSDBA -p masterkey Banco\DADOS.FDB -i Banco\012_producao.sql
+   Reverter com:
+     Banco\012_producao_rollback.sql
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1) GENERATORS
+   ------------------------------------------------------------ */
+CREATE GENERATOR GEN_FICHA_TECNICA_ID;
+CREATE GENERATOR GEN_FICHA_TECNICA_ITEM_ID;
+CREATE GENERATOR GEN_MAPA_PRODUCAO_ID;
+CREATE GENERATOR GEN_MAPA_PRODUCAO_ITEM_ID;
+CREATE GENERATOR GEN_TALAO_ID;
+CREATE GENERATOR GEN_TALAO_BIPAGEM_ID;
+CREATE GENERATOR GEN_CONSUMO_MATERIAL_ID;
+CREATE GENERATOR GEN_CONSUMO_MATERIAL_ITEM_ID;
+
+COMMIT;
+
+/* ------------------------------------------------------------
+   2) FICHA TÉCNICA (composição / BOM)
+   QUANTIDADE_BASE = rendimento da receita (ex.: 1 unidade)
+   FICHA_TECNICA_ITEM.QUANTIDADE = consumo do insumo POR
+   QUANTIDADE_BASE produzida.
+   ------------------------------------------------------------ */
+CREATE TABLE FICHA_TECNICA (
+  ID                BIGINT NOT NULL PRIMARY KEY,
+  EMPRESA_ID        BIGINT NOT NULL,
+  PRODUTO_ID        BIGINT NOT NULL,
+  DESCRICAO         VARCHAR(120),
+  QUANTIDADE_BASE   NUMERIC(15,4) DEFAULT 1 NOT NULL,
+  ATIVO             CHAR(1) DEFAULT 'A',
+  OBSERVACOES       VARCHAR(500),
+  USUARIO_ID        BIGINT,
+  DATA_CADASTRO     TIMESTAMP,
+  DATA_ATUALIZACAO  TIMESTAMP,
+  CONSTRAINT CKB_FICHA_BASE  CHECK (QUANTIDADE_BASE > 0),
+  CONSTRAINT CKB_FICHA_ATIVO CHECK (ATIVO IN ('A', 'I'))
+);
+
+CREATE TABLE FICHA_TECNICA_ITEM (
+  ID                 BIGINT NOT NULL PRIMARY KEY,
+  FICHA_TECNICA_ID   BIGINT NOT NULL,
+  MATERIAL_ID        BIGINT NOT NULL,
+  QUANTIDADE         NUMERIC(15,4) DEFAULT 0,
+  PERDA_PERCENTUAL   NUMERIC(7,4) DEFAULT 0,
+  OBSERVACOES        VARCHAR(255),
+  CONSTRAINT CKB_FICHA_ITEM_QTD   CHECK (QUANTIDADE > 0),
+  CONSTRAINT CKB_FICHA_ITEM_PERDA CHECK (PERDA_PERCENTUAL >= 0)
+);
+
+/* Um produto tem uma única ficha técnica por empresa */
+CREATE UNIQUE INDEX UQ_FICHA_TECNICA_PRODUTO ON FICHA_TECNICA (EMPRESA_ID, PRODUTO_ID);
+CREATE INDEX IDX_FICHA_TECNICA_ITEM_FICHA ON FICHA_TECNICA_ITEM (FICHA_TECNICA_ID);
+CREATE INDEX IDX_FICHA_TECNICA_ITEM_MAT   ON FICHA_TECNICA_ITEM (MATERIAL_ID);
+
+COMMIT;
+
+/* ------------------------------------------------------------
+   3) MAPA DE PRODUÇÃO
+   ------------------------------------------------------------ */
+CREATE TABLE MAPA_PRODUCAO (
+  ID                   BIGINT NOT NULL PRIMARY KEY,
+  EMPRESA_ID           BIGINT NOT NULL,
+  NUMERO               INTEGER NOT NULL,
+  PEDIDO_VENDA_ID      BIGINT NOT NULL,
+  STATUS               VARCHAR(15) DEFAULT 'ABERTO' NOT NULL,
+  DATA_CRIACAO         TIMESTAMP,
+  DATA_PREVISTA        DATE,
+  DATA_INICIO          TIMESTAMP,
+  DATA_FIM             TIMESTAMP,
+  OBSERVACAO           VARCHAR(500),
+  MOTIVO_CANCELAMENTO  VARCHAR(255),
+  DATA_CANCELAMENTO    TIMESTAMP,
+  USUARIO_ID           BIGINT,
+  CONSTRAINT CKB_MAPA_STATUS CHECK (STATUS IN ('ABERTO', 'EM_PRODUCAO', 'CONCLUIDO', 'CANCELADO')),
+  CONSTRAINT CKB_MAPA_NUMERO CHECK (NUMERO > 0)
+);
+
+/* STATUS: ABERTO      = criado, nenhum talão gerado/concluído
+            EM_PRODUCAO = pelo menos um talão em produção
+            CONCLUIDO   = todos os talões concluídos
+            CANCELADO   = cancelado com motivo                     */
+
+CREATE TABLE MAPA_PRODUCAO_ITEM (
+  ID                BIGINT NOT NULL PRIMARY KEY,
+  MAPA_PRODUCAO_ID  BIGINT NOT NULL,
+  ITEM_PEDIDO_ID    BIGINT NOT NULL,
+  PRODUTO_ID        BIGINT,
+  QUANTIDADE        NUMERIC(15,4) DEFAULT 0 NOT NULL,
+  STATUS            VARCHAR(15) DEFAULT 'PENDENTE' NOT NULL,
+  OBSERVACAO        VARCHAR(255),
+  CONSTRAINT CKB_MAPA_ITEM_STATUS CHECK (STATUS IN ('PENDENTE', 'EM_PRODUCAO', 'CONCLUIDO', 'CANCELADO')),
+  CONSTRAINT CKB_MAPA_ITEM_QTD    CHECK (QUANTIDADE > 0)
+);
+
+CREATE UNIQUE INDEX UQ_MAPA_PRODUCAO_NUMERO ON MAPA_PRODUCAO (EMPRESA_ID, NUMERO);
+CREATE INDEX IDX_MAPA_PRODUCAO_PEDIDO ON MAPA_PRODUCAO (PEDIDO_VENDA_ID);
+CREATE INDEX IDX_MAPA_PRODUCAO_STATUS ON MAPA_PRODUCAO (STATUS);
+CREATE INDEX IDX_MAPA_PRODUCAO_DATA   ON MAPA_PRODUCAO (DATA_CRIACAO);
+CREATE INDEX IDX_MAPA_ITEM_MAPA       ON MAPA_PRODUCAO_ITEM (MAPA_PRODUCAO_ID);
+CREATE INDEX IDX_MAPA_ITEM_ITEM       ON MAPA_PRODUCAO_ITEM (ITEM_PEDIDO_ID);
+CREATE INDEX IDX_MAPA_ITEM_PRODUTO    ON MAPA_PRODUCAO_ITEM (PRODUTO_ID);
+
+COMMIT;
+
+/* ------------------------------------------------------------
+   4) TALÕES
+   QUANTIDADE = quantidade de peças do talão (1 quando o modo é
+   por unidade; N quando o modo é por lote).
+   CODIGO_BARRAS = conteúdo do Code128 (número do talão com dígito
+   verificador) impresso no LazReport.
+   ------------------------------------------------------------ */
+CREATE TABLE TALAO (
+  ID                     BIGINT NOT NULL PRIMARY KEY,
+  EMPRESA_ID             BIGINT NOT NULL,
+  NUMERO                 INTEGER NOT NULL,
+  MAPA_PRODUCAO_ITEM_ID  BIGINT NOT NULL,
+  SEQUENCIA              INTEGER DEFAULT 1,
+  QUANTIDADE             NUMERIC(15,4) DEFAULT 0 NOT NULL,
+  CODIGO_BARRAS          VARCHAR(30),
+  STATUS                 VARCHAR(15) DEFAULT 'GERADO' NOT NULL,
+  QTD_IMPRESSOES         INTEGER DEFAULT 0,
+  DATA_GERACAO           TIMESTAMP,
+  DATA_IMPRESSAO         TIMESTAMP,
+  DATA_INICIO            TIMESTAMP,
+  DATA_CONCLUSAO         TIMESTAMP,
+  DATA_CANCELAMENTO      TIMESTAMP,
+  OBSERVACAO             VARCHAR(255),
+  USUARIO_ID             BIGINT,
+  CONSTRAINT CKB_TALAO_STATUS CHECK (STATUS IN ('GERADO', 'IMPRESSO', 'EM_PRODUCAO', 'CONCLUIDO', 'CANCELADO')),
+  CONSTRAINT CKB_TALAO_QTD    CHECK (QUANTIDADE > 0)
+);
+
+CREATE TABLE TALAO_BIPAGEM (
+  ID          BIGINT NOT NULL PRIMARY KEY,
+  TALAO_ID    BIGINT NOT NULL,
+  USUARIO_ID  BIGINT,
+  DATA_HORA   TIMESTAMP,
+  ETAPA       VARCHAR(30),
+  ORIGEM      VARCHAR(30),
+  RESULTADO   VARCHAR(15) DEFAULT 'OK',
+  OBSERVACAO  VARCHAR(255),
+  CONSTRAINT CKB_BIPAGEM_RESULTADO CHECK (RESULTADO IN ('OK', 'DUPLICADO', 'INVALIDO'))
+);
+
+/* ETAPA: BIPAGEM | REIMPRESSAO | INICIO | CONCLUSAO
+   ORIGEM: LEITOR | MANUAL | SISTEMA                          */
+
+CREATE UNIQUE INDEX UQ_TALAO_NUMERO ON TALAO (EMPRESA_ID, NUMERO);
+CREATE INDEX IDX_TALAO_MAPA_ITEM ON TALAO (MAPA_PRODUCAO_ITEM_ID);
+CREATE INDEX IDX_TALAO_STATUS    ON TALAO (STATUS);
+CREATE INDEX IDX_TALAO_CODIGO    ON TALAO (CODIGO_BARRAS);
+CREATE INDEX IDX_BIPAGEM_TALAO   ON TALAO_BIPAGEM (TALAO_ID);
+CREATE INDEX IDX_BIPAGEM_DATA    ON TALAO_BIPAGEM (DATA_HORA);
+
+COMMIT;
+
+/* ------------------------------------------------------------
+   5) CONSUMO DE MATERIAIS
+   O vínculo com o movimento de estoque fica no ITEM, pois cada
+   material gera o seu próprio MOVIMENTO_ESTOQUE de saída.
+   ------------------------------------------------------------ */
+CREATE TABLE CONSUMO_MATERIAL (
+  ID                  BIGINT NOT NULL PRIMARY KEY,
+  EMPRESA_ID          BIGINT NOT NULL,
+  MAPA_PRODUCAO_ID    BIGINT NOT NULL,
+  DATA_CONSUMO        DATE,
+  STATUS              VARCHAR(15) DEFAULT 'PENDENTE' NOT NULL,
+  JUSTIFICATIVA       VARCHAR(500),
+  OBSERVACAO          VARCHAR(500),
+  USUARIO_ID          BIGINT,
+  DATA_CONFIRMACAO    TIMESTAMP,
+  DATA_ESTORNO        TIMESTAMP,
+  USUARIO_ESTORNO_ID  BIGINT,
+  CONSTRAINT CKB_CONSUMO_STATUS CHECK (STATUS IN ('PENDENTE', 'CONFIRMADO', 'ESTORNADO'))
+);
+
+CREATE TABLE CONSUMO_MATERIAL_ITEM (
+  ID                    BIGINT NOT NULL PRIMARY KEY,
+  CONSUMO_MATERIAL_ID   BIGINT NOT NULL,
+  MATERIAL_ID           BIGINT NOT NULL,
+  QTD_PREVISTA          NUMERIC(15,4) DEFAULT 0,
+  QTD_REAL              NUMERIC(15,4) DEFAULT 0,
+  CUSTO_UNITARIO        NUMERIC(15,4) DEFAULT 0,
+  MOVIMENTO_ESTOQUE_ID  BIGINT,
+  OBSERVACAO            VARCHAR(255)
+);
+
+CREATE INDEX IDX_CONSUMO_MAPA     ON CONSUMO_MATERIAL (MAPA_PRODUCAO_ID);
+CREATE INDEX IDX_CONSUMO_STATUS   ON CONSUMO_MATERIAL (STATUS);
+CREATE INDEX IDX_CONSUMO_ITEM_CONS ON CONSUMO_MATERIAL_ITEM (CONSUMO_MATERIAL_ID);
+CREATE INDEX IDX_CONSUMO_ITEM_MAT  ON CONSUMO_MATERIAL_ITEM (MATERIAL_ID);
+CREATE INDEX IDX_CONSUMO_ITEM_MOV  ON CONSUMO_MATERIAL_ITEM (MOVIMENTO_ESTOQUE_ID);
+
+COMMIT;
+
+/* ------------------------------------------------------------
+   6) TRIGGERS de auto-incremento e datas
+   ------------------------------------------------------------ */
+SET TERM ^ ;
+
+CREATE TRIGGER TRG_FICHA_TECNICA_BI FOR FICHA_TECNICA
+ACTIVE BEFORE INSERT POSITION 0
+AS
+BEGIN
+  IF (NEW.ID IS NULL OR NEW.ID = 0) THEN
+    NEW.ID = GEN_ID(GEN_FICHA_TECNICA_ID, 1);
+  IF (NEW.DATA_CADASTRO IS NULL) THEN
+    NEW.DATA_CADASTRO = CURRENT_TIMESTAMP;
+END^
+
+CREATE TRIGGER TRG_FICHA_TECNICA_BU FOR FICHA_TECNICA
+ACTIVE BEFORE UPDATE POSITION 0
+AS
+BEGIN
+  NEW.DATA_ATUALIZACAO = CURRENT_TIMESTAMP;
+END^
+
+CREATE TRIGGER TRG_FICHA_TECNICA_ITEM_BI FOR FICHA_TECNICA_ITEM
+ACTIVE BEFORE INSERT POSITION 0
+AS
+BEGIN
+  IF (NEW.ID IS NULL OR NEW.ID = 0) THEN
+    NEW.ID = GEN_ID(GEN_FICHA_TECNICA_ITEM_ID, 1);
+END^
+
+CREATE TRIGGER TRG_MAPA_PRODUCAO_BI FOR MAPA_PRODUCAO
+ACTIVE BEFORE INSERT POSITION 0
+AS
+BEGIN
+  IF (NEW.ID IS NULL OR NEW.ID = 0) THEN
+    NEW.ID = GEN_ID(GEN_MAPA_PRODUCAO_ID, 1);
+  IF (NEW.DATA_CRIACAO IS NULL) THEN
+    NEW.DATA_CRIACAO = CURRENT_TIMESTAMP;
+  IF (NEW.STATUS IS NULL) THEN
+    NEW.STATUS = 'ABERTO';
+END^
+
+CREATE TRIGGER TRG_MAPA_PRODUCAO_ITEM_BI FOR MAPA_PRODUCAO_ITEM
+ACTIVE BEFORE INSERT POSITION 0
+AS
+BEGIN
+  IF (NEW.ID IS NULL OR NEW.ID = 0) THEN
+    NEW.ID = GEN_ID(GEN_MAPA_PRODUCAO_ITEM_ID, 1);
+  IF (NEW.STATUS IS NULL) THEN
+    NEW.STATUS = 'PENDENTE';
+END^
+
+CREATE TRIGGER TRG_TALAO_BI FOR TALAO
+ACTIVE BEFORE INSERT POSITION 0
+AS
+BEGIN
+  IF (NEW.ID IS NULL OR NEW.ID = 0) THEN
+    NEW.ID = GEN_ID(GEN_TALAO_ID, 1);
+  IF (NEW.DATA_GERACAO IS NULL) THEN
+    NEW.DATA_GERACAO = CURRENT_TIMESTAMP;
+  IF (NEW.STATUS IS NULL) THEN
+    NEW.STATUS = 'GERADO';
+END^
+
+CREATE TRIGGER TRG_TALAO_BIPAGEM_BI FOR TALAO_BIPAGEM
+ACTIVE BEFORE INSERT POSITION 0
+AS
+BEGIN
+  IF (NEW.ID IS NULL OR NEW.ID = 0) THEN
+    NEW.ID = GEN_ID(GEN_TALAO_BIPAGEM_ID, 1);
+  IF (NEW.DATA_HORA IS NULL) THEN
+    NEW.DATA_HORA = CURRENT_TIMESTAMP;
+  IF (NEW.RESULTADO IS NULL) THEN
+    NEW.RESULTADO = 'OK';
+END^
+
+CREATE TRIGGER TRG_CONSUMO_MATERIAL_BI FOR CONSUMO_MATERIAL
+ACTIVE BEFORE INSERT POSITION 0
+AS
+BEGIN
+  IF (NEW.ID IS NULL OR NEW.ID = 0) THEN
+    NEW.ID = GEN_ID(GEN_CONSUMO_MATERIAL_ID, 1);
+  IF (NEW.DATA_CONSUMO IS NULL) THEN
+    NEW.DATA_CONSUMO = CURRENT_DATE;
+  IF (NEW.STATUS IS NULL) THEN
+    NEW.STATUS = 'PENDENTE';
+END^
+
+CREATE TRIGGER TRG_CONSUMO_MATERIAL_ITEM_BI FOR CONSUMO_MATERIAL_ITEM
+ACTIVE BEFORE INSERT POSITION 0
+AS
+BEGIN
+  IF (NEW.ID IS NULL OR NEW.ID = 0) THEN
+    NEW.ID = GEN_ID(GEN_CONSUMO_MATERIAL_ITEM_ID, 1);
+END^
+
+SET TERM ; ^
+
+COMMIT;
+
+/* ------------------------------------------------------------
+   7) CONFIGURAÇÕES do módulo (usadas pelo Service)
+   ------------------------------------------------------------ */
+INSERT INTO CONFIGURACAO (EMPRESA_ID, CHAVE, VALOR, DESCRICAO)
+VALUES (1, 'PRODUCAO_TALAO_MODO', 'UNIDADE',
+        'Geracao dos taloes: ITEM (1 por item), UNIDADE (1 por unidade) ou LOTE');
+
+INSERT INTO CONFIGURACAO (EMPRESA_ID, CHAVE, VALOR, DESCRICAO)
+VALUES (1, 'PRODUCAO_TALAO_LOTE', '10',
+        'Quantidade de unidades por talao quando o modo e LOTE');
+
+INSERT INTO CONFIGURACAO (EMPRESA_ID, CHAVE, VALOR, DESCRICAO)
+VALUES (1, 'PRODUCAO_PERMITE_ESTOQUE_NEGATIVO', 'N',
+        'Permite confirmar consumo/baixa sem saldo suficiente (S/N)');
+
+COMMIT;
+
+/* ------------------------------------------------------------
+   8) PERMISSÕES do módulo (grupo 1 = Administradores)
+   ------------------------------------------------------------ */
+INSERT INTO PERMISSAO (GRUPO_ID, MODULO, TELA, PODE_VISUALIZAR, PODE_INSERIR,
+                       PODE_EDITAR, PODE_EXCLUIR, PODE_IMPRIMIR)
+VALUES (1, 'PRODUCAO', 'MAPA_PRODUCAO', 'S', 'S', 'S', 'S', 'S');
+
+INSERT INTO PERMISSAO (GRUPO_ID, MODULO, TELA, PODE_VISUALIZAR, PODE_INSERIR,
+                       PODE_EDITAR, PODE_EXCLUIR, PODE_IMPRIMIR)
+VALUES (1, 'PRODUCAO', 'FICHA_TECNICA', 'S', 'S', 'S', 'S', 'S');
+
+INSERT INTO PERMISSAO (GRUPO_ID, MODULO, TELA, PODE_VISUALIZAR, PODE_INSERIR,
+                       PODE_EDITAR, PODE_EXCLUIR, PODE_IMPRIMIR)
+VALUES (1, 'PRODUCAO', 'BIPAGEM', 'S', 'S', 'S', 'S', 'S');
+
+INSERT INTO PERMISSAO (GRUPO_ID, MODULO, TELA, PODE_VISUALIZAR, PODE_INSERIR,
+                       PODE_EDITAR, PODE_EXCLUIR, PODE_IMPRIMIR)
+VALUES (1, 'PRODUCAO', 'CONSUMO', 'S', 'S', 'S', 'S', 'S');
+
+COMMIT;
+
+/* ------------------------------------------------------------
+   Fim.
+   ------------------------------------------------------------ */
