@@ -1,74 +1,89 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:fillViewport="true">
 
-    <TextView
-        android:id="@+id/textViewWelcome"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Bem-vindo"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="24dp"/>
+        android:orientation="vertical"
+        android:padding="16dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Módulos do Sistema"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp"/>
+        <TextView
+            android:id="@+id/textViewWelcome"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Bem-vindo"
+            android:textSize="22sp"
+            android:textStyle="bold"/>
 
-    <Button
-        android:id="@+id/buttonClientes"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:text="Clientes"
-        android:textSize="18sp"
-        android:layout_marginBottom="8dp"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Módulos do Sistema"
+            android:textSize="16sp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp"/>
 
-    <Button
-        android:id="@+id/buttonInserirCliente"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:text="Inserir Cliente"
-        android:textSize="18sp"
-        android:layout_marginBottom="8dp"
-        android:backgroundTint="#4CAF50"/>
+        <Button
+            android:id="@+id/buttonClientes"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Clientes"
+            android:textSize="18sp"
+            android:layout_marginBottom="8dp"/>
 
-    <Button
-        android:id="@+id/buttonConsultarClientes"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:text="Consultar Clientes"
-        android:textSize="18sp"
-        android:layout_marginBottom="8dp"
-        android:backgroundTint="#2196F3"/>
+        <Button
+            android:id="@+id/buttonInserirCliente"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Inserir Cliente"
+            android:textSize="18sp"
+            android:layout_marginBottom="8dp"
+            android:backgroundTint="#4CAF50"/>
 
-    <Button
-        android:id="@+id/buttonEstoque"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:text="Estoque"
-        android:textSize="18sp"
-        android:layout_marginBottom="8dp"/>
+        <Button
+            android:id="@+id/buttonConsultarClientes"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Consultar Clientes"
+            android:textSize="18sp"
+            android:layout_marginBottom="8dp"
+            android:backgroundTint="#2196F3"/>
 
-    <Button
-        android:id="@+id/buttonVendas"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:text="Vendas"
-        android:textSize="18sp"
-        android:layout_marginBottom="8dp"/>
+        <Button
+            android:id="@+id/buttonEstoque"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Estoque"
+            android:textSize="18sp"
+            android:layout_marginBottom="8dp"/>
 
-    <Button
-        android:id="@+id/buttonFinanceiro"
-        android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:text="Financeiro"
-        android:textSize="18sp"/>
+        <Button
+            android:id="@+id/buttonVendas"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Vendas"
+            android:textSize="18sp"
+            android:layout_marginBottom="8dp"/>
 
-</LinearLayout>
+        <Button
+            android:id="@+id/buttonFinanceiro"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Financeiro"
+            android:textSize="18sp"
+            android:layout_marginBottom="24dp"/>
+
+        <Button
+            android:id="@+id/buttonSair"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Sair"
+            android:textSize="16sp"
+            android:backgroundTint="#F44336"/>
+
+    </LinearLayout>
+
+</ScrollView>

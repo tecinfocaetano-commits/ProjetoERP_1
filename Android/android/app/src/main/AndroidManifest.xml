@@ -5,6 +5,7 @@
     <application
         android:label="ERP 2026"
         android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+        android:windowSoftInputMode="adjustResize"
         android:usesCleartextTraffic="true">
         
         <activity
@@ -21,9 +22,8 @@
         <activity android:name=".EstoqueActivity"/>
         <activity android:name=".VendasActivity"/>
         <activity android:name=".FinanceiroActivity"/>
-        <activity android:name=".TestDatabaseActivity" android:exported="true"/>
-        <activity android:name=".InserirClienteActivity" android:exported="true"/>
-        <activity android:name=".ConsultarClientesActivity" android:exported="true"/>
+        <activity android:name=".InserirClienteActivity"/>
+        <activity android:name=".ConsultarClientesActivity"/>
 
     </application>
 </manifest>

@@ -18,13 +18,20 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Sessão anterior ainda válida: vai direto para o menu
+        if (Sessao.ativa(this)) {
+            abrirMenu();
+            return;
+        }
+
         setContentView(R.layout.activity_main);
 
         editTextLogin = findViewById(R.id.editTextLogin);
         editTextSenha = findViewById(R.id.editTextSenha);
         buttonLogin = findViewById(R.id.buttonLogin);
 
-        // Valores de conveniencia para teste
+        // Valores de conveniência para teste
         editTextLogin.setText("admin");
         editTextSenha.setText("admin123");
 
@@ -36,17 +43,28 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void abrirMenu() {
+        startActivity(new Intent(MainActivity.this, DashboardActivity.class));
+        finish();
+    }
+
     private void autenticar() {
         final String login = editTextLogin.getText().toString().trim();
         final String senha = editTextSenha.getText().toString().trim();
 
-        if (login.isEmpty() || senha.isEmpty()) {
-            Toast.makeText(this, "Informe login e senha", Toast.LENGTH_SHORT).show();
+        if (login.isEmpty()) {
+            editTextLogin.setError("Informe o usuário");
+            editTextLogin.requestFocus();
+            return;
+        }
+        if (senha.isEmpty()) {
+            editTextSenha.setError("Informe a senha");
+            editTextSenha.requestFocus();
             return;
         }
 
         buttonLogin.setEnabled(false);
-        Toast.makeText(this, "Autenticando na API...", Toast.LENGTH_SHORT).show();
+        buttonLogin.setText("Entrando...");
 
         new Thread(new Runnable() {
             @Override
@@ -60,27 +78,26 @@ public class MainActivity extends AppCompatActivity {
 
                     if (r.ok()) {
                         JSONObject json = new JSONObject(r.body);
-                        ApiClient.setToken(json.optString("token", ""));
-                        final String nome = json.optString("nome", login);
-                        getSharedPreferences("erp2026", MODE_PRIVATE)
-                                .edit()
-                                .putString("nome", nome)
-                                .apply();
+                        Sessao.guardar(MainActivity.this,
+                                json.optString("token", ""),
+                                json.optString("nome", login));
 
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                startActivity(new Intent(MainActivity.this, DashboardActivity.class));
-                                finish();
+                                abrirMenu();
                             }
                         });
                     } else {
+                        final String mensagem = (r.status == 401)
+                                ? "Usuário ou senha inválidos."
+                                : "Não foi possível entrar (HTTP " + r.status + ").";
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 buttonLogin.setEnabled(true);
-                                Toast.makeText(MainActivity.this,
-                                        "Login ou senha invalidos", Toast.LENGTH_SHORT).show();
+                                buttonLogin.setText("ENTRAR");
+                                Toast.makeText(MainActivity.this, mensagem, Toast.LENGTH_LONG).show();
                             }
                         });
                     }
@@ -89,8 +106,9 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void run() {
                             buttonLogin.setEnabled(true);
+                            buttonLogin.setText("ENTRAR");
                             Toast.makeText(MainActivity.this,
-                                    "Falha ao conectar na API: " + e.getMessage(),
+                                    "Falha ao conectar na API.\nVerifique se ela está no ar.",
                                     Toast.LENGTH_LONG).show();
                         }
                     });

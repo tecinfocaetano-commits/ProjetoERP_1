@@ -1,5 +1,6 @@
 package com.example.erp2026_mobile;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -15,11 +16,19 @@ public class DashboardActivity extends AppCompatActivity {
     private Button buttonEstoque;
     private Button buttonVendas;
     private Button buttonFinanceiro;
+    private Button buttonSair;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (!Sessao.ativa(this)) {
+            Sessao.irParaLogin(this);
+            return;
+        }
+
         setContentView(R.layout.activity_dashboard);
+        setTitle("ERP 2026 - Menu");
 
         textViewWelcome = findViewById(R.id.textViewWelcome);
         buttonClientes = findViewById(R.id.buttonClientes);
@@ -28,39 +37,42 @@ public class DashboardActivity extends AppCompatActivity {
         buttonEstoque = findViewById(R.id.buttonEstoque);
         buttonVendas = findViewById(R.id.buttonVendas);
         buttonFinanceiro = findViewById(R.id.buttonFinanceiro);
+        buttonSair = findViewById(R.id.buttonSair);
 
-        String nome = getSharedPreferences("erp2026", MODE_PRIVATE).getString("nome", "Usuario");
-        textViewWelcome.setText("Bem-vindo, " + nome + "!");
+        buttonClientes.setOnClickListener(v -> abrir(ClientesActivity.class));
+        buttonInserirCliente.setOnClickListener(v -> abrir(InserirClienteActivity.class));
+        buttonConsultarClientes.setOnClickListener(v -> abrir(ConsultarClientesActivity.class));
+        buttonEstoque.setOnClickListener(v -> abrir(EstoqueActivity.class));
+        buttonVendas.setOnClickListener(v -> abrir(VendasActivity.class));
+        buttonFinanceiro.setOnClickListener(v -> abrir(FinanceiroActivity.class));
 
-        buttonClientes.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                startActivity(new Intent(DashboardActivity.this, ClientesActivity.class));
+        buttonSair.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                confirmarSaida();
             }
         });
-        buttonInserirCliente.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                startActivity(new Intent(DashboardActivity.this, InserirClienteActivity.class));
-            }
-        });
-        buttonConsultarClientes.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                startActivity(new Intent(DashboardActivity.this, ConsultarClientesActivity.class));
-            }
-        });
-        buttonEstoque.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                startActivity(new Intent(DashboardActivity.this, EstoqueActivity.class));
-            }
-        });
-        buttonVendas.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                startActivity(new Intent(DashboardActivity.this, VendasActivity.class));
-            }
-        });
-        buttonFinanceiro.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                startActivity(new Intent(DashboardActivity.this, FinanceiroActivity.class));
-            }
-        });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        textViewWelcome.setText("Bem-vindo, " + Sessao.nome(this) + "!");
+    }
+
+    private void abrir(Class<?> tela) {
+        startActivity(new Intent(this, tela));
+    }
+
+    private void confirmarSaida() {
+        new AlertDialog.Builder(this)
+                .setTitle("Sair")
+                .setMessage("Deseja encerrar a sessão?")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Sair", (dialog, which) -> {
+                    Sessao.encerrar(this);
+                    Sessao.irParaLogin(this);
+                })
+                .show();
     }
 }

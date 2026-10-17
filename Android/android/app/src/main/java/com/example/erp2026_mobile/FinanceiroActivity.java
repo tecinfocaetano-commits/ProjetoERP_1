@@ -1,117 +1,87 @@
 package com.example.erp2026_mobile;
 
-import android.os.Bundle;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
-public class FinanceiroActivity extends AppCompatActivity {
-    private ListView listViewContas;
+/** Resumo financeiro e contas em aberto. */
+public class FinanceiroActivity extends BaseListaActivity {
+
     private TextView textViewTotalReceber;
     private TextView textViewTotalPagar;
-    private List<String> contasList;
-    private ArrayAdapter<String> adapter;
+
+    private String resumoReceber = "A Receber: -";
+    private String resumoPagar = "A Pagar: -";
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_financeiro);
-
-        listViewContas = findViewById(R.id.listViewContas);
-        textViewTotalReceber = findViewById(R.id.textViewTotalReceber);
-        textViewTotalPagar = findViewById(R.id.textViewTotalPagar);
-
-        contasList = new ArrayList<>();
-        contasList.add("Carregando financeiro da API...");
-
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, contasList);
-        listViewContas.setAdapter(adapter);
-
-        listViewContas.setOnItemClickListener((parent, view, position, id) ->
-                Toast.makeText(FinanceiroActivity.this,
-                        contasList.get(position), Toast.LENGTH_SHORT).show());
-
-        carregarFinanceiro();
+    protected int layoutId() {
+        return R.layout.activity_financeiro;
     }
 
-    private void carregarFinanceiro() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final List<String> itens = new ArrayList<>();
-                    String resumoReceber = "Total a Receber: -";
-                    String resumoPagar = "Total a Pagar: -";
+    @Override
+    protected String titulo() {
+        return "Financeiro";
+    }
 
-                    ApiClient.Result resumo = ApiClient.get("/api/financeiro");
-                    if (resumo.ok()) {
-                        JSONObject o = new JSONObject(resumo.body);
-                        resumoReceber = "Total a Receber: R$ "
-                                + String.format(Locale.US, "%.2f", o.optDouble("a_receber", 0));
-                        resumoPagar = "Total a Pagar: R$ "
-                                + String.format(Locale.US, "%.2f", o.optDouble("a_pagar", 0));
-                    }
+    @Override
+    protected String textoVazio() {
+        return "Nenhuma conta em aberto.";
+    }
 
-                    ApiClient.Result receber = ApiClient.get("/api/financeiro/receber");
-                    if (receber.ok()) {
-                        JSONArray arr = new JSONArray(receber.body);
-                        for (int i = 0; i < arr.length(); i++) {
-                            JSONObject o = arr.getJSONObject(i);
-                            itens.add("A RECEBER - " + o.optString("cliente") + "\n"
-                                    + o.optString("descricao") + " - R$ "
-                                    + String.format(Locale.US, "%.2f", o.optDouble("valor", 0))
-                                    + "  venc. " + o.optString("vencimento").trim());
-                        }
-                    }
+    @Override
+    protected void aoCriar() {
+        textViewTotalReceber = findViewById(R.id.textViewTotalReceber);
+        textViewTotalPagar = findViewById(R.id.textViewTotalPagar);
+    }
 
-                    ApiClient.Result pagar = ApiClient.get("/api/financeiro/pagar");
-                    if (pagar.ok()) {
-                        JSONArray arr = new JSONArray(pagar.body);
-                        for (int i = 0; i < arr.length(); i++) {
-                            JSONObject o = arr.getJSONObject(i);
-                            itens.add("A PAGAR - " + o.optString("fornecedor") + "\n"
-                                    + o.optString("descricao") + " - R$ "
-                                    + String.format(Locale.US, "%.2f", o.optDouble("valor", 0))
-                                    + "  venc. " + o.optString("vencimento").trim());
-                        }
-                    }
+    @Override
+    protected void aoPublicar() {
+        textViewTotalReceber.setText(resumoReceber);
+        textViewTotalPagar.setText(resumoPagar);
+    }
 
-                    if (itens.isEmpty()) {
-                        itens.add("Nenhuma conta em aberto.");
-                    }
+    @Override
+    protected List<String> buscar() throws Exception {
+        List<String> itens = new ArrayList<>();
 
-                    final String fr = resumoReceber;
-                    final String fp = resumoPagar;
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            textViewTotalReceber.setText(fr);
-                            textViewTotalPagar.setText(fp);
-                            contasList.clear();
-                            contasList.addAll(itens);
-                            adapter.notifyDataSetChanged();
-                        }
-                    });
-                } catch (final Exception e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            contasList.clear();
-                            contasList.add("Erro: " + e.getMessage());
-                            adapter.notifyDataSetChanged();
-                        }
-                    });
-                }
-            }
-        }).start();
+        ApiClient.Result resumo = ApiClient.get("/api/financeiro");
+        if (!resumo.ok()) {
+            throw new ApiException(resumo);
+        }
+        JSONObject totais = new JSONObject(resumo.body);
+        resumoReceber = "A Receber: " + Fmt.moeda(totais.optDouble("a_receber", 0));
+        resumoPagar = "A Pagar: " + Fmt.moeda(totais.optDouble("a_pagar", 0));
+
+        ApiClient.Result receber = ApiClient.get("/api/financeiro/receber");
+        if (!receber.ok()) {
+            throw new ApiException(receber);
+        }
+        JSONArray arrReceber = new JSONArray(receber.body);
+        for (int i = 0; i < arrReceber.length(); i++) {
+            JSONObject o = arrReceber.getJSONObject(i);
+            itens.add("A RECEBER  -  " + Fmt.limpar(o.optString("cliente"))
+                    + "\n" + Fmt.limpar(o.optString("descricao"))
+                    + "\n" + Fmt.moeda(o.optDouble("valor", 0))
+                    + "   Venc.: " + Fmt.limpar(o.optString("vencimento")));
+        }
+
+        ApiClient.Result pagar = ApiClient.get("/api/financeiro/pagar");
+        if (!pagar.ok()) {
+            throw new ApiException(pagar);
+        }
+        JSONArray arrPagar = new JSONArray(pagar.body);
+        for (int i = 0; i < arrPagar.length(); i++) {
+            JSONObject o = arrPagar.getJSONObject(i);
+            itens.add("A PAGAR  -  " + Fmt.limpar(o.optString("fornecedor"))
+                    + "\n" + Fmt.limpar(o.optString("descricao"))
+                    + "\n" + Fmt.moeda(o.optDouble("valor", 0))
+                    + "   Venc.: " + Fmt.limpar(o.optString("vencimento")));
+        }
+
+        return itens;
     }
 }
