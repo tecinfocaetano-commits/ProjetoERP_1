@@ -22,6 +22,7 @@ uses
 procedure RotaLogin(Req: THorseRequest; Res: THorseResponse);
 var
   LBody: TJSONObject;
+  LData: TJSONData;
   LLogin, LSenha: string;
   LConexao: TConexao;
   LQuery: TSQLQuery;
@@ -29,7 +30,20 @@ var
   LToken: string;
 begin
   try
-    LBody := TJSONObject(GetJSON(Req.Body));
+    LData := nil;
+    try
+      LData := GetJSON(Req.Body);
+    except
+      LData := nil;
+    end;
+    if not (LData is TJSONObject) then
+    begin
+      if LData <> nil then
+        LData.Free;
+      Res.Send('{"error":"Corpo da requisição inválido (objeto JSON esperado)"}').Status(THTTPStatus.BadRequest);
+      Exit;
+    end;
+    LBody := TJSONObject(LData);
     try
       LLogin := LBody.Get('login', '');
       LSenha := LBody.Get('senha', '');

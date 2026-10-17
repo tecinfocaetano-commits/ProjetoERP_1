@@ -8,6 +8,7 @@ object frmPDV: TfrmPDV
   WindowState = wsMaximized
   KeyPreview = True
   OnCreate = FormCreate
+  OnShow = FormShow
   OnKeyDown = FormKeyDown
   LCLVersion = '3.0.0.0'
   object pnlTopo: TPanel

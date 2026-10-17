@@ -63,6 +63,7 @@ Scripts de build:
 | `Scripts\run_api.bat` | Sobe a API na porta 9000 |
 | `Scripts\executar_banco.bat` | Recria a estrutura do banco |
 | `Banco\fix_generators.sql` | Sincroniza os generators com o maior ID |
+| `Banco\009_completar_schema.sql` | Migração aditiva: completa o schema (tabelas, colunas, generators e 23 triggers de auto-incremento) |
 
 ---
 
@@ -127,6 +128,17 @@ curl -X POST http://localhost:9000/api/login -H "Content-Type: application/json"
 18. Novo `ApiClient.java` (HttpURLConnection + `org.json`, sem dependências externas).
 19. `DatabaseHelper.java` (JDBC) removido.
 
+### Migração 009 — schema completo (rodada de 17/10/2026)
+20. **Schema incompleto**: o banco em uso era o simplificado (`banco_simplificado.sql`), sem várias tabelas/colunas usadas pelas telas. Corrigido em `Banco\009_completar_schema.sql` (+3 tabelas, ~70 colunas, 3 generators).
+21. **Nenhum trigger de auto-incremento existia** — todo `INSERT` precisava informar o ID. Foram criados 23 triggers `TRG_*_BI`, e o `TRG_MOVEST_AI` **soma** a quantidade ao saldo de `ESTOQUE` (versão corrigida; a de `005_triggers.sql` sobrescrevia o saldo).
+22. **`FORMA_PAGAMENTO`/`CONDICAO_PAGAMENTO`** foram criadas com `STATUS`, mas o código consulta `ATIVO` — coluna `ATIVO CHAR(1) DEFAULT 'A'` adicionada (7 formas e 5 condições ativas).
+23. **`uFrmPDV`**: `edtCodigo.SetFocus` dentro do `FormCreate` levantava *"Can not focus"* — movido para o novo `FormShow`.
+24. **`uFrmPedidoVenda.ProximoNumero`**: `MAX(NUMERO)` sobre coluna de texto (`PED-001`) causava *"is an invalid integer"* — agora ignora valores não numéricos.
+25. **Rotas de escrita da API** (login, clientes, produtos, estoque): corpo vazio/JSON inválido causava *Access violation* (HTTP 500) — agora validam o corpo e respondem **400**.
+
+> O `009_completar_schema.sql` **não é idempotente** (`CREATE`/`ALTER` puros) e **já foi aplicado** em
+> `Banco\DADOS.FDB`. Para reaplicar, restaure antes o backup `Banco\DADOS_backup_antes_009.fdb`.
+
 ---
 
 ## Verificação executada
@@ -134,12 +146,19 @@ curl -X POST http://localhost:9000/api/login -H "Content-Type: application/json"
 | Teste | Resultado |
 |---|---|
 | Suíte de testes do Desktop (`Desktop\bin\Tests.exe`) | 39/39 passaram |
+| **Desktop — 16 telas do menu** | **16/16 abrem sem erro** |
+| **Desktop — PDV abertura de caixa** | grava `CAIXA` (ID 2, valor 150) |
 | Endpoints GET da API | 200 em todos |
 | Endpoints POST da API | 201 em todos |
 | Rota protegida sem token | 401 |
+| **API — movimento de estoque (E 25 / S 5)** | saldo final **20** |
+| **API — corpo vazio/inválido** | **400** (antes: 500 / *Access violation*) |
 | Acentuação (ida e volta, App e API) | correta |
 | Desktop abrindo | janela "ERP 2026" exibida |
-| App no emulador | login + 4 telas com dados reais do banco |
+| **App no emulador — 8 telas** | **todas com dados reais do banco** |
+| **App no emulador — cadastro de cliente** | grava `CLIENTE` ID 1238 |
+
+Relatório detalhado com evidências: [`TESTES_EXECUTADOS.md`](TESTES_EXECUTADOS.md)
 
 ---
 

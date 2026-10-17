@@ -63,11 +63,25 @@ end;
 procedure PostMovimento(Req: THorseRequest; Res: THorseResponse);
 var
   LBody: TJSONObject;
+  LData: TJSONData;
   LConexao: TConexao;
   LQuery: TSQLQuery;
 begin
   try
-    LBody := TJSONObject(GetJSON(Req.Body));
+    LData := nil;
+    try
+      LData := GetJSON(Req.Body);
+    except
+      LData := nil;
+    end;
+    if not (LData is TJSONObject) then
+    begin
+      if LData <> nil then
+        LData.Free;
+      Res.Send('{"error":"Corpo da requisição inválido (objeto JSON esperado)"}').Status(THTTPStatus.BadRequest);
+      Exit;
+    end;
+    LBody := TJSONObject(LData);
     try
       LConexao := TConexao.GetInstance;
       LQuery := TSQLQuery.Create(nil);

@@ -52,6 +52,7 @@ type
     btnSuprimento: TBitBtn;
     btnFecharCaixa: TBitBtn;
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure edtCodigoKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure edtRecebidoExit(Sender: TObject);
@@ -98,11 +99,17 @@ begin
       AbrirCaixa;
 
     FVendaNumero := 1;
-    edtCodigo.SetFocus;
   except
     on E: Exception do
       MessageDlg('Erro ao inicializar formulário: ' + E.Message, mtError, [mbOK], 0);
   end;
+end;
+
+procedure TfrmPDV.FormShow(Sender: TObject);
+begin
+  // O foco só pode ser aplicado depois que a janela está visível
+  if edtCodigo.CanFocus then
+    edtCodigo.SetFocus;
 end;
 
 procedure TfrmPDV.ConfigurarGrid;

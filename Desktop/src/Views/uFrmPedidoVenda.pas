@@ -200,19 +200,27 @@ end;
 function TfrmPedidoVenda.ProximoNumero: Integer;
 var
   LQuery: TSQLQuery;
+  LNum, LMax: Integer;
 begin
-  Result := 1;
+  LMax := 0;
   LQuery := TSQLQuery.Create(nil);
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT MAX(NUMERO) FROM PEDIDO_VENDA';
+    // NUMERO é VARCHAR no banco; ignorar valores não numéricos
+    LQuery.SQL.Text := 'SELECT NUMERO FROM PEDIDO_VENDA';
     LQuery.Open;
-    if not LQuery.Fields[0].IsNull then
-      Result := LQuery.Fields[0].AsInteger + 1;
+    while not LQuery.EOF do
+    begin
+      LNum := StrToIntDef(Trim(LQuery.FieldByName('NUMERO').AsString), 0);
+      if LNum > LMax then
+        LMax := LNum;
+      LQuery.Next;
+    end;
   finally
     LQuery.Free;
   end;
+  Result := LMax + 1;
 end;
 
 procedure TfrmPedidoVenda.btnBuscarProdClick(Sender: TObject);
