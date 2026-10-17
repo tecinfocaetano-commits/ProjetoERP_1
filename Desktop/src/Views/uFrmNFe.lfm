@@ -1,0 +1,195 @@
+object frmNFe: TfrmNFe
+  Left = 0
+  Height = 550
+  Top = 0
+  Width = 900
+  Caption = 'NF-e / NFC-e - Notas Fiscais Eletrônicas'
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 900
+    Align = alTop
+    Color = clNavy
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 24
+      Top = 12
+      Width = 300
+      Caption = 'NF-e / NFC-e - Notas Fiscais'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlConfig: TPanel
+    Left = 0
+    Height = 35
+    Top = 50
+    Width = 900
+    Align = alTop
+    TabOrder = 1
+    object lblAmbiente: TLabel
+      Left = 8
+      Height = 16
+      Top = 8
+      Width = 60
+      Caption = 'Ambiente:'
+    end
+    object cmbAmbiente: TComboBox
+      Left = 74
+      Height = 25
+      Top = 5
+      Width = 120
+      Items.Strings = (
+        'Produção'
+        'Homologação'
+      )
+      ItemIndex = 1
+      Style = csDropDownList
+      TabOrder = 0
+    end
+    object lblCertificado: TLabel
+      Left = 210
+      Height = 16
+      Top = 8
+      Width = 70
+      Caption = 'Certificado:'
+    end
+    object edtCertificado: TEdit
+      Left = 286
+      Height = 25
+      Top = 5
+      Width = 350
+      ReadOnly = True
+      TabOrder = 1
+    end
+    object btnSelecionarCert: TBitBtn
+      Left = 640
+      Height = 27
+      Top = 5
+      Width = 30
+      Caption = '...'
+      OnClick = btnSelecionarCertClick
+    end
+  end
+  object pnlFiltro: TPanel
+    Left = 0
+    Height = 36
+    Top = 85
+    Width = 900
+    Align = alTop
+    TabOrder = 2
+    object lblDataInicio: TLabel
+      Left = 8
+      Height = 16
+      Top = 8
+      Width = 20
+      Caption = 'De:'
+    end
+    object edtDataInicio: TEdit
+      Left = 30
+      Height = 25
+      Top = 5
+      Width = 110
+      TabOrder = 2
+    end
+    object lblDataFim: TLabel
+      Left = 150
+      Height = 16
+      Top = 8
+      Width = 25
+      Caption = 'Até:'
+    end
+    object edtDataFim: TEdit
+      Left = 178
+      Height = 25
+      Top = 5
+      Width = 110
+      TabOrder = 3
+    end
+    object btnFiltrar: TBitBtn
+      Left = 300
+      Height = 27
+      Top = 5
+      Width = 80
+      Caption = 'Filtrar'
+      OnClick = btnFiltrarClick
+    end
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 40
+    Top = 121
+    Width = 900
+    Align = alTop
+    TabOrder = 3
+    object btnEmitirNFe: TBitBtn
+      Left = 8
+      Height = 32
+      Top = 4
+      Width = 110
+      Caption = 'Emitir NF-e'
+      Font.Style = [fsBold]
+      ParentFont = False
+      OnClick = btnEmitirNFeClick
+    end
+    object btnConsultar: TBitBtn
+      Left = 130
+      Height = 32
+      Top = 4
+      Width = 100
+      Caption = 'Consultar'
+      OnClick = btnConsultarClick
+    end
+    object btnCancelar: TBitBtn
+      Left = 242
+      Height = 32
+      Top = 4
+      Width = 100
+      Caption = 'Cancelar NF-e'
+      OnClick = btnCancelarClick
+    end
+    object btnImportarXML: TBitBtn
+      Left = 354
+      Height = 32
+      Top = 4
+      Width = 110
+      Caption = 'Importar XML'
+      OnClick = btnImportarXMLClick
+    end
+    object btnFechar: TBitBtn
+      Left = 800
+      Height = 32
+      Top = 4
+      Width = 90
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+    end
+  end
+  object dbGrid: TDBGrid
+    Left = 0
+    Height = 389
+    Top = 161
+    Width = 900
+    Align = alClient
+    DataSource = DataSource1
+    Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+    ReadOnly = True
+    TabOrder = 4
+  end
+  object DataSource1: TDataSource
+    Left = 800
+    Top = 300
+  end
+  object OpenDialog1: TOpenDialog
+    Left = 750
+    Top = 300
+  end
+end

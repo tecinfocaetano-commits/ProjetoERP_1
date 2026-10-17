@@ -1,0 +1,343 @@
+object frmOrcamento: TfrmOrcamento
+  Left = 0
+  Height = 620
+  Top = 0
+  Width = 880
+  Caption = 'Orçamento'
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 880
+    Align = alTop
+    Color = clTeal
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 24
+      Top = 12
+      Width = 150
+      Caption = 'Orçamento'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlCabecalho: TPanel
+    Left = 0
+    Height = 70
+    Top = 50
+    Width = 880
+    Align = alTop
+    TabOrder = 1
+    object lblNumero: TLabel
+      Left = 8
+      Height = 16
+      Top = 6
+      Width = 30
+      Caption = 'Nº:'
+    end
+    object edtNumero: TEdit
+      Left = 8
+      Height = 25
+      Top = 24
+      Width = 70
+      ReadOnly = True
+      TabOrder = 0
+    end
+    object lblData: TLabel
+      Left = 90
+      Height = 16
+      Top = 6
+      Width = 30
+      Caption = 'Data:'
+    end
+    object edtData: TEdit
+      Left = 90
+      Height = 25
+      Top = 24
+      Width = 110
+      TabOrder = 3
+    end
+    object lblValidade: TLabel
+      Left = 210
+      Height = 16
+      Top = 6
+      Width = 50
+      Caption = 'Validade:'
+    end
+    object edtValidade: TEdit
+      Left = 210
+      Height = 25
+      Top = 24
+      Width = 110
+      TabOrder = 4
+    end
+    object lblCliente: TLabel
+      Left = 334
+      Height = 16
+      Top = 6
+      Width = 60
+      Caption = 'Cliente: *'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object cmbCliente: TComboBox
+      Left = 334
+      Height = 25
+      Top = 24
+      Width = 280
+      Style = csDropDownList
+      TabOrder = 1
+    end
+    object lblVendedor: TLabel
+      Left = 630
+      Height = 16
+      Top = 6
+      Width = 60
+      Caption = 'Vendedor:'
+    end
+    object edtVendedor: TEdit
+      Left = 630
+      Height = 25
+      Top = 24
+      Width = 230
+      ReadOnly = True
+      TabOrder = 2
+    end
+  end
+  object pnlAddItem: TPanel
+    Left = 0
+    Height = 40
+    Top = 120
+    Width = 880
+    Align = alTop
+    TabOrder = 2
+    object lblProduto: TLabel
+      Left = 8
+      Height = 16
+      Top = 10
+      Width = 50
+      Caption = 'Produto:'
+    end
+    object edtProduto: TEdit
+      Left = 66
+      Height = 25
+      Top = 7
+      Width = 100
+      TabOrder = 0
+    end
+    object btnBuscarProd: TBitBtn
+      Left = 172
+      Height = 27
+      Top = 7
+      Width = 30
+      Caption = '...'
+      OnClick = btnBuscarProdClick
+    end
+    object lblProdutoDesc: TLabel
+      Left = 210
+      Height = 16
+      Top = 12
+      Width = 200
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblQtd: TLabel
+      Left = 440
+      Height = 16
+      Top = 10
+      Width = 25
+      Caption = 'Qtd:'
+    end
+    object edtQtd: TEdit
+      Left = 470
+      Height = 25
+      Top = 7
+      Width = 60
+      Alignment = taRightJustify
+      TabOrder = 1
+      Text = '1'
+    end
+    object lblVlrUnit: TLabel
+      Left = 540
+      Height = 16
+      Top = 10
+      Width = 30
+      Caption = 'Vlr:'
+    end
+    object edtVlrUnit: TEdit
+      Left = 570
+      Height = 25
+      Top = 7
+      Width = 80
+      Alignment = taRightJustify
+      TabOrder = 2
+      Text = '0,00'
+    end
+    object lblDescItem: TLabel
+      Left = 660
+      Height = 16
+      Top = 10
+      Width = 30
+      Caption = 'Desc:'
+    end
+    object edtDescItem: TEdit
+      Left = 696
+      Height = 25
+      Top = 7
+      Width = 60
+      Alignment = taRightJustify
+      TabOrder = 3
+      Text = '0,00'
+    end
+    object btnAddItem: TBitBtn
+      Left = 770
+      Height = 28
+      Top = 6
+      Width = 50
+      Caption = '+ Add'
+      OnClick = btnAddItemClick
+    end
+    object btnRemoverItem: TBitBtn
+      Left = 826
+      Height = 28
+      Top = 6
+      Width = 50
+      Caption = '- Rem'
+      OnClick = btnRemoverItemClick
+    end
+  end
+  object sgItens: TStringGrid
+    Left = 0
+    Height = 220
+    Top = 160
+    Width = 880
+    Align = alClient
+    ColCount = 6
+    FixedCols = 0
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRowSelect]
+    TabOrder = 3
+  end
+  object pnlTotais: TPanel
+    Left = 0
+    Height = 40
+    Top = 380
+    Width = 880
+    Align = alBottom
+    TabOrder = 4
+    object lblSubtotal: TLabel
+      Left = 400
+      Height = 16
+      Top = 12
+      Width = 50
+      Caption = 'Subtotal:'
+    end
+    object edtSubtotal: TEdit
+      Left = 460
+      Height = 25
+      Top = 8
+      Width = 100
+      Alignment = taRightJustify
+      ReadOnly = True
+      TabOrder = 0
+      Text = '0,00'
+    end
+    object lblDesconto: TLabel
+      Left = 576
+      Height = 16
+      Top = 12
+      Width = 60
+      Caption = 'Desconto:'
+    end
+    object edtDesconto: TEdit
+      Left = 640
+      Height = 25
+      Top = 8
+      Width = 80
+      Alignment = taRightJustify
+      TabOrder = 1
+      Text = '0,00'
+      OnExit = edtDescontoExit
+    end
+    object lblTotal: TLabel
+      Left = 734
+      Height = 16
+      Top = 12
+      Width = 40
+      Caption = 'TOTAL:'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object edtTotal: TEdit
+      Left = 784
+      Height = 25
+      Top = 8
+      Width = 90
+      Alignment = taRightJustify
+      Font.Style = [fsBold]
+      ParentFont = False
+      ReadOnly = True
+      TabOrder = 2
+      Text = '0,00'
+    end
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 50
+    Top = 420
+    Width = 880
+    Align = alBottom
+    TabOrder = 5
+    object mmoObs: TMemo
+      Left = 8
+      Height = 40
+      Top = 5
+      Width = 400
+      TabOrder = 0
+    end
+    object btnSalvar: TBitBtn
+      Left = 500
+      Height = 34
+      Top = 8
+      Width = 90
+      Caption = 'Salvar'
+      Font.Style = [fsBold]
+      ParentFont = False
+      OnClick = btnSalvarClick
+      TabOrder = 1
+    end
+    object btnGerarPedido: TBitBtn
+      Left = 600
+      Height = 34
+      Top = 8
+      Width = 100
+      Caption = 'Gerar Pedido'
+      OnClick = btnGerarPedidoClick
+      TabOrder = 2
+    end
+    object btnCancelar: TBitBtn
+      Left = 710
+      Height = 34
+      Top = 8
+      Width = 80
+      Caption = 'Cancelar'
+      OnClick = btnCancelarClick
+      TabOrder = 3
+    end
+    object btnFechar: TBitBtn
+      Left = 798
+      Height = 34
+      Top = 8
+      Width = 72
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 4
+    end
+  end
+end

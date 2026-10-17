@@ -1,0 +1,125 @@
+object frmInventario: TfrmInventario
+  Left = 0
+  Height = 500
+  Top = 0
+  Width = 850
+  Caption = 'Inventário de Estoque'
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 850
+    Align = alTop
+    Color = clNavy
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 24
+      Top = 12
+      Width = 250
+      Caption = 'Inventário de Estoque'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlFiltro: TPanel
+    Left = 0
+    Height = 40
+    Top = 50
+    Width = 850
+    Align = alTop
+    TabOrder = 1
+    object edtPesquisa: TEdit
+      Left = 8
+      Height = 25
+      Top = 7
+      Width = 250
+      TextHint = 'Pesquisar produto...'
+      TabOrder = 0
+    end
+    object btnPesquisar: TBitBtn
+      Left = 266
+      Height = 28
+      Top = 6
+      Width = 80
+      Caption = 'Buscar'
+      OnClick = btnPesquisarClick
+      TabOrder = 1
+    end
+    object chkApenasComEstoque: TCheckBox
+      Left = 370
+      Height = 20
+      Top = 10
+      Width = 130
+      Caption = 'Apenas com estoque'
+      OnChange = chkApenasComEstoqueChange
+      TabOrder = 2
+    end
+    object chkAbaixoMinimo: TCheckBox
+      Left = 520
+      Height = 20
+      Top = 10
+      Width = 130
+      Caption = 'Abaixo do mínimo'
+      OnChange = chkAbaixoMinimoChange
+      TabOrder = 3
+    end
+    object btnFechar: TBitBtn
+      Left = 750
+      Height = 30
+      Top = 5
+      Width = 90
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 4
+    end
+  end
+  object dbGrid: TDBGrid
+    Left = 0
+    Height = 360
+    Top = 90
+    Width = 850
+    Align = alClient
+    DataSource = DataSource1
+    Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+    ReadOnly = True
+    TabOrder = 2
+  end
+  object pnlResumo: TPanel
+    Left = 0
+    Height = 35
+    Top = 450
+    Width = 850
+    Align = alBottom
+    TabOrder = 3
+    object lblTotalItens: TLabel
+      Left = 16
+      Height = 16
+      Top = 10
+      Width = 120
+      Caption = 'Total Itens: 0'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblValorTotal: TLabel
+      Left = 300
+      Height = 16
+      Top = 10
+      Width = 200
+      Caption = 'Valor Total Estoque: R$ 0,00'
+      Font.Color = clBlue
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object DataSource1: TDataSource
+    Left = 750
+    Top = 200
+  end
+end

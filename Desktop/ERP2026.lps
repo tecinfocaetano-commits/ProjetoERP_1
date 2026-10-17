@@ -1,0 +1,350 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="ERP2026.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="51"/>
+        <CursorPos Y="76"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Config\uConexao.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="99"/>
+        <CursorPos X="46" Y="108"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uModelBase.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uCliente.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uProduto.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uFornecedor.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Repositories\uRepositoryBase.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uServiceBase.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uClienteService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uACBrHelper.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Utils\uValidacoes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Utils\uSessao.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="21"/>
+        <CursorPos X="46" Y="38"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmLogin.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmLogin"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmPrincipal.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmPrincipal"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmCadastroBase.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmCadastroBase"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmClientes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmClientes"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
+        <TopLine Value="133"/>
+        <CursorPos X="39" Y="152"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmFornecedores.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmFornecedores"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmProdutos.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmProdutos"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmCategorias.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmCategorias"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="53"/>
+        <CursorPos Y="70"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmUsuarios.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmUsuarios"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmMovEstoque"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="78"/>
+        <CursorPos Y="102"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmKardex.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmKardex"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="59"/>
+        <CursorPos X="4" Y="82"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmInventario.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmInventario"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmPedidoVenda.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmPedidoVenda"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmListaPedidos.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmListaPedidos"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmOrcamento.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmOrcamento"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmPDV.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmPDV"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmContasReceber.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmContasReceber"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmContasPagar.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmContasPagar"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmNFe.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmNFe"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmCopiloto.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmCopiloto"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="22"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Tests\uAssert.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Tests\uFrmLoginTest.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Tests\uFrmClientesTest.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Tests\uFrmProdutosTest.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Tests\uFrmCategoriasTest.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Tests\uFrmUsuariosTest.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Tests\uTestRunner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="12">
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="80" Column="77" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="97" Column="5" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="95" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="88" Column="57" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="95" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="96" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="95" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="98" Column="5" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="95" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="98" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="99" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="102" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmKardex.pas"/>
+        <Caret Line="90" Column="21" TopLine="59"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+  <Debugging>
+    <BreakPoints>
+      <Item>
+        <Kind Value="bpkSource"/>
+        <WatchScope Value="wpsLocal"/>
+        <WatchKind Value="wpkWrite"/>
+        <Source Value="src\Views\uFrmMovEstoque.pas"/>
+        <Line Value="95"/>
+      </Item>
+    </BreakPoints>
+  </Debugging>
+</CONFIG>

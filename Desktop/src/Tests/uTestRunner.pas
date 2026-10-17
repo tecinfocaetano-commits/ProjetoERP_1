@@ -1,0 +1,96 @@
+program TestRunner;
+
+{$mode objfpc}{$H+}
+
+{ ============================================================
+  ERP 2026 - Test Runner Principal
+  Descrição: Executa todos os testes unitários do sistema
+  ============================================================ }
+
+uses
+  {$IFDEF UNIX}{$IFDEF UseCThreads}
+  cthreads,
+  {$ENDIF}{$ENDIF}
+  Classes, SysUtils,
+  uAssert,
+  uFrmLoginTest,
+  uFrmClientesTest,
+  uFrmProdutosTest,
+  uFrmCategoriasTest,
+  uFrmUsuariosTest,
+  uConexao,
+  uSessao;
+
+var
+  LSuite: TTestSuite;
+  LConexao: TConexao;
+
+begin
+  WriteLn('');
+  WriteLn('╔════════════════════════════════════════════════════════════╗');
+  WriteLn('║     ERP 2026 - SUITE DE TESTES UNITÁRIOS                   ║');
+  WriteLn('║     Framework de Testes Simples com Asserts                 ║');
+  WriteLn('╚════════════════════════════════════════════════════════════╝');
+  WriteLn('');
+
+  // Inicializar a suite de testes
+  LSuite := TTestSuite.Create;
+
+  try
+    // Inicializar conexão com o banco
+    LConexao := TConexao.GetInstance;
+    LConexao.Conectar;
+
+    // Inicializar sessão (usar empresa padrão)
+    TSessao.GetInstance.Logar(1, 1, 1, 'Usuario Teste', 'testuser', True);
+
+    WriteLn('Sessão de teste inicializada.');
+    WriteLn('Empresa ID: ', TSessao.GetInstance.EmpresaId);
+    WriteLn('Usuário ID: ', TSessao.GetInstance.UsuarioId);
+    WriteLn('');
+
+    // Executar testes de Login
+    TLoginTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes de Clientes
+    TClientesTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes de Produtos
+    TProdutosTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes de Categorias
+    TCategoriasTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes de Usuários
+    TUsuariosTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Imprimir resultados finais
+    LSuite.PrintResults;
+
+    // Pausa para visualização
+    WriteLn('');
+    WriteLn('Pressione ENTER para sair...');
+    ReadLn;
+
+  except
+    on E: Exception do
+    begin
+      WriteLn('');
+      WriteLn('========================================');
+      WriteLn('ERRO CRÍTICO NA EXECUÇÃO DOS TESTES');
+      WriteLn('========================================');
+      WriteLn('Mensagem: ', E.Message);
+      WriteLn('========================================');
+      WriteLn('');
+      WriteLn('Pressione ENTER para sair...');
+      ReadLn;
+    end;
+  end;
+
+  LSuite.Free;
+end.

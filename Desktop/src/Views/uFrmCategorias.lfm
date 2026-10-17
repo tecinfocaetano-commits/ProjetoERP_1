@@ -1,0 +1,61 @@
+inherited frmCategorias: TfrmCategorias
+  Height = 400
+  Width = 600
+  Caption = 'Cadastro de Categorias'
+  inherited PageControl1: TPageControl
+    inherited tsCadastro: TTabSheet
+      object lblNome: TLabel
+        Left = 16
+        Height = 16
+        Top = 10
+        Width = 50
+        Caption = 'Nome: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtNome: TEdit
+        Left = 16
+        Height = 25
+        Top = 28
+        Width = 300
+        MaxLength = 100
+        TabOrder = 0
+      end
+      object lblDescricao: TLabel
+        Left = 16
+        Height = 16
+        Top = 62
+        Width = 60
+        Caption = 'Descrição:'
+      end
+      object edtDescricao: TEdit
+        Left = 16
+        Height = 25
+        Top = 80
+        Width = 500
+        MaxLength = 255
+        TabOrder = 1
+      end
+      object lblStatus: TLabel
+        Left = 16
+        Height = 16
+        Top = 114
+        Width = 50
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox
+        Left = 16
+        Height = 25
+        Top = 132
+        Width = 100
+        Items.Strings = (
+          'Ativo'
+          'Inativo'
+        )
+        ItemIndex = 0
+        Style = csDropDownList
+        TabOrder = 2
+      end
+    end
+  end
+end

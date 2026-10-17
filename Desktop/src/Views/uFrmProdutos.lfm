@@ -1,0 +1,274 @@
+inherited frmProdutos: TfrmProdutos
+  Height = 580
+  Width = 850
+  Caption = 'Cadastro de Produtos'
+  inherited PageControl1: TPageControl
+    inherited tsCadastro: TTabSheet
+      object lblCodigo: TLabel
+        Left = 16
+        Height = 16
+        Top = 10
+        Width = 50
+        Caption = 'Código:'
+      end
+      object edtCodigo: TEdit
+        Left = 16
+        Height = 25
+        Top = 28
+        Width = 120
+        MaxLength = 30
+        TabOrder = 0
+      end
+      object lblCodigoBarras: TLabel
+        Left = 150
+        Height = 16
+        Top = 10
+        Width = 100
+        Caption = 'Código de Barras:'
+      end
+      object edtCodigoBarras: TEdit
+        Left = 150
+        Height = 25
+        Top = 28
+        Width = 160
+        MaxLength = 20
+        TabOrder = 1
+      end
+      object lblDescricao: TLabel
+        Left = 324
+        Height = 16
+        Top = 10
+        Width = 80
+        Caption = 'Descrição: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtDescricao: TEdit
+        Left = 324
+        Height = 25
+        Top = 28
+        Width = 350
+        MaxLength = 100
+        TabOrder = 2
+      end
+      object lblDescricaoPDV: TLabel
+        Left = 16
+        Height = 16
+        Top = 62
+        Width = 100
+        Caption = 'Descrição PDV:'
+      end
+      object edtDescricaoPDV: TEdit
+        Left = 16
+        Height = 25
+        Top = 80
+        Width = 250
+        MaxLength = 40
+        TabOrder = 3
+      end
+      object lblCategoria: TLabel
+        Left = 280
+        Height = 16
+        Top = 62
+        Width = 60
+        Caption = 'Categoria:'
+      end
+      object cmbCategoria: TComboBox
+        Left = 280
+        Height = 25
+        Top = 80
+        Width = 180
+        Style = csDropDownList
+        TabOrder = 4
+      end
+      object lblUnidade: TLabel
+        Left = 474
+        Height = 16
+        Top = 62
+        Width = 50
+        Caption = 'Unidade:'
+      end
+      object cmbUnidade: TComboBox
+        Left = 474
+        Height = 25
+        Top = 80
+        Width = 100
+        Style = csDropDownList
+        TabOrder = 5
+      end
+      object lblNcm: TLabel
+        Left = 16
+        Height = 16
+        Top = 114
+        Width = 30
+        Caption = 'NCM:'
+      end
+      object edtNcm: TEdit
+        Left = 16
+        Height = 25
+        Top = 132
+        Width = 100
+        MaxLength = 10
+        TabOrder = 6
+      end
+      object lblCest: TLabel
+        Left = 130
+        Height = 16
+        Top = 114
+        Width = 35
+        Caption = 'CEST:'
+      end
+      object edtCest: TEdit
+        Left = 130
+        Height = 25
+        Top = 132
+        Width = 100
+        MaxLength = 9
+        TabOrder = 7
+      end
+      object lblCfopVenda: TLabel
+        Left = 244
+        Height = 16
+        Top = 114
+        Width = 70
+        Caption = 'CFOP Venda:'
+      end
+      object edtCfopVenda: TEdit
+        Left = 244
+        Height = 25
+        Top = 132
+        Width = 80
+        MaxLength = 5
+        TabOrder = 8
+      end
+      object lblPrecoCusto: TLabel
+        Left = 16
+        Height = 16
+        Top = 170
+        Width = 80
+        Caption = 'Preço Custo:'
+      end
+      object edtPrecoCusto: TEdit
+        Left = 16
+        Height = 25
+        Top = 188
+        Width = 120
+        Alignment = taRightJustify
+        TabOrder = 9
+        Text = '0,00'
+        OnExit = edtPrecoCustoExit
+      end
+      object lblMargemLucro: TLabel
+        Left = 150
+        Height = 16
+        Top = 170
+        Width = 80
+        Caption = 'Margem (%):'
+      end
+      object edtMargemLucro: TEdit
+        Left = 150
+        Height = 25
+        Top = 188
+        Width = 80
+        Alignment = taRightJustify
+        TabOrder = 10
+        Text = '0,00'
+        OnExit = edtMargemLucroExit
+      end
+      object lblPrecoVenda: TLabel
+        Left = 244
+        Height = 16
+        Top = 170
+        Width = 80
+        Caption = 'Preço Venda: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtPrecoVenda: TEdit
+        Left = 244
+        Height = 25
+        Top = 188
+        Width = 120
+        Alignment = taRightJustify
+        TabOrder = 11
+        Text = '0,00'
+      end
+      object lblEstoqueMin: TLabel
+        Left = 380
+        Height = 16
+        Top = 170
+        Width = 80
+        Caption = 'Estoque Mín:'
+      end
+      object edtEstoqueMin: TEdit
+        Left = 380
+        Height = 25
+        Top = 188
+        Width = 80
+        Alignment = taRightJustify
+        TabOrder = 12
+        Text = '0'
+      end
+      object lblEstoqueMax: TLabel
+        Left = 474
+        Height = 16
+        Top = 170
+        Width = 80
+        Caption = 'Estoque Máx:'
+      end
+      object edtEstoqueMax: TEdit
+        Left = 474
+        Height = 25
+        Top = 188
+        Width = 80
+        Alignment = taRightJustify
+        TabOrder = 13
+        Text = '0'
+      end
+      object chkControlaEstoque: TCheckBox
+        Left = 580
+        Height = 20
+        Top = 192
+        Width = 130
+        Caption = 'Controla Estoque'
+        Checked = True
+        State = cbChecked
+        TabOrder = 14
+      end
+      object lblStatus: TLabel
+        Left = 16
+        Height = 16
+        Top = 224
+        Width = 50
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox
+        Left = 16
+        Height = 25
+        Top = 242
+        Width = 100
+        Items.Strings = (
+          'Ativo'
+          'Inativo'
+        )
+        ItemIndex = 0
+        Style = csDropDownList
+        TabOrder = 15
+      end
+      object lblObservacoes: TLabel
+        Left = 16
+        Height = 16
+        Top = 278
+        Width = 80
+        Caption = 'Observações:'
+      end
+      object mmoObservacoes: TMemo
+        Left = 16
+        Height = 60
+        Top = 296
+        Width = 700
+        TabOrder = 16
+      end
+    end
+  end
+end

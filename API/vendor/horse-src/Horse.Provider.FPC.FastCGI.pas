@@ -1,0 +1,179 @@
+﻿unit Horse.Provider.FPC.FastCGI;
+
+{ PATCH-FPCFCGI-1: ListenWithConfig override — same root cause as PATCH-CONSOLE-1. }
+
+{$IF DEFINED(FPC)}
+{$MODE DELPHI}{$H+}
+{$ENDIF}
+
+interface
+
+{$IF DEFINED(FPC) AND DEFINED(HORSE_FCGI)}
+uses
+  SysUtils,
+  Classes,
+  fpFCGI,
+  httpdefs,
+  fpHTTP,
+  Horse.Provider.Abstract,
+  Horse.Provider.Config,
+  Horse.Constants,
+  Horse.Proc;
+
+type
+
+  { THorseProvider }
+
+  THorseProvider = class(THorseProviderAbstract)
+  private
+    class var FPort: Integer;
+    class var FHost: string;
+    class var FRunning: Boolean;
+    class var FFastCGIApplication: TFCGIApplication;
+    class function GetDefaultFastCGIApplication: TFCGIApplication;
+    class function FastCGIApplicationIsNil: Boolean;
+    class procedure SetPort(const AValue: Integer); static;
+    class procedure SetHost(const AValue: string); static;
+    class function GetPort: Integer; static;
+    class function GetDefaultPort: Integer; static;
+    class function GetDefaultHost: string; static;
+    class function GetHost: string; static;
+    class procedure InternalListen; virtual;
+    class procedure DoGetModule(Sender: TObject; ARequest: TRequest; var ModuleClass: TCustomHTTPModuleClass);
+  public
+    class property Host: string read GetHost write SetHost;
+    class property Port: Integer read GetPort write SetPort;
+    class function GetActivePort: Integer; override;
+    class procedure Listen; overload; override;
+    class procedure Listen(const APort: Integer; const AHost: string = '0.0.0.0'; const ACallbackListen: TProc = nil; const ACallbackStopListen: TProc = nil); reintroduce; overload; static;
+    class procedure Listen(const APort: Integer; const ACallbackListen: TProc; const ACallbackStopListen: TProc = nil); reintroduce; overload; static;
+    class procedure Listen(const AHost: string; const ACallbackListen: TProc = nil; const ACallbackStopListen: TProc = nil); reintroduce; overload; static;
+    class procedure Listen(const ACallbackListen: TProc; const ACallbackStopListen: TProc = nil); reintroduce; overload; static;
+    // PATCH-FPCFCGI-1
+    class procedure ListenWithConfig(const APort: Integer;
+      const AConfig: THorseCrossSocketConfig); override;
+  end;
+{$ENDIF}
+
+implementation
+
+{$IF DEFINED(FPC) AND DEFINED(HORSE_FCGI)}
+uses
+  Horse.WebModule;
+
+class function THorseProvider.GetDefaultFastCGIApplication: TFCGIApplication;
+begin
+  if FastCGIApplicationIsNil then
+    FFastCGIApplication := Application;
+  Result := FFastCGIApplication;
+end;
+
+class function THorseProvider.FastCGIApplicationIsNil: Boolean;
+begin
+  Result := FFastCGIApplication = nil;
+end;
+
+class function THorseProvider.GetDefaultHost: string;
+begin
+  Result := DEFAULT_HOST;
+end;
+
+class function THorseProvider.GetDefaultPort: Integer;
+begin
+  Result := -1;
+end;
+
+class function THorseProvider.GetHost: string;
+begin
+  Result := FHost;
+end;
+
+class function THorseProvider.GetPort: Integer;
+begin
+  Result := FPort;
+end;
+
+class function THorseProvider.GetActivePort: Integer;
+begin
+  Result := FPort;
+end;
+
+class procedure THorseProvider.InternalListen;
+var
+  LFastCGIApplication: TFCGIApplication;
+begin
+  TriggerBeforeListen;
+  inherited;
+  if FHost.IsEmpty then
+    FHost := GetDefaultHost;
+  LFastCGIApplication := GetDefaultFastCGIApplication;
+  LFastCGIApplication.AllowDefaultModule := True;
+  LFastCGIApplication.OnGetModule := DoGetModule;
+  LFastCGIApplication.Port := FPort;
+  LFastCGIApplication.LegacyRouting := True;
+  LFastCGIApplication.Address := FHost;
+  LFastCGIApplication.Initialize;
+  FRunning := True;
+  DoOnListen;
+  LFastCGIApplication.Run;
+end;
+
+class procedure THorseProvider.DoGetModule(Sender: TObject; ARequest: TRequest; var ModuleClass: TCustomHTTPModuleClass);
+begin
+  ModuleClass := THorseWebModule;
+end;
+
+class procedure THorseProvider.Listen;
+begin
+  InternalListen;;
+end;
+
+class procedure THorseProvider.Listen(const APort: Integer; const AHost: string; const ACallbackListen: TProc;
+  const ACallbackStopListen: TProc);
+begin
+  SetPort(APort);
+  SetHost(AHost);
+  SetOnListen(ACallbackListen);
+  SetOnStopListen(ACallbackStopListen);
+  InternalListen;
+end;
+
+class procedure THorseProvider.Listen(const AHost: string; const ACallbackListen: TProc;
+  const ACallbackStopListen: TProc);
+begin
+  Listen(FPort, AHost, ACallbackListen, ACallbackStopListen);
+end;
+
+class procedure THorseProvider.Listen(const ACallbackListen: TProc;
+  const ACallbackStopListen: TProc);
+begin
+  Listen(FPort, FHost, ACallbackListen, ACallbackStopListen);
+end;
+
+class procedure THorseProvider.Listen(const APort: Integer; const ACallbackListen: TProc;
+  const ACallbackStopListen: TProc);
+begin
+  Listen(APort, FHost, ACallbackListen, ACallbackStopListen);
+end;
+
+// PATCH-FPCFCGI-1
+class procedure THorseProvider.ListenWithConfig(const APort: Integer;
+  const AConfig: THorseCrossSocketConfig);
+begin
+  ValidateNoUnsupportedTls(AConfig, 'FPC.FastCGI');
+  SetPort(APort);
+  InternalListen;
+end;
+
+class procedure THorseProvider.SetHost(const AValue: string);
+begin
+  FHost := AValue;
+end;
+
+class procedure THorseProvider.SetPort(const AValue: Integer);
+begin
+  FPort := AValue;
+end;
+{$ENDIF}
+
+end.

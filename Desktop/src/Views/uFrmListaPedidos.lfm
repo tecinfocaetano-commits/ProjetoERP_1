@@ -1,0 +1,150 @@
+object frmListaPedidos: TfrmListaPedidos
+  Left = 0
+  Height = 500
+  Top = 0
+  Width = 850
+  Caption = 'Pedidos de Venda'
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  OnShow = FormShow
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 850
+    Align = alTop
+    Color = clNavy
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 24
+      Top = 12
+      Width = 200
+      Caption = 'Pedidos de Venda'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlFiltro: TPanel
+    Left = 0
+    Height = 40
+    Top = 50
+    Width = 850
+    Align = alTop
+    TabOrder = 1
+    object lblDataInicio: TLabel
+      Left = 8
+      Height = 16
+      Top = 10
+      Width = 20
+      Caption = 'De:'
+    end
+    object edtDataInicio: TEdit
+      Left = 32
+      Height = 25
+      Top = 7
+      Width = 110
+      TabOrder = 2
+    end
+    object lblDataFim: TLabel
+      Left = 152
+      Height = 16
+      Top = 10
+      Width = 25
+      Caption = 'Até:'
+    end
+    object edtDataFim: TEdit
+      Left = 180
+      Height = 25
+      Top = 7
+      Width = 110
+      TabOrder = 3
+    end
+    object lblStatusFiltro: TLabel
+      Left = 306
+      Height = 16
+      Top = 10
+      Width = 40
+      Caption = 'Status:'
+    end
+    object cmbStatusFiltro: TComboBox
+      Left = 350
+      Height = 25
+      Top = 7
+      Width = 110
+      Items.Strings = (
+        'Todos'
+        'Pendente'
+        'Aprovado'
+        'Faturado'
+        'Cancelado'
+      )
+      ItemIndex = 0
+      Style = csDropDownList
+      TabOrder = 0
+    end
+    object btnFiltrar: TBitBtn
+      Left = 476
+      Height = 28
+      Top = 6
+      Width = 80
+      Caption = 'Filtrar'
+      OnClick = btnFiltrarClick
+      TabOrder = 1
+    end
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 40
+    Top = 90
+    Width = 850
+    Align = alTop
+    TabOrder = 2
+    object btnNovoPedido: TBitBtn
+      Left = 8
+      Height = 32
+      Top = 4
+      Width = 120
+      Caption = 'Novo Pedido'
+      OnClick = btnNovoPedidoClick
+      TabOrder = 0
+    end
+    object btnVisualizar: TBitBtn
+      Left = 140
+      Height = 32
+      Top = 4
+      Width = 100
+      Caption = 'Visualizar'
+      OnClick = btnVisualizarClick
+      TabOrder = 1
+    end
+    object btnFechar: TBitBtn
+      Left = 750
+      Height = 32
+      Top = 4
+      Width = 90
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 2
+    end
+  end
+  object dbGrid: TDBGrid
+    Left = 0
+    Height = 370
+    Top = 130
+    Width = 850
+    Align = alClient
+    DataSource = DataSource1
+    Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+    ReadOnly = True
+    TabOrder = 3
+  end
+  object DataSource1: TDataSource
+    Left = 750
+    Top = 300
+  end
+end

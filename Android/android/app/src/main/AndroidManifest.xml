@@ -1,0 +1,29 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    
+    <application
+        android:label="ERP 2026"
+        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+        android:usesCleartextTraffic="true">
+        
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        
+        <activity android:name=".DashboardActivity"/>
+        <activity android:name=".ClientesActivity"/>
+        <activity android:name=".EstoqueActivity"/>
+        <activity android:name=".VendasActivity"/>
+        <activity android:name=".FinanceiroActivity"/>
+        <activity android:name=".TestDatabaseActivity" android:exported="true"/>
+        <activity android:name=".InserirClienteActivity" android:exported="true"/>
+        <activity android:name=".ConsultarClientesActivity" android:exported="true"/>
+
+    </application>
+</manifest>

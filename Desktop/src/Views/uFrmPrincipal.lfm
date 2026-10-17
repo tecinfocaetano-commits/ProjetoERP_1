@@ -1,0 +1,178 @@
+object frmPrincipal: TfrmPrincipal
+  Left = 0
+  Height = 600
+  Top = 0
+  Width = 900
+  Caption = 'ERP 2026 - Sistema de Gestão Empresarial'
+  Position = poScreenCenter
+  WindowState = wsMaximized
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Menu = MainMenu1
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 60
+    Top = 0
+    Width = 900
+    Align = alTop
+    Color = clNavy
+    ParentColor = False
+    TabOrder = 0
+    object lblBemVindo: TLabel
+      Left = 16
+      Height = 20
+      Top = 10
+      Width = 200
+      Caption = 'Bem-vindo'
+      Font.Color = clWhite
+      Font.Height = -16
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblEmpresa: TLabel
+      Left = 16
+      Height = 16
+      Top = 36
+      Width = 300
+      Caption = 'ERP 2026 - Sistema de Gestão Empresarial'
+      Font.Color = clWhite
+      Font.Height = -12
+      ParentFont = False
+    end
+  end
+  object StatusBar1: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 577
+    Width = 900
+    Panels = <
+      item
+        Width = 250
+      end
+      item
+        Width = 150
+      end
+      item
+        Width = 150
+      end>
+  end
+  object MainMenu1: TMainMenu
+    Left = 400
+    Top = 200
+    object mnuCadastros: TMenuItem
+      Caption = 'Cadastros'
+      object mnuCadClientes: TMenuItem
+        Caption = 'Clientes'
+        OnClick = mnuCadClientesClick
+      end
+      object mnuCadFornecedores: TMenuItem
+        Caption = 'Fornecedores'
+        OnClick = mnuCadFornecedoresClick
+      end
+      object mnuCadProdutos: TMenuItem
+        Caption = 'Produtos'
+        OnClick = mnuCadProdutosClick
+      end
+      object mnuCadCategorias: TMenuItem
+        Caption = 'Categorias'
+        OnClick = mnuCadCategoriasClick
+      end
+      object mnuSep1: TMenuItem
+        Caption = '-'
+      end
+      object mnuCadUsuarios: TMenuItem
+        Caption = 'Usuários'
+        OnClick = mnuCadUsuariosClick
+      end
+    end
+    object mnuEstoque: TMenuItem
+      Caption = 'Estoque'
+      object mnuEstMovimentacao: TMenuItem
+        Caption = 'Movimentação'
+        OnClick = mnuEstMovimentacaoClick
+      end
+      object mnuEstInventario: TMenuItem
+        Caption = 'Inventário'
+        OnClick = mnuEstInventarioClick
+      end
+      object mnuEstKardex: TMenuItem
+        Caption = 'Kardex'
+        OnClick = mnuEstKardexClick
+      end
+    end
+    object mnuVendas: TMenuItem
+      Caption = 'Vendas'
+      object mnuVenPedidos: TMenuItem
+        Caption = 'Novo Pedido'
+        OnClick = mnuVenPedidosClick
+      end
+      object mnuVenOrcamentos: TMenuItem
+        Caption = 'Novo Orçamento'
+        OnClick = mnuVenOrcamentosClick
+      end
+      object mnuSep3: TMenuItem
+        Caption = '-'
+      end
+      object mnuVenListaPedidos: TMenuItem
+        Caption = 'Lista de Pedidos'
+        OnClick = mnuVenListaPedidosClick
+      end
+    end
+    object mnuPDV: TMenuItem
+      Caption = 'PDV'
+      object mnuPDVAbrirPDV: TMenuItem
+        Caption = 'Abrir PDV'
+        OnClick = mnuPDVAbrirPDVClick
+      end
+    end
+    object mnuFinanceiro: TMenuItem
+      Caption = 'Financeiro'
+      object mnuFinContasReceber: TMenuItem
+        Caption = 'Contas a Receber'
+        OnClick = mnuFinContasReceberClick
+      end
+      object mnuFinContasPagar: TMenuItem
+        Caption = 'Contas a Pagar'
+        OnClick = mnuFinContasPagarClick
+      end
+      object mnuFinCaixa: TMenuItem
+        Caption = 'Caixa'
+      end
+    end
+    object mnuFiscal: TMenuItem
+      Caption = 'Fiscal'
+      object mnuFisNFe: TMenuItem
+        Caption = 'NF-e / NFC-e'
+        OnClick = mnuFisNFeClick
+      end
+    end
+    object mnuRelatorios: TMenuItem
+      Caption = 'Relatórios'
+    end
+    object mnuIA: TMenuItem
+      Caption = 'IA Copiloto'
+      object mnuIACopiloto: TMenuItem
+        Caption = 'Abrir Copiloto ERP'
+        OnClick = mnuIACopilotoClick
+      end
+    end
+    object mnuSistema: TMenuItem
+      Caption = 'Sistema'
+      object mnuSisConfiguracoes: TMenuItem
+        Caption = 'Configurações'
+      end
+      object mnuSisPermissoes: TMenuItem
+        Caption = 'Permissões'
+      end
+      object mnuSep2: TMenuItem
+        Caption = '-'
+      end
+      object mnuSisSair: TMenuItem
+        Caption = 'Sair'
+        OnClick = mnuSisSairClick
+      end
+    end
+  end
+end

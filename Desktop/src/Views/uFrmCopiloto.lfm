@@ -1,0 +1,171 @@
+object frmCopiloto: TfrmCopiloto
+  Left = 0
+  Height = 600
+  Top = 0
+  Width = 800
+  Caption = 'Copiloto ERP - Assistente Inteligente'
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 800
+    Align = alTop
+    Color = 4194304
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 24
+      Top = 12
+      Width = 350
+      Caption = 'Copiloto ERP - Assistente Inteligente'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlAtalhos: TPanel
+    Left = 0
+    Height = 100
+    Top = 50
+    Width = 800
+    Align = alTop
+    TabOrder = 1
+    object lblAtalhos: TLabel
+      Left = 8
+      Height = 16
+      Top = 4
+      Width = 120
+      Caption = 'Perguntas rápidas:'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object btnFaturamento: TBitBtn
+      Left = 8
+      Height = 28
+      Top = 24
+      Width = 140
+      Caption = 'Faturamento Mês'
+      OnClick = btnFaturamentoClick
+    end
+    object btnInadimplentes: TBitBtn
+      Left = 156
+      Height = 28
+      Top = 24
+      Width = 120
+      Caption = 'Inadimplentes'
+      OnClick = btnInadimplentesClick
+    end
+    object btnEstoqueBaixo: TBitBtn
+      Left = 284
+      Height = 28
+      Top = 24
+      Width = 120
+      Caption = 'Estoque Baixo'
+      OnClick = btnEstoqueBaixoClick
+    end
+    object btnTopProdutos: TBitBtn
+      Left = 412
+      Height = 28
+      Top = 24
+      Width = 120
+      Caption = 'Top Produtos'
+      OnClick = btnTopProdutosClick
+    end
+    object btnTopClientes: TBitBtn
+      Left = 8
+      Height = 28
+      Top = 58
+      Width = 120
+      Caption = 'Top Clientes'
+      OnClick = btnTopClientesClick
+    end
+    object btnFluxoCaixa: TBitBtn
+      Left = 136
+      Height = 28
+      Top = 58
+      Width = 120
+      Caption = 'Fluxo de Caixa'
+      OnClick = btnFluxoCaixaClick
+    end
+    object btnSugestaoCompra: TBitBtn
+      Left = 264
+      Height = 28
+      Top = 58
+      Width = 140
+      Caption = 'Sugestão Compra'
+      OnClick = btnSugestaoCompraClick
+    end
+    object btnAlertasFinanc: TBitBtn
+      Left = 412
+      Height = 28
+      Top = 58
+      Width = 140
+      Caption = 'Alertas Financeiros'
+      OnClick = btnAlertasFinancClick
+    end
+  end
+  object pnlChat: TPanel
+    Left = 0
+    Height = 400
+    Top = 150
+    Width = 800
+    Align = alClient
+    TabOrder = 2
+    object mmoChat: TMemo
+      Left = 0
+      Height = 400
+      Top = 0
+      Width = 800
+      Align = alClient
+      Font.Name = 'Consolas'
+      Font.Height = -13
+      ParentFont = False
+      ReadOnly = True
+      ScrollBars = ssVertical
+      TabOrder = 0
+    end
+  end
+  object pnlInput: TPanel
+    Left = 0
+    Height = 40
+    Top = 550
+    Width = 800
+    Align = alBottom
+    TabOrder = 3
+    object edtPergunta: TEdit
+      Left = 8
+      Height = 28
+      Top = 6
+      Width = 620
+      Font.Height = -14
+      ParentFont = False
+      TabOrder = 0
+      TextHint = 'Faça sua pergunta ao Copiloto...'
+      OnKeyDown = edtPerguntaKeyDown
+    end
+    object btnEnviar: TBitBtn
+      Left = 636
+      Height = 30
+      Top = 5
+      Width = 80
+      Caption = 'Enviar'
+      Font.Style = [fsBold]
+      ParentFont = False
+      OnClick = btnEnviarClick
+    end
+    object btnFechar: TBitBtn
+      Left = 724
+      Height = 30
+      Top = 5
+      Width = 70
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+    end
+  end
+end

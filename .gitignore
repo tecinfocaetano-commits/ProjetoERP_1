@@ -1,0 +1,33 @@
+# ---- Binarios e artefatos de build (Lazarus/FPC) ----
+Desktop/bin/
+Desktop/lib/
+API/bin/
+*.exe
+*.dll
+*.ppu
+*.o
+*.or
+*.compiled
+Desktop/backup/
+Desktop/src/Config/backup/
+Desktop/src/Views/backup/
+
+# ---- Banco de dados (nao versionar o .FDB) ----
+Banco/DADOS.FDB
+*.FDB
+
+# ---- Android / Gradle ----
+Android/android/.gradle/
+Android/android/build/
+Android/android/app/build/
+Android/.idea/
+Android/android/local.properties
+*.apk
+*.iml
+
+# ---- Sistema ----
+Thumbs.db
+desktop.ini
+*.log
+*.bak
+*.tmp

@@ -1,0 +1,159 @@
+object frmCadastroBase: TfrmCadastroBase
+  Left = 0
+  Height = 550
+  Top = 0
+  Width = 800
+  Caption = 'Cadastro'
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 800
+    Align = alTop
+    Color = clNavy
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 24
+      Top = 12
+      Width = 200
+      Caption = 'Cadastro'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 45
+    Top = 50
+    Width = 800
+    Align = alTop
+    TabOrder = 1
+    object btnNovo: TBitBtn
+      Left = 8
+      Height = 32
+      Top = 6
+      Width = 90
+      Caption = 'Novo'
+      OnClick = btnNovoClick
+      TabOrder = 0
+    end
+    object btnEditar: TBitBtn
+      Left = 104
+      Height = 32
+      Top = 6
+      Width = 90
+      Caption = 'Editar'
+      OnClick = btnEditarClick
+      TabOrder = 1
+    end
+    object btnExcluir: TBitBtn
+      Left = 200
+      Height = 32
+      Top = 6
+      Width = 90
+      Caption = 'Excluir'
+      OnClick = btnExcluirClick
+      TabOrder = 2
+    end
+    object btnSalvar: TBitBtn
+      Left = 320
+      Height = 32
+      Top = 6
+      Width = 90
+      Caption = 'Salvar'
+      Enabled = False
+      OnClick = btnSalvarClick
+      TabOrder = 3
+    end
+    object btnCancelar: TBitBtn
+      Left = 416
+      Height = 32
+      Top = 6
+      Width = 90
+      Caption = 'Cancelar'
+      Enabled = False
+      OnClick = btnCancelarClick
+      TabOrder = 4
+    end
+    object btnFechar: TBitBtn
+      Left = 700
+      Height = 32
+      Top = 6
+      Width = 90
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 5
+    end
+  end
+  object pnlPesquisa: TPanel
+    Left = 0
+    Height = 35
+    Top = 95
+    Width = 800
+    Align = alTop
+    TabOrder = 2
+    object lblPesquisa: TLabel
+      Left = 8
+      Height = 16
+      Top = 8
+      Width = 60
+      Caption = 'Pesquisar:'
+    end
+    object edtPesquisa: TEdit
+      Left = 80
+      Height = 25
+      Top = 6
+      Width = 350
+      OnKeyPress = edtPesquisaKeyPress
+      TabOrder = 0
+    end
+    object btnPesquisar: TBitBtn
+      Left = 440
+      Height = 27
+      Top = 5
+      Width = 90
+      Caption = 'Buscar'
+      OnClick = btnPesquisarClick
+      TabOrder = 1
+    end
+  end
+  object PageControl1: TPageControl
+    Left = 0
+    Height = 420
+    Top = 130
+    Width = 800
+    ActivePage = tsListagem
+    Align = alClient
+    TabIndex = 0
+    TabOrder = 3
+    object tsListagem: TTabSheet
+      Caption = 'Listagem'
+      object dbGrid: TDBGrid
+        Left = 0
+        Height = 390
+        Top = 0
+        Width = 792
+        Align = alClient
+        DataSource = DataSource1
+        Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgTabs, dgRowSelect, dgAlwaysShowSelection, dgConfirmDelete]
+        ReadOnly = True
+        TabOrder = 0
+        OnDblClick = dbGridDblClick
+      end
+    end
+    object tsCadastro: TTabSheet
+      Caption = 'Cadastro'
+    end
+  end
+  object DataSource1: TDataSource
+    Left = 700
+    Top = 200
+  end
+end

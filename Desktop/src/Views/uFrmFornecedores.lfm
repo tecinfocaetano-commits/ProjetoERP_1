@@ -1,0 +1,292 @@
+inherited frmFornecedores: TfrmFornecedores
+  Height = 580
+  Width = 850
+  Caption = 'Cadastro de Fornecedores'
+  inherited PageControl1: TPageControl
+    inherited tsCadastro: TTabSheet
+      object lblTipoPessoa: TLabel
+        Left = 16
+        Height = 16
+        Top = 10
+        Width = 80
+        Caption = 'Tipo Pessoa:'
+      end
+      object cmbTipoPessoa: TComboBox
+        Left = 16
+        Height = 25
+        Top = 28
+        Width = 120
+        Items.Strings = (
+          'Física'
+          'Jurídica'
+        )
+        ItemIndex = 1
+        Style = csDropDownList
+        TabOrder = 0
+      end
+      object lblRazaoSocial: TLabel
+        Left = 150
+        Height = 16
+        Top = 10
+        Width = 100
+        Caption = 'Razão Social: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtRazaoSocial: TEdit
+        Left = 150
+        Height = 25
+        Top = 28
+        Width = 350
+        MaxLength = 100
+        TabOrder = 1
+      end
+      object lblNomeFantasia: TLabel
+        Left = 516
+        Height = 16
+        Top = 10
+        Width = 100
+        Caption = 'Nome Fantasia:'
+      end
+      object edtNomeFantasia: TEdit
+        Left = 516
+        Height = 25
+        Top = 28
+        Width = 300
+        MaxLength = 100
+        TabOrder = 2
+      end
+      object lblCpfCnpj: TLabel
+        Left = 16
+        Height = 16
+        Top = 62
+        Width = 80
+        Caption = 'CPF/CNPJ: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtCpfCnpj: TEdit
+        Left = 16
+        Height = 25
+        Top = 80
+        Width = 160
+        MaxLength = 18
+        TabOrder = 3
+      end
+      object lblIe: TLabel
+        Left = 190
+        Height = 16
+        Top = 62
+        Width = 20
+        Caption = 'IE:'
+      end
+      object edtIe: TEdit
+        Left = 190
+        Height = 25
+        Top = 80
+        Width = 140
+        MaxLength = 20
+        TabOrder = 4
+      end
+      object lblContato: TLabel
+        Left = 344
+        Height = 16
+        Top = 62
+        Width = 50
+        Caption = 'Contato:'
+      end
+      object edtContato: TEdit
+        Left = 344
+        Height = 25
+        Top = 80
+        Width = 200
+        MaxLength = 100
+        TabOrder = 5
+      end
+      object lblEndereco: TLabel
+        Left = 16
+        Height = 16
+        Top = 114
+        Width = 60
+        Caption = 'Endereço:'
+      end
+      object edtEndereco: TEdit
+        Left = 16
+        Height = 25
+        Top = 132
+        Width = 400
+        MaxLength = 200
+        TabOrder = 6
+      end
+      object lblNumero: TLabel
+        Left = 430
+        Height = 16
+        Top = 114
+        Width = 50
+        Caption = 'Número:'
+      end
+      object edtNumero: TEdit
+        Left = 430
+        Height = 25
+        Top = 132
+        Width = 80
+        MaxLength = 10
+        TabOrder = 7
+      end
+      object lblComplemento: TLabel
+        Left = 524
+        Height = 16
+        Top = 114
+        Width = 80
+        Caption = 'Complemento:'
+      end
+      object edtComplemento: TEdit
+        Left = 524
+        Height = 25
+        Top = 132
+        Width = 200
+        MaxLength = 100
+        TabOrder = 8
+      end
+      object lblBairro: TLabel
+        Left = 16
+        Height = 16
+        Top = 166
+        Width = 40
+        Caption = 'Bairro:'
+      end
+      object edtBairro: TEdit
+        Left = 16
+        Height = 25
+        Top = 184
+        Width = 200
+        MaxLength = 100
+        TabOrder = 9
+      end
+      object lblCidade: TLabel
+        Left = 230
+        Height = 16
+        Top = 166
+        Width = 50
+        Caption = 'Cidade:'
+      end
+      object edtCidade: TEdit
+        Left = 230
+        Height = 25
+        Top = 184
+        Width = 200
+        MaxLength = 100
+        TabOrder = 10
+      end
+      object lblUf: TLabel
+        Left = 444
+        Height = 16
+        Top = 166
+        Width = 20
+        Caption = 'UF:'
+      end
+      object cmbUf: TComboBox
+        Left = 444
+        Height = 25
+        Top = 184
+        Width = 60
+        Style = csDropDownList
+        TabOrder = 11
+      end
+      object lblCep: TLabel
+        Left = 520
+        Height = 16
+        Top = 166
+        Width = 30
+        Caption = 'CEP:'
+      end
+      object edtCep: TEdit
+        Left = 520
+        Height = 25
+        Top = 184
+        Width = 100
+        MaxLength = 10
+        TabOrder = 12
+      end
+      object lblTelefone: TLabel
+        Left = 16
+        Height = 16
+        Top = 218
+        Width = 60
+        Caption = 'Telefone:'
+      end
+      object edtTelefone: TEdit
+        Left = 16
+        Height = 25
+        Top = 236
+        Width = 140
+        MaxLength = 20
+        TabOrder = 13
+      end
+      object lblCelular: TLabel
+        Left = 170
+        Height = 16
+        Top = 218
+        Width = 50
+        Caption = 'Celular:'
+      end
+      object edtCelular: TEdit
+        Left = 170
+        Height = 25
+        Top = 236
+        Width = 140
+        MaxLength = 20
+        TabOrder = 14
+      end
+      object lblEmail: TLabel
+        Left = 324
+        Height = 16
+        Top = 218
+        Width = 40
+        Caption = 'E-mail:'
+      end
+      object edtEmail: TEdit
+        Left = 324
+        Height = 25
+        Top = 236
+        Width = 250
+        MaxLength = 150
+        TabOrder = 15
+      end
+      object lblStatus: TLabel
+        Left = 16
+        Height = 16
+        Top = 270
+        Width = 50
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox
+        Left = 16
+        Height = 25
+        Top = 288
+        Width = 100
+        Items.Strings = (
+          'Ativo'
+          'Inativo'
+        )
+        ItemIndex = 0
+        Style = csDropDownList
+        TabOrder = 16
+      end
+      object lblObservacoes: TLabel
+        Left = 16
+        Height = 16
+        Top = 322
+        Width = 80
+        Caption = 'Observações:'
+      end
+      object mmoObservacoes: TMemo
+        Left = 16
+        Height = 60
+        Top = 340
+        Width = 700
+        TabOrder = 17
+      end
+    end
+  end
+end

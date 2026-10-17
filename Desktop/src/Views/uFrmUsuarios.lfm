@@ -1,0 +1,148 @@
+inherited frmUsuarios: TfrmUsuarios
+  Height = 450
+  Width = 650
+  Caption = 'Cadastro de Usuários'
+  inherited PageControl1: TPageControl
+    inherited tsCadastro: TTabSheet
+      object lblNome: TLabel
+        Left = 16
+        Height = 16
+        Top = 10
+        Width = 50
+        Caption = 'Nome: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtNome: TEdit
+        Left = 16
+        Height = 25
+        Top = 28
+        Width = 300
+        MaxLength = 100
+        TabOrder = 0
+      end
+      object lblLogin: TLabel
+        Left = 330
+        Height = 16
+        Top = 10
+        Width = 50
+        Caption = 'Login: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtLogin: TEdit
+        Left = 330
+        Height = 25
+        Top = 28
+        Width = 180
+        MaxLength = 50
+        TabOrder = 1
+      end
+      object lblSenha: TLabel
+        Left = 16
+        Height = 16
+        Top = 62
+        Width = 50
+        Caption = 'Senha:'
+      end
+      object edtSenha: TEdit
+        Left = 16
+        Height = 25
+        Top = 80
+        Width = 200
+        EchoMode = emPassword
+        PasswordChar = '*'
+        TabOrder = 2
+      end
+      object lblConfirmarSenha: TLabel
+        Left = 230
+        Height = 16
+        Top = 62
+        Width = 100
+        Caption = 'Confirmar Senha:'
+      end
+      object edtConfirmarSenha: TEdit
+        Left = 230
+        Height = 25
+        Top = 80
+        Width = 200
+        EchoMode = emPassword
+        PasswordChar = '*'
+        TabOrder = 3
+      end
+      object lblEmail: TLabel
+        Left = 16
+        Height = 16
+        Top = 114
+        Width = 40
+        Caption = 'E-mail:'
+      end
+      object edtEmail: TEdit
+        Left = 16
+        Height = 25
+        Top = 132
+        Width = 250
+        MaxLength = 150
+        TabOrder = 4
+      end
+      object lblTelefone: TLabel
+        Left = 280
+        Height = 16
+        Top = 114
+        Width = 60
+        Caption = 'Telefone:'
+      end
+      object edtTelefone: TEdit
+        Left = 280
+        Height = 25
+        Top = 132
+        Width = 140
+        MaxLength = 20
+        TabOrder = 5
+      end
+      object lblGrupo: TLabel
+        Left = 16
+        Height = 16
+        Top = 166
+        Width = 40
+        Caption = 'Grupo:'
+      end
+      object cmbGrupo: TComboBox
+        Left = 16
+        Height = 25
+        Top = 184
+        Width = 200
+        Style = csDropDownList
+        TabOrder = 6
+      end
+      object chkAdministrador: TCheckBox
+        Left = 230
+        Height = 20
+        Top = 188
+        Width = 110
+        Caption = 'Administrador'
+        TabOrder = 7
+      end
+      object lblStatus: TLabel
+        Left = 16
+        Height = 16
+        Top = 218
+        Width = 50
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox
+        Left = 16
+        Height = 25
+        Top = 236
+        Width = 100
+        Items.Strings = (
+          'Ativo'
+          'Inativo'
+        )
+        ItemIndex = 0
+        Style = csDropDownList
+        TabOrder = 8
+      end
+    end
+  end
+end

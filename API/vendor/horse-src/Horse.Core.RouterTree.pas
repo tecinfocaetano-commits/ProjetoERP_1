@@ -1,0 +1,1004 @@
+unit Horse.Core.RouterTree;
+
+{$IF DEFINED(FPC)}
+  {$MODE DELPHI}{$H+}
+{$ENDIF}
+
+interface
+
+uses
+{$IF DEFINED(FPC)}
+  Generics.Collections,
+  httpdefs,
+  httpprotocol,
+  RegExpr,
+{$ELSE}
+  Web.HTTPApp,
+  System.Generics.Collections,
+{$ENDIF}
+  Horse.Request,
+  Horse.Response,
+  Horse.Callback,
+  Horse.Core.Router.Contract,
+  Horse.Commons,
+  Horse.Core.Regex;
+
+type
+  PHorseRouterTree = ^THorseRouterTree;
+
+  THorseRouterTree = class(TInterfacedObject, IHorseRouter)
+  strict private
+    FPrefix: string;
+    FIsInitialized: Boolean;
+    function GetQueuePath(APath: string; const AUsePrefix: Boolean = True): TQueue<string>;
+    function ForcePath(const APath: string): THorseRouterTree;
+    procedure PopulateQueuePath(AQueue: TQueue<string>; APath: string; const AUsePrefix: Boolean = True);
+  private
+    FPart: string;
+{$IF SizeOf(Char) > 1}
+    FPartBytes: TArray<Byte>;
+{$ENDIF}
+    FTags: TArray<string>;
+    FFullPath: string;
+    FIsParamsKey: Boolean;
+    FRouterRegex: string;
+    FIsRouterRegex: Boolean;
+    FIsOptional: Boolean;
+    FRegexMatcher: THorseRegex;
+    {$IF DEFINED(FPC)}
+    FMiddleware: TList<THorseCallback>;
+    FRegexedKeys: TList<string>;
+    FCallBack: TObjectDictionary<TMethodType, TList<THorseCallback>>;
+    {$ELSE}
+    FMiddleware: TArray<THorseCallback>;
+    FRegexedKeys: TList<string>;
+    FCallBack: TDictionary<TMethodType, TArray<THorseCallback>>;
+    {$ENDIF}
+    FHandlerMethods: TList<TMethodType>;
+    FRoute: TObjectDictionary<string, THorseRouterTree>;
+    procedure AddTag(const ATag: string);
+    procedure RegisterInternal(const AHTTPType: TMethodType; var APath: TQueue<string>; const ACallback: THorseCallback; const AFullPath: string; const AIsMiddleware: Boolean = False);
+    procedure RegisterMiddlewareInternal(var APath: TQueue<string>; const AMiddleware: THorseCallback);
+    function ExecuteInternal(const ASegments: TArray<THorseBufferSlice>; AIndex: Integer; const AHTTPType: TMethodType; const ARequest: THorseRequest; const AResponse: THorseResponse; const AIsGroup: Boolean = False): Boolean;
+    function CallNextPath(const ASegments: TArray<THorseBufferSlice>; AIndex: Integer; const AHTTPType: TMethodType; const ARequest: THorseRequest; const AResponse: THorseResponse): Boolean;
+    function HasNext(const AMethod: TMethodType; const APaths: TArray<THorseBufferSlice>; AIndex: Integer = 0): Boolean;
+    function CountLiteralSegments(const AMethod: TMethodType; const APaths: TArray<THorseBufferSlice>; AIndex: Integer = 0): Integer;
+    function MatchesPart(const APart: THorseBufferSlice): Boolean;
+    class function NormalizeParamKey(const APart: string): string; static;
+  public
+    function CreateRouter(const APath: string): THorseRouterTree;
+    function GetPrefix: string;
+    procedure Prefix(const APrefix: string);
+    procedure RegisterRoute(const AHTTPType: TMethodType; const APath: string; const ACallback: THorseCallback);
+    procedure RegisterRouteMiddleware(const AHTTPType: TMethodType; const APath: string; const ACallback: THorseCallback);
+    procedure RegisterMiddleware(const APath: string; const AMiddleware: THorseCallback); overload;
+    procedure RegisterMiddleware(const AMiddleware: THorseCallback); overload;
+    function Execute(const ARequest: THorseRequest; const AResponse: THorseResponse): Boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    property Route: TObjectDictionary<string, THorseRouterTree> read FRoute;
+  end;
+
+implementation
+
+uses
+{$IF DEFINED(FPC)}
+  SysUtils,
+  SyncObjs,
+{$ELSE}
+  System.SysUtils,
+  System.RegularExpressions,
+  System.SyncObjs,
+  System.Diagnostics,
+{$ENDIF}
+  Horse.Exception,
+  Horse.Core.RouterTree.NextCaller,
+  Horse, Horse.Core;
+
+threadvar
+  TlsNextCaller: TNextCaller;
+
+type
+  TQueueString = TQueue<string>;
+  TQueueStringList = TList<TQueueString>;
+
+var
+  GAllNextCallers: TList<TNextCaller> = nil;
+  GAllNextCallersCS: TCriticalSection = nil;
+  GQueuePool: TQueueStringList = nil;
+  GQueuePoolCS: TCriticalSection = nil;
+  GNextCallerPool: TList<TNextCaller> = nil;
+  GNextCallerPoolCS: TCriticalSection = nil;
+
+function GetNextCaller: TNextCaller;
+begin
+  if TlsNextCaller = nil then
+  begin
+    TlsNextCaller := TNextCaller.Create;
+    GAllNextCallersCS.Enter;
+    try
+      GAllNextCallers.Add(TlsNextCaller);
+    finally
+      GAllNextCallersCS.Leave;
+    end;
+  end;
+  Result := TlsNextCaller;
+end;
+
+
+
+{$IFDEF FPC}
+threadvar
+  GCurrentTreeExecutor: Pointer;
+
+type
+  TRouterTreeExecutor = class
+  private
+    FRouter: THorseRouterTree;
+    FRequest: THorseRequest;
+    FResponse: THorseResponse;
+    FResult: Boolean;
+    procedure DoExecuteInternal;
+  public
+    constructor Create(ARouter: THorseRouterTree; AReq: THorseRequest; ARes: THorseResponse);
+    function Run: Boolean;
+  end;
+
+procedure RouterTreeExecutorDoExecuteRoute;
+begin
+  TRouterTreeExecutor(GCurrentTreeExecutor).DoExecuteInternal;
+end;
+
+procedure RouterTreeExecutorDoPreParsing;
+begin
+  THorse.ExecutePreParsing(TRouterTreeExecutor(GCurrentTreeExecutor).FRequest, TRouterTreeExecutor(GCurrentTreeExecutor).FResponse, RouterTreeExecutorDoExecuteRoute);
+end;
+
+constructor TRouterTreeExecutor.Create(ARouter: THorseRouterTree; AReq: THorseRequest; ARes: THorseResponse);
+begin
+  FRouter := ARouter;
+  FRequest := AReq;
+  FResponse := ARes;
+  FResult := False;
+end;
+
+function TRouterTreeExecutor.Run: Boolean;
+var
+  LStopwatch: TStopwatch;
+begin
+  LStopwatch := TStopwatch.StartNew;
+  FResponse.Request := FRequest;
+  GCurrentTreeExecutor := Self;
+  try
+    try
+      THorse.ExecuteOnRequest(FRequest, FResponse, RouterTreeExecutorDoPreParsing);
+      Result := FResult;
+    except
+      on E: Exception do
+      begin
+        // The middleware chain has unwound; only unhandled errors reach this fallback.
+        if E is EHorseCallbackInterrupted then
+          raise
+        else if E is EHorseException then
+          FResponse.ContentType('application/json; charset=UTF-8')
+            .Send(EHorseException(E).ToJSON).Status(EHorseException(E).Status)
+        else if THorse.HasOnError then
+          THorse.ExecuteOnError(FRequest, FResponse, E)
+        else if FResponse.Status < Integer(THTTPStatus.BadRequest) then
+          FResponse.Send('Internal Application Error: ' + E.Message).Status(THTTPStatus.InternalServerError);
+        Result := True;
+      end;
+    end;
+  finally
+    LStopwatch.Stop;
+    THorseCore.ExecuteOnTelemetry(FRequest, FResponse, LStopwatch.Elapsed.TotalMilliseconds);
+    THorse.ExecuteOnResponse(FRequest, FResponse);
+  end;
+end;
+
+procedure TRouterTreeExecutor.DoExecuteInternal;
+var
+  LSegments, LSegmentsNotFound: TArray<THorseBufferSlice>;
+  LMethodType: TMethodType;
+  LRawWebRequest: TRequest;
+  LBufferNotFound: TBytes;
+begin
+  LRawWebRequest := FRequest.RawWebRequest;
+  if not Assigned(LRawWebRequest) then
+    LMethodType := FRequest.MethodType
+  else
+    LMethodType := TMethodType.FromString(LRawWebRequest.Method);
+
+  LSegments := FRequest.GetPathSegments;
+  FResult := FRouter.ExecuteInternal(LSegments, 0, LMethodType, FRequest, FResponse);
+  if not FResult then
+  begin
+    SetLength(LSegmentsNotFound, 2);
+    LBufferNotFound := TEncoding.UTF8.GetBytes('/*');
+    LSegmentsNotFound[0] := THorseBufferSlice.Create(LBufferNotFound, 0, 0);
+    LSegmentsNotFound[1] := THorseBufferSlice.Create(LBufferNotFound, 1, 1);
+    
+    FResult := FRouter.ExecuteInternal(LSegmentsNotFound, 0, LMethodType, FRequest, FResponse);
+    if FResult and (FResponse.Status = THTTPStatus.MethodNotAllowed.ToInteger) then
+      FResponse.Send('Not Found').Status(THTTPStatus.NotFound);
+  end;
+end;
+{$ENDIF}
+
+class function THorseRouterTree.NormalizeParamKey(const APart: string): string;
+begin
+  if APart.StartsWith(':') then
+  begin
+    if APart.Contains('(') or APart.EndsWith('?') then
+      Result := APart
+    else
+      Result := ':_param';
+  end
+  else
+    Result := APart;
+end;
+
+function THorseRouterTree.MatchesPart(const APart: THorseBufferSlice): Boolean;
+begin
+{$IF SizeOf(Char) = 1}
+  Result := APart.Compare(FPart, not THorseCore.CaseSensitive);
+{$ELSE}
+  Result := APart.CompareBytes(FPartBytes, 0, Length(FPartBytes),
+    not THorseCore.CaseSensitive);
+{$ENDIF}
+end;
+
+procedure THorseRouterTree.RegisterRoute(const AHTTPType: TMethodType; const APath: string; const ACallback: THorseCallback);
+var
+  LPathChain: TQueue<string>;
+begin
+  LPathChain := GetQueuePath(APath);
+  try
+    RegisterInternal(AHTTPType, LPathChain, ACallback, APath, False);
+  finally
+    LPathChain.Free;
+  end;
+end;
+
+procedure THorseRouterTree.RegisterRouteMiddleware(const AHTTPType: TMethodType; const APath: string; const ACallback: THorseCallback);
+var
+  LPathChain: TQueue<string>;
+begin
+  LPathChain := GetQueuePath(APath);
+  try
+    RegisterInternal(AHTTPType, LPathChain, ACallback, APath, True);
+  finally
+    LPathChain.Free;
+  end;
+end;
+
+function THorseRouterTree.CallNextPath(const ASegments: TArray<THorseBufferSlice>; AIndex: Integer; const AHTTPType: TMethodType; const ARequest: THorseRequest;
+  const AResponse: THorseResponse): Boolean;
+var
+  LCurrent: THorseBufferSlice;
+  LKey: string;
+  LAcceptable: THorseRouterTree;
+  LFound, LIsGroup: Boolean;
+  LBestAcceptable: THorseRouterTree;
+  LBestScore, LScore: Integer;
+  LPair: TPair<string, THorseRouterTree>;
+begin
+  LIsGroup := False;
+  LFound := False;
+  LAcceptable := nil;
+
+  if AIndex >= Length(ASegments) then
+  begin
+    for LPair in FRoute do
+    begin
+      if LPair.Value.FIsOptional then
+      begin
+        LAcceptable := LPair.Value;
+        if LAcceptable.HasNext(AHTTPType, ASegments, AIndex - 1) then
+        begin
+          LFound := LAcceptable.ExecuteInternal(ASegments, AIndex, AHTTPType, ARequest, AResponse);
+          if LFound then
+            Exit(True);
+        end;
+      end;
+    end;
+    Exit(False);
+  end;
+
+  LCurrent := ASegments[AIndex];
+  
+  for LPair in FRoute do
+  begin
+    if (LPair.Key <> '*') and LPair.Value.MatchesPart(LCurrent) then
+    begin
+      LAcceptable := LPair.Value;
+      LFound := True;
+      Break;
+    end;
+  end;
+
+  if not LFound then
+  begin
+    LFound := FRoute.TryGetValue('*', LAcceptable);
+  end;
+
+  if (not LFound) then
+  begin
+    LFound := FRoute.TryGetValue(EmptyStr, LAcceptable);
+    LIsGroup := LFound;
+  end;
+  if (not LFound) and (FRegexedKeys.Count > 0) then
+  begin
+    LBestAcceptable := nil;
+    LBestScore := -1;
+    for LKey in FRegexedKeys do
+    begin
+      FRoute.TryGetValue(LKey, LAcceptable);
+      if LAcceptable.HasNext(AHTTPType, ASegments, AIndex) then
+      begin
+        LScore := LAcceptable.CountLiteralSegments(AHTTPType, ASegments, AIndex);
+        if (LBestAcceptable = nil) or (LScore > LBestScore) then
+        begin
+          LBestAcceptable := LAcceptable;
+          LBestScore := LScore;
+        end;
+      end;
+    end;
+    if LBestAcceptable <> nil then
+      LFound := LBestAcceptable.ExecuteInternal(ASegments, AIndex, AHTTPType, ARequest, AResponse);
+  end
+  else if LFound then
+    LFound := LAcceptable.ExecuteInternal(ASegments, AIndex, AHTTPType, ARequest, AResponse, LIsGroup);
+  Result := LFound;
+end;
+
+constructor THorseRouterTree.Create;
+begin
+  {$IF DEFINED(FPC)}
+  FMiddleware := TList<THorseCallback>.Create;
+  FCallBack := TObjectDictionary<TMethodType, TList<THorseCallback>>.Create([doOwnsValues]);
+  {$ELSE}
+  FMiddleware := nil;
+  FCallBack := TDictionary<TMethodType, TArray<THorseCallback>>.Create;
+  {$ENDIF}
+  FRoute := TObjectDictionary<string, THorseRouterTree>.Create([doOwnsValues]);
+  FRegexedKeys := TList<string>.Create;
+  FHandlerMethods := TList<TMethodType>.Create;
+  FPrefix := '';
+  FIsRouterRegex := False;
+end;
+
+destructor THorseRouterTree.Destroy;
+begin
+  {$IF DEFINED(FPC)}
+  FMiddleware.Free;
+  FreeAndNil(FCallBack);
+  {$ELSE}
+  FMiddleware := nil;
+  FreeAndNil(FCallBack);
+  {$ENDIF}
+  FreeAndNil(FRoute);
+  if Assigned(FRegexMatcher) then
+    FRegexMatcher.Free;
+  FRegexedKeys.Clear;
+  FRegexedKeys.Free;
+  FHandlerMethods.Clear;
+  FHandlerMethods.Free;
+  inherited;
+end;
+
+function THorseRouterTree.Execute(const ARequest: THorseRequest; const AResponse: THorseResponse): Boolean;
+{$IF DEFINED(FPC)}
+var
+  LExecutor: TRouterTreeExecutor;
+begin
+  LExecutor := TRouterTreeExecutor.Create(Self, ARequest, AResponse);
+  try
+    Result := LExecutor.Run;
+  finally
+    LExecutor.Free;
+  end;
+end;
+{$ELSE}
+var
+  LSegments, LSegmentsNotFound: TArray<THorseBufferSlice>;
+  LMethodType: TMethodType;
+  LRawWebRequest: {$IF DEFINED(FPC)}TRequest{$ELSE}TWebRequest{$ENDIF};
+  LBufferNotFound: TBytes;
+  LResult: Boolean;
+  LStopwatch: TStopwatch;
+begin
+  LStopwatch := TStopwatch.StartNew;
+  LResult := False;
+  AResponse.Request := ARequest;
+  try
+    try
+      LRawWebRequest := ARequest.RawWebRequest;
+      if not Assigned(LRawWebRequest) then
+      begin
+        LMethodType := ARequest.MethodType;
+      end
+      else
+      begin
+        LMethodType := TMethodType.FromString(LRawWebRequest.Method);
+      end;
+
+      THorse.ExecuteOnRequest(ARequest, AResponse,
+        procedure
+        begin
+          THorse.ExecutePreParsing(ARequest, AResponse,
+            procedure
+            begin
+              LSegments := ARequest.GetPathSegments;
+              LResult := ExecuteInternal(LSegments, 0, LMethodType, ARequest, AResponse);
+              if not LResult then
+              begin
+                SetLength(LSegmentsNotFound, 2);
+                LBufferNotFound := TEncoding.UTF8.GetBytes('/*');
+                LSegmentsNotFound[0] := THorseBufferSlice.Create(LBufferNotFound, 0, 0);
+                LSegmentsNotFound[1] := THorseBufferSlice.Create(LBufferNotFound, 1, 1);
+                
+                LResult := ExecuteInternal(LSegmentsNotFound, 0, LMethodType, ARequest, AResponse);
+                if LResult and (AResponse.Status = THTTPStatus.MethodNotAllowed.ToInteger) then
+                  AResponse.Send('Not Found').Status(THTTPStatus.NotFound);
+              end;
+            end);
+        end);
+      Result := LResult;
+    except
+      on E: Exception do
+      begin
+        // The middleware chain has unwound; only unhandled errors reach this fallback.
+        if E is EHorseCallbackInterrupted then
+        begin
+          if not THorse.HasOnError then
+            raise;
+        end
+        else if E is EHorseException then
+          AResponse.ContentType('application/json; charset=UTF-8')
+            .Send(EHorseException(E).ToJSON).Status(EHorseException(E).Status)
+        else if THorse.HasOnError then
+          THorse.ExecuteOnError(ARequest, AResponse, E)
+        else if AResponse.Status < Integer(THTTPStatus.BadRequest) then
+          AResponse.Send('Internal Application Error: ' + E.Message).Status(THTTPStatus.InternalServerError);
+        Result := True;
+      end;
+    end;
+    AResponse.FlushCookiesToWebResponse;
+  finally
+    LStopwatch.Stop;
+    THorseCore.ExecuteOnTelemetry(ARequest, AResponse, LStopwatch.Elapsed.TotalMilliseconds);
+    THorse.ExecuteOnResponse(ARequest, AResponse);
+  end;
+end;
+{$ENDIF}
+
+function THorseRouterTree.ExecuteInternal(const ASegments: TArray<THorseBufferSlice>; AIndex: Integer; const AHTTPType: TMethodType; const ARequest: THorseRequest;
+  const AResponse: THorseResponse; const AIsGroup: Boolean = False): Boolean;
+var
+  LNextCaller: TNextCaller;
+  LFound: Boolean;
+begin
+  if FFullPath <> '' then
+    ARequest.MatchedRoute := FFullPath;
+  LFound := False;
+  LNextCaller := TNextCaller.Create;
+  try
+    LNextCaller.Configure(
+      FCallBack,
+      ASegments,
+      AIndex,
+      AHTTPType,
+      ARequest,
+      AResponse,
+      AIsGroup,
+      FMiddleware,
+      FTags,
+      FIsParamsKey,
+      CallNextPath,
+      FPart,
+      LFound
+    );
+    LNextCaller.Init;
+    LNextCaller.Next;
+  finally
+    LNextCaller.Free;
+  end;
+  Result := LFound;
+end;
+
+procedure THorseRouterTree.AddTag(const ATag: string);
+var
+  LItem: string;
+begin
+  for LItem in FTags do
+  begin
+    if LItem = ATag then
+      Exit;
+  end;
+  SetLength(FTags, Length(FTags) + 1);
+  FTags[High(FTags)] := ATag;
+end;
+
+function THorseRouterTree.ForcePath(const APath: string): THorseRouterTree;
+begin
+  if not FRoute.TryGetValue(APath, Result) then
+  begin
+    Result := THorseRouterTree.Create;
+    FRoute.Add(APath, Result);
+  end;
+end;
+
+function THorseRouterTree.CreateRouter(const APath: string): THorseRouterTree;
+begin
+  Result := ForcePath(APath);
+end;
+
+procedure THorseRouterTree.Prefix(const APrefix: string);
+begin
+  FPrefix := '/' + APrefix.Trim(['/']);
+end;
+
+function THorseRouterTree.GetPrefix: string;
+begin
+  Result := FPrefix;
+end;
+
+function THorseRouterTree.GetQueuePath(APath: string; const AUsePrefix: Boolean = True): TQueue<string>;
+begin
+  Result := TQueue<string>.Create;
+  PopulateQueuePath(Result, APath, AUsePrefix);
+end;
+
+procedure THorseRouterTree.PopulateQueuePath(AQueue: TQueue<string>; APath: string; const AUsePrefix: Boolean = True);
+var
+  LStart, LLen, LPathLen: Integer;
+  LPart: string;
+begin
+  if AUsePrefix then
+  begin
+    if not APath.StartsWith('/') then
+      APath := (FPrefix + '/' + APath)
+    else
+      APath := (FPrefix + APath);
+  end;
+
+  if APath.StartsWith('/') then
+    AQueue.Enqueue(EmptyStr);
+
+  LPathLen := Length(APath);
+  LStart := 1;
+  while LStart <= LPathLen do
+  begin
+    while (LStart <= LPathLen) and (APath[LStart] = '/') do
+      Inc(LStart);
+    
+    if LStart > LPathLen then
+      Break;
+      
+    LLen := 0;
+    while (LStart + LLen <= LPathLen) and (APath[LStart + LLen] <> '/') do
+      Inc(LLen);
+      
+    if LLen > 0 then
+    begin
+      LPart := Copy(APath, LStart, LLen);
+      AQueue.Enqueue(LPart);
+      LStart := LStart + LLen;
+    end;
+  end;
+end;
+
+
+
+function THorseRouterTree.CountLiteralSegments(const AMethod: TMethodType; const APaths: TArray<THorseBufferSlice>; AIndex: Integer = 0): Integer;
+var
+  LNext: THorseBufferSlice;
+  LKey: string;
+  LNextRoute: THorseRouterTree;
+  LPair: TPair<string, THorseRouterTree>;
+  LFound: Boolean;
+begin
+  Result := 0;
+  if (Length(APaths) <= AIndex) then
+    Exit;
+
+  if (Length(APaths) - 1 = AIndex) then
+  begin
+    if not FIsParamsKey then
+      Result := 1;
+    Exit;
+  end;
+
+  LNext := APaths[AIndex + 1];
+  Inc(AIndex);
+
+  LFound := False;
+  LNextRoute := nil;
+  for LPair in FRoute do
+  begin
+    if LPair.Value.MatchesPart(LNext) or (LPair.Key = '*') then
+    begin
+      LNextRoute := LPair.Value;
+      LFound := True;
+      Break;
+    end;
+  end;
+
+  if LFound then
+  begin
+    Result := 1 + LNextRoute.CountLiteralSegments(AMethod, APaths, AIndex);
+    Exit;
+  end;
+
+  for LKey in FRegexedKeys do
+  begin
+    if FRoute.Items[LKey].HasNext(AMethod, APaths, AIndex) then
+    begin
+      Result := FRoute.Items[LKey].CountLiteralSegments(AMethod, APaths, AIndex);
+      Exit;
+    end;
+  end;
+end;
+
+function THorseRouterTree.HasNext(const AMethod: TMethodType; const APaths: TArray<THorseBufferSlice>; AIndex: Integer = 0): Boolean;
+var
+  LNext: THorseBufferSlice;
+  LKey: string;
+  LNextRoute: THorseRouterTree;
+  LPair: TPair<string, THorseRouterTree>;
+  LFound: Boolean;
+begin
+  Result := False;
+  if (Length(APaths) <= AIndex) then
+    Exit(False);
+
+  if FIsRouterRegex and Assigned(FRegexMatcher) then
+  begin
+    if not FRegexMatcher.Match(APaths[AIndex].ToString) then
+      Exit(False);
+    if Length(APaths) - 1 = AIndex then
+      Exit(FCallBack.ContainsKey(AMethod) or (AMethod = mtAny));
+  end
+  else if (Length(APaths) - 1 = AIndex) and
+    (MatchesPart(APaths[AIndex]) or FIsParamsKey) then
+  begin
+    Exit(FCallBack.ContainsKey(AMethod) or (AMethod = mtAny));
+  end;
+
+  LNext := APaths[AIndex + 1];
+  Inc(AIndex);
+  
+  LFound := False;
+  LNextRoute := nil;
+  for LPair in FRoute do
+  begin
+    if LPair.Value.MatchesPart(LNext) or (LPair.Key = '*') then
+    begin
+      LNextRoute := LPair.Value;
+      LFound := True;
+      Break;
+    end;
+  end;
+
+  if LFound then
+  begin
+    Result := LNextRoute.HasNext(AMethod, APaths, AIndex);
+  end
+  else
+  begin
+    for LKey in FRegexedKeys do
+    begin
+      if FRoute.Items[LKey].HasNext(AMethod, APaths, AIndex) then
+        Exit(True);
+    end;
+  end;
+end;
+
+procedure THorseRouterTree.RegisterInternal(const AHTTPType: TMethodType; var APath: TQueue<string>; const ACallback: THorseCallback; const AFullPath: string; const AIsMiddleware: Boolean = False);
+var
+  LNextPart: string;
+  LNormalizedNextPart: string;
+  {$IF DEFINED(FPC)}
+  LCallbacks: TList<THorseCallback>;
+  {$ELSE}
+  LCallbacks: TArray<THorseCallback>;
+  {$ENDIF}
+  LForceRouter: THorseRouterTree;
+  LRawPart: string;
+  LOpenParenthesis: Integer;
+  LCloseParenthesis: Integer;
+  LTag: string;
+begin
+  if not FIsInitialized then
+  begin
+    LRawPart := APath.Dequeue;
+    FPart := LRawPart;
+{$IF SizeOf(Char) > 1}
+    FPartBytes := TEncoding.UTF8.GetBytes(FPart);
+{$ENDIF}
+
+    FIsOptional := False;
+    FIsRouterRegex := False;
+    FRouterRegex := '';
+    FRegexMatcher := nil;
+
+    FIsParamsKey := FPart.StartsWith(':');
+    if FIsParamsKey then
+    begin
+      LNormalizedNextPart := FPart.Substring(1);
+
+      if LNormalizedNextPart.EndsWith('?') then
+      begin
+        FIsOptional := True;
+        LNormalizedNextPart := LNormalizedNextPart.Substring(0, LNormalizedNextPart.Length - 1);
+      end;
+
+      LOpenParenthesis := LNormalizedNextPart.IndexOf('(');
+      if LOpenParenthesis >= 0 then
+      begin
+        LCloseParenthesis := LNormalizedNextPart.IndexOf(')');
+        if LCloseParenthesis > LOpenParenthesis then
+        begin
+          FIsRouterRegex := True;
+          LTag := LNormalizedNextPart.Substring(0, LOpenParenthesis);
+          FRouterRegex := LNormalizedNextPart.Substring(LOpenParenthesis + 1, LCloseParenthesis - LOpenParenthesis - 1);
+          FRegexMatcher := THorseRegex.Create(FRouterRegex);
+        end;
+      end;
+
+      if not FIsRouterRegex then
+        LTag := LNormalizedNextPart;
+
+      AddTag(LTag);
+    end
+    else
+    begin
+      if FPart.StartsWith('(') and FPart.EndsWith(')') then
+      begin
+        FIsRouterRegex := True;
+        FRouterRegex := FPart.Substring(1, FPart.Length - 2);
+        FRegexMatcher := THorseRegex.Create(FRouterRegex);
+      end;
+    end;
+
+    FIsInitialized := True;
+  end
+  else
+  begin
+    LRawPart := APath.Dequeue;
+    if FIsParamsKey then
+    begin
+      LNormalizedNextPart := LRawPart.Substring(1);
+
+      if LNormalizedNextPart.EndsWith('?') then
+      begin
+        LNormalizedNextPart := LNormalizedNextPart.Substring(0, LNormalizedNextPart.Length - 1);
+      end;
+
+      LOpenParenthesis := LNormalizedNextPart.IndexOf('(');
+      if LOpenParenthesis >= 0 then
+      begin
+        LCloseParenthesis := LNormalizedNextPart.IndexOf(')');
+        if LCloseParenthesis > LOpenParenthesis then
+        begin
+          LTag := LNormalizedNextPart.Substring(0, LOpenParenthesis);
+        end;
+      end
+      else
+        LTag := LNormalizedNextPart;
+
+      if LTag <> '' then
+        AddTag(LTag);
+    end;
+  end;
+
+  if APath.Count = 0 then
+  begin
+    if (not AIsMiddleware) and (FHandlerMethods.IndexOf(AHTTPType) >= 0) then
+      raise Exception.Create(Format('Duplicate route detected: [%s] %s',
+        [AHTTPType.ToString.ToUpper, AFullPath]));
+
+    {$IF DEFINED(FPC)}
+    if not FCallBack.TryGetValue(AHTTPType, LCallbacks) then
+    begin
+      LCallbacks := TList<THorseCallback>.Create;
+      FCallBack.Add(AHTTPType, LCallbacks);
+    end;
+    LCallbacks.Add(ACallback);
+    {$ELSE}
+    if not FCallBack.TryGetValue(AHTTPType, LCallbacks) then
+    begin
+      LCallbacks := nil;
+    end;
+    SetLength(LCallbacks, Length(LCallbacks) + 1);
+    LCallbacks[Length(LCallbacks) - 1] := ACallback;
+    FCallBack.AddOrSetValue(AHTTPType, LCallbacks);
+    {$ENDIF}
+
+    if not AIsMiddleware then
+      FHandlerMethods.Add(AHTTPType);
+    FFullPath := '/' + AFullPath.Trim(['/']);
+  end;
+
+  if APath.Count > 0 then
+  begin
+    LNextPart := APath.Peek;
+    LNormalizedNextPart := NormalizeParamKey(LNextPart);
+    if not THorseCore.CaseSensitive then
+    begin
+      if (not LNextPart.StartsWith(':')) and (not LNextPart.StartsWith('(')) then
+        LNormalizedNextPart := LowerCase(LNormalizedNextPart);
+    end;
+
+    LForceRouter := ForcePath(LNormalizedNextPart);
+
+    LForceRouter.RegisterInternal(AHTTPType, APath, ACallback, AFullPath, AIsMiddleware);
+    if LForceRouter.FIsParamsKey or LForceRouter.FIsRouterRegex then
+    begin
+      if not FRegexedKeys.Contains(LNormalizedNextPart) then
+        FRegexedKeys.Add(LNormalizedNextPart);
+    end;
+  end;
+end;
+
+procedure THorseRouterTree.RegisterMiddleware(const AMiddleware: THorseCallback);
+begin
+  {$IF DEFINED(FPC)}
+  FMiddleware.Add(AMiddleware);
+  {$ELSE}
+  SetLength(FMiddleware, Length(FMiddleware) + 1);
+  FMiddleware[Length(FMiddleware) - 1] := AMiddleware;
+  {$ENDIF}
+end;
+
+procedure THorseRouterTree.RegisterMiddleware(const APath: string; const AMiddleware: THorseCallback);
+var
+  LPathChain: TQueue<string>;
+begin
+  LPathChain := GetQueuePath(APath);
+  try
+    RegisterMiddlewareInternal(LPathChain, AMiddleware);
+  finally
+    LPathChain.Free;
+  end;
+end;
+
+procedure THorseRouterTree.RegisterMiddlewareInternal(var APath: TQueue<string>; const AMiddleware: THorseCallback);
+var
+  LNextPart: string;
+  LNormalizedNextPart: string;
+  LForceRouter: THorseRouterTree;
+  LRawPart: string;
+  LNormalizedRawPart: string;
+  LOpenParenthesis: Integer;
+  LCloseParenthesis: Integer;
+  LTag: string;
+begin
+  if not FIsInitialized then
+  begin
+    LRawPart := APath.Dequeue;
+    FPart := LRawPart;
+{$IF SizeOf(Char) > 1}
+    FPartBytes := TEncoding.UTF8.GetBytes(FPart);
+{$ENDIF}
+    FIsParamsKey := FPart.StartsWith(':');
+    if FIsParamsKey then
+    begin
+      LNormalizedRawPart := FPart.Substring(1);
+      if LNormalizedRawPart.EndsWith('?') then
+        LNormalizedRawPart := LNormalizedRawPart.Substring(0, LNormalizedRawPart.Length - 1);
+      LOpenParenthesis := LNormalizedRawPart.IndexOf('(');
+      if LOpenParenthesis >= 0 then
+      begin
+        LCloseParenthesis := LNormalizedRawPart.IndexOf(')');
+        if LCloseParenthesis > LOpenParenthesis then
+          LTag := LNormalizedRawPart.Substring(0, LOpenParenthesis);
+      end
+      else
+        LTag := LNormalizedRawPart;
+
+      if LTag <> '' then
+        AddTag(LTag);
+    end;
+    FIsInitialized := True;
+  end
+  else
+  begin
+    LRawPart := APath.Dequeue;
+    if FIsParamsKey then
+    begin
+      LNormalizedRawPart := LRawPart.Substring(1);
+      if LNormalizedRawPart.EndsWith('?') then
+        LNormalizedRawPart := LNormalizedRawPart.Substring(0, LNormalizedRawPart.Length - 1);
+      LOpenParenthesis := LNormalizedRawPart.IndexOf('(');
+      if LOpenParenthesis >= 0 then
+      begin
+        LCloseParenthesis := LNormalizedRawPart.IndexOf(')');
+        if LCloseParenthesis > LOpenParenthesis then
+          LTag := LNormalizedRawPart.Substring(0, LOpenParenthesis);
+      end
+      else
+        LTag := LNormalizedRawPart;
+
+      if LTag <> '' then
+        AddTag(LTag);
+    end;
+  end;
+
+  if APath.Count = 0 then
+  begin
+    {$IF DEFINED(FPC)}
+    FMiddleware.Add(AMiddleware);
+    {$ELSE}
+    SetLength(FMiddleware, Length(FMiddleware) + 1);
+    FMiddleware[Length(FMiddleware) - 1] := AMiddleware;
+    {$ENDIF}
+  end;
+
+  if APath.Count > 0 then
+  begin
+    LNextPart := APath.Peek;
+    LNormalizedNextPart := NormalizeParamKey(LNextPart);
+    if not THorseCore.CaseSensitive then
+    begin
+      if (not LNextPart.StartsWith(':')) and (not LNextPart.StartsWith('(')) then
+        LNormalizedNextPart := LowerCase(LNormalizedNextPart);
+    end;
+
+    LForceRouter := ForcePath(LNormalizedNextPart);
+
+    LForceRouter.RegisterMiddlewareInternal(APath, AMiddleware);
+  end;
+end;
+
+initialization
+  GQueuePool := TQueueStringList.Create;
+  GQueuePoolCS := TCriticalSection.Create;
+  GNextCallerPool := TList<TNextCaller>.Create;
+  GNextCallerPoolCS := TCriticalSection.Create;
+  GAllNextCallers := TList<TNextCaller>.Create;
+  GAllNextCallersCS := TCriticalSection.Create;
+
+finalization
+  if Assigned(GQueuePool) then
+  begin
+    while GQueuePool.Count > 0 do
+    begin
+      GQueuePool.Items[GQueuePool.Count - 1].Free;
+      GQueuePool.Delete(GQueuePool.Count - 1);
+    end;
+    GQueuePool.Free;
+  end;
+  GQueuePoolCS.Free;
+
+  if Assigned(GNextCallerPool) then
+  begin
+    while GNextCallerPool.Count > 0 do
+    begin
+      GNextCallerPool.Items[GNextCallerPool.Count - 1].Free;
+      GNextCallerPool.Delete(GNextCallerPool.Count - 1);
+    end;
+    GNextCallerPool.Free;
+  end;
+  GNextCallerPoolCS.Free;
+
+  if Assigned(GAllNextCallers) then
+  begin
+    GAllNextCallersCS.Enter;
+    try
+      while GAllNextCallers.Count > 0 do
+      begin
+        GAllNextCallers.Items[GAllNextCallers.Count - 1].Free;
+        GAllNextCallers.Delete(GAllNextCallers.Count - 1);
+      end;
+      GAllNextCallers.Free;
+    finally
+      GAllNextCallersCS.Leave;
+    end;
+  end;
+  GAllNextCallersCS.Free;
+
+end.

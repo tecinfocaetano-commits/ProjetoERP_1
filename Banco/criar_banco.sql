@@ -1,0 +1,3 @@
+CREATE DATABASE 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\dados.fdb' PAGE_SIZE 16384 DEFAULT CHARACTER SET UTF8;
+COMMIT;
+QUIT;
