@@ -494,10 +494,11 @@ begin
     FConexao.IniciarTransacao;
 
     // Calcular valor de fechamento
+    // (o CAST é necessário: SQLDB devolve expressões NUMERIC sem CAST como NULL)
     LQuery.SQL.Text :=
-      'SELECT COALESCE(C.VALOR_ABERTURA, 0) + ' +
+      'SELECT CAST(COALESCE(C.VALOR_ABERTURA, 0) + ' +
       'COALESCE((SELECT SUM(CASE WHEN MC.TIPO IN (''V'',''E'') THEN MC.VALOR ELSE -MC.VALOR END) ' +
-      'FROM MOVIMENTO_CAIXA MC WHERE MC.CAIXA_ID = C.ID), 0) AS SALDO ' +
+      'FROM MOVIMENTO_CAIXA MC WHERE MC.CAIXA_ID = C.ID), 0) AS NUMERIC(18,4)) AS SALDO ' +
       'FROM CAIXA C WHERE C.ID = :CX';
     LQuery.ParamByName('CX').AsLargeInt := FCaixaId;
     LQuery.Open;

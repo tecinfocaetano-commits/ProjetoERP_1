@@ -24,7 +24,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils,
-  uConexao, uSessao, uNotaSaidaService;
+  uConexao, uSessao, uNotaSaidaService, uPedidoStatus;
 
 type
   { TfrmNotaSaida }
@@ -279,8 +279,7 @@ begin
     '  COALESCE(C.NOME, ''(sem cliente)'') AS CLIENTE, ' +
     '  CP.DESCRICAO AS CONDICAO, ' +
     '  (SELECT COUNT(*) FROM ITEM_PEDIDO I WHERE I.PEDIDO_VENDA_ID = PV.ID) AS ITENS, ' +
-    '  CASE PV.STATUS WHEN ''P'' THEN ''Pendente'' WHEN ''A'' THEN ''Aprovado'' ' +
-    '       ELSE PV.STATUS END AS SITUACAO ' +
+    '  ' + SqlCaseStatusPedido('PV.STATUS') + ' AS SITUACAO ' +
     'FROM PEDIDO_VENDA PV ' +
     '  LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
     '  LEFT JOIN CONDICAO_PAGAMENTO CP ON CP.ID = PV.CONDICAO_PAGAMENTO_ID ' +

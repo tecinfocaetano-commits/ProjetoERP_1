@@ -11,7 +11,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils,
-  uConexao, uSessao, uACBrHelper;
+  uConexao, uSessao, uACBrHelper, uPedidoStatus;
 
 type
   TfrmNFe = class(TForm)
@@ -88,8 +88,7 @@ begin
   FQuery.SQL.Text :=
     'SELECT PV.ID, PV.NUMERO, C.NOME AS CLIENTE, PV.TOTAL, ' +
     'PV.DATA_EMISSAO, PV.NUMERO_NFE, PV.CHAVE_NFE, ' +
-    'CASE PV.STATUS WHEN ''P'' THEN ''Pendente'' WHEN ''A'' THEN ''Aprovado'' ' +
-    'WHEN ''F'' THEN ''Faturado'' WHEN ''C'' THEN ''Cancelado'' END AS STATUS ' +
+    SqlCaseStatusPedido('PV.STATUS') + ' AS STATUS ' +
     'FROM PEDIDO_VENDA PV ' +
     'LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
     'WHERE PV.DATA_EMISSAO BETWEEN :DI AND :DF ' +

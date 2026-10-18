@@ -54,6 +54,7 @@ uses
   // Views - Fase 4
   uFrmPedidoVenda,
   uFrmListaPedidos,
+  uFrmMapaProducao,
   uFrmOrcamento,
   // Views - Fase 5
   uFrmPDV,

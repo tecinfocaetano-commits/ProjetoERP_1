@@ -11,7 +11,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="51"/>
         <CursorPos Y="76"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Config\uConexao.pas"/>
@@ -19,52 +19,57 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="99"/>
         <CursorPos X="46" Y="108"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Models\uModelBase.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Models\uCliente.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Models\uProduto.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Models\uFornecedor.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Repositories\uRepositoryBase.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Services\uServiceBase.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Services\uClienteService.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Services\uACBrHelper.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="22"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="63"/>
+        <CursorPos Y="80"/>
+        <UsageCount Value="23"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src\Utils\uValidacoes.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Utils\uSessao.pas"/>
@@ -72,7 +77,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="21"/>
         <CursorPos X="46" Y="38"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmLogin.pas"/>
@@ -80,7 +85,7 @@
         <ComponentName Value="frmLogin"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmPrincipal.pas"/>
@@ -88,7 +93,7 @@
         <ComponentName Value="frmPrincipal"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmCadastroBase.pas"/>
@@ -96,7 +101,7 @@
         <ComponentName Value="frmCadastroBase"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmClientes.pas"/>
@@ -108,7 +113,7 @@
         <WindowIndex Value="-1"/>
         <TopLine Value="133"/>
         <CursorPos X="39" Y="152"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmFornecedores.pas"/>
@@ -116,7 +121,7 @@
         <ComponentName Value="frmFornecedores"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmProdutos.pas"/>
@@ -124,7 +129,7 @@
         <ComponentName Value="frmProdutos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmCategorias.pas"/>
@@ -135,7 +140,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="53"/>
         <CursorPos Y="70"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmUsuarios.pas"/>
@@ -143,7 +148,7 @@
         <ComponentName Value="frmUsuarios"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmMovEstoque.pas"/>
@@ -151,10 +156,9 @@
         <ComponentName Value="frmMovEstoque"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <IsVisibleTab Value="True"/>
         <TopLine Value="78"/>
-        <CursorPos X="65" Y="93"/>
-        <UsageCount Value="22"/>
+        <CursorPos X="57" Y="86"/>
+        <UsageCount Value="23"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
@@ -164,10 +168,10 @@
         <ComponentName Value="frmKardex"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="3"/>
         <TopLine Value="59"/>
         <CursorPos X="4" Y="82"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -176,7 +180,7 @@
         <ComponentName Value="frmInventario"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmPedidoVenda.pas"/>
@@ -184,7 +188,7 @@
         <ComponentName Value="frmPedidoVenda"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmListaPedidos.pas"/>
@@ -192,7 +196,7 @@
         <ComponentName Value="frmListaPedidos"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmOrcamento.pas"/>
@@ -200,7 +204,7 @@
         <ComponentName Value="frmOrcamento"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmPDV.pas"/>
@@ -208,7 +212,11 @@
         <ComponentName Value="frmPDV"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="325"/>
+        <CursorPos X="100" Y="346"/>
+        <UsageCount Value="23"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmContasReceber.pas"/>
@@ -216,7 +224,7 @@
         <ComponentName Value="frmContasReceber"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmContasPagar.pas"/>
@@ -224,7 +232,7 @@
         <ComponentName Value="frmContasPagar"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmNFe.pas"/>
@@ -232,7 +240,7 @@
         <ComponentName Value="frmNFe"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmCopiloto.pas"/>
@@ -240,45 +248,45 @@
         <ComponentName Value="frmCopiloto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="src\Tests\uAssert.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="21"/>
       </Unit>
       <Unit>
         <Filename Value="src\Tests\uFrmLoginTest.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="21"/>
       </Unit>
       <Unit>
         <Filename Value="src\Tests\uFrmClientesTest.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="21"/>
       </Unit>
       <Unit>
         <Filename Value="src\Tests\uFrmProdutosTest.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="21"/>
       </Unit>
       <Unit>
         <Filename Value="src\Tests\uFrmCategoriasTest.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="21"/>
       </Unit>
       <Unit>
         <Filename Value="src\Tests\uFrmUsuariosTest.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="21"/>
       </Unit>
       <Unit>
         <Filename Value="src\Tests\uTestRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="21"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="12">
+    <JumpHistory HistoryIndex="14">
       <Position>
         <Filename Value="src\Views\uFrmMovEstoque.pas"/>
         <Caret Line="80" Column="77" TopLine="78"/>
@@ -330,6 +338,14 @@
       <Position>
         <Filename Value="src\Views\uFrmKardex.pas"/>
         <Caret Line="90" Column="21" TopLine="59"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmMovEstoque.pas"/>
+        <Caret Line="86" Column="57" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Views\uFrmPDV.pas"/>
+        <Caret Line="346" Column="100" TopLine="325"/>
       </Position>
     </JumpHistory>
     <RunParams>

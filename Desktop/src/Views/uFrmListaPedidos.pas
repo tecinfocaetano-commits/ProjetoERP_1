@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils,
-  uConexao, uFrmPedidoVenda;
+  uConexao, uFrmPedidoVenda, uPedidoStatus, uPermissao, uFrmMapaProducao;
 
 type
   { TfrmListaPedidos }
@@ -30,6 +30,7 @@ type
     pnlBotoes: TPanel;
     btnNovoPedido: TBitBtn;
     btnVisualizar: TBitBtn;
+    btnMapaProducao: TBitBtn;
     btnFechar: TBitBtn;
     dbGrid: TDBGrid;
     DataSource1: TDataSource;
@@ -37,6 +38,7 @@ type
     procedure FormShow(Sender: TObject);
     procedure btnNovoPedidoClick(Sender: TObject);
     procedure btnVisualizarClick(Sender: TObject);
+    procedure btnMapaProducaoClick(Sender: TObject);
     procedure btnFiltrarClick(Sender: TObject);
     procedure btnFecharClick(Sender: TObject);
   private
@@ -80,17 +82,18 @@ begin
 end;
 
 procedure TfrmListaPedidos.FormShow(Sender: TObject);
+var
+  LStatusEnum: TPedidoStatus;
 begin
   try
     edtDataInicio.Text := FormatDateTime('dd/mm/yyyy', IncMonth(Now, -1));
     edtDataFim.Text := FormatDateTime('dd/mm/yyyy', Now);
 
-    // Inicializar ComboBox de filtro
+    // Inicializar ComboBox de filtro (rótulos vêm de uPedidoStatus)
     cmbStatusFiltro.Items.Clear;
     cmbStatusFiltro.Items.Add('Todos');
-    cmbStatusFiltro.Items.Add('Pendente');
-    cmbStatusFiltro.Items.Add('Aberto');
-    cmbStatusFiltro.Items.Add('Cancelado');
+    for LStatusEnum := Low(TPedidoStatus) to High(TPedidoStatus) do
+      cmbStatusFiltro.Items.Add(DescricaoDoStatusEnum(LStatusEnum));
     cmbStatusFiltro.ItemIndex := 0;
 
     CarregarPedidos;
@@ -108,20 +111,16 @@ begin
   LSQL :=
     'SELECT PV.ID, PV.NUMERO, PV.DATA_EMISSAO, C.NOME AS CLIENTE, ' +
     'PV.TOTAL, ' +
-    'CASE PV.STATUS WHEN ''P'' THEN ''Pendente'' WHEN ''A'' THEN ''Aprovado'' ' +
-    'WHEN ''F'' THEN ''Faturado'' WHEN ''C'' THEN ''Cancelado'' END AS STATUS_DESC ' +
+    SqlCaseStatusPedido('PV.STATUS') + ' AS STATUS_DESC ' +
     'FROM PEDIDO_VENDA PV ' +
     'JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
     'WHERE PV.DATA_EMISSAO BETWEEN :DI AND :DF';
 
   if cmbStatusFiltro.ItemIndex > 0 then
   begin
-    case cmbStatusFiltro.ItemIndex of
-      1: LStatus := 'P';
-      2: LStatus := 'A';
-      3: LStatus := 'F';
-      4: LStatus := 'C';
-    end;
+    // índice 1..6 na mesma ordem do tipo TPedidoStatus (uPedidoStatus)
+    LStatus := CodigoDoStatus(
+      TPedidoStatus(cmbStatusFiltro.ItemIndex - 1));
     LSQL := LSQL + ' AND PV.STATUS = :STATUS';
   end;
 
@@ -160,6 +159,23 @@ begin
     'Total: R$ ' + FormatFloat('#,##0.00', FQuery.FieldByName('TOTAL').AsFloat) + #13#10 +
     'Status: ' + FQuery.FieldByName('STATUS_DESC').AsString,
     mtInformation, [mbOK], 0);
+end;
+
+procedure TfrmListaPedidos.btnMapaProducaoClick(Sender: TObject);
+begin
+  if not TemPermissao(MODULO_PRODUCAO, TELA_MAPA_PRODUCAO, PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para acessar o Mapa de Produção.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  with TfrmMapaProducao.Create(Application) do
+    try
+      ShowModal;
+    finally
+      Free;
+    end;
+  CarregarPedidos;
 end;
 
 procedure TfrmListaPedidos.btnFiltrarClick(Sender: TObject);

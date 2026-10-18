@@ -11,7 +11,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus,
-  ComCtrls, ExtCtrls, StdCtrls, uSessao;
+  ComCtrls, ExtCtrls, StdCtrls, uSessao, uPermissao;
 
 type
   { TfrmPrincipal }
@@ -36,6 +36,8 @@ type
     mnuSep3: TMenuItem;
     mnuVenListaPedidos: TMenuItem;
     mnuVenNotaSaida: TMenuItem;
+    mnuProducao: TMenuItem;
+    mnuProMapaProducao: TMenuItem;
     mnuPDV: TMenuItem;
     mnuPDVAbrirPDV: TMenuItem;
     mnuFinanceiro: TMenuItem;
@@ -72,6 +74,7 @@ type
     procedure mnuVenOrcamentosClick(Sender: TObject);
     procedure mnuVenListaPedidosClick(Sender: TObject);
 procedure mnuVenNotaSaidaClick(Sender: TObject);
+    procedure mnuProMapaProducaoClick(Sender: TObject);
     procedure mnuPDVAbrirPDVClick(Sender: TObject);
     procedure mnuFinContasReceberClick(Sender: TObject);
     procedure mnuFinContasPagarClick(Sender: TObject);
@@ -92,7 +95,7 @@ implementation
 uses
   uFrmClientes, uFrmFornecedores, uFrmProdutos, uFrmCategorias, uFrmUsuarios,
   uFrmMovEstoque, uFrmKardex, uFrmInventario,
-  uFrmNotaEntrada, uFrmNotaSaida,
+  uFrmNotaEntrada, uFrmNotaSaida, uFrmMapaProducao,
   uFrmPedidoVenda, uFrmListaPedidos, uFrmOrcamento,
   uFrmPDV, uFrmContasReceber, uFrmContasPagar,
   uFrmNFe, uFrmCopiloto;
@@ -218,6 +221,18 @@ end;
 procedure TfrmPrincipal.mnuVenNotaSaidaClick(Sender: TObject);
 begin
   AbrirFormulario(TfrmNotaSaida);
+end;
+
+// === Produção ===
+procedure TfrmPrincipal.mnuProMapaProducaoClick(Sender: TObject);
+begin
+  if not TemPermissao(MODULO_PRODUCAO, TELA_MAPA_PRODUCAO, PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para acessar o Módulo de Produção.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  AbrirFormulario(TfrmMapaProducao);
 end;
 
 // === PDV ===

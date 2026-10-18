@@ -131,6 +131,13 @@ object frmPrincipal: TfrmPrincipal
         OnClick = mnuVenNotaSaidaClick
       end
     end
+    object mnuProducao: TMenuItem
+      Caption = 'Produção'
+      object mnuProMapaProducao: TMenuItem
+        Caption = 'Mapa de Produção'
+        OnClick = mnuProMapaProducaoClick
+      end
+    end
     object mnuPDV: TMenuItem
       Caption = 'PDV'
       object mnuPDVAbrirPDV: TMenuItem

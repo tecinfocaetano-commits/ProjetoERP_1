@@ -1,0 +1,611 @@
+object frmMapaProducao: TfrmMapaProducao
+  Left = 0
+  Height = 720
+  Top = 0
+  Width = 1150
+  Caption = 'Produção - Mapa de Produção'
+  ClientHeight = 720
+  ClientWidth = 1150
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '3.2.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 1150
+    Align = alTop
+    ClientHeight = 50
+    ClientWidth = 1150
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 28
+      Top = 12
+      Width = 640
+      Caption = 'Produção - Mapa de Produção (pedido → mapa → talões)'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlFiltros: TPanel
+    Left = 0
+    Height = 40
+    Top = 50
+    Width = 1150
+    Align = alTop
+    ClientHeight = 40
+    ClientWidth = 1150
+    TabOrder = 1
+    object lblFiltroDe: TLabel
+      Left = 8
+      Height = 15
+      Top = 10
+      Width = 17
+      Caption = 'De:'
+    end
+    object edtFiltroDe: TEdit
+      Left = 40
+      Height = 23
+      Top = 7
+      Width = 110
+      TabOrder = 0
+    end
+    object lblFiltroAte: TLabel
+      Left = 165
+      Height = 15
+      Top = 10
+      Width = 21
+      Caption = 'Até:'
+    end
+    object edtFiltroAte: TEdit
+      Left = 198
+      Height = 23
+      Top = 7
+      Width = 110
+      TabOrder = 1
+    end
+    object lblFiltroStatus: TLabel
+      Left = 325
+      Height = 15
+      Top = 10
+      Width = 37
+      Caption = 'Status:'
+    end
+    object cmbFiltroStatus: TComboBox
+      Left = 372
+      Height = 23
+      Top = 7
+      Width = 190
+      ItemHeight = 15
+      ItemIndex = 0
+      Items.Strings = (
+        'Todos'
+        'Aberto'
+        'Em produção'
+        'Concluído'
+        'Cancelado'
+      )
+      Style = csDropDownList
+      TabOrder = 2
+      Text = 'Todos'
+    end
+    object btnFiltrar: TBitBtn
+      Left = 578
+      Height = 28
+      Top = 5
+      Width = 90
+      Caption = 'Filtrar'
+      OnClick = btnFiltrarClick
+      TabOrder = 3
+    end
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 44
+    Top = 90
+    Width = 1150
+    Align = alTop
+    ClientHeight = 44
+    ClientWidth = 1150
+    TabOrder = 2
+    object btnNovoMapa: TBitBtn
+      Left = 8
+      Height = 34
+      Top = 5
+      Width = 160
+      Caption = 'Novo do Pedido'
+      Font.Style = [fsBold]
+      OnClick = btnNovoMapaClick
+      ParentFont = False
+      TabOrder = 0
+    end
+    object btnCancelarMapa: TBitBtn
+      Left = 176
+      Height = 34
+      Top = 5
+      Width = 150
+      Caption = 'Cancelar Mapa'
+      OnClick = btnCancelarMapaClick
+      TabOrder = 1
+    end
+    object btnFechar: TBitBtn
+      Left = 1050
+      Height = 34
+      Top = 5
+      Width = 90
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 2
+    end
+  end
+  object pnlLista: TPanel
+    Left = 0
+    Height = 586
+    Top = 134
+    Width = 1150
+    Align = alClient
+    ClientHeight = 586
+    ClientWidth = 1150
+    TabOrder = 3
+    object dbGridMapas: TDBGrid
+      Left = 1
+      Height = 230
+      Top = 1
+      Width = 1148
+      Align = alTop
+      Columns = <
+        item
+          Expanded = False
+          FieldName = 'NUMERO'
+          Title.Caption = 'Mapa'
+          Width = 60
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'PEDIDO'
+          Title.Caption = 'Pedido'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'CLIENTE'
+          Title.Caption = 'Cliente'
+          Width = 260
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DATA_CRIACAO'
+          Title.Caption = 'Criação'
+          Width = 120
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DATA_PREVISTA'
+          Title.Caption = 'Prevista'
+          Width = 90
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'ITENS'
+          Title.Caption = 'Itens'
+          Width = 50
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'STATUS_DESC'
+          Title.Caption = 'Status'
+          Width = 110
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DATA_FIM'
+          Title.Caption = 'Conclusão'
+          Width = 120
+          Visible = True
+        end>
+      DataSource = DataSourceMapas
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ReadOnly = True
+      TabOrder = 0
+      OnDblClick = dbGridMapasDblClick
+    end
+    object pnlDetalhe: TPanel
+      Left = 1
+      Height = 355
+      Top = 231
+      Width = 1148
+      Align = alClient
+      ClientHeight = 355
+      ClientWidth = 1148
+      TabOrder = 1
+      object lblDetalheTitulo: TLabel
+        Left = 8
+        Height = 20
+        Top = 6
+        Width = 1130
+        AutoSize = False
+        Caption = 'Selecione um mapa na lista para ver os itens.'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object lblProgresso: TLabel
+        Left = 8
+        Height = 20
+        Top = 30
+        Width = 1130
+        AutoSize = False
+        Caption = ''
+        Font.Height = -12
+        ParentFont = False
+      end
+      object lblTaloesTitulo: TLabel
+        Left = 8
+        Height = 20
+        Top = 56
+        Width = 1130
+        AutoSize = False
+        Caption = 'Itens do mapa (talões serão gerados na próxima fase)'
+      end
+      object dbGridItensMapa: TDBGrid
+        Left = 8
+        Height = 270
+        Top = 80
+        Width = 1132
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        Columns = <
+          item
+            Expanded = False
+            FieldName = 'CODIGO'
+            Title.Caption = 'Código'
+            Width = 100
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'DESCRICAO'
+            Title.Caption = 'Produto'
+            Width = 320
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'QUANTIDADE'
+            Title.Caption = 'A produzir'
+            Width = 100
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'PRODUZIDO'
+            Title.Caption = 'Produzido'
+            Width = 100
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'TALOES'
+            Title.Caption = 'Talões'
+            Width = 60
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'CONCLUIDOS'
+            Title.Caption = 'Concluídos'
+            Width = 80
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'STATUS_DESC'
+            Title.Caption = 'Status'
+            Width = 110
+            Visible = True
+          end>
+        DataSource = DataSourceItensMapa
+        Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+        ReadOnly = True
+        TabOrder = 0
+      end
+    end
+  end
+  object pnlCriar: TPanel
+    Left = 0
+    Height = 586
+    Top = 134
+    Width = 1150
+    Align = alClient
+    ClientHeight = 586
+    ClientWidth = 1150
+    TabOrder = 4
+    Visible = False
+    object lblPedidosTitulo: TLabel
+      Left = 8
+      Height = 20
+      Top = 6
+      Width = 1130
+      AutoSize = False
+      Caption = 'Pedidos com saldo a produzir (selecione um)'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object dbGridPedidos: TDBGrid
+      Left = 8
+      Height = 140
+      Top = 30
+      Width = 1132
+      Anchors = [akTop, akLeft, akRight]
+      Columns = <
+        item
+          Expanded = False
+          FieldName = 'NUMERO'
+          Title.Caption = 'Pedido'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'CLIENTE'
+          Title.Caption = 'Cliente'
+          Width = 320
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DATA_EMISSAO'
+          Title.Caption = 'Emissão'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'STATUS_DESC'
+          Title.Caption = 'Status'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'TOTAL'
+          Title.Caption = 'Total'
+          Width = 110
+          Visible = True
+        end>
+      DataSource = DataSourcePedidos
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ReadOnly = True
+      TabOrder = 0
+    end
+    object lblItensTitulo: TLabel
+      Left = 8
+      Height = 20
+      Top = 180
+      Width = 1130
+      AutoSize = False
+      Caption = 'Itens do pedido (duplo clique inclui a quantidade pendente)'
+    end
+    object dbGridItensPedido: TDBGrid
+      Left = 8
+      Height = 130
+      Top = 204
+      Width = 1132
+      Anchors = [akTop, akLeft, akRight]
+      Columns = <
+        item
+          Expanded = False
+          FieldName = 'CODIGO'
+          Title.Caption = 'Código'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'DESCRICAO'
+          Title.Caption = 'Produto'
+          Width = 380
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'PEDIDA'
+          Title.Caption = 'Qtd. pedida'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'MAPEADO'
+          Title.Caption = 'Já mapeado'
+          Width = 100
+          Visible = True
+        end
+        item
+          Expanded = False
+          FieldName = 'PENDENTE'
+          Title.Caption = 'Saldo a produzir'
+          Width = 120
+          Visible = True
+        end>
+      DataSource = DataSourceItensPedido
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ReadOnly = True
+      TabOrder = 1
+      OnDblClick = dbGridItensPedidoDblClick
+    end
+    object pnlAddItens: TPanel
+      Left = 8
+      Height = 40
+      Top = 340
+      Width = 1132
+      Anchors = [akTop, akLeft, akRight]
+      BevelOuter = bvNone
+      ClientHeight = 40
+      ClientWidth = 1132
+      TabOrder = 2
+      object lblQtd: TLabel
+        Left = 0
+        Height = 15
+        Top = 12
+        Width = 110
+        Caption = 'Quantidade a produzir:'
+      end
+      object edtQuantidade: TEdit
+        Left = 116
+        Height = 23
+        Top = 8
+        Width = 90
+        Alignment = taRightJustify
+        TabOrder = 0
+        Text = '0'
+      end
+      object btnIncluirItem: TBitBtn
+        Left = 214
+        Height = 28
+        Top = 6
+        Width = 130
+        Caption = 'Incluir Item'
+        OnClick = btnIncluirItemClick
+        TabOrder = 1
+      end
+      object btnIncluirTodos: TBitBtn
+        Left = 352
+        Height = 28
+        Top = 6
+        Width = 150
+        Caption = 'Incluir Todos'
+        OnClick = btnIncluirTodosClick
+        TabOrder = 2
+      end
+      object btnRemoverItem: TBitBtn
+        Left = 510
+        Height = 28
+        Top = 6
+        Width = 150
+        Caption = 'Remover Selecionado'
+        OnClick = btnRemoverItemClick
+        TabOrder = 3
+      end
+    end
+    object lblNovosTitulo: TLabel
+      Left = 8
+      Height = 20
+      Top = 388
+      Width = 1130
+      AutoSize = False
+      Caption = 'Itens do novo mapa'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object pnlRodapeCriar: TPanel
+      Left = 0
+      Height = 60
+      Top = 526
+      Width = 1150
+      Align = alBottom
+      BevelOuter = bvLowered
+      ClientHeight = 60
+      ClientWidth = 1150
+      TabOrder = 3
+      object lblObservacao: TLabel
+        Left = 8
+        Height = 15
+        Top = 6
+        Width = 70
+        Caption = 'Observação:'
+      end
+      object edtObservacao: TEdit
+        Left = 8
+        Height = 23
+        Top = 26
+        Width = 500
+        TabOrder = 0
+      end
+      object lblDataPrevista: TLabel
+        Left = 520
+        Height = 15
+        Top = 6
+        Width = 120
+        Caption = 'Prevista para (dia):'
+      end
+      object edtDataPrevista: TEdit
+        Left = 520
+        Height = 23
+        Top = 26
+        Width = 110
+        TabOrder = 1
+        Text = '0'
+      end
+      object btnGerarMapa: TBitBtn
+        Left = 790
+        Height = 46
+        Top = 7
+        Width = 170
+        Caption = 'Gerar Mapa de Produção'
+        Font.Style = [fsBold]
+        OnClick = btnGerarMapaClick
+        ParentFont = False
+        TabOrder = 2
+      end
+      object btnVoltar: TBitBtn
+        Left = 968
+        Height = 46
+        Top = 7
+        Width = 90
+        Caption = 'Voltar'
+        OnClick = btnVoltarClick
+        TabOrder = 3
+      end
+    end
+    object sgItensNovos: TStringGrid
+      Left = 8
+      Height = 130
+      Top = 412
+      Width = 1132
+      Anchors = [akTop, akLeft, akRight, akBottom]
+      ColCount = 3
+      FixedCols = 0
+      FixedRows = 1
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSelect, goColSizing]
+      RowCount = 1
+      TabOrder = 4
+      ColWidths = (
+        110
+        600
+        120
+      )
+    end
+  end
+  object DataSourceMapas: TDataSource
+    OnDataChange = DataSourceMapasDataChange
+    Left = 800
+    Top = 160
+  end
+  object DataSourceItensMapa: TDataSource
+    Left = 860
+    Top = 160
+  end
+  object DataSourcePedidos: TDataSource
+    OnDataChange = DataSourcePedidosDataChange
+    Left = 920
+    Top = 160
+  end
+  object DataSourceItensPedido: TDataSource
+    OnDataChange = DataSourceItensPedidoDataChange
+    Left = 980
+    Top = 160
+  end
+end

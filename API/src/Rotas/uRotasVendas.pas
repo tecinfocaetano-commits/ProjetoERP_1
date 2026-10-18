@@ -17,7 +17,7 @@ procedure RegistrarRotasVendas;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uPedidoStatus;
 
 procedure GetVendas(Req: THorseRequest; Res: THorseResponse);
 var
@@ -33,8 +33,9 @@ begin
     LQuery.Transaction := LConexao.Transaction;
     LQuery.SQL.Text :=
       'SELECT PV.ID, PV.NUMERO, C.NOME AS CLIENTE, PV.TOTAL, PV.DATA_EMISSAO, ' +
-      'CASE PV.STATUS WHEN ''P'' THEN ''Pendente'' WHEN ''A'' THEN ''Aprovado'' ' +
-      'WHEN ''F'' THEN ''Faturado'' WHEN ''C'' THEN ''Cancelado'' WHEN ''O'' THEN ''Orçamento'' END AS STATUS ' +
+      // rótulos de status centralizados em uPedidoStatus; 'O' (orçamento) à parte
+      'CASE WHEN PV.STATUS = ''O'' THEN ''Orçamento'' ELSE ' +
+        SqlCaseStatusPedido('PV.STATUS') + ' END AS STATUS ' +
       'FROM PEDIDO_VENDA PV LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
       'ORDER BY PV.DATA_EMISSAO DESC ROWS 100';
     LQuery.Open;
