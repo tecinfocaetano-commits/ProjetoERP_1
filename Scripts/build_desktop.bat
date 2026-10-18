@@ -15,6 +15,10 @@ if not exist "%LAZBUILD%" (
 "%LAZBUILD%" "%ROOT%\Desktop\ERP2026.lpi"
 if errorlevel 1 goto :erro
 
+REM Relatorios LazReport (.lrf) - o exe carrega de bin\relatorios
+if not exist "%ROOT%\Desktop\bin\relatorios" mkdir "%ROOT%\Desktop\bin\relatorios"
+copy /Y "%ROOT%\Desktop\relatorios\*.lrf" "%ROOT%\Desktop\bin\relatorios\" >nul
+
 echo.
 echo === Desktop compilado: Desktop\bin\ERP2026.exe ===
 echo (login: admin / admin123)

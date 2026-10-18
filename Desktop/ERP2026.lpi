@@ -60,6 +60,9 @@
       <Item>
         <PackageName Value="LCL"/>
       </Item>
+      <Item>
+        <PackageName Value="lazreport"/>
+      </Item>
     </RequiredPackages>
     <Units>
       <Unit>

@@ -23,6 +23,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, Grids, DBGrids, DB, SQLDB, DateUtils,
+  LR_Class, LR_DBSet, LR_Barc,
   uConexao, uSessao, uProducaoService, uPedidoStatus, uPermissao;
 
 type
@@ -49,6 +50,14 @@ type
     lblProgresso: TLabel;
     lblTaloesTitulo: TLabel;
     dbGridItensMapa: TDBGrid;
+    pnlTaloesBarra: TPanel;
+    lblTaloesSel: TLabel;
+    btnGerarTaloes: TBitBtn;
+    btnVisualizarTalao: TBitBtn;
+    btnImprimirTalao: TBitBtn;
+    btnCancelarTalao: TBitBtn;
+    lblQtdTaloes: TLabel;
+    dbGridTaloes: TDBGrid;
     pnlCriar: TPanel;
     lblPedidosTitulo: TLabel;
     dbGridPedidos: TDBGrid;
@@ -73,6 +82,7 @@ type
     DataSourceItensMapa: TDataSource;
     DataSourcePedidos: TDataSource;
     DataSourceItensPedido: TDataSource;
+    DataSourceTaloes: TDataSource;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure btnFiltrarClick(Sender: TObject);
@@ -86,6 +96,10 @@ type
     procedure btnGerarMapaClick(Sender: TObject);
     procedure dbGridItensPedidoDblClick(Sender: TObject);
     procedure dbGridMapasDblClick(Sender: TObject);
+    procedure btnGerarTaloesClick(Sender: TObject);
+    procedure btnVisualizarTalaoClick(Sender: TObject);
+    procedure btnImprimirTalaoClick(Sender: TObject);
+    procedure btnCancelarTalaoClick(Sender: TObject);
     procedure DataSourceMapasDataChange(Sender: TObject; Field: TField);
     procedure DataSourcePedidosDataChange(Sender: TObject; Field: TField);
     procedure DataSourceItensPedidoDataChange(Sender: TObject; Field: TField);
@@ -95,6 +109,9 @@ type
     FItensMapa: TSQLQuery;
     FPedidos: TSQLQuery;
     FItensPedido: TSQLQuery;
+    FTaloes: TSQLQuery;          { fonte da grade/relatório de talões }
+    FFrReport: TfrReport;        { LazReport: talão com código de barras }
+    FFrDBTalao: TfrDBDataSet;    { nome deve bater com o DatasetStr do .lrf }
     FService: TProducaoService;
     FMapaId: Int64;
     FPedidoId: Int64;
@@ -108,6 +125,11 @@ type
     procedure CarregarComboStatus;
     procedure CarregarMapas;
     procedure CarregarDetalheMapa(AMapaId: Int64);
+    procedure CarregarTaloes(AMapaId: Int64);
+    procedure PrepararRelatorioTalao;
+    function  CaminhoRelatorioTalao: string;
+    function  ItemSelecionadoDoMapa: Int64;
+    function  TalaoSelecionado: Int64;
     procedure ModoLista;
     procedure ModoCriar;
     procedure CarregarPedidos;
@@ -192,6 +214,18 @@ begin
   FItensPedido.DataBase := FConexao.Connection;
   FItensPedido.Transaction := FConexao.Transaction;
   DataSourceItensPedido.DataSet := FItensPedido;
+
+  FTaloes := TSQLQuery.Create(Self);
+  FTaloes.DataBase := FConexao.Connection;
+  FTaloes.Transaction := FConexao.Transaction;
+  DataSourceTaloes.DataSet := FTaloes;
+
+  // LazReport: nome do dataset = DatasetStr do relatório talão.lrf
+  FFrDBTalao := TfrDBDataSet.Create(Self);
+  FFrDBTalao.Name := 'frDBTalao';
+  FFrDBTalao.DataSet := FTaloes;
+  FFrReport := TfrReport.Create(Self);
+  FFrReport.ShowProgress := False;   { relatório curto: sem janela de progresso }
 
   FService := TProducaoService.Create;
   FMapaId := 0;
@@ -299,10 +333,15 @@ begin
     FCarregando := False;
   end;
 
+  // mantém o mapa que o usuário estava vindo a ver (se ainda existir no filtro)
   if FMapas.IsEmpty then
     CarregarDetalheMapa(0)
   else
+  begin
+    if FMapaId > 0 then
+      FMapas.Locate('ID', FMapaId, []);   { se não achar, fica no 1º }
     CarregarDetalheMapa(FMapas.FieldByName('ID').AsLargeInt);
+  end;
 end;
 
 procedure TfrmMapaProducao.CarregarDetalheMapa(AMapaId: Int64);
@@ -315,6 +354,8 @@ begin
 
   if FItensMapa.Active then
     FItensMapa.Close;
+
+  CarregarTaloes(AMapaId);   { grade de talões acompanha o mapa selecionado }
 
   if AMapaId <= 0 then
   begin
@@ -800,6 +841,325 @@ begin
   Result := TemPermissao(MODULO_PRODUCAO, TELA_MAPA_PRODUCAO, AAcao);
   if not Result then
     MessageDlg(AMensagem, mtWarning, [mbOK], 0);
+end;
+
+{ =====================================================================
+  TALÕES (Fase 3) - grade, geração e relatório LazReport (Code128B)
+  ===================================================================== }
+
+procedure TfrmMapaProducao.CarregarTaloes(AMapaId: Int64);
+var
+  LTotal: Integer;
+begin
+  if FTaloes.Active then
+    FTaloes.Close;
+  lblQtdTaloes.Caption := '';
+
+  if AMapaId <= 0 then
+    Exit;
+
+  // mesmos campos entram na grade e no relatório talão.lrf
+  FTaloes.SQL.Text :=
+    'SELECT T.ID, T.NUMERO, T.SEQUENCIA, ' +
+    '  CAST(T.QUANTIDADE AS NUMERIC(15,4)) AS QTD, ' +
+    '  T.CODIGO_BARRAS, T.DATA_GERACAO, ' +
+    '  COALESCE(T.QTD_IMPRESSOES, 0) AS QTD_IMPRESSOES, ' +
+    '  CASE T.STATUS WHEN ''GERADO'' THEN ''Gerado'' ' +
+    '       WHEN ''IMPRESSO'' THEN ''Impresso'' ' +
+    '       WHEN ''EM_PRODUCAO'' THEN ''Em produção'' ' +
+    '       WHEN ''CONCLUIDO'' THEN ''Concluído'' ' +
+    '       WHEN ''CANCELADO'' THEN ''Cancelado'' ELSE T.STATUS END AS STATUS_DESC, ' +
+    '  COALESCE(PR.CODIGO, '''') || ' +
+    '    CASE WHEN PR.DESCRICAO IS NULL THEN '''' ELSE '' - '' || PR.DESCRICAO END ' +
+    '    AS PRODUTO, ' +
+    '  M.NUMERO AS MAPA_NUMERO, PV.NUMERO AS PEDIDO_NUMERO, ' +
+    '  COALESCE(C.NOME, ''(sem cliente)'') AS CLIENTE, ' +
+    '  CASE WHEN M.DATA_PREVISTA IS NULL THEN '''' ELSE ' +
+    '    SUBSTRING(CAST(M.DATA_PREVISTA AS VARCHAR(10)) FROM 9 FOR 2) || ''/'' || ' +
+    '    SUBSTRING(CAST(M.DATA_PREVISTA AS VARCHAR(10)) FROM 6 FOR 2) || ''/'' || ' +
+    '    SUBSTRING(CAST(M.DATA_PREVISTA AS VARCHAR(10)) FROM 1 FOR 4) END AS PREVISTA, ' +
+    '  CASE WHEN T.DATA_GERACAO IS NULL THEN '''' ELSE ' +
+    '    SUBSTRING(CAST(CAST(T.DATA_GERACAO AS DATE) AS VARCHAR(10)) FROM 9 FOR 2) || ''/'' || ' +
+    '    SUBSTRING(CAST(CAST(T.DATA_GERACAO AS DATE) AS VARCHAR(10)) FROM 6 FOR 2) || ''/'' || ' +
+    '    SUBSTRING(CAST(CAST(T.DATA_GERACAO AS DATE) AS VARCHAR(10)) FROM 1 FOR 4) END AS EMISSAO ' +
+    'FROM TALAO T ' +
+    '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
+    '  JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
+    '  JOIN PEDIDO_VENDA PV ON PV.ID = M.PEDIDO_VENDA_ID ' +
+    '  LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
+    '  LEFT JOIN PRODUTO PR ON PR.ID = MI.PRODUTO_ID ' +
+    'WHERE M.ID = :MAPA ' +
+    'ORDER BY T.NUMERO';
+  FTaloes.ParamByName('MAPA').AsLargeInt := AMapaId;
+  FTaloes.Open;
+
+  { máscara do campo numérico (TField base não expõe DisplayFormat) }
+  if FTaloes.FieldByName('QTD') is TNumericField then
+    TNumericField(FTaloes.FieldByName('QTD')).DisplayFormat := '#,##0.####';
+
+  LTotal := 0;
+  FTaloes.First;
+  while not FTaloes.EOF do
+  begin
+    Inc(LTotal);
+    FTaloes.Next;
+  end;
+  FTaloes.First;
+
+  if LTotal = 0 then
+    lblQtdTaloes.Caption := 'Nenhum talão gerado para este mapa.'
+  else
+    lblQtdTaloes.Caption := Format(
+      '%d talão(ões) no mapa   |   novos talões são gerados no item selecionado na lista acima.',
+      [LTotal]);
+end;
+
+function TfrmMapaProducao.ItemSelecionadoDoMapa: Int64;
+begin
+  Result := 0;
+  if FItensMapa.Active and (not FItensMapa.IsEmpty) then
+    Result := FItensMapa.FieldByName('ID').AsLargeInt;
+end;
+
+function TfrmMapaProducao.TalaoSelecionado: Int64;
+begin
+  Result := 0;
+  if FTaloes.Active and (not FTaloes.IsEmpty) then
+    Result := FTaloes.FieldByName('ID').AsLargeInt;
+end;
+
+function TfrmMapaProducao.CaminhoRelatorioTalao: string;
+begin
+  { o exe roda de Desktop\bin\ : relatorios\talao.lrf fica ao lado dele }
+  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
+    'relatorios' + PathDelim + 'talao.lrf';
+end;
+
+procedure TfrmMapaProducao.PrepararRelatorioTalao;
+var
+  LCaminho: string;
+begin
+  LCaminho := CaminhoRelatorioTalao;
+  if not FileExists(LCaminho) then
+    raise Exception.Create(
+      'Arquivo do relatório de talão não encontrado.' + sLineBreak +
+      LCaminho + sLineBreak +
+      'Mantenha a pasta "relatorios" ao lado do ERP2026.exe.');
+  FFrReport.LoadFromFile(LCaminho);   { .lrf = XML do LazReport }
+end;
+
+procedure TfrmMapaProducao.btnGerarTaloesClick(Sender: TObject);
+var
+  LItemId: Int64;
+  LGerados, LUltimo: Integer;
+  LModo, LStatus: string;
+begin
+  if FMapaId <= 0 then
+  begin
+    MessageDlg('Selecione um mapa de produção na lista.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  LItemId := ItemSelecionadoDoMapa;
+  if LItemId <= 0 then
+  begin
+    MessageDlg('Selecione um item do mapa (lista superior) para gerar os talões.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  LStatus := Trim(FMapas.FieldByName('STATUS').AsString);
+  if (LStatus <> 'ABERTO') and (LStatus <> 'EM_PRODUCAO') then
+  begin
+    MessageDlg(Format(
+      'O mapa nº %d está como "%s": talões só podem ser gerados em mapa aberto ou em produção.',
+      [NumeroDoMapa(FMapaId), DescricaoStatusMapa(LStatus)]),
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  if not VerificarPermissaoAcao(PERM_INSERIR,
+    'Seu usuário não tem permissão para gerar talões de produção.') then
+    Exit;
+
+  LModo := FService.ModoTalao;
+  if MessageDlg('Gerar talões',
+    Format('Gerar talões para o item selecionado?' + sLineBreak + sLineBreak +
+      'Modo configurado: %s (chave PRODUCAO_TALAO_MODO)' + sLineBreak +
+      'A quantidade de talões respeita o saldo pendente do item.',
+      [LModo]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+
+  try
+    LUltimo := FService.GerarTaloes(LItemId, LModo, LGerados);
+  except
+    on E: Exception do
+    begin
+      MessageDlg('Não foi possível gerar os talões:' + sLineBreak + E.Message,
+        mtError, [mbOK], 0);
+      { a transação do service sofreu rollback: recarrega para as grades
+        não ficarem com cursores invalidados (SQLDB invalida cursores abertos) }
+      try
+        CarregarMapas;
+      except
+        { se o recarregar falhar, mantém a tela como está }
+      end;
+      Exit;
+    end;
+  end;
+
+  MessageDlg(Format('%d talão(ões) gerado(s) com sucesso.' + sLineBreak +
+    'Último número: %d   |   Código de barras: %s',
+    [LGerados, LUltimo, Format('T%.6d', [LUltimo])]),
+    mtInformation, [mbOK], 0);
+
+  CarregarMapas;   { lista, itens, progresso e talões }
+end;
+
+procedure TfrmMapaProducao.btnVisualizarTalaoClick(Sender: TObject);
+begin
+  if FMapaId <= 0 then
+  begin
+    MessageDlg('Selecione um mapa de produção na lista.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if (not FTaloes.Active) or FTaloes.IsEmpty then
+  begin
+    MessageDlg('Este mapa ainda não tem talões. Use "Gerar Talões" primeiro.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  try
+    PrepararRelatorioTalao;
+    FFrReport.ShowReport;   { pré-visualização; não altera status dos talões }
+  except
+    on E: Exception do
+      MessageDlg('Não foi possível exibir o relatório de talões:' + sLineBreak +
+        E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmMapaProducao.btnImprimirTalaoClick(Sender: TObject);
+var
+  LImpressos: Integer;
+  LStatus: string;
+begin
+  if FMapaId <= 0 then
+  begin
+    MessageDlg('Selecione um mapa de produção na lista.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if (not FTaloes.Active) or FTaloes.IsEmpty then
+  begin
+    MessageDlg('Este mapa ainda não tem talões. Use "Gerar Talões" primeiro.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  LStatus := Trim(FMapas.FieldByName('STATUS').AsString);
+  if (LStatus <> 'ABERTO') and (LStatus <> 'EM_PRODUCAO') then
+  begin
+    MessageDlg(Format(
+      'O mapa nº %d está como "%s": talões só podem ser impressos em mapa aberto ou em produção.',
+      [NumeroDoMapa(FMapaId), DescricaoStatusMapa(LStatus)]),
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  if not VerificarPermissaoAcao(PERM_IMPRIMIR,
+    'Seu usuário não tem permissão para imprimir talões.') then
+    Exit;
+
+  // 1) imprime primeiro (o papel sai; o registro vem em seguida)
+  try
+    PrepararRelatorioTalao;
+    { ErrorFlag/ErrorStr são privados do LR_Class: usamos o retorno + exceções }
+    if not FFrReport.PrepareReport then
+    begin
+      MessageDlg('Não foi possível montar o relatório de talões.' + sLineBreak +
+        'Confira se a impressora padrão está disponível.',
+        mtError, [mbOK], 0);
+      Exit;
+    end;
+    FFrReport.PrintPreparedReport('', 1);   { '' = todas as páginas }
+  except
+    on E: Exception do
+    begin
+      MessageDlg('Não foi possível imprimir os talões:' + sLineBreak + E.Message,
+        mtError, [mbOK], 0);
+      Exit;
+    end;
+  end;
+
+  // 2) registra a impressão (transação + auditoria no service)
+  try
+    LImpressos := FService.ImprimirTaloesDoMapa(FMapaId);
+  except
+    on E: Exception do
+    begin
+      MessageDlg(
+        'Os talões foram enviados à impressora, mas o sistema não pôde registrar ' +
+        'a impressão:' + sLineBreak + E.Message, mtWarning, [mbOK], 0);
+      CarregarMapas;   { recarrega lista + detalhe (cursores pós-rollback) }
+      Exit;
+    end;
+  end;
+
+  MessageDlg(Format(
+    '%d talão(ões) enviado(s) para a impressora e registrados como impressos.',
+    [LImpressos]), mtInformation, [mbOK], 0);
+  CarregarMapas;   { lista, itens, progresso e talões (impressões) }
+end;
+
+procedure TfrmMapaProducao.btnCancelarTalaoClick(Sender: TObject);
+var
+  LTalaoId: Int64;
+  LNumero: Integer;
+  LMotivo: string;
+begin
+  LTalaoId := TalaoSelecionado;
+  if LTalaoId <= 0 then
+  begin
+    MessageDlg('Selecione um talão na lista de talões para cancelar.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  if not VerificarPermissaoAcao(PERM_EXCLUIR,
+    'Seu usuário não tem permissão para cancelar talões.') then
+    Exit;
+
+  LNumero := FTaloes.FieldByName('NUMERO').AsInteger;
+  LMotivo := '';
+  if not InputQuery(Format('Cancelar talão nº %d', [LNumero]),
+    'Motivo do cancelamento:', LMotivo) then
+    Exit;
+  if Trim(LMotivo) = '' then
+  begin
+    MessageDlg('Informe o motivo do cancelamento do talão.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  try
+    FService.CancelarTalao(LTalaoId, LMotivo);
+  except
+    on E: Exception do
+    begin
+      MessageDlg('Não foi possível cancelar o talão:' + sLineBreak + E.Message,
+        mtError, [mbOK], 0);
+      { rollback no service: recarrega para as grades não ficarem vazias }
+      try
+        CarregarMapas;
+      except
+      end;
+      Exit;
+    end;
+  end;
+
+  MessageDlg(Format('Talão nº %d cancelado com sucesso.', [LNumero]),
+    mtInformation, [mbOK], 0);
+  CarregarMapas;   { lista, itens, progresso e talões }
 end;
 
 end.

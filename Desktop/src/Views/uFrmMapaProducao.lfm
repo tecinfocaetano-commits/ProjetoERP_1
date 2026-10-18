@@ -258,14 +258,14 @@ object frmMapaProducao: TfrmMapaProducao
         Top = 56
         Width = 1130
         AutoSize = False
-        Caption = 'Itens do mapa (talões serão gerados na próxima fase)'
+        Caption = 'Itens do mapa (selecione o item que receberá novos talões)'
       end
       object dbGridItensMapa: TDBGrid
         Left = 8
-        Height = 270
+        Height = 118
         Top = 80
         Width = 1132
-        Anchors = [akTop, akLeft, akRight, akBottom]
+        Anchors = [akTop, akLeft, akRight]
         Columns = <
           item
             Expanded = False
@@ -320,6 +320,135 @@ object frmMapaProducao: TfrmMapaProducao
         Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
         ReadOnly = True
         TabOrder = 0
+      end
+      object pnlTaloesBarra: TPanel
+        Left = 8
+        Height = 36
+        Top = 202
+        Width = 1132
+        BevelOuter = bvNone
+        ClientHeight = 36
+        ClientWidth = 1132
+        TabOrder = 1
+        object lblTaloesSel: TLabel
+          Left = 0
+          Height = 20
+          Top = 8
+          Width = 116
+          Caption = 'Talões do mapa:'
+        end
+        object btnGerarTaloes: TBitBtn
+          Left = 122
+          Height = 27
+          Top = 4
+          Width = 118
+          Caption = 'Gerar Talões'
+          OnClick = btnGerarTaloesClick
+          TabOrder = 0
+        end
+        object btnVisualizarTalao: TBitBtn
+          Left = 246
+          Height = 27
+          Top = 4
+          Width = 106
+          Caption = 'Visualizar'
+          OnClick = btnVisualizarTalaoClick
+          TabOrder = 1
+        end
+        object btnImprimirTalao: TBitBtn
+          Left = 358
+          Height = 27
+          Top = 4
+          Width = 106
+          Caption = 'Imprimir'
+          OnClick = btnImprimirTalaoClick
+          TabOrder = 2
+        end
+        object btnCancelarTalao: TBitBtn
+          Left = 470
+          Height = 27
+          Top = 4
+          Width = 122
+          Caption = 'Cancelar Talão'
+          OnClick = btnCancelarTalaoClick
+          TabOrder = 3
+        end
+        object lblQtdTaloes: TLabel
+          Left = 602
+          Height = 20
+          Top = 8
+          Width = 530
+          AutoSize = False
+          Caption = ''
+        end
+      end
+      object dbGridTaloes: TDBGrid
+        Left = 8
+        Height = 105
+        Top = 242
+        Width = 1132
+        Anchors = [akTop, akLeft, akRight, akBottom]
+        Columns = <
+          item
+            Expanded = False
+            FieldName = 'NUMERO'
+            Title.Caption = 'Talão'
+            Width = 70
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'SEQUENCIA'
+            Title.Caption = 'Seq.'
+            Width = 50
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'QTD'
+            Title.Caption = 'Qtd'
+            Width = 70
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'CODIGO_BARRAS'
+            Title.Caption = 'Código de barras'
+            Width = 140
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'STATUS_DESC'
+            Title.Caption = 'Status'
+            Width = 110
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'QTD_IMPRESSOES'
+            Title.Caption = 'Impressões'
+            Width = 90
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'PRODUTO'
+            Title.Caption = 'Produto'
+            Width = 300
+            Visible = True
+          end
+          item
+            Expanded = False
+            FieldName = 'EMISSAO'
+            Title.Caption = 'Gerado em'
+            Width = 120
+            Visible = True
+          end>
+        DataSource = DataSourceTaloes
+        Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+        ReadOnly = True
+        TabOrder = 2
       end
     end
   end
@@ -606,6 +735,10 @@ object frmMapaProducao: TfrmMapaProducao
   object DataSourceItensPedido: TDataSource
     OnDataChange = DataSourceItensPedidoDataChange
     Left = 980
+    Top = 160
+  end
+  object DataSourceTaloes: TDataSource
+    Left = 1040
     Top = 160
   end
 end

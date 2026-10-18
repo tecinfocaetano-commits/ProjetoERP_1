@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // ERP 2026 (Desktop Lazarus/FPC + API + Firebird).
+  // Modelo fixado no config global (~/.config/opencode/opencode.jsonc).
+  // Aqui ficam apenas ajustes específicos deste projeto.
+  "watcher": {
+    // Build, banco de dados e evidências não devem disparar o watcher.
+    "ignore": [
+      "Desktop/bin/**",
+      "Desktop/lib/**",
+      "Api/bin/**",
+      "Api/lib/**",
+      "**/*.FDB",
+      "Documentacao/evidencias/**"
+    ]
+  }
+}

@@ -31,3 +31,7 @@ desktop.ini
 *.log
 *.bak
 *.tmp
+
+# ---- Evidencias de teste (capturas de tela, apenas local) ----
+Documentacao/evidencias/
+
