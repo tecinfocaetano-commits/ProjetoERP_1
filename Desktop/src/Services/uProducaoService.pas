@@ -63,6 +63,24 @@ type
     MapaConcluido: Boolean;  { esta bipagem concluiu o mapa de produção }
   end;
 
+  { Item da ficha técnica (BOM) - Fase 5.
+    QUANTIDADE = consumo do material para produzir QUANTIDADE_BASE;
+    PERDA_PERCENTUAL = perda esperada do material (%). }
+  TItemFichaTecnica = record
+    MaterialId: Int64;
+    Quantidade: Double;
+    PerdaPercentual: Double;
+  end;
+  TItensFichaTecnica = array of TItemFichaTecnica;
+
+  { Quantidade real informada pelo operador na confirmação do consumo
+    (Fase 5). ItemId aponta o CONSUMO_MATERIAL_ITEM gravado. }
+  TItemConsumoConfirmar = record
+    ItemId: Int64;
+    QtdReal: Double;
+  end;
+  TItensConsumoConfirmar = array of TItemConsumoConfirmar;
+
 const
   { Tolerância para comparação de quantidades (NUMERIC(15,4)) }
   TOLERANCIA_QTD = 0.0001;
@@ -83,6 +101,9 @@ type
     procedure AplicarStatusPedido(APedidoId: Int64; const ANovoStatus: string);
     procedure RegistrarBipagem(ATalaoId: Int64; const AEtapa, AOrigem,
       AResultado, AObservacao: string);
+    { Fase 5: custo do material (CUSTO_MEDIO do estoque, senão
+      PRECO_CUSTO do produto). }
+    function  CustoMaterial(AProdutoId: Int64): Double;
   public
     constructor Create;
 
@@ -136,12 +157,42 @@ type
       exe. }
     function  CaminhoRelatorioTalao: string;
     procedure DefinirCaminhoRelatorioTalao(const ACaminho: string);
+
+    { --- ficha técnica (Fase 5) -----------------------------------------
+      Uma ficha por produto (índice único EMPRESA+PRODUTO). QUANTIDADE_BASE
+      é o rendimento: os itens dizem quanto de cada material é consumido
+      para produzir QUANTIDADE_BASE, com a perda percentual esperada.
+      FichaTecnicaDoProduto devolve a ficha ATIVA do produto (vazio se
+      não houver); GravarFichaTecnica faz o upsert do cabeçalho e troca
+      todos os itens de uma vez, na mesma transação. }
+    function  FichaTecnicaDoProduto(AProdutoId: Int64; out ADescricao: string;
+      out ABase: Double): TItensFichaTecnica;
+    function  GravarFichaTecnica(AProdutoId: Int64; const ADescricao: string;
+      ABase: Double; const AItens: TItensFichaTecnica): Int64;
+
+    { --- consumo de materiais (Fase 5) -----------------------------------
+      GerarConsumoMaterial: cria o consumo PENDENTE do mapa a partir das
+      fichas técnicas dos produtos já CONCLUÍDOS (QTD_PREVISTA inclui a
+      perda). Um consumo PENDENTE existente é substituído (ainda não
+      movimentou estoque); consumo CONFIRMADO exige estorno prévio.
+      ConfirmarConsumo: dá baixa no estoque (MOVIMENTO_ESTOQUE 'S', custo
+      do ESTOQUE.CUSTO_MEDIO) e marca CONFIRMADO; respeita
+      PRODUCAO_PERMITE_ESTOQUE_NEGATIVO ('N' = exige saldo).
+      EstornarConsumo: devolve ao estoque ('E') e marca ESTORNADO
+      (somente um consumo CONFIRMADO pode ser estornado). }
+    function  GerarConsumoMaterial(AMapaId: Int64;
+      const AJustificativa: string): Int64;
+    procedure ConfirmarConsumo(AConsumoId: Int64;
+      const AItens: TItensConsumoConfirmar);
+    procedure EstornarConsumo(AConsumoId: Int64; const AMotivo: string);
+    { ID do consumo PENDENTE/CONFIRMADO do mapa (0 quando não há). }
+    function  ConsumoAtivoDoMapa(AMapaId: Int64): Int64;
   end;
 
 implementation
 
 uses
-  uSessao, uAuditoria;
+  Math, uSessao, uAuditoria;
 
 constructor TProducaoService.Create;
 begin
@@ -1509,6 +1560,775 @@ begin
     end;
   finally
     LUpd.Free;
+  end;
+end;
+
+{ ------------------------------------------------------------
+  Fase 5 - Ficha técnica (BOM) e consumo de materiais
+  ------------------------------------------------------------ }
+
+function TProducaoService.CustoMaterial(AProdutoId: Int64): Double;
+var
+  LQuery: TSQLQuery;
+begin
+  Result := 0;
+  LQuery := NovaConsulta;
+  try
+    LQuery.SQL.Text :=
+      'SELECT CAST(COALESCE(E.CUSTO_MEDIO, 0) AS NUMERIC(18,4)) AS CUSTO_MEDIO, ' +
+      '       CAST(COALESCE(P.PRECO_CUSTO, 0) AS NUMERIC(18,4)) AS PRECO_CUSTO ' +
+      'FROM PRODUTO P LEFT JOIN ESTOQUE E ' +
+      '  ON E.PRODUTO_ID = P.ID AND E.EMPRESA_ID = :EMP ' +
+      'WHERE P.ID = :PROD';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.ParamByName('PROD').AsLargeInt := AProdutoId;
+    LQuery.Open;
+    if not LQuery.IsEmpty then
+    begin
+      Result := LQuery.FieldByName('CUSTO_MEDIO').AsFloat;
+      if Result <= 0 then
+        Result := LQuery.FieldByName('PRECO_CUSTO').AsFloat;
+    end;
+  finally
+    LQuery.Free;
+  end;
+end;
+
+function TProducaoService.ConsumoAtivoDoMapa(AMapaId: Int64): Int64;
+var
+  LQuery: TSQLQuery;
+begin
+  Result := 0;
+  LQuery := NovaConsulta;
+  try
+    LQuery.SQL.Text :=
+      'SELECT FIRST 1 ID FROM CONSUMO_MATERIAL ' +
+      'WHERE MAPA_PRODUCAO_ID = :MAPA AND STATUS IN (''PENDENTE'', ''CONFIRMADO'') ' +
+      'ORDER BY ID DESC';
+    LQuery.ParamByName('MAPA').AsLargeInt := AMapaId;
+    LQuery.Open;
+    if not LQuery.IsEmpty then
+      Result := LQuery.FieldByName('ID').AsLargeInt;
+  finally
+    LQuery.Free;
+  end;
+end;
+
+function TProducaoService.FichaTecnicaDoProduto(AProdutoId: Int64;
+  out ADescricao: string; out ABase: Double): TItensFichaTecnica;
+var
+  LQuery: TSQLQuery;
+  LFichaId: Int64;
+begin
+  Result := nil;
+  ADescricao := '';
+  ABase := 1;
+  LFichaId := 0;
+
+  LQuery := NovaConsulta;
+  try
+    LQuery.SQL.Text :=
+      'SELECT ID, DESCRICAO, QUANTIDADE_BASE FROM FICHA_TECNICA ' +
+      'WHERE EMPRESA_ID = :EMP AND PRODUTO_ID = :PROD AND ATIVO = ''A''';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.ParamByName('PROD').AsLargeInt := AProdutoId;
+    LQuery.Open;
+    if not LQuery.IsEmpty then
+    begin
+      LFichaId := LQuery.FieldByName('ID').AsLargeInt;
+      ADescricao := LQuery.FieldByName('DESCRICAO').AsString;
+      ABase := LQuery.FieldByName('QUANTIDADE_BASE').AsFloat;
+    end;
+    LQuery.Close;
+
+    if LFichaId = 0 then
+      Exit;
+
+    LQuery.SQL.Text :=
+      'SELECT FI.MATERIAL_ID, FI.QUANTIDADE, FI.PERDA_PERCENTUAL ' +
+      'FROM FICHA_TECNICA_ITEM FI ' +
+      'WHERE FI.FICHA_TECNICA_ID = :FICHA ' +
+      'ORDER BY FI.ID';
+    LQuery.ParamByName('FICHA').AsLargeInt := LFichaId;
+    LQuery.Open;
+    while not LQuery.EOF do
+    begin
+      SetLength(Result, Length(Result) + 1);
+      Result[High(Result)].MaterialId :=
+        LQuery.FieldByName('MATERIAL_ID').AsLargeInt;
+      Result[High(Result)].Quantidade :=
+        LQuery.FieldByName('QUANTIDADE').AsFloat;
+      Result[High(Result)].PerdaPercentual :=
+        LQuery.FieldByName('PERDA_PERCENTUAL').AsFloat;
+      LQuery.Next;
+    end;
+  finally
+    LQuery.Free;
+  end;
+end;
+
+function TProducaoService.GravarFichaTecnica(AProdutoId: Int64;
+  const ADescricao: string; ABase: Double;
+  const AItens: TItensFichaTecnica): Int64;
+var
+  LQry: TSQLQuery;
+  LFichaId: Int64;
+  LIndice, LJ: Integer;
+  LBaseAnterior: string;
+begin
+  if AProdutoId <= 0 then
+    raise EProducao.Create('Selecione o produto que receberá a ficha técnica.');
+  if ABase <= 0 then
+    raise EProducao.Create('A quantidade base (rendimento) deve ser maior que zero.');
+  if Length(AItens) = 0 then
+    raise EProducao.Create('A ficha técnica precisa de ao menos um material.');
+
+  for LIndice := 0 to High(AItens) do
+  begin
+    if AItens[LIndice].MaterialId = AProdutoId then
+      raise EProducao.Create(
+        'A ficha técnica não pode usar o próprio produto como material.');
+    if AItens[LIndice].Quantidade <= 0 then
+      raise EProducao.Create('Todos os materiais devem ter quantidade maior que zero.');
+    if AItens[LIndice].PerdaPercentual < 0 then
+      raise EProducao.Create('O percentual de perda não pode ser negativo.');
+    for LJ := LIndice + 1 to High(AItens) do
+      if AItens[LJ].MaterialId = AItens[LIndice].MaterialId then
+        raise EProducao.Create('Material duplicado na ficha técnica.');
+  end;
+
+  FConexao.IniciarTransacao;
+  LQry := NovaConsulta;
+  try
+    try
+      { upsert do cabeçalho (índice único EMPRESA+PRODUTO) }
+      LQry.SQL.Text :=
+        'SELECT ID, QUANTIDADE_BASE FROM FICHA_TECNICA ' +
+        'WHERE EMPRESA_ID = :EMP AND PRODUTO_ID = :PROD';
+      LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+      LQry.ParamByName('PROD').AsLargeInt := AProdutoId;
+      LQry.Open;
+      if LQry.IsEmpty then
+      begin
+        LFichaId := 0;
+        LBaseAnterior := '';
+      end
+      else
+      begin
+        LFichaId := LQry.FieldByName('ID').AsLargeInt;
+        LBaseAnterior := LQry.FieldByName('QUANTIDADE_BASE').AsString;
+      end;
+      LQry.Close;
+
+      if LFichaId = 0 then
+      begin
+        LQry.SQL.Text :=
+          'INSERT INTO FICHA_TECNICA (EMPRESA_ID, PRODUTO_ID, DESCRICAO, ' +
+          '  QUANTIDADE_BASE, ATIVO, USUARIO_ID) ' +
+          'VALUES (:EMP, :PROD, :DESCR, :BASE, ''A'', :USR)';
+        LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+        LQry.ParamByName('PROD').AsLargeInt := AProdutoId;
+        LQry.ParamByName('DESCR').AsString := ADescricao;
+        LQry.ParamByName('BASE').AsFloat := ABase;
+        LQry.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
+        LQry.ExecSQL;
+        { o trigger BI já usou o gerador: o valor atual é o ID novo }
+        LQry.SQL.Text :=
+          'SELECT GEN_ID(GEN_FICHA_TECNICA_ID, 0) FROM RDB$DATABASE';
+        LQry.Open;
+        LFichaId := LQry.Fields[0].AsLargeInt;
+        LQry.Close;
+      end
+      else
+      begin
+        LQry.SQL.Text :=
+          'UPDATE FICHA_TECNICA SET DESCRICAO = :DESCR, ' +
+          '  QUANTIDADE_BASE = :BASE, ATIVO = ''A'', USUARIO_ID = :USR ' +
+          'WHERE ID = :ID';
+        LQry.ParamByName('DESCR').AsString := ADescricao;
+        LQry.ParamByName('BASE').AsFloat := ABase;
+        LQry.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
+        LQry.ParamByName('ID').AsLargeInt := LFichaId;
+        LQry.ExecSQL;
+      end;
+
+      { os itens são substituídos por completo, na mesma transação }
+      LQry.SQL.Text :=
+        'DELETE FROM FICHA_TECNICA_ITEM WHERE FICHA_TECNICA_ID = :FICHA';
+      LQry.ParamByName('FICHA').AsLargeInt := LFichaId;
+      LQry.ExecSQL;
+
+      for LIndice := 0 to High(AItens) do
+      begin
+        LQry.SQL.Text :=
+          'INSERT INTO FICHA_TECNICA_ITEM (FICHA_TECNICA_ID, MATERIAL_ID, ' +
+          '  QUANTIDADE, PERDA_PERCENTUAL) ' +
+          'VALUES (:FICHA, :MAT, :QTD, :PERDA)';
+        LQry.ParamByName('FICHA').AsLargeInt := LFichaId;
+        LQry.ParamByName('MAT').AsLargeInt := AItens[LIndice].MaterialId;
+        LQry.ParamByName('QTD').AsFloat := AItens[LIndice].Quantidade;
+        LQry.ParamByName('PERDA').AsFloat := AItens[LIndice].PerdaPercentual;
+        LQry.ExecSQL;
+      end;
+
+      RegistrarAuditoria('FICHA_TECNICA', 'SALVAR', LFichaId,
+        ResumoAuditoria(['BASE=' + LBaseAnterior]),
+        ResumoAuditoria([
+          'PRODUTO=' + IntToStr(AProdutoId),
+          'BASE=' + FloatToStr(ABase),
+          'ITENS=' + IntToStr(Length(AItens))]));
+
+      FConexao.Confirmar;
+      Result := LFichaId;
+    except
+      FConexao.Cancelar;
+      raise;
+    end;
+  finally
+    LQry.Free;
+  end;
+end;
+
+function TProducaoService.GerarConsumoMaterial(AMapaId: Int64;
+  const AJustificativa: string): Int64;
+var
+  LQry, LGrava: TSQLQuery;
+  LConsumoId: Int64;
+  LConsumoPendente: Int64;
+  LStatusMapa: string;
+  LProdutoId: Int64;
+  LCodigoProduto, LDescFicha: string;
+  LProduzido, LBase, LQtdPrevista: Double;
+  LItensFicha: TItensFichaTecnica;
+  LIndice, LJ, LPos: Integer;
+  LMatIds: array of Int64;
+  LMatQtds: array of Double;
+  SSemFicha: string;
+begin
+  if AMapaId <= 0 then
+    raise EProducao.Create('Selecione o mapa de produção para gerar o consumo.');
+  if Length(Trim(AJustificativa)) > 500 then
+    raise EProducao.Create('A justificativa pode ter no máximo 500 caracteres.');
+
+  SetLength(LMatIds, 0);
+  SetLength(LMatQtds, 0);
+  SSemFicha := '';
+
+  FConexao.IniciarTransacao;
+  LQry := NovaConsulta;
+  LGrava := NovaConsulta;
+  try
+    try
+      { mapa existe, não cancelado e sem consumo que impeça o novo }
+      LQry.SQL.Text :=
+        'SELECT FIRST 1 M.NUMERO, M.STATUS, C.ID AS CONSUMO_ID, ' +
+        '  C.STATUS AS CONSUMO_STATUS ' +
+        'FROM MAPA_PRODUCAO M ' +
+        '  LEFT JOIN CONSUMO_MATERIAL C ON C.MAPA_PRODUCAO_ID = M.ID ' +
+        '     AND C.STATUS IN (''PENDENTE'', ''CONFIRMADO'') ' +
+        'WHERE M.ID = :MAPA ' +
+        'ORDER BY C.ID DESC';
+      LQry.ParamByName('MAPA').AsLargeInt := AMapaId;
+      LQry.Open;
+      if LQry.IsEmpty then
+        raise EProducao.Create('Mapa de produção não encontrado.');
+      LStatusMapa := LQry.FieldByName('STATUS').AsString;
+      if not LQry.FieldByName('CONSUMO_ID').IsNull and
+         (Trim(LQry.FieldByName('CONSUMO_STATUS').AsString) = 'CONFIRMADO') then
+        raise EProducao.Create(
+          'Este mapa já tem consumo CONFIRMADO (#' +
+          LQry.FieldByName('CONSUMO_ID').AsString + ').' + sLineBreak +
+          'Estorne-o antes de gerar um novo consumo.');
+      { consumo PENDENTE é substituído: ainda não movimentou estoque }
+      LConsumoPendente := 0;
+      if not LQry.FieldByName('CONSUMO_ID').IsNull then
+        LConsumoPendente := LQry.FieldByName('CONSUMO_ID').AsLargeInt;
+      LQry.Close;
+
+      if LConsumoPendente > 0 then
+      begin
+        { descarta o pendente (sem movimento vinculado) e gera outro }
+        LGrava.SQL.Text :=
+          'DELETE FROM CONSUMO_MATERIAL_ITEM WHERE CONSUMO_MATERIAL_ID = :ID';
+        LGrava.ParamByName('ID').AsLargeInt := LConsumoPendente;
+        LGrava.ExecSQL;
+        LGrava.SQL.Text := 'DELETE FROM CONSUMO_MATERIAL WHERE ID = :ID';
+        LGrava.ParamByName('ID').AsLargeInt := LConsumoPendente;
+        LGrava.ExecSQL;
+        RegistrarAuditoria('CONSUMO_MATERIAL', 'SUBSTITUIR', LConsumoPendente,
+          'STATUS=PENDENTE', 'STATUS=DESCARTADO');
+      end;
+
+      if LStatusMapa = 'CANCELADO' then
+        raise EProducao.Create(
+          'Não é possível gerar consumo de um mapa cancelado.');
+
+      { produção concluída por produto (talões CONCLUÍDOS) }
+      { CAST obrigatório: o SQLDB lê COALESCE((subquery),0) sem tipo como 0 }
+      LQry.SQL.Text :=
+        'SELECT MI.PRODUTO_ID, P.CODIGO, ' +
+        '  CAST(COALESCE((SELECT SUM(T.QUANTIDADE) FROM TALAO T ' +
+        '     WHERE T.MAPA_PRODUCAO_ITEM_ID = MI.ID ' +
+        '       AND T.STATUS = ''CONCLUIDO''), 0) AS NUMERIC(18,4)) AS PRODUZIDO ' +
+        'FROM MAPA_PRODUCAO_ITEM MI ' +
+        '  JOIN PRODUTO P ON P.ID = MI.PRODUTO_ID ' +
+        'WHERE MI.MAPA_PRODUCAO_ID = :MAPA AND MI.STATUS <> ''CANCELADO'' ' +
+        'ORDER BY MI.ID';
+      LQry.ParamByName('MAPA').AsLargeInt := AMapaId;
+      LQry.Open;
+      while not LQry.EOF do
+      begin
+        LProdutoId := LQry.FieldByName('PRODUTO_ID').AsLargeInt;
+        LCodigoProduto := Trim(LQry.FieldByName('CODIGO').AsString);
+        LProduzido := LQry.FieldByName('PRODUZIDO').AsFloat;
+        LQry.Next;
+
+        if LProduzido <= 0 then
+          Continue;
+
+        LItensFicha := FichaTecnicaDoProduto(LProdutoId, LDescFicha, LBase);
+        if Length(LItensFicha) = 0 then
+        begin
+          if SSemFicha <> '' then
+            SSemFicha := SSemFicha + ', ';
+          SSemFicha := SSemFicha + LCodigoProduto;
+          Continue;
+        end;
+
+        for LIndice := 0 to High(LItensFicha) do
+        begin
+          { QTD_PREVISTA = (produzido / rendimento) x consumo x (1 + perda%) }
+          LQtdPrevista := (LProduzido / LBase) *
+            LItensFicha[LIndice].Quantidade *
+            (1 + LItensFicha[LIndice].PerdaPercentual / 100);
+          LQtdPrevista := SimpleRoundTo(LQtdPrevista, -4);
+
+          { agrega pelo material (fichas diferentes podem usar o mesmo) }
+          LPos := -1;
+          for LJ := 0 to High(LMatIds) do
+            if LMatIds[LJ] = LItensFicha[LIndice].MaterialId then
+            begin
+              LPos := LJ;
+              Break;
+            end;
+          if LPos < 0 then
+          begin
+            LPos := Length(LMatIds);
+            SetLength(LMatIds, LPos + 1);
+            SetLength(LMatQtds, LPos + 1);
+            LMatIds[LPos] := LItensFicha[LIndice].MaterialId;
+            LMatQtds[LPos] := 0;
+          end;
+          LMatQtds[LPos] := LMatQtds[LPos] + LQtdPrevista;
+        end;
+      end;
+      LQry.Close;
+
+      if SSemFicha <> '' then
+        raise EProducao.Create(
+          'Produto(s) concluído(s) sem ficha técnica ativa: ' + SSemFicha + '.' +
+          sLineBreak + 'Cadastre a ficha técnica antes de gerar o consumo.');
+      if Length(LMatIds) = 0 then
+        raise EProducao.Create(
+          'Nenhum material calculado: o mapa ainda não tem produção concluída.');
+
+      { cabeçalho do consumo }
+      LGrava.SQL.Text :=
+        'INSERT INTO CONSUMO_MATERIAL (EMPRESA_ID, MAPA_PRODUCAO_ID, ' +
+        '  DATA_CONSUMO, STATUS, JUSTIFICATIVA, USUARIO_ID) ' +
+        'VALUES (:EMP, :MAPA, :DATA, ''PENDENTE'', :JUST, :USR)';
+      LGrava.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+      LGrava.ParamByName('MAPA').AsLargeInt := AMapaId;
+      LGrava.ParamByName('DATA').AsDate := Date;
+      LGrava.ParamByName('JUST').AsString := Trim(AJustificativa);
+      LGrava.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
+      LGrava.ExecSQL;
+      LGrava.SQL.Text :=
+        'SELECT GEN_ID(GEN_CONSUMO_MATERIAL_ID, 0) FROM RDB$DATABASE';
+      LGrava.Open;
+      LConsumoId := LGrava.Fields[0].AsLargeInt;
+      LGrava.Close;
+
+      for LIndice := 0 to High(LMatIds) do
+      begin
+        LGrava.SQL.Text :=
+          'INSERT INTO CONSUMO_MATERIAL_ITEM (CONSUMO_MATERIAL_ID, ' +
+          '  MATERIAL_ID, QTD_PREVISTA, QTD_REAL) ' +
+          'VALUES (:CONS, :MAT, :QTD, 0)';
+        LGrava.ParamByName('CONS').AsLargeInt := LConsumoId;
+        LGrava.ParamByName('MAT').AsLargeInt := LMatIds[LIndice];
+        LGrava.ParamByName('QTD').AsFloat := LMatQtds[LIndice];
+        LGrava.ExecSQL;
+      end;
+
+      RegistrarAuditoria('CONSUMO_MATERIAL', 'GERAR', LConsumoId, '',
+        ResumoAuditoria([
+          'MAPA=' + IntToStr(AMapaId),
+          'ITENS=' + IntToStr(Length(LMatIds))]));
+
+      FConexao.Confirmar;
+      Result := LConsumoId;
+    except
+      FConexao.Cancelar;
+      raise;
+    end;
+  finally
+    LQry.Free;
+    LGrava.Free;
+  end;
+end;
+
+procedure TProducaoService.ConfirmarConsumo(AConsumoId: Int64;
+  const AItens: TItensConsumoConfirmar);
+var
+  LQry: TSQLQuery;
+  LStatus: string;
+  LNumeroMapa: Integer;
+  LPermiteNegativo: Boolean;
+  LDocumento: string;
+  LIndice, LJ: Integer;
+  LMaterialId: Int64;
+  LMovId: Int64;
+  LQtdReal, LSaldo, LCusto: Double;
+  LEncontrado: Boolean;
+  LItensIds: array of Int64;
+  LItensMat: array of Int64;
+  LItensPrev: array of Double;
+  LItensReal: array of Double;
+  LCodigos: array of string;
+begin
+  if AConsumoId <= 0 then
+    raise EProducao.Create('Consumo de materiais não encontrado.');
+
+  FConexao.IniciarTransacao;
+  LQry := NovaConsulta;
+  try
+    try
+      { cabeçalho: precisa existir e estar PENDENTE }
+      LQry.SQL.Text :=
+        'SELECT C.STATUS, M.NUMERO FROM CONSUMO_MATERIAL C ' +
+        '  JOIN MAPA_PRODUCAO M ON M.ID = C.MAPA_PRODUCAO_ID ' +
+        'WHERE C.ID = :ID';
+      LQry.ParamByName('ID').AsLargeInt := AConsumoId;
+      LQry.Open;
+      if LQry.IsEmpty then
+        raise EProducao.Create('Consumo de materiais não encontrado.');
+      LStatus := LQry.FieldByName('STATUS').AsString;
+      LNumeroMapa := LQry.FieldByName('NUMERO').AsInteger;
+      LQry.Close;
+
+      if LStatus <> 'PENDENTE' then
+        raise EProducao.CreateFmt(
+          'Só é possível confirmar um consumo PENDENTE (situação atual: %s).',
+          [LStatus]);
+
+      LPermiteNegativo :=
+        UpperCase(LerConfiguracao('PRODUCAO_PERMITE_ESTOQUE_NEGATIVO', 'N')) = 'S';
+
+      { itens do consumo }
+      LQry.SQL.Text :=
+        'SELECT I.ID, I.MATERIAL_ID, I.QTD_PREVISTA, P.CODIGO ' +
+        'FROM CONSUMO_MATERIAL_ITEM I ' +
+        '  JOIN PRODUTO P ON P.ID = I.MATERIAL_ID ' +
+        'WHERE I.CONSUMO_MATERIAL_ID = :CONS ORDER BY I.ID';
+      LQry.ParamByName('CONS').AsLargeInt := AConsumoId;
+      LQry.Open;
+      SetLength(LItensIds, 0);
+      while not LQry.EOF do
+      begin
+        LJ := Length(LItensIds);
+        SetLength(LItensIds, LJ + 1);
+        SetLength(LItensMat, LJ + 1);
+        SetLength(LItensPrev, LJ + 1);
+        SetLength(LItensReal, LJ + 1);
+        SetLength(LCodigos, LJ + 1);
+        LItensIds[LJ] := LQry.FieldByName('ID').AsLargeInt;
+        LItensMat[LJ] := LQry.FieldByName('MATERIAL_ID').AsLargeInt;
+        LItensPrev[LJ] := LQry.FieldByName('QTD_PREVISTA').AsFloat;
+        { padrão: consome a quantidade prevista }
+        LItensReal[LJ] := LQry.FieldByName('QTD_PREVISTA').AsFloat;
+        LCodigos[LJ] := Trim(LQry.FieldByName('CODIGO').AsString);
+        LQry.Next;
+      end;
+      LQry.Close;
+
+      if Length(LItensIds) = 0 then
+        raise EProducao.Create('Este consumo não tem itens para confirmar.');
+
+      { aplica as quantidades reais informadas (e valida os IDs) }
+      for LIndice := 0 to High(AItens) do
+      begin
+        LEncontrado := False;
+        for LJ := 0 to High(LItensIds) do
+          if LItensIds[LJ] = AItens[LIndice].ItemId then
+          begin
+            LItensReal[LJ] := AItens[LIndice].QtdReal;
+            LEncontrado := True;
+            Break;
+          end;
+        if not LEncontrado then
+          raise EProducao.Create('Item do consumo inválido na confirmação.');
+      end;
+
+      LDocumento := Format('CONSUMO MAPA %d - #%d', [LNumeroMapa, AConsumoId]);
+
+      { baixa de estoque item a item }
+      for LIndice := 0 to High(LItensIds) do
+      begin
+        LQtdReal := LItensReal[LIndice];
+        if LQtdReal <= 0 then
+          raise EProducao.CreateFmt(
+            'Quantidade real deve ser maior que zero (material %s).',
+            [LCodigos[LIndice]]);
+
+        LMaterialId := LItensMat[LIndice];
+        LCusto := CustoMaterial(LMaterialId);
+
+        LQry.SQL.Text :=
+          'SELECT COALESCE(E.QUANTIDADE, 0) AS SALDO FROM ESTOQUE E ' +
+          'WHERE E.EMPRESA_ID = :EMP AND E.PRODUTO_ID = :PROD';
+        LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+        LQry.ParamByName('PROD').AsLargeInt := LMaterialId;
+        LQry.Open;
+        if LQry.IsEmpty then
+          LSaldo := 0
+        else
+          LSaldo := LQry.FieldByName('SALDO').AsFloat;
+        LQry.Close;
+
+        if (not LPermiteNegativo) and (LSaldo < LQtdReal) then
+          raise EProducao.CreateFmt(
+            'Saldo insuficiente do material %s: disponível %s, consumo %s.',
+            [LCodigos[LIndice], FormatFloat('#,##0.####', LSaldo),
+             FormatFloat('#,##0.####', LQtdReal)]);
+
+        { saída: o trigger TRG_MOVEST_AI dá a baixa no ESTOQUE }
+        LQry.SQL.Text :=
+          'INSERT INTO MOVIMENTO_ESTOQUE (EMPRESA_ID, PRODUTO_ID, TIPO, ' +
+          '  QUANTIDADE, CUSTO_UNITARIO, DOCUMENTO, OBSERVACAO, ' +
+          '  DATA_MOVIMENTO, USUARIO_ID) ' +
+          'VALUES (:EMP, :PROD, ''S'', :QTD, :CUSTO, :DOC, :OBS, :DATA, :USR)';
+        LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+        LQry.ParamByName('PROD').AsLargeInt := LMaterialId;
+        LQry.ParamByName('QTD').AsFloat := LQtdReal;
+        LQry.ParamByName('CUSTO').AsFloat := LCusto;
+        LQry.ParamByName('DOC').AsString := LDocumento;
+        LQry.ParamByName('OBS').AsString :=
+          'Baixa por consumo de materiais da produção.';
+        LQry.ParamByName('DATA').AsDate := Date;
+        LQry.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
+        LQry.ExecSQL;
+
+        { ID do movimento recém-gerado pelo trigger BI }
+        LQry.SQL.Text :=
+          'SELECT GEN_ID(GEN_MOVIMENTO_ESTOQUE_ID, 0) FROM RDB$DATABASE';
+        LQry.Open;
+        LMovId := LQry.Fields[0].AsLargeInt;
+        LQry.Close;
+
+        { vincula o movimento ao item do consumo }
+        LQry.SQL.Text :=
+          'UPDATE CONSUMO_MATERIAL_ITEM SET QTD_REAL = :QTD, ' +
+          '  CUSTO_UNITARIO = :CUSTO, MOVIMENTO_ESTOQUE_ID = :MOV ' +
+          'WHERE ID = :ID';
+        LQry.ParamByName('QTD').AsFloat := LQtdReal;
+        LQry.ParamByName('CUSTO').AsFloat := LCusto;
+        LQry.ParamByName('MOV').AsLargeInt := LMovId;
+        LQry.ParamByName('ID').AsLargeInt := LItensIds[LIndice];
+        LQry.ExecSQL;
+
+        RegistrarAuditoria('CONSUMO_MATERIAL_ITEM', 'BAIXA', LItensIds[LIndice],
+          ResumoAuditoria([
+            'MATERIAL=' + LCodigos[LIndice],
+            'PREVISTA=' + FormatFloat('#,##0.####', LItensPrev[LIndice])]),
+          ResumoAuditoria([
+            'REAL=' + FormatFloat('#,##0.####', LQtdReal),
+            'CUSTO=' + FormatFloat('#,##0.####', LCusto),
+            'MOVIMENTO=' + IntToStr(LMovId)]));
+      end;
+
+      { confirma o consumo }
+      LQry.SQL.Text :=
+        'UPDATE CONSUMO_MATERIAL SET STATUS = ''CONFIRMADO'', ' +
+        '  DATA_CONFIRMACAO = CURRENT_TIMESTAMP ' +
+        'WHERE ID = :ID AND STATUS = ''PENDENTE''';
+      LQry.ParamByName('ID').AsLargeInt := AConsumoId;
+      LQry.ExecSQL;
+
+      { confere se a transição aconteceu (protege contra corrida) }
+      LQry.SQL.Text := 'SELECT STATUS FROM CONSUMO_MATERIAL WHERE ID = :ID';
+      LQry.ParamByName('ID').AsLargeInt := AConsumoId;
+      LQry.Open;
+      LStatus := LQry.FieldByName('STATUS').AsString;
+      LQry.Close;
+      if LStatus <> 'CONFIRMADO' then
+        raise EProducao.Create(
+          'Não foi possível confirmar o consumo (situação alterada por outro usuário).');
+
+      RegistrarAuditoria('CONSUMO_MATERIAL', 'CONFIRMAR', AConsumoId,
+        'STATUS=PENDENTE',
+        ResumoAuditoria([
+          'STATUS=CONFIRMADO',
+          'ITENS=' + IntToStr(Length(LItensIds))]));
+
+      FConexao.Confirmar;
+    except
+      FConexao.Cancelar;
+      raise;
+    end;
+  finally
+    LQry.Free;
+  end;
+end;
+
+procedure TProducaoService.EstornarConsumo(AConsumoId: Int64;
+  const AMotivo: string);
+var
+  LQry: TSQLQuery;
+  LStatus: string;
+  LJustificativa: string;
+  LDocumento: string;
+  LIndice, LJ: Integer;
+  LMovId: Int64;
+  LItensIds: array of Int64;
+  LItensMat: array of Int64;
+  LItensQtd: array of Double;
+  LItensCusto: array of Double;
+  LCodigos: array of string;
+begin
+  if AConsumoId <= 0 then
+    raise EProducao.Create('Consumo de materiais não encontrado.');
+  if Trim(AMotivo) = '' then
+    raise EProducao.Create('Informe o motivo do estorno do consumo.');
+
+  FConexao.IniciarTransacao;
+  LQry := NovaConsulta;
+  try
+    try
+      LQry.SQL.Text :=
+        'SELECT STATUS, COALESCE(JUSTIFICATIVA, '''') AS JUSTIFICATIVA ' +
+        'FROM CONSUMO_MATERIAL WHERE ID = :ID';
+      LQry.ParamByName('ID').AsLargeInt := AConsumoId;
+      LQry.Open;
+      if LQry.IsEmpty then
+        raise EProducao.Create('Consumo de materiais não encontrado.');
+      LStatus := LQry.FieldByName('STATUS').AsString;
+      LJustificativa := Trim(LQry.FieldByName('JUSTIFICATIVA').AsString);
+      LQry.Close;
+
+      if LStatus <> 'CONFIRMADO' then
+        raise EProducao.CreateFmt(
+          'Só é possível estornar um consumo CONFIRMADO (situação atual: %s).',
+          [LStatus]);
+
+      LDocumento := Format('ESTORNO CONSUMO MAPA - #%d', [AConsumoId]);
+
+      { itens que tiveram baixa (movimento vinculado) }
+      LQry.SQL.Text :=
+        'SELECT I.ID, I.MATERIAL_ID, I.QTD_REAL, I.CUSTO_UNITARIO, ' +
+        '  P.CODIGO ' +
+        'FROM CONSUMO_MATERIAL_ITEM I ' +
+        '  JOIN PRODUTO P ON P.ID = I.MATERIAL_ID ' +
+        'WHERE I.CONSUMO_MATERIAL_ID = :CONS ' +
+        '  AND I.MOVIMENTO_ESTOQUE_ID IS NOT NULL ORDER BY I.ID';
+      LQry.ParamByName('CONS').AsLargeInt := AConsumoId;
+      LQry.Open;
+      SetLength(LItensIds, 0);
+      while not LQry.EOF do
+      begin
+        LJ := Length(LItensIds);
+        SetLength(LItensIds, LJ + 1);
+        SetLength(LItensMat, LJ + 1);
+        SetLength(LItensQtd, LJ + 1);
+        SetLength(LItensCusto, LJ + 1);
+        SetLength(LCodigos, LJ + 1);
+        LItensIds[LJ] := LQry.FieldByName('ID').AsLargeInt;
+        LItensMat[LJ] := LQry.FieldByName('MATERIAL_ID').AsLargeInt;
+        LItensQtd[LJ] := LQry.FieldByName('QTD_REAL').AsFloat;
+        LItensCusto[LJ] := LQry.FieldByName('CUSTO_UNITARIO').AsFloat;
+        LCodigos[LJ] := Trim(LQry.FieldByName('CODIGO').AsString);
+        LQry.Next;
+      end;
+      LQry.Close;
+
+      if Length(LItensIds) = 0 then
+        raise EProducao.Create(
+          'Este consumo não tem baixas de estoque para estornar.');
+
+      { devolve ao estoque cada item baixado }
+      for LIndice := 0 to High(LItensIds) do
+      begin
+        LQry.SQL.Text :=
+          'INSERT INTO MOVIMENTO_ESTOQUE (EMPRESA_ID, PRODUTO_ID, TIPO, ' +
+          '  QUANTIDADE, CUSTO_UNITARIO, DOCUMENTO, OBSERVACAO, ' +
+          '  DATA_MOVIMENTO, USUARIO_ID) ' +
+          'VALUES (:EMP, :PROD, ''E'', :QTD, :CUSTO, :DOC, :OBS, :DATA, :USR)';
+        LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+        LQry.ParamByName('PROD').AsLargeInt := LItensMat[LIndice];
+        LQry.ParamByName('QTD').AsFloat := LItensQtd[LIndice];
+        LQry.ParamByName('CUSTO').AsFloat := LItensCusto[LIndice];
+        LQry.ParamByName('DOC').AsString := LDocumento;
+        LQry.ParamByName('OBS').AsString := 'Estorno: ' + Trim(AMotivo);
+        LQry.ParamByName('DATA').AsDate := Date;
+        LQry.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
+        LQry.ExecSQL;
+
+        LQry.SQL.Text :=
+          'SELECT GEN_ID(GEN_MOVIMENTO_ESTOQUE_ID, 0) FROM RDB$DATABASE';
+        LQry.Open;
+        LMovId := LQry.Fields[0].AsLargeInt;
+        LQry.Close;
+
+        RegistrarAuditoria('CONSUMO_MATERIAL_ITEM', 'ESTORNO', LItensIds[LIndice],
+          ResumoAuditoria([
+            'MATERIAL=' + LCodigos[LIndice],
+            'QTD=' + FormatFloat('#,##0.####', LItensQtd[LIndice])]),
+          ResumoAuditoria([
+            'MOVIMENTO=' + IntToStr(LMovId),
+            'MOTIVO=' + Trim(AMotivo)]));
+      end;
+
+      { a justificativa acumula o motivo do estorno }
+      if LJustificativa <> '' then
+        LJustificativa := LJustificativa + ' | ESTORNO: ' + Trim(AMotivo)
+      else
+        LJustificativa := 'ESTORNO: ' + Trim(AMotivo);
+      if Length(LJustificativa) > 500 then
+        LJustificativa := Copy(LJustificativa, 1, 500);
+
+      LQry.SQL.Text :=
+        'UPDATE CONSUMO_MATERIAL SET STATUS = ''ESTORNADO'', ' +
+        '  DATA_ESTORNO = CURRENT_TIMESTAMP, USUARIO_ESTORNO_ID = :USR, ' +
+        '  JUSTIFICATIVA = :JUST ' +
+        'WHERE ID = :ID AND STATUS = ''CONFIRMADO''';
+      LQry.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
+      LQry.ParamByName('JUST').AsString := LJustificativa;
+      LQry.ParamByName('ID').AsLargeInt := AConsumoId;
+      LQry.ExecSQL;
+
+      LQry.SQL.Text := 'SELECT STATUS FROM CONSUMO_MATERIAL WHERE ID = :ID';
+      LQry.ParamByName('ID').AsLargeInt := AConsumoId;
+      LQry.Open;
+      LStatus := LQry.FieldByName('STATUS').AsString;
+      LQry.Close;
+      if LStatus <> 'ESTORNADO' then
+        raise EProducao.Create(
+          'Não foi possível estornar o consumo (situação alterada por outro usuário).');
+
+      RegistrarAuditoria('CONSUMO_MATERIAL', 'ESTORNAR', AConsumoId,
+        'STATUS=CONFIRMADO',
+        ResumoAuditoria([
+          'STATUS=ESTORNADO',
+          'ITENS=' + IntToStr(Length(LItensIds)),
+          'MOTIVO=' + Trim(AMotivo)]));
+
+      FConexao.Confirmar;
+    except
+      FConexao.Cancelar;
+      raise;
+    end;
+  finally
+    LQry.Free;
   end;
 end;
 

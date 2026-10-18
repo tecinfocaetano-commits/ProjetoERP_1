@@ -57,6 +57,9 @@ uses
   uFrmListaPedidos,
   uFrmMapaProducao,
   uFrmBipagem,
+  // Views - Produção Fase 5
+  uFrmFichaTecnica,
+  uFrmConsumoMaterial,
   uFrmOrcamento,
   // Views - Fase 5
   uFrmPDV,

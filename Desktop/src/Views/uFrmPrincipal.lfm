@@ -141,6 +141,17 @@ object frmPrincipal: TfrmPrincipal
         Caption = 'Bipagem de Talões'
         OnClick = mnuProBipagemClick
       end
+      object mnuSep4: TMenuItem
+        Caption = '-'
+      end
+      object mnuProFichaTecnica: TMenuItem
+        Caption = 'Ficha Técnica'
+        OnClick = mnuProFichaTecnicaClick
+      end
+      object mnuProConsumo: TMenuItem
+        Caption = 'Consumo de Materiais'
+        OnClick = mnuProConsumoClick
+      end
     end
     object mnuPDV: TMenuItem
       Caption = 'PDV'

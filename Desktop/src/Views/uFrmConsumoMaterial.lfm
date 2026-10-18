@@ -1,0 +1,210 @@
+object frmConsumoMaterial: TfrmConsumoMaterial
+  Left = 0
+  Height = 620
+  Top = 0
+  Width = 860
+  Caption = 'Produção - Consumo de Materiais'
+  ClientHeight = 620
+  ClientWidth = 860
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '3.2.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 860
+    Align = alTop
+    ClientHeight = 50
+    ClientWidth = 860
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 28
+      Top = 12
+      Width = 543
+      Caption = 'Produção - Consumo de Materiais'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlSel: TPanel
+    Left = 0
+    Height = 66
+    Top = 50
+    Width = 860
+    Align = alTop
+    ClientHeight = 66
+    ClientWidth = 860
+    TabOrder = 1
+    object lblMapa: TLabel
+      Left = 12
+      Height = 19
+      Top = 12
+      Width = 130
+      Caption = 'Mapa de produção:'
+      Font.Height = -15
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object cmbMapas: TComboBox
+      Left = 152
+      Height = 29
+      Top = 8
+      Width = 330
+      DropDownCount = 20
+      ItemHeight = 21
+      OnChange = cmbMapasChange
+      Style = csDropDownList
+      TabOrder = 0
+    end
+    object btnAtualizar: TButton
+      Left = 494
+      Height = 29
+      Top = 8
+      Width = 100
+      Caption = 'Atualizar'
+      TabOrder = 1
+      OnClick = btnAtualizarClick
+    end
+    object lblConsumoTit: TLabel
+      Left = 12
+      Height = 19
+      Top = 40
+      Width = 74
+      Caption = 'Consumo:'
+      Font.Height = -15
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblConsumo: TLabel
+      Left = 96
+      Height = 19
+      Top = 40
+      Width = 640
+      AutoSize = False
+      Caption = 'Selecione um mapa de produção.'
+      Font.Style = [fsBold]
+      ParentFont = False
+      WordWrap = True
+    end
+  end
+  object pnlAcoes: TPanel
+    Left = 0
+    Height = 56
+    Top = 116
+    Width = 860
+    Align = alTop
+    ClientHeight = 56
+    ClientWidth = 860
+    Color = clSilver
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 2
+    object btnGerar: TButton
+      Left = 12
+      Height = 33
+      Top = 11
+      Width = 160
+      Caption = 'Gerar Consumo'
+      Font.Height = -13
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 0
+      OnClick = btnGerarClick
+    end
+    object btnConfirmar: TButton
+      Left = 184
+      Height = 33
+      Top = 11
+      Width = 180
+      Caption = 'Confirmar Baixa'
+      Font.Height = -13
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 1
+      OnClick = btnConfirmarClick
+    end
+    object btnEstornar: TButton
+      Left = 376
+      Height = 33
+      Top = 11
+      Width = 150
+      Caption = 'Estornar'
+      Font.Height = -13
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 2
+      OnClick = btnEstornarClick
+    end
+  end
+  object pnlItens: TPanel
+    Left = 0
+    Height = 348
+    Top = 172
+    Width = 860
+    Align = alClient
+    ClientHeight = 348
+    ClientWidth = 860
+    TabOrder = 3
+    object lblItensTitulo: TLabel
+      Left = 8
+      Height = 15
+      Top = 4
+      Width = 340
+      Caption = 'Materiais do consumo (ajuste a "Qtd real" antes de confirmar)'
+    end
+    object sgItens: TStringGrid
+      Left = 8
+      Height = 320
+      Top = 20
+      Width = 844
+      Align = alBottom
+      ColCount = 6
+      DefaultRowHeight = 21
+      FixedColor = clMenu
+      FixedCols = 0
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goColSizing, goThumbTracking]
+      RowCount = 2
+      TabOrder = 0
+    end
+  end
+  object pnlRodape: TPanel
+    Left = 0
+    Height = 40
+    Top = 580
+    Width = 860
+    Align = alBottom
+    ClientHeight = 40
+    ClientWidth = 860
+    TabOrder = 4
+    object lblPermissao: TLabel
+      Left = 12
+      Height = 15
+      Top = 12
+      Width = 500
+      AutoSize = False
+      Font.Color = 15286068
+      Font.Style = [fsBold]
+      ParentFont = False
+      WordWrap = True
+    end
+    object btnFechar: TButton
+      Left = 748
+      Height = 27
+      Top = 6
+      Width = 100
+      Cancel = True
+      Caption = 'Fechar'
+      ModalResult = 2
+      OnClick = btnFecharClick
+      TabOrder = 0
+    end
+  end
+end

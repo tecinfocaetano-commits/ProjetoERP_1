@@ -39,6 +39,9 @@ type
     mnuProducao: TMenuItem;
     mnuProMapaProducao: TMenuItem;
     mnuProBipagem: TMenuItem;
+    mnuSep4: TMenuItem;
+    mnuProFichaTecnica: TMenuItem;
+    mnuProConsumo: TMenuItem;
     mnuPDV: TMenuItem;
     mnuPDVAbrirPDV: TMenuItem;
     mnuFinanceiro: TMenuItem;
@@ -77,6 +80,8 @@ type
 procedure mnuVenNotaSaidaClick(Sender: TObject);
     procedure mnuProMapaProducaoClick(Sender: TObject);
     procedure mnuProBipagemClick(Sender: TObject);
+    procedure mnuProConsumoClick(Sender: TObject);
+    procedure mnuProFichaTecnicaClick(Sender: TObject);
     procedure mnuPDVAbrirPDVClick(Sender: TObject);
     procedure mnuFinContasReceberClick(Sender: TObject);
     procedure mnuFinContasPagarClick(Sender: TObject);
@@ -98,6 +103,7 @@ uses
   uFrmClientes, uFrmFornecedores, uFrmProdutos, uFrmCategorias, uFrmUsuarios,
   uFrmMovEstoque, uFrmKardex, uFrmInventario,
   uFrmNotaEntrada, uFrmNotaSaida, uFrmMapaProducao, uFrmBipagem,
+  uFrmFichaTecnica, uFrmConsumoMaterial,
   uFrmPedidoVenda, uFrmListaPedidos, uFrmOrcamento,
   uFrmPDV, uFrmContasReceber, uFrmContasPagar,
   uFrmNFe, uFrmCopiloto;
@@ -246,6 +252,28 @@ begin
     Exit;
   end;
   AbrirFormulario(TfrmBipagem);
+end;
+
+procedure TfrmPrincipal.mnuProFichaTecnicaClick(Sender: TObject);
+begin
+  if not TemPermissao(MODULO_PRODUCAO, TELA_FICHA_TECNICA, PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para acessar a Ficha Técnica.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  AbrirFormulario(TfrmFichaTecnica);
+end;
+
+procedure TfrmPrincipal.mnuProConsumoClick(Sender: TObject);
+begin
+  if not TemPermissao(MODULO_PRODUCAO, TELA_CONSUMO, PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para acessar o Consumo de Materiais.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  AbrirFormulario(TfrmConsumoMaterial);
 end;
 
 // === PDV ===

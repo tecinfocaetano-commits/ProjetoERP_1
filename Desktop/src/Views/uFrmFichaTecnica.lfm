@@ -1,0 +1,282 @@
+object frmFichaTecnica: TfrmFichaTecnica
+  Left = 0
+  Height = 640
+  Top = 0
+  Width = 860
+  Caption = 'Produção - Ficha Técnica'
+  ClientHeight = 640
+  ClientWidth = 860
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '3.2.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 860
+    Align = alTop
+    ClientHeight = 50
+    ClientWidth = 860
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 28
+      Top = 12
+      Width = 460
+      Caption = 'Produção - Ficha Técnica (BOM)'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlProduto: TPanel
+    Left = 0
+    Height = 66
+    Top = 50
+    Width = 860
+    Align = alTop
+    ClientHeight = 66
+    ClientWidth = 860
+    TabOrder = 1
+    object lblProduto: TLabel
+      Left = 12
+      Height = 19
+      Top = 12
+      Width = 130
+      Caption = 'Produto acabado:'
+      Font.Height = -15
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object cmbProduto: TComboBox
+      Left = 152
+      Height = 29
+      Top = 8
+      Width = 330
+      DropDownCount = 20
+      ItemHeight = 21
+      Style = csDropDownList
+      TabOrder = 0
+    end
+    object btnCarregar: TButton
+      Left = 494
+      Height = 29
+      Top = 8
+      Width = 100
+      Caption = 'Carregar'
+      Default = True
+      TabOrder = 1
+      OnClick = btnCarregarClick
+    end
+    object lblDesc: TLabel
+      Left = 12
+      Height = 19
+      Top = 40
+      Width = 76
+      Caption = 'Descrição:'
+      Font.Height = -15
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object edtDescricao: TEdit
+      Left = 96
+      Height = 27
+      Top = 36
+      Width = 420
+      TabOrder = 2
+    end
+    object lblBase: TLabel
+      Left = 540
+      Height = 19
+      Top = 40
+      Width = 160
+      Caption = 'Rendimento (base):'
+      Font.Height = -15
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object edtBase: TEdit
+      Left = 708
+      Height = 27
+      Top = 36
+      Width = 80
+      TabOrder = 3
+      Text = '1'
+    end
+  end
+  object pnlItem: TPanel
+    Left = 0
+    Height = 56
+    Top = 116
+    Width = 860
+    Align = alTop
+    ClientHeight = 56
+    ClientWidth = 860
+    Color = clSilver
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 2
+    object lblMaterial: TLabel
+      Left = 12
+      Height = 19
+      Top = 18
+      Width = 70
+      Caption = 'Material:'
+      Font.Height = -15
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object cmbMaterial: TComboBox
+      Left = 88
+      Height = 29
+      Top = 13
+      Width = 330
+      DropDownCount = 20
+      ItemHeight = 21
+      Style = csDropDownList
+      TabOrder = 0
+    end
+    object lblQtd: TLabel
+      Left = 430
+      Height = 19
+      Top = 18
+      Width = 44
+      Caption = 'Qtd:'
+      Font.Height = -15
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object edtQtd: TEdit
+      Left = 478
+      Height = 27
+      Top = 13
+      Width = 90
+      TabOrder = 1
+    end
+    object lblPerda: TLabel
+      Left = 580
+      Height = 19
+      Top = 18
+      Width = 60
+      Caption = 'Perda %:'
+      Font.Height = -15
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object edtPerda: TEdit
+      Left = 648
+      Height = 27
+      Top = 13
+      Width = 70
+      TabOrder = 2
+      Text = '0'
+    end
+    object btnAdicionar: TButton
+      Left = 730
+      Height = 29
+      Top = 13
+      Width = 60
+      Caption = 'Add'
+      TabOrder = 3
+      OnClick = btnAdicionarClick
+    end
+    object btnRemover: TButton
+      Left = 796
+      Height = 29
+      Top = 13
+      Width = 56
+      Caption = 'Rem.'
+      TabOrder = 4
+      OnClick = btnRemoverClick
+    end
+  end
+  object pnlItens: TPanel
+    Left = 0
+    Height = 368
+    Top = 172
+    Width = 860
+    Align = alClient
+    ClientHeight = 368
+    ClientWidth = 860
+    TabOrder = 3
+    object lblItensTitulo: TLabel
+      Left = 8
+      Height = 15
+      Top = 4
+      Width = 330
+      Caption = 'Materiais da ficha (quanto consome por unidade de base)'
+    end
+    object sgItens: TStringGrid
+      Left = 8
+      Height = 340
+      Top = 20
+      Width = 844
+      Align = alBottom
+      ColCount = 3
+      DefaultRowHeight = 21
+      FixedColor = clMenu
+      FixedCols = 0
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goColSizing, goThumbTracking]
+      RowCount = 2
+      TabOrder = 0
+    end
+  end
+  object pnlRodape: TPanel
+    Left = 0
+    Height = 40
+    Top = 600
+    Width = 860
+    Align = alBottom
+    ClientHeight = 40
+    ClientWidth = 860
+    TabOrder = 4
+    object lblPermissao: TLabel
+      Left = 12
+      Height = 15
+      Top = 12
+      Width = 460
+      AutoSize = False
+      Font.Color = 15286068
+      Font.Style = [fsBold]
+      ParentFont = False
+      WordWrap = True
+    end
+    object btnSalvar: TButton
+      Left = 460
+      Height = 27
+      Top = 6
+      Width = 100
+      Caption = 'Salvar'
+      Font.Height = -12
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 0
+      OnClick = btnSalvarClick
+    end
+    object btnLimpar: TButton
+      Left = 568
+      Height = 27
+      Top = 6
+      Width = 100
+      Caption = 'Limpar'
+      TabOrder = 1
+      OnClick = btnLimparClick
+    end
+    object btnFechar: TButton
+      Left = 748
+      Height = 27
+      Top = 6
+      Width = 100
+      Cancel = True
+      Caption = 'Fechar'
+      ModalResult = 2
+      OnClick = btnFecharClick
+      TabOrder = 2
+    end
+  end
+end
