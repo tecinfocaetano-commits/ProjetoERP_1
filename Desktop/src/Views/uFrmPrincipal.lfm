@@ -137,6 +137,10 @@ object frmPrincipal: TfrmPrincipal
         Caption = 'Mapa de Produção'
         OnClick = mnuProMapaProducaoClick
       end
+      object mnuProBipagem: TMenuItem
+        Caption = 'Bipagem de Talões'
+        OnClick = mnuProBipagemClick
+      end
     end
     object mnuPDV: TMenuItem
       Caption = 'PDV'

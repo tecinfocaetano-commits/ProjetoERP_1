@@ -33,9 +33,9 @@ const
 { Módulo/telas do módulo de Produção (espelham o script 012) }
   MODULO_PRODUCAO       = 'PRODUCAO';
   TELA_MAPA_PRODUCAO    = 'MAPA_PRODUCAO';
-  TELA_FICHA_TECNICA    = 'FICHA_TECNICA';
   TELA_BIPAGEM          = 'BIPAGEM';
   TELA_CONSUMO          = 'CONSUMO';
+  TELA_FICHA_TECNICA    = 'FICHA_TECNICA';
 
 { Verdadeiro quando o usuário logado pode executar a ação. }
 function TemPermissao(const AModulo, ATela, AAcao: string): Boolean;

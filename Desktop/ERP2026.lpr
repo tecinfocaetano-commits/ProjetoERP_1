@@ -38,6 +38,7 @@ uses
   uACBrHelper,
   // Utils
   uValidacoes,
+  uTraducao,
   // Views - Fase 2
   uFrmLogin,
   uFrmPrincipal,
@@ -55,6 +56,7 @@ uses
   uFrmPedidoVenda,
   uFrmListaPedidos,
   uFrmMapaProducao,
+  uFrmBipagem,
   uFrmOrcamento,
   // Views - Fase 5
   uFrmPDV,
@@ -71,6 +73,7 @@ begin
   RequireDerivedFormResource := True;
   Application.Scaled := True;
   Application.Initialize;
+  AplicarIdiomaPortugues;   // diálogos do LCL em português (Sim/Não, títulos)
 
   // Login
   Application.CreateForm(TfrmLogin, frmLogin);

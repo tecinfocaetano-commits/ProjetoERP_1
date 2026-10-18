@@ -1,0 +1,318 @@
+object frmBipagem: TfrmBipagem
+  Left = 0
+  Height = 620
+  Top = 0
+  Width = 820
+  Caption = 'Produção - Bipagem de Talões'
+  ClientHeight = 620
+  ClientWidth = 820
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '3.2.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 820
+    Align = alTop
+    ClientHeight = 50
+    ClientWidth = 820
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 28
+      Top = 12
+      Width = 447
+      Caption = 'Produção - Bipagem de Talões'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlEntrada: TPanel
+    Left = 0
+    Height = 60
+    Top = 50
+    Width = 820
+    Align = alTop
+    ClientHeight = 60
+    ClientWidth = 820
+    TabOrder = 1
+    object lblCodigo: TLabel
+      Left = 12
+      Height = 19
+      Top = 19
+      Width = 131
+      Caption = 'Código de barras:'
+      Font.Height = -15
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object edtCodigo: TEdit
+      Left = 152
+      Height = 31
+      Top = 14
+      Width = 260
+      Font.Height = -19
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 0
+      OnKeyPress = edtCodigoKeyPress
+    end
+    object chkManual: TCheckBox
+      Left = 432
+      Height = 19
+      Top = 20
+      Width = 130
+      Caption = 'Digitação manual'
+      TabOrder = 1
+    end
+    object btnBipar: TButton
+      Left = 580
+      Height = 32
+      Top = 13
+      Width = 110
+      Caption = 'Bipar'
+      Default = True
+      Font.Height = -13
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 2
+      OnClick = btnBiparClick
+    end
+  end
+  object pnlFeedback: TPanel
+    Left = 0
+    Height = 90
+    Top = 110
+    Width = 820
+    Align = alTop
+    ClientHeight = 90
+    ClientWidth = 820
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 2
+    object lblFeedback: TLabel
+      Left = 12
+      Height = 70
+      Top = 10
+      Width = 796
+      Align = alClient
+      Caption = 'Aguardando a leitura do código de barras...'
+      Font.Color = clWhite
+      Font.Height = -16
+      Font.Style = [fsBold]
+      ParentFont = False
+      WordWrap = True
+    end
+  end
+  object pnlDetalhes: TPanel
+    Left = 0
+    Height = 60
+    Top = 200
+    Width = 820
+    Align = alTop
+    ClientHeight = 60
+    ClientWidth = 820
+    TabOrder = 3
+    object lblDetTalaoTit: TLabel
+      Left = 12
+      Height = 15
+      Top = 10
+      Width = 38
+      Caption = 'Talão:'
+    end
+    object lblDetTalao: TLabel
+      Left = 60
+      Height = 15
+      Top = 10
+      Width = 8
+      Caption = '-'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblDetMapaTit: TLabel
+      Left = 200
+      Height = 15
+      Top = 10
+      Width = 31
+      Caption = 'Mapa:'
+    end
+    object lblDetMapa: TLabel
+      Left = 244
+      Height = 15
+      Top = 10
+      Width = 8
+      Caption = '-'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblDetStatusTit: TLabel
+      Left = 380
+      Height = 15
+      Top = 10
+      Width = 52
+      Caption = 'Transição:'
+    end
+    object lblDetStatus: TLabel
+      Left = 440
+      Height = 15
+      Top = 10
+      Width = 8
+      Caption = '-'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblDetProdutoTit: TLabel
+      Left = 12
+      Height = 15
+      Top = 35
+      Width = 45
+      Caption = 'Produto:'
+    end
+    object lblDetProduto: TLabel
+      Left = 68
+      Height = 15
+      Top = 35
+      Width = 8
+      Caption = '-'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblDetQtdTit: TLabel
+      Left = 560
+      Height = 15
+      Top = 35
+      Width = 62
+      Caption = 'Quantidade:'
+    end
+    object lblDetQtd: TLabel
+      Left = 630
+      Height = 15
+      Top = 35
+      Width = 8
+      Caption = '-'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlHistorico: TPanel
+    Left = 0
+    Height = 220
+    Top = 260
+    Width = 820
+    Align = alClient
+    ClientHeight = 220
+    ClientWidth = 820
+    TabOrder = 4
+    object lblHistoricoTitulo: TLabel
+      Left = 8
+      Height = 15
+      Top = 4
+      Width = 190
+      Caption = 'Últimas bipagens (50 registros)'
+    end
+    object dbGridBipagens: TDBGrid
+      Left = 8
+      Height = 196
+      Top = 20
+      Width = 804
+      Align = alClient
+      Color = clWhite
+      DataSource = DataSourceBipagens
+      DefaultRowHeight = 21
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ParentColor = False
+      ReadOnly = True
+      TabOrder = 0
+      Columns = <    
+        item
+          FieldName = 'DATA_HORA'
+          Title.Caption = 'Data/Hora'
+          Width = 120
+        end    
+        item
+          FieldName = 'TALAO'
+          Title.Alignment = taCenter
+          Title.Caption = 'Talão'
+          Width = 55
+        end    
+        item
+          FieldName = 'PRODUTO'
+          Title.Caption = 'Produto'
+          Width = 200
+        end    
+        item
+          FieldName = 'MAPA'
+          Title.Alignment = taCenter
+          Title.Caption = 'Mapa'
+          Width = 48
+        end    
+        item
+          FieldName = 'ETAPA'
+          Title.Caption = 'Etapa'
+          Width = 85
+        end    
+        item
+          FieldName = 'ORIGEM'
+          Title.Caption = 'Origem'
+          Width = 65
+        end    
+        item
+          FieldName = 'RESULTADO'
+          Title.Caption = 'Resultado'
+          Width = 80
+        end    
+        item
+          FieldName = 'USUARIO'
+          Title.Caption = 'Usuário'
+          Width = 75
+        end    
+        item
+          FieldName = 'OBSERVACAO'
+          Title.Caption = 'Observação'
+        end>
+      OnDblClick = dbGridBipagensDblClick
+    end
+  end
+  object pnlRodape: TPanel
+    Left = 0
+    Height = 40
+    Top = 580
+    Width = 820
+    Align = alBottom
+    ClientHeight = 40
+    ClientWidth = 820
+    TabOrder = 5
+    object lblPermissao: TLabel
+      Left = 12
+      Height = 15
+      Top = 12
+      Width = 400
+      Font.Color = 15286068
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object btnFechar: TButton
+      Left = 708
+      Height = 27
+      Top = 6
+      Width = 100
+      Cancel = True
+      Caption = 'Fechar'
+      ModalResult = 2
+      OnClick = btnFecharClick
+      TabOrder = 0
+    end
+  end
+  object DataSourceBipagens: TDataSource
+    Left = 724
+    Top = 300
+  end
+end

@@ -19,6 +19,9 @@ REM Relatorios LazReport (.lrf) - o exe carrega de bin\relatorios
 if not exist "%ROOT%\Desktop\bin\relatorios" mkdir "%ROOT%\Desktop\bin\relatorios"
 copy /Y "%ROOT%\Desktop\relatorios\*.lrf" "%ROOT%\Desktop\bin\relatorios\" >nul
 
+REM Traducao dos dialogos do LCL (Sim/Nao) - o exe carrega de bin\
+copy /Y "%ROOT%\Desktop\locale\*.po" "%ROOT%\Desktop\bin\" >nul
+
 echo.
 echo === Desktop compilado: Desktop\bin\ERP2026.exe ===
 echo (login: admin / admin123)

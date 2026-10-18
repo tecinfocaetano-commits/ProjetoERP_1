@@ -38,6 +38,7 @@ type
     mnuVenNotaSaida: TMenuItem;
     mnuProducao: TMenuItem;
     mnuProMapaProducao: TMenuItem;
+    mnuProBipagem: TMenuItem;
     mnuPDV: TMenuItem;
     mnuPDVAbrirPDV: TMenuItem;
     mnuFinanceiro: TMenuItem;
@@ -75,6 +76,7 @@ type
     procedure mnuVenListaPedidosClick(Sender: TObject);
 procedure mnuVenNotaSaidaClick(Sender: TObject);
     procedure mnuProMapaProducaoClick(Sender: TObject);
+    procedure mnuProBipagemClick(Sender: TObject);
     procedure mnuPDVAbrirPDVClick(Sender: TObject);
     procedure mnuFinContasReceberClick(Sender: TObject);
     procedure mnuFinContasPagarClick(Sender: TObject);
@@ -95,7 +97,7 @@ implementation
 uses
   uFrmClientes, uFrmFornecedores, uFrmProdutos, uFrmCategorias, uFrmUsuarios,
   uFrmMovEstoque, uFrmKardex, uFrmInventario,
-  uFrmNotaEntrada, uFrmNotaSaida, uFrmMapaProducao,
+  uFrmNotaEntrada, uFrmNotaSaida, uFrmMapaProducao, uFrmBipagem,
   uFrmPedidoVenda, uFrmListaPedidos, uFrmOrcamento,
   uFrmPDV, uFrmContasReceber, uFrmContasPagar,
   uFrmNFe, uFrmCopiloto;
@@ -233,6 +235,17 @@ begin
     Exit;
   end;
   AbrirFormulario(TfrmMapaProducao);
+end;
+
+procedure TfrmPrincipal.mnuProBipagemClick(Sender: TObject);
+begin
+  if not TemPermissao(MODULO_PRODUCAO, TELA_BIPAGEM, PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para acessar a Bipagem de Talões.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  AbrirFormulario(TfrmBipagem);
 end;
 
 // === PDV ===

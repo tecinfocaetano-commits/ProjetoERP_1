@@ -355,8 +355,21 @@ object frmMapaProducao: TfrmMapaProducao
           OnClick = btnVisualizarTalaoClick
           TabOrder = 1
         end
+        object btnRelatorioMenu: TBitBtn
+          Left = 354
+          Height = 27
+          Top = 4
+          Width = 30
+          Caption = '▼'
+          ParentShowHint = False
+          PopupMenu = pmRelatorio
+          ShowHint = True
+          Hint = 'Opções do relatório (editar / configurar)'
+          OnClick = btnRelatorioMenuClick
+          TabOrder = 4
+        end
         object btnImprimirTalao: TBitBtn
-          Left = 358
+          Left = 390
           Height = 27
           Top = 4
           Width = 106
@@ -365,7 +378,7 @@ object frmMapaProducao: TfrmMapaProducao
           TabOrder = 2
         end
         object btnCancelarTalao: TBitBtn
-          Left = 470
+          Left = 502
           Height = 27
           Top = 4
           Width = 122
@@ -374,10 +387,10 @@ object frmMapaProducao: TfrmMapaProducao
           TabOrder = 3
         end
         object lblQtdTaloes: TLabel
-          Left = 602
+          Left = 634
           Height = 20
           Top = 8
-          Width = 530
+          Width = 498
           AutoSize = False
           Caption = ''
         end
@@ -740,5 +753,25 @@ object frmMapaProducao: TfrmMapaProducao
   object DataSourceTaloes: TDataSource
     Left = 1040
     Top = 160
+  end
+  object pmRelatorio: TPopupMenu
+    Left = 1100
+    Top = 160
+    object mnuRelVisualizar: TMenuItem
+      Caption = 'Visualizar talões'
+      OnClick = btnVisualizarTalaoClick
+    end
+    object mnuRelEditar: TMenuItem
+      Caption = 'Editar relatório (abrir editor)...'
+      OnClick = mnuRelEditarClick
+    end
+    object mnuRelConfigurar: TMenuItem
+      Caption = 'Configurar relatório (trocar arquivo)...'
+      OnClick = mnuRelConfigurarClick
+    end
+    object mnuRelRestaurar: TMenuItem
+      Caption = 'Restaurar relatório padrão'
+      OnClick = mnuRelRestaurarClick
+    end
   end
 end

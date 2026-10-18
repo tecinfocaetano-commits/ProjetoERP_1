@@ -22,7 +22,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, Buttons, Grids, DBGrids, DB, SQLDB, DateUtils,
+  ExtCtrls, Buttons, Grids, DBGrids, DB, SQLDB, DateUtils, Menus,
   LR_Class, LR_DBSet, LR_Barc,
   uConexao, uSessao, uProducaoService, uPedidoStatus, uPermissao;
 
@@ -54,8 +54,14 @@ type
     lblTaloesSel: TLabel;
     btnGerarTaloes: TBitBtn;
     btnVisualizarTalao: TBitBtn;
+    btnRelatorioMenu: TBitBtn;      { "Relatório ▼": atalhos do relatório }
     btnImprimirTalao: TBitBtn;
     btnCancelarTalao: TBitBtn;
+    pmRelatorio: TPopupMenu;
+    mnuRelVisualizar: TMenuItem;
+    mnuRelEditar: TMenuItem;
+    mnuRelConfigurar: TMenuItem;
+    mnuRelRestaurar: TMenuItem;
     lblQtdTaloes: TLabel;
     dbGridTaloes: TDBGrid;
     pnlCriar: TPanel;
@@ -98,6 +104,10 @@ type
     procedure dbGridMapasDblClick(Sender: TObject);
     procedure btnGerarTaloesClick(Sender: TObject);
     procedure btnVisualizarTalaoClick(Sender: TObject);
+    procedure btnRelatorioMenuClick(Sender: TObject);
+    procedure mnuRelEditarClick(Sender: TObject);
+    procedure mnuRelConfigurarClick(Sender: TObject);
+    procedure mnuRelRestaurarClick(Sender: TObject);
     procedure btnImprimirTalaoClick(Sender: TObject);
     procedure btnCancelarTalaoClick(Sender: TObject);
     procedure DataSourceMapasDataChange(Sender: TObject; Field: TField);
@@ -342,6 +352,13 @@ begin
       FMapas.Locate('ID', FMapaId, []);   { se não achar, fica no 1º }
     CarregarDetalheMapa(FMapas.FieldByName('ID').AsLargeInt);
   end;
+
+  { após um COMMIT os cursores SQLDB são invalidados e os TDBGrid não se
+    repintam sozinhos quando a recarga não vem de um clique do usuário;
+    invalidar as três grades garante que sempre reflitam os dados }
+  dbGridMapas.Invalidate;
+  dbGridItensMapa.Invalidate;
+  dbGridTaloes.Invalidate;
 end;
 
 procedure TfrmMapaProducao.CarregarDetalheMapa(AMapaId: Int64);
@@ -930,9 +947,9 @@ end;
 
 function TfrmMapaProducao.CaminhoRelatorioTalao: string;
 begin
-  { o exe roda de Desktop\bin\ : relatorios\talao.lrf fica ao lado dele }
-  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
-    'relatorios' + PathDelim + 'talao.lrf';
+  { o caminho vem da CONFIGURACAO (PRODUCAO_TALAO_RELATORIO); o
+    usuário final pode trocá-lo em "Relatório ▼ → Configurar" }
+  Result := FService.CaminhoRelatorioTalao;
 end;
 
 procedure TfrmMapaProducao.PrepararRelatorioTalao;
@@ -942,9 +959,11 @@ begin
   LCaminho := CaminhoRelatorioTalao;
   if not FileExists(LCaminho) then
     raise Exception.Create(
-      'Arquivo do relatório de talão não encontrado.' + sLineBreak +
-      LCaminho + sLineBreak +
-      'Mantenha a pasta "relatorios" ao lado do ERP2026.exe.');
+      'Arquivo do relatório de talão não encontrado:' + sLineBreak +
+      LCaminho + sLineBreak + sLineBreak +
+      'Use "Relatório ▼ → Configurar" para indicar onde está o .lrf ' +
+      '(ex.: uma cópia editada) ou "Restaurar padrão" para voltar ao ' +
+      'relatorios\talao.lrf ao lado do ERP2026.exe.');
   FFrReport.LoadFromFile(LCaminho);   { .lrf = XML do LazReport }
 end;
 
@@ -1038,6 +1057,125 @@ begin
       MessageDlg('Não foi possível exibir o relatório de talões:' + sLineBreak +
         E.Message, mtError, [mbOK], 0);
   end;
+end;
+
+{ --- atalhos do relatório (Fase 4) ----------------------------------
+  "Relatório ▼" abre um menu com:
+    - Visualizar   (o mesmo botão Visualizar);
+    - Editar       (abre o editor do LazReport para o usuário final
+                    ajustar o layout e salvar no próprio .lrf);
+    - Configurar   (troca o "link": o arquivo .lrf usado pelo sistema);
+    - Restaurar padrão.                                           }
+
+procedure TfrmMapaProducao.btnRelatorioMenuClick(Sender: TObject);
+begin
+  { abre o menu ancorado no próprio botão }
+  pmRelatorio.PopUp(btnRelatorioMenu.Left + Self.Left,
+    btnRelatorioMenu.Top + Self.Top + btnRelatorioMenu.Height);
+end;
+
+procedure TfrmMapaProducao.mnuRelEditarClick(Sender: TObject);
+begin
+  if FMapaId <= 0 then
+  begin
+    MessageDlg('Selecione um mapa de produção na lista.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if (not FTaloes.Active) or FTaloes.IsEmpty then
+  begin
+    MessageDlg('Este mapa ainda não tem talões. Use "Gerar Talões" primeiro.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if not VerificarPermissaoAcao(PERM_EDITAR,
+    'Seu usuário não tem permissão para editar o relatório de talões.') then
+    Exit;
+
+  try
+    PrepararRelatorioTalao;
+    { editor do LazReport: o usuário ajusta o layout e salva no .lrf;
+      o mesmo arquivo é usado pela visualização e pela impressão }
+    FFrReport.DesignReport;
+  except
+    on E: Exception do
+      MessageDlg('Não foi possível abrir o editor do relatório:' + sLineBreak +
+        E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmMapaProducao.mnuRelConfigurarClick(Sender: TObject);
+var
+  LDlg: TOpenDialog;
+  LNovo: string;
+begin
+  if not VerificarPermissaoAcao(PERM_EDITAR,
+    'Seu usuário não tem permissão para configurar o relatório de talões.') then
+    Exit;
+
+  LDlg := TOpenDialog.Create(Self);
+  try
+    LDlg.Title := 'Selecionar o arquivo do relatório de talões';
+    LDlg.Filter := 'Relatórios LazReport (*.lrf)|*.lrf|Todos os arquivos (*.*)|*.*';
+    LDlg.Options := LDlg.Options + [ofFileMustExist, ofPathMustExist];
+    LDlg.InitialDir := ExtractFilePath(CaminhoRelatorioTalao);
+    if not LDlg.Execute then
+      Exit;
+    LNovo := LDlg.FileName;
+  finally
+    LDlg.Free;
+  end;
+
+  try
+    FService.DefinirCaminhoRelatorioTalao(LNovo);
+  except
+    on E: Exception do
+    begin
+      MessageDlg('Não foi possível salvar a configuração:' + sLineBreak +
+        E.Message, mtError, [mbOK], 0);
+      { rollback no service: recarrega para as grades não ficarem vazias }
+      try
+        CarregarMapas;
+      except
+      end;
+      Exit;
+    end;
+  end;
+
+  MessageDlg('Relatório configurado com sucesso.' + sLineBreak + sLineBreak +
+    'Visualização e impressão passam a usar:' + sLineBreak + LNovo,
+    mtInformation, [mbOK], 0);
+  CarregarMapas;   { o COMMIT da CONFIGURACAO invalida os cursores SQLDB }
+end;
+
+procedure TfrmMapaProducao.mnuRelRestaurarClick(Sender: TObject);
+begin
+  if not VerificarPermissaoAcao(PERM_EDITAR,
+    'Seu usuário não tem permissão para configurar o relatório de talões.') then
+    Exit;
+
+  if MessageDlg('Restaurar o relatório padrão do sistema?' + sLineBreak + sLineBreak +
+    '(relatorios\talao.lrf ao lado do ERP2026.exe)', mtConfirmation,
+    [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+
+  try
+    FService.DefinirCaminhoRelatorioTalao('');
+  except
+    on E: Exception do
+    begin
+      MessageDlg('Não foi possível restaurar o relatório padrão:' + sLineBreak +
+        E.Message, mtError, [mbOK], 0);
+      try
+        CarregarMapas;
+      except
+      end;
+      Exit;
+    end;
+  end;
+
+  MessageDlg('Relatório padrão restaurado.' + sLineBreak + sLineBreak +
+    CaminhoRelatorioTalao, mtInformation, [mbOK], 0);
+  CarregarMapas;   { o COMMIT da CONFIGURACAO invalida os cursores SQLDB }
 end;
 
 procedure TfrmMapaProducao.btnImprimirTalaoClick(Sender: TObject);
