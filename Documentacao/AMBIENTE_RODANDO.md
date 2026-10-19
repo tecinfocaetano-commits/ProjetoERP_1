@@ -62,6 +62,9 @@ Scripts de build:
 | `Scripts\build_android.bat` | Gera o APK de debug |
 | `Scripts\run_api.bat` | Sobe a API na porta 9000 |
 | `Scripts\executar_banco.bat` | Recria a estrutura do banco |
+| `Scripts\build_tests.bat` | Compila a suíte de testes (`Desktop\Tests.lpi` → `bin\Tests.exe`) |
+| `Scripts\run_tests.bat` | Compila **e executa** a suíte (modo não interativo) |
+| `Scripts\dump_menu_ids.ps1` | Regenera `Documentacao\MAPA_IDS_MENU.md` (IDs WM_COMMAND do menu) |
 | `Banco\fix_generators.sql` | Sincroniza os generators com o maior ID |
 | `Banco\009_completar_schema.sql` | Migração aditiva: completa o schema (tabelas, colunas, generators e 23 triggers de auto-incremento) |
 
@@ -145,7 +148,7 @@ curl -X POST http://localhost:9000/api/login -H "Content-Type: application/json"
 
 | Teste | Resultado |
 |---|---|
-| Suíte de testes do Desktop (`Desktop\bin\Tests.exe`) | 39/39 passaram |
+| Suíte de testes do Desktop (`Desktop\bin\Tests.exe`, `Scripts\run_tests.bat`) | **49/49** (39 base + 10 Produção) |
 | **Desktop — 16 telas do menu** | **16/16 abrem sem erro** |
 | **Desktop — PDV abertura de caixa** | grava `CAIXA` (ID 2, valor 150) |
 | Endpoints GET da API | 200 em todos |
@@ -157,8 +160,37 @@ curl -X POST http://localhost:9000/api/login -H "Content-Type: application/json"
 | Desktop abrindo | janela "ERP 2026" exibida |
 | **App no emulador — 8 telas** | **todas com dados reais do banco** |
 | **App no emulador — cadastro de cliente** | grava `CLIENTE` ID 1238 |
+| **Produção — tela do Mapa (cmd 21)** | abre, menu ▼ com 8 itens |
+| **Produção — preview do relatório do mapa** | layout correto, acentos e decimais |
+| **Produção — PDF (talões e mapa)** | `taloes_mapa_1.pdf` e `mapa_1.pdf` válidos (%PDF) |
+| **Produção — editor do relatório** | "Designer - talao.lrf" abre/fecha/reabre, `.lrf` intocado |
 
 Relatório detalhado com evidências: [`TESTES_EXECUTADOS.md`](TESTES_EXECUTADOS.md)
+
+---
+
+## Módulo de Produção (Fases 0–7, 18/10/2026)
+
+Menu **Produção** do Desktop (IDs de comando em [`MAPA_IDS_MENU.md`](MAPA_IDS_MENU.md)):
+
+| Item | Tela | Requer |
+|---|---|---|
+| Mapa de Produção | `TfrmMapaProducao` (cmd 21) — mapa, itens, talões e relatórios | `PERMISSAO` VISUALIZAR |
+| Bipagem de Talões | `TfrmBipagem` | `PERMISSAO` VISUALIZAR |
+| Ficha Técnica | `TfrmFichaTecnica` | `PERMISSAO` VISUALIZAR |
+| Consumo de Materiais | `TfrmConsumoMaterial` | `PERMISSAO` VISUALIZAR |
+
+- **Relatórios** (botão `Relatório ▼` na tela do Mapa): preview de talões, editor
+  (`lr_desgn` linkado), configurar/restaurar `.lrf`, **exportar talões em PDF**,
+  **relatório do mapa (visualizar)** e **relatório do mapa (exportar PDF)** — PDF via
+  `TlrPdfExportFilter` (pacote `lr_pdfexport` no `.lpi`; nenhum pacote foi *instalado*).
+- **Auditoria**: gravações de Produção usam `uAuditoria.RegistrarAuditoria` (SQL
+  parametrizado, empresa/usuário da sessão, transação atômica). `TServiceBase.LogOperacao`
+  e `TACBrHelper.ImportarXML` foram corrigidos para delegar ao mesmo caminho.
+- **Permissões por ação**: `uPermissao` (fail-closed; admin tem bypass) checada em todas as
+  ações das telas de Produção — coberta pelos testes `TestPermissao*`.
+- **Testes**: `Scripts\run_tests.bat` (49/49). Banco de teste é o mesmo `Banco\DADOS.FDB`
+  (a suíte não deixa rastro).
 
 ---
 

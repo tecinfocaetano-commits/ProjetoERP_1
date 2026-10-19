@@ -1,7 +1,8 @@
-# Testes Executados — 17/10/2026
+# Testes Executados — 17/10/2026 (atualizado em 18/10/2026 — Módulo de Produção, Fases 0–7)
 
-Bateria completa de testes do ERP 2026: **Desktop (16 telas)**, **API REST (transações)** e
-**App Android (8 telas + transação real)**.
+Bateria completa de testes do ERP 2026: **Desktop (16 telas)**, **API REST (transações)**,
+**App Android (8 telas + transação real)** e, desde 18/10, o **Módulo de Produção
+(suíte de testes unitários 49/49 + automação de UI da tela do Mapa)** — ver seção 7.
 
 Tudo rodou contra o mesmo banco Firebird `Banco/DADOS.FDB`, com o Desktop e a API ativos.
 
@@ -135,3 +136,65 @@ CLIENTE ID=1238  NOME='Cliente Mobile App'  CIDADE='Curitiba'  UF='PR'
 
 Scripts de automação (fora do repositório, em `%TEMP%\opencode`): `test_telas.ps1`,
 `test_pdv.ps1`, `test_api.ps1`, `android_lib.ps1`, `android_step1..3.ps1`.
+
+---
+
+## 7. Módulo de Produção — Fases 0 a 7 (18/10/2026)
+
+### 7.1 Suíte de testes unitários — 49/49
+
+`Scripts\build_tests.bat` compila `Desktop\Tests.lpi` e `Scripts\run_tests.bat` executa
+`Desktop\bin\Tests.exe` (o `echo.` satisfaz o pause final, permitindo rodar sem interação):
+
+```
+Total: 49 | Passou: 49 | Falhou: 0
+```
+
+São 39 testes da base (Login/Clientes/Produtos/Categorias/Usuários) + **10 novos de Produção**
+(`src\Tests\uProducaoTest.pas`):
+
+| Teste | O que valida |
+|---|---|
+| `TestTabelasProducaoExistem` | as 8 tabelas do script 012 existem |
+| `TestSeedPermissoesProducao` | seed de `PERMISSAO` das 4 telas do módulo |
+| `TestPermissaoAdminBypass` | administrador ignora `PERMISSAO` (bypass) |
+| `TestPermissaoPorAcaoSemAdmin` | ação inválida e grupo sem registro ⇒ **negado** (fail-closed) |
+| `TestAuditoriaUsaUsuarioDaSessao` | `LOG_SISTEMA` grava `USUARIO_ID`/`EMPRESA_ID` da sessão |
+| `TestLogOperacaoServiceParametrizado` | `TServiceBase.LogOperacao`: SQL parametrizado (aspas simples sobrevivem) e usuário da sessão (**não 0**) |
+| `TestImportarXmlGravaAuditoria` | `TACBrHelper.ImportarXML` audita com as colunas corretas (antes: *Column unknown*) |
+| `TestProximoNumeroDoMapa` | numeração `MAX+1` por empresa devolve ≥ 1 |
+| `TestCopilotoFluxoCaixaTipado` | `CAST` tipa `RECEBER_30D`/`PAGAR_30D` (SQLDB lia 0 sem tipo) |
+| `TestTaloesComCodigoBarras` | talões existem com código de barras preenchido |
+
+Os testes limpam o próprio rastro (`DELETE` + commit das linhas de `LOG_SISTEMA` que criam;
+verificado: 0 linhas remanescentes `TESTE_UNITARIO`/`TESTE_SERVICE_LOG`/`XML_FISCAL`).
+
+### 7.2 Automação de UI — tela do Mapa de Produção e relatórios (Fase 6)
+
+Roda completa (login → tela → menu ▼ → preview → PDFs → editor), script `fase6_01.ps1`
+(em `%TEMP%\opencode`, evidências em `Documentacao\evidencias\fase6_*.png`):
+
+| Passo | Resultado |
+|---|---|
+| Tela Mapa de Produção (cmd 21) | OK — abre com os controles |
+| Menu "Relatório ▼" (MSAA) | OK — 8 itens, incluindo os 3 novos da Fase 6 |
+| Preview do relatório do mapa | OK — layout correto, acentos e decimais (`2,00`), datas `dd/mm/aaaa` |
+| Exportar talões em PDF | OK — `taloes_mapa_1.pdf` (%PDF, diálogo "PDF gerado com sucesso") |
+| Exportar mapa em PDF | OK — `mapa_1.pdf` (%PDF) |
+| "Editar relatório (abrir editor)" | OK — janela **Designer - talao.lrf**; fecha (WM_CLOSE) e reabre; `.lrf` intocado (hash igual) |
+
+Estrutura dos PDFs verificada por inspeção binária: **fontes TrueType embutidas** (Bold e
+Regular, com tabelas `cmap`/`glyf`) e glifos acentuados no fluxo de conteúdo — acentos não
+dependem de fonte do sistema.
+
+### 7.3 Commits
+
+| Fase | Commit | Conteúdo |
+|---|---|---|
+| 0+1 | `fce74f7` | reconhecimento, tabelas, permissões e tela do mapa |
+| 2 | `bdad0a8` | itens do mapa e pedidos de produção |
+| 3 | `091b7f8` | talões com código de barras (LazReport/Code128) |
+| 4 | `a3d5832` | bipagem + relatório configurável + diálogos em português |
+| 5 | `2954420` | ficha técnica e consumo de materiais com auditoria |
+| 6 | `2eeb642` | relatório do mapa (preview/PDF), talões em PDF e editor (`lr_desgn`) |
+| 7 | `90fdd44` | auditoria parametrizada + CAST no copiloto + testes de Produção |
