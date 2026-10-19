@@ -171,8 +171,9 @@ verificado: 0 linhas remanescentes `TESTE_UNITARIO`/`TESTE_SERVICE_LOG`/`XML_FIS
 
 ### 7.2 Automação de UI — tela do Mapa de Produção e relatórios (Fase 6)
 
-Roda completa (login → tela → menu ▼ → preview → PDFs → editor), script `fase6_01.ps1`
-(em `%TEMP%\opencode`, evidências em `Documentacao\evidencias\fase6_*.png`):
+Roda completa (login → tela → menu ▼ → preview → PDFs → editor), script
+`Scripts\testes\fase6_01.ps1` (autônomo — não depende do `%TEMP%`; evidências em
+`Documentacao\evidencias\fase6_*.png`):
 
 | Passo | Resultado |
 |---|---|

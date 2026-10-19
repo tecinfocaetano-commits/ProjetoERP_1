@@ -65,6 +65,8 @@ Scripts de build:
 | `Scripts\build_tests.bat` | Compila a suíte de testes (`Desktop\Tests.lpi` → `bin\Tests.exe`) |
 | `Scripts\run_tests.bat` | Compila **e executa** a suíte (modo não interativo) |
 | `Scripts\dump_menu_ids.ps1` | Regenera `Documentacao\MAPA_IDS_MENU.md` (IDs WM_COMMAND do menu) |
+| `Scripts\testes\fase6_01.ps1` | Suíte de UI de Produção: tela, menu ▼, preview, 2 PDFs e editor (esperado: `FASE6-01 CONCLUIDO`) |
+| `Scripts\testes\fase6_pdftext.ps1` | Inspeciona as fontes/fluxo dos PDFs gerados (diagnóstico de acentos) |
 | `Banco\fix_generators.sql` | Sincroniza os generators com o maior ID |
 | `Banco\009_completar_schema.sql` | Migração aditiva: completa o schema (tabelas, colunas, generators e 23 triggers de auto-incremento) |
 
