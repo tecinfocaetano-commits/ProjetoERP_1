@@ -1,4 +1,4 @@
-# CHECKPOINT — último ponto de parada (18/10/2026)
+# CHECKPOINT — último ponto de parada (19/10/2026)
 
 > Documento de retomada. O PC foi desligado neste ponto; ao voltar, seguir
 > "Para continuar" abaixo. Árvore git **limpa** (nada pendente de commit).
@@ -8,9 +8,13 @@
 ## Estado
 
 - **Módulo de Produção: 8 fases COMPLETAS e commitadas** — última: FASE 8 = `40bbd8b`.
-- Verificação final verde antes de desligar:
+- **Pendência SHA-256 concluída (19/10)**: senhas em hash SHA-256 no Desktop,
+  API e semente (`uSenhaHash.pas`, migração progressiva no login) — ver
+  `Documentacao\TESTES_EXECUTADOS.md` §8.
+- Verificação final verde:
   - `Scripts\build_desktop.bat` → compila.
-  - `Scripts\run_tests.bat` → **49/49** (39 base + 10 Produção).
+  - `Scripts\build_api.bat` → compila.
+  - `Scripts\run_tests.bat` → **53/53** (39 base + 10 Produção + 4 SHA-256).
   - `Scripts\testes\fase6_01.ps1` → **FASE6-01 CONCLUIDO** (tela, menu ▼, preview,
     `taloes_mapa_1.pdf`, `mapa_1.pdf`, editor abre/fecha/reabre, `.lrf` intocado) —
     rodada **de dentro do projeto** (sem depender do `%TEMP%`).
@@ -67,7 +71,7 @@
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
-4. Testes unit: `Scripts\run_tests.bat` → esperado **49/49**.
+4. Testes unit: `Scripts\run_tests.bat` → esperado **53/53**.
 5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\fase6_01.ps1`
    → esperado **FASE6-01 CONCLUIDO**.
 
@@ -75,7 +79,7 @@
 
 ## Pendências (fora do módulo Produção — próximo trabalho)
 
-- Senhas em **SHA-256** (Desktop, API e semente mudam juntos).
+- ~~Senhas em **SHA-256**~~ — **concluído (19/10)**.
 - `uClienteService.pas` monta SQL com `Format` → parametrizar.
 - `uMiddlewareJWT.pas` rotula HS256 mas usa HMAC próprio → HS256 real (ou remover rótulo).
 - API usa conexão única → pool de conexões (produção).

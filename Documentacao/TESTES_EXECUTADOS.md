@@ -199,3 +199,35 @@ dependem de fonte do sistema.
 | 5 | `2954420` | ficha técnica e consumo de materiais com auditoria |
 | 6 | `2eeb642` | relatório do mapa (preview/PDF), talões em PDF e editor (`lr_desgn`) |
 | 7 | `90fdd44` | auditoria parametrizada + CAST no copiloto + testes de Produção |
+
+## 8. Pendência — senhas em SHA-256 (19/10/2026)
+
+A senha de usuário deixa de ser guardada em texto puro: Desktop, API e semente
+passaram a guardar **SHA-256** (hex de 64 chars).
+
+- **Unit nova**: `Desktop\src\Utils\uSenhaHash.pas` — SHA-256 em Pascal puro
+  (FIPS 180-4). A instalação do FPC 3.2.2 usada pelo projeto não traz a unit
+  `sha256` do pacote hash (só md5/sha1), e a regra é não instalar pacotes
+  novos. É a mesma unit para o Desktop e para a API (o build da API ganhou o
+  caminho `-Fu Desktop\src\Utils`).
+- **Login (Desktop e API)**: a senha não entra mais no `WHERE`; a busca é por
+  `LOGIN` + `ATIVO='A'` e a comparação é feita em código via `SenhaConfere`.
+  **Migração progressiva**: senha antiga em texto puro ainda autentica e é
+  regravada como hash no próprio login (bem-sucedido).
+- **Cadastro de usuários** (`uFrmUsuarios`): INSERT/UPDATE gravam `HashSenha`.
+- **Sementes** (`007_initial_data.sql`, `banco_simplificado.sql`,
+  `script_simplificado.sql`): `admin` com o hash de `admin123`
+  (`240be518...720a9`).
+- **Banco real**: `UPDATE` do `admin` para o hash já aplicado em `DADOS.FDB`.
+
+Verificações desta rodada:
+
+| Verificação | Resultado |
+|---|---|
+| `Scripts\build_desktop.bat` | compila |
+| `Scripts\build_api.bat` | compila |
+| `Scripts\run_tests.bat` | **53/53** (49 + 4 novos de SHA-256: vetores `admin123`/`abc`, `EhHashSHA256`, migração legada→hash) |
+| API `POST /api/login` admin/admin123 | HTTP **200** com token |
+| API senha errada / usuário inexistente | HTTP **401** |
+| Migração via API (senha voltada a texto puro → login → reconsulta) | regravada como hash ✓ |
+| `Scripts\testes\fase6_01.ps1` (login admin/admin123 pela UI) | **FASE6-01 CONCLUIDO** |

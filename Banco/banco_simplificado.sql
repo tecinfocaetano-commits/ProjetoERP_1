@@ -272,7 +272,8 @@ INSERT INTO GRUPO (ID, NOME, DESCRICAO, ATIVO)
 VALUES (1, 'Administradores', 'Acesso total ao sistema', 'A');
 
 INSERT INTO USUARIO (ID, EMPRESA_ID, GRUPO_ID, NOME, LOGIN, SENHA, ADMINISTRADOR, ATIVO) 
-VALUES (1, 1, 1, 'Administrador', 'admin', 'admin123', 'S', 'A');
+VALUES (1, 1, 1, 'Administrador', 'admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'S', 'A');
+/* Senha: admin123 (hash SHA-256) */
 
 INSERT INTO CATEGORIA (ID, NOME, DESCRICAO, ATIVO) 
 VALUES (1, 'Geral', 'Categoria padrão', 'A');

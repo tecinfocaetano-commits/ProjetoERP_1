@@ -17,7 +17,7 @@ procedure RotaLogin(Req: THorseRequest; Res: THorseResponse);
 implementation
 
 uses
-  SysUtils, SQLDB, md5, uConexao, uMiddlewareJWT;
+  SysUtils, SQLDB, uConexao, uMiddlewareJWT, uSenhaHash;
 
 procedure RotaLogin(Req: THorseRequest; Res: THorseResponse);
 var
@@ -28,6 +28,9 @@ var
   LQuery: TSQLQuery;
   LResult: TJSONObject;
   LToken: string;
+  LSenhaGuardada: string;
+  LUsuarioId, LEmpresaId: Int64;
+  LNome, LLoginDb: string;
 begin
   try
     LData := nil;
@@ -62,11 +65,13 @@ begin
     try
       LQuery.DataBase := LConexao.Connection;
       LQuery.Transaction := LConexao.Transaction;
+      { a senha não entra no WHERE: o banco guarda SHA-256 e a
+        comparação é feita em código (uSenhaHash) — aceita também
+        senha legada em texto puro, com migração no login }
       LQuery.SQL.Text :=
-        'SELECT U.ID, U.NOME, U.LOGIN, U.EMPRESA_ID ' +
-        'FROM USUARIO U WHERE U.LOGIN = :LOGIN AND U.SENHA = :SENHA AND U.ATIVO = ''A''';
+        'SELECT U.ID, U.NOME, U.LOGIN, U.EMPRESA_ID, U.SENHA ' +
+        'FROM USUARIO U WHERE U.LOGIN = :LOGIN AND U.ATIVO = ''A''';
       LQuery.ParamByName('LOGIN').AsString := LLogin;
-      LQuery.ParamByName('SENHA').AsString := LSenha;
       LQuery.Open;
 
       if LQuery.IsEmpty then
@@ -75,19 +80,49 @@ begin
         Exit;
       end;
 
-      LToken := GerarToken(
-        LQuery.FieldByName('ID').AsLargeInt,
-        LQuery.FieldByName('NOME').AsString,
-        LQuery.FieldByName('LOGIN').AsString,
-        LQuery.FieldByName('EMPRESA_ID').AsLargeInt
-      );
+      LSenhaGuardada := LQuery.FieldByName('SENHA').AsString;
+      if not SenhaConfere(LSenha, LSenhaGuardada) then
+      begin
+        Res.Send('{"error":"Credenciais inválidas"}').Status(THTTPStatus.Unauthorized);
+        Exit;
+      end;
+
+      LUsuarioId := LQuery.FieldByName('ID').AsLargeInt;
+      LNome := LQuery.FieldByName('NOME').AsString;
+      LLoginDb := LQuery.FieldByName('LOGIN').AsString;
+      LEmpresaId := LQuery.FieldByName('EMPRESA_ID').AsLargeInt;
+
+      { migração progressiva: senha ainda em texto puro → regrava em SHA-256 }
+      if PrecisaMigrarSenha(LSenhaGuardada) then
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text := 'UPDATE USUARIO SET SENHA = :SENHA WHERE ID = :ID';
+        LQuery.ParamByName('SENHA').AsString := HashSenha(LSenha);
+        LQuery.ParamByName('ID').AsLargeInt := LUsuarioId;
+        try
+          LConexao.IniciarTransacao;
+          LQuery.ExecSQL;
+          LConexao.Confirmar;
+        except
+          on E: Exception do
+          begin
+            { falha na migração não derruba o login: só loga }
+            try
+              LConexao.Cancelar;
+            except
+            end;
+          end;
+        end;
+      end;
+
+      LToken := GerarToken(LUsuarioId, LNome, LLoginDb, LEmpresaId);
 
       LResult := TJSONObject.Create;
       try
         LResult.Add('token', LToken);
-        LResult.Add('usuario_id', LQuery.FieldByName('ID').AsLargeInt);
-        LResult.Add('nome', LQuery.FieldByName('NOME').AsString);
-        LResult.Add('empresa_id', LQuery.FieldByName('EMPRESA_ID').AsLargeInt);
+        LResult.Add('usuario_id', LUsuarioId);
+        LResult.Add('nome', LNome);
+        LResult.Add('empresa_id', LEmpresaId);
         Res.Send(LResult.AsJSON).Status(THTTPStatus.OK);
       finally
         LResult.Free;

@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uSessao;
+  uFrmCadastroBase, uConexao, uSessao, uSenhaHash;
 
 type
   { TfrmUsuarios }
@@ -281,7 +281,7 @@ begin
         'ADMINISTRADOR, ATIVO) VALUES (:EMP, :NOME, :LOGIN, :SENHA, :EMAIL, ' +
         ':TEL, :ADMIN, :ATIVO)';
       LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-      LQuery.ParamByName('SENHA').AsString := edtSenha.Text;
+      LQuery.ParamByName('SENHA').AsString := HashSenha(edtSenha.Text);
     end
     else
     begin
@@ -291,7 +291,7 @@ begin
           'UPDATE USUARIO SET NOME = :NOME, LOGIN = :LOGIN, SENHA = :SENHA, ' +
           'EMAIL = :EMAIL, TELEFONE = :TEL, ADMINISTRADOR = :ADMIN, ATIVO = :ATIVO ' +
           'WHERE ID = :ID';
-        LQuery.ParamByName('SENHA').AsString := edtSenha.Text;
+        LQuery.ParamByName('SENHA').AsString := HashSenha(edtSenha.Text);
       end
       else
       begin

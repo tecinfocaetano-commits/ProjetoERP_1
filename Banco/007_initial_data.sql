@@ -41,10 +41,9 @@ INSERT INTO EMPRESA (RAZAO_SOCIAL, NOME_FANTASIA, CNPJ, IE, ENDERECO, NUMERO, BA
   VALUES ('EMPRESA DEMONSTRACAO LTDA', 'ERP DEMO', '00.000.000/0001-00', 'ISENTO', 'Rua Exemplo', '100', 'Centro', 'São Paulo', 'SP', '01000-000', 'A', 1);
 
 /* === Usuário Administrador padrão === */
-/* Senha: admin123 (deve ser trocada no primeiro acesso) */
-/* NOTA: Em produção, a senha deve ser hash SHA-256 ou bcrypt */
+/* Senha: admin123 (guardada como hash SHA-256, uSenhaHash do Desktop) */
 INSERT INTO USUARIO (EMPRESA_ID, GRUPO_ID, NOME, LOGIN, SENHA, EMAIL, ADMINISTRADOR, STATUS)
-  VALUES (1, 1, 'Administrador', 'admin', 'admin123', 'admin@empresa.com', 'S', 'A');
+  VALUES (1, 1, 'Administrador', 'admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'admin@empresa.com', 'S', 'A');
 
 /* === Permissões completas para grupo Administrador === */
 INSERT INTO PERMISSAO (GRUPO_ID, MODULO, TELA, PODE_VISUALIZAR, PODE_INSERIR, PODE_EDITAR, PODE_EXCLUIR, PODE_IMPRIMIR)
