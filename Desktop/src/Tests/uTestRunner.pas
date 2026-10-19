@@ -18,6 +18,7 @@ uses
   uFrmProdutosTest,
   uFrmCategoriasTest,
   uFrmUsuariosTest,
+  uProducaoTest,
   uConexao,
   uSessao;
 
@@ -67,6 +68,10 @@ begin
 
     // Executar testes de Usuários
     TUsuariosTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes de Produção (Fase 7)
+    TProducaoTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais

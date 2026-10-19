@@ -59,6 +59,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src\Tests\uProducaoTest.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\Config\uConexao.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -103,7 +107,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="src/Config;src/Models;src/Services;src/Utils;src/Tests"/>
+      <OtherUnitFiles Value="src;src/Config;src/Models;src/Repositories;src/Services;src/Utils;src/Tests"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>

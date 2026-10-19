@@ -57,7 +57,7 @@ type
 implementation
 
 uses
-  uConexao, uSessao, SQLDB;
+  uConexao, SQLDB, uAuditoria;
 
 constructor TACBrHelper.Create;
 begin
@@ -199,34 +199,19 @@ begin
 end;
 
 function TACBrHelper.ImportarXML(const ACaminhoXML: string): Int64;
-var
-  LConexao: TConexao;
-  LQuery: TSQLQuery;
 begin
   Result := 0;
   if not FileExists(ACaminhoXML) then
     raise Exception.Create('Arquivo XML não encontrado: ' + ACaminhoXML);
 
-  LConexao := TConexao.GetInstance;
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := LConexao.Connection;
-    LQuery.Transaction := LConexao.Transaction;
+  { auditoria via uAuditoria (SQL parametrizado, empresa/usuário da sessão,
+    dentro da transação corrente): o INSERT antigo usava colunas inexistentes
+    em LOG_SISTEMA (MODULO/ACAO/DESCRICAO) e estourava "Column unknown" }
+  RegistrarAuditoria('XML_FISCAL', 'IMPORTACAO_XML', 0, '',
+    'XML importado: ' + ExtractFileName(ACaminhoXML));
+  TConexao.GetInstance.Confirmar;
 
-    // Registrar entrada do XML importado
-    LQuery.SQL.Text :=
-      'INSERT INTO LOG_SISTEMA (EMPRESA_ID, USUARIO_ID, MODULO, ACAO, DESCRICAO) ' +
-      'VALUES (:EMP, :USR, ''FISCAL'', ''IMPORTACAO_XML'', :DESC)';
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    LQuery.ParamByName('DESC').AsString := 'XML importado: ' + ExtractFileName(ACaminhoXML);
-    LQuery.ExecSQL;
-    LConexao.Confirmar;
-
-    Result := 1;
-  finally
-    LQuery.Free;
-  end;
+  Result := 1;
 end;
 
 function TACBrHelper.ManifestarNFe(const AChave: string; ATipoManifestacao: Integer): Boolean;

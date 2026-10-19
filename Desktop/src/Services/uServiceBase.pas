@@ -11,7 +11,7 @@ unit uServiceBase;
 interface
 
 uses
-  Classes, SysUtils, SQLDB, uRepositoryBase, uConexao;
+  Classes, SysUtils, uRepositoryBase, uConexao;
 
 type
   { TServiceBase - Lógica de negócio base }
@@ -33,6 +33,9 @@ type
   end;
 
 implementation
+
+uses
+  uAuditoria;
 
 { TServiceBase }
 
@@ -66,30 +69,13 @@ end;
 procedure TServiceBase.LogOperacao(const ATabela, AOperacao: string;
   ARegistroId: Int64; const ADadosAnteriores: string;
   const ADadosNovos: string);
-var
-  LSQL: string;
-  LQuery: TSQLQuery;
 begin
-  LSQL := Format(
-    'INSERT INTO LOG_SISTEMA (EMPRESA_ID, USUARIO_ID, TABELA, OPERACAO, REGISTRO_ID, ' +
-    'DADOS_ANTERIORES, DADOS_NOVOS) VALUES (%d, %d, ''%s'', ''%s'', %d, ''%s'', ''%s'')',
-    [FConexao.Connection.Tag, { EmpresaId armazenado no Tag }
-     0, { TODO: obter UserId da sessão }
-     ATabela, AOperacao, ARegistroId,
-     ADadosAnteriores, ADadosNovos]);
-  try
-    LQuery := TSQLQuery.Create(nil);
-    try
-      LQuery.DataBase := FConexao.Connection;
-      LQuery.Transaction := FConexao.Transaction;
-      LQuery.SQL.Text := LSQL;
-      LQuery.ExecSQL;
-    finally
-      LQuery.Free;
-    end;
-  except
-    // Log não deve interromper operação principal
-  end;
+  { via uAuditoria: SQL parametrizado, empresa/usuário da sessão e
+    truncamento nas colunas de 255 — o INSERT antigo concatenava strings
+    (quebrava o SQL com aspas) e gravava USUARIO_ID = 0 (TODO).
+    Segura: falha de log nunca interrompe a operação principal. }
+  RegistrarAuditoriaSegura(ATabela, AOperacao, ARegistroId,
+    ADadosAnteriores, ADadosNovos);
 end;
 
 end.
