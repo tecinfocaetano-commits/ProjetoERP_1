@@ -773,5 +773,23 @@ object frmMapaProducao: TfrmMapaProducao
       Caption = 'Restaurar relatório padrão'
       OnClick = mnuRelRestaurarClick
     end
+    object mnuRelSep1: TMenuItem
+      Caption = '-'
+    end
+    object mnuRelTalaoPdf: TMenuItem
+      Caption = 'Exportar talões em PDF...'
+      OnClick = mnuRelTalaoPdfClick
+    end
+    object mnuRelSep2: TMenuItem
+      Caption = '-'
+    end
+    object mnuRelMapaPreview: TMenuItem
+      Caption = 'Relatório do mapa (visualizar)'
+      OnClick = mnuRelMapaPreviewClick
+    end
+    object mnuRelMapaPdf: TMenuItem
+      Caption = 'Relatório do mapa (exportar PDF)...'
+      OnClick = mnuRelMapaPdfClick
+    end
   end
 end

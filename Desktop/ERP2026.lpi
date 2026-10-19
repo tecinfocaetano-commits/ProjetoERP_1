@@ -63,6 +63,9 @@
       <Item>
         <PackageName Value="lazreport"/>
       </Item>
+      <Item>
+        <PackageName Value="lr_pdfexport"/>
+      </Item>
     </RequiredPackages>
     <Units>
       <Unit>

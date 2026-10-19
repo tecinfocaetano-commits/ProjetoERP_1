@@ -23,7 +23,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, Grids, DBGrids, DB, SQLDB, DateUtils, Menus,
-  LR_Class, LR_DBSet, LR_Barc,
+  LR_Class, LR_DBSet, LR_Barc, lr_e_fclpdf,
   uConexao, uSessao, uProducaoService, uPedidoStatus, uPermissao;
 
 type
@@ -62,6 +62,11 @@ type
     mnuRelEditar: TMenuItem;
     mnuRelConfigurar: TMenuItem;
     mnuRelRestaurar: TMenuItem;
+    mnuRelSep1: TMenuItem;
+    mnuRelTalaoPdf: TMenuItem;
+    mnuRelSep2: TMenuItem;
+    mnuRelMapaPreview: TMenuItem;
+    mnuRelMapaPdf: TMenuItem;
     lblQtdTaloes: TLabel;
     dbGridTaloes: TDBGrid;
     pnlCriar: TPanel;
@@ -108,6 +113,9 @@ type
     procedure mnuRelEditarClick(Sender: TObject);
     procedure mnuRelConfigurarClick(Sender: TObject);
     procedure mnuRelRestaurarClick(Sender: TObject);
+    procedure mnuRelTalaoPdfClick(Sender: TObject);
+    procedure mnuRelMapaPreviewClick(Sender: TObject);
+    procedure mnuRelMapaPdfClick(Sender: TObject);
     procedure btnImprimirTalaoClick(Sender: TObject);
     procedure btnCancelarTalaoClick(Sender: TObject);
     procedure DataSourceMapasDataChange(Sender: TObject; Field: TField);
@@ -120,8 +128,10 @@ type
     FPedidos: TSQLQuery;
     FItensPedido: TSQLQuery;
     FTaloes: TSQLQuery;          { fonte da grade/relatório de talões }
+    FRelMapa: TSQLQuery;         { fonte do relatório do mapa (Fase 6) }
     FFrReport: TfrReport;        { LazReport: talão com código de barras }
     FFrDBTalao: TfrDBDataSet;    { nome deve bater com o DatasetStr do .lrf }
+    FFrDBMapa: TfrDBDataSet;     { frDBMapa do mapa_producao.lrf (Fase 6) }
     FService: TProducaoService;
     FMapaId: Int64;
     FPedidoId: Int64;
@@ -138,6 +148,9 @@ type
     procedure CarregarTaloes(AMapaId: Int64);
     procedure PrepararRelatorioTalao;
     function  CaminhoRelatorioTalao: string;
+    procedure PrepararRelatorioMapa;
+    function  CaminhoRelatorioMapa: string;
+    procedure ExportarPdf(const ASugerido: string);
     function  ItemSelecionadoDoMapa: Int64;
     function  TalaoSelecionado: Int64;
     procedure ModoLista;
@@ -157,6 +170,13 @@ var
   frmMapaProducao: TfrmMapaProducao;
 
 implementation
+
+uses
+  { editor do LazReport (usuário final): esta unit registra
+    ProcedureInitDesigner na initialization dela; sem ela,
+    TfrReport.DesignReport volta em silêncio — o clique em
+    "Editar relatório (abrir editor)..." não abriria janela nenhuma }
+  lr_desgn;
 
 {$R *.lfm}
 
@@ -236,6 +256,18 @@ begin
   FFrDBTalao.DataSet := FTaloes;
   FFrReport := TfrReport.Create(Self);
   FFrReport.ShowProgress := False;   { relatório curto: sem janela de progresso }
+
+  // Fase 6: dataset do relatório do mapa (mapa_producao.lrf usa frDBMapa)
+  FRelMapa := TSQLQuery.Create(Self);
+  FRelMapa.DataBase := FConexao.Connection;
+  FRelMapa.Transaction := FConexao.Transaction;
+  { nome público da query: as expressões do .lrf usam [qryMapaRel."CAMPO"] porque
+    o LazReport só resolve TfrDBDataSet pela banda (GetDefaultDataSet devolve nil
+    em PageHeader); TDataSet nomeado é achado por frFindComponent em qualquer banda }
+  FRelMapa.Name := 'qryMapaRel';
+  FFrDBMapa := TfrDBDataSet.Create(Self);
+  FFrDBMapa.Name := 'frDBMapa';
+  FFrDBMapa.DataSet := FRelMapa;
 
   FService := TProducaoService.Create;
   FMapaId := 0;
@@ -1065,13 +1097,21 @@ end;
     - Editar       (abre o editor do LazReport para o usuário final
                     ajustar o layout e salvar no próprio .lrf);
     - Configurar   (troca o "link": o arquivo .lrf usado pelo sistema);
-    - Restaurar padrão.                                           }
+    - Restaurar padrão.
+  Fase 6 (mesmo menu):
+    - Exportar talões em PDF...        (TlrPdfExportFilter);
+    - Relatório do mapa (visualizar)   (mapa_producao.lrf);
+    - Relatório do mapa (exportar PDF). }
 
 procedure TfrmMapaProducao.btnRelatorioMenuClick(Sender: TObject);
+var
+  LPos: TPoint;
 begin
-  { abre o menu ancorado no próprio botão }
-  pmRelatorio.PopUp(btnRelatorioMenu.Left + Self.Left,
-    btnRelatorioMenu.Top + Self.Top + btnRelatorioMenu.Height);
+  { ancora o menu embaixo do próprio botão: Left/Top do botão são relativos
+    ao painel que o contém, então converter para coordenadas de tela
+    (ClientToScreen) — sem isso o menu abria no topo do formulário }
+  LPos := btnRelatorioMenu.ClientToScreen(Point(0, btnRelatorioMenu.Height));
+  pmRelatorio.PopUp(LPos.X, LPos.Y);
 end;
 
 procedure TfrmMapaProducao.mnuRelEditarClick(Sender: TObject);
@@ -1176,6 +1216,173 @@ begin
   MessageDlg('Relatório padrão restaurado.' + sLineBreak + sLineBreak +
     CaminhoRelatorioTalao, mtInformation, [mbOK], 0);
   CarregarMapas;   { o COMMIT da CONFIGURACAO invalida os cursores SQLDB }
+end;
+
+{ --- relatórios da Fase 6 (PDF e relatório do mapa) ---------------
+  Exportação PDF via TlrPdfExportFilter (pacote lr_pdfexport / unit
+  lr_e_fclpdf, que registra o filtro na initialization). O fluxo é
+  PrepareReport (monta as páginas) + ExportTo (grava o arquivo);
+  a impressora padrão nunca é tocada.                             }
+
+function TfrmMapaProducao.CaminhoRelatorioMapa: string;
+begin
+  { relatório do mapa: fixo em relatorios\mapa_producao.lrf, ao lado
+    do ERP2026.exe (o build copia de Desktop\relatorios) }
+  Result := ExtractFilePath(ParamStr(0)) + 'relatorios' + PathDelim +
+    'mapa_producao.lrf';
+end;
+
+procedure TfrmMapaProducao.PrepararRelatorioMapa;
+var
+  LCaminho: string;
+begin
+  LCaminho := CaminhoRelatorioMapa;
+  if not FileExists(LCaminho) then
+    raise Exception.Create(
+      'Arquivo do relatório do mapa não encontrado:' + sLineBreak +
+      LCaminho + sLineBreak + sLineBreak +
+      'Ele fica em "relatorios\mapa_producao.lrf" ao lado do ERP2026.exe.');
+
+  if FRelMapa.Active then
+    FRelMapa.Close;
+  { mesma leitura da grade de itens + cabeçalho do mapa; subquery com
+    SUM embrulhada em CAST (padrão do projeto: sem CAST o SQLDB lê 0) }
+  FRelMapa.SQL.Text :=
+    'SELECT M.NUMERO AS MAPA_NUMERO, PV.NUMERO AS PEDIDO_NUMERO, ' +
+    '  COALESCE(C.NOME, ''(sem cliente)'') AS CLIENTE, ' +
+    '  CASE M.STATUS WHEN ''ABERTO'' THEN ''Aberto'' ' +
+    '       WHEN ''EM_PRODUCAO'' THEN ''Em produção'' ' +
+    '       WHEN ''CONCLUIDO'' THEN ''Concluído'' ' +
+    '       WHEN ''CANCELADO'' THEN ''Cancelado'' ELSE M.STATUS END AS MAPA_STATUS_DESC, ' +
+    '  SUBSTRING(CAST(CAST(M.DATA_CRIACAO AS DATE) AS VARCHAR(10)) FROM 9 FOR 2) || ''/'' || ' +
+    '  SUBSTRING(CAST(CAST(M.DATA_CRIACAO AS DATE) AS VARCHAR(10)) FROM 6 FOR 2) || ''/'' || ' +
+    '  SUBSTRING(CAST(CAST(M.DATA_CRIACAO AS DATE) AS VARCHAR(10)) FROM 1 FOR 4) AS DATA_CRIACAO_STR, ' +
+    '  SUBSTRING(CAST(CAST(M.DATA_PREVISTA AS DATE) AS VARCHAR(10)) FROM 9 FOR 2) || ''/'' || ' +
+    '  SUBSTRING(CAST(CAST(M.DATA_PREVISTA AS DATE) AS VARCHAR(10)) FROM 6 FOR 2) || ''/'' || ' +
+    '  SUBSTRING(CAST(CAST(M.DATA_PREVISTA AS DATE) AS VARCHAR(10)) FROM 1 FOR 4) AS DATA_PREVISTA_STR, ' +
+    '  SUBSTRING(CAST(CAST(M.DATA_FIM AS DATE) AS VARCHAR(10)) FROM 9 FOR 2) || ''/'' || ' +
+    '  SUBSTRING(CAST(CAST(M.DATA_FIM AS DATE) AS VARCHAR(10)) FROM 6 FOR 2) || ''/'' || ' +
+    '  SUBSTRING(CAST(CAST(M.DATA_FIM AS DATE) AS VARCHAR(10)) FROM 1 FOR 4) AS DATA_FIM_STR, ' +
+    '  PR.CODIGO, PR.DESCRICAO AS PRODUTO, ' +
+    '  CAST(MI.QUANTIDADE AS NUMERIC(18,4)) AS PREVISTA, ' +
+    '  CAST(COALESCE((SELECT SUM(T.QUANTIDADE) FROM TALAO T ' +
+    '     WHERE T.MAPA_PRODUCAO_ITEM_ID = MI.ID AND T.STATUS = ''CONCLUIDO''), 0) ' +
+    '     AS NUMERIC(18,4)) AS PRODUZIDO, ' +
+    '  (SELECT COUNT(*) FROM TALAO T WHERE T.MAPA_PRODUCAO_ITEM_ID = MI.ID ' +
+    '     AND T.STATUS <> ''CANCELADO'') AS TALOES, ' +
+    '  (SELECT COUNT(*) FROM TALAO T WHERE T.MAPA_PRODUCAO_ITEM_ID = MI.ID ' +
+    '     AND T.STATUS = ''CONCLUIDO'') AS CONCLUIDOS, ' +
+    '  CASE MI.STATUS WHEN ''PENDENTE'' THEN ''Pendente'' ' +
+    '       WHEN ''EM_PRODUCAO'' THEN ''Em produção'' ' +
+    '       WHEN ''CONCLUIDO'' THEN ''Concluído'' ' +
+    '       WHEN ''CANCELADO'' THEN ''Cancelado'' ELSE MI.STATUS END AS STATUS_DESC ' +
+    'FROM MAPA_PRODUCAO M ' +
+    '  JOIN PEDIDO_VENDA PV ON PV.ID = M.PEDIDO_VENDA_ID ' +
+    '  LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
+    '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.MAPA_PRODUCAO_ID = M.ID ' +
+    '  LEFT JOIN PRODUTO PR ON PR.ID = MI.PRODUTO_ID ' +
+    'WHERE M.ID = :ID ORDER BY MI.ID';
+  FRelMapa.ParamByName('ID').AsLargeInt := FMapaId;
+  FRelMapa.Open;
+  if FRelMapa.IsEmpty then
+    raise Exception.Create('Este mapa não tem itens: não há o que relatar.');
+
+  FFrReport.LoadFromFile(LCaminho);   { .lrf = XML do LazReport }
+end;
+
+procedure TfrmMapaProducao.ExportarPdf(const ASugerido: string);
+var
+  LDlg: TSaveDialog;
+  LArquivo: string;
+begin
+  LDlg := TSaveDialog.Create(Self);
+  try
+    LDlg.Title := 'Exportar relatório em PDF';
+    LDlg.Filter := 'Documento PDF (*.pdf)|*.pdf';
+    LDlg.DefaultExt := 'pdf';
+    LDlg.Options := LDlg.Options + [ofOverwritePrompt, ofPathMustExist];
+    LDlg.InitialDir := ExtractFilePath(CaminhoRelatorioTalao);
+    LDlg.FileName := ASugerido;
+    if not LDlg.Execute then
+      Exit;
+    LArquivo := LDlg.FileName;
+  finally
+    LDlg.Free;
+  end;
+
+  if not FFrReport.PrepareReport then
+    raise Exception.Create('Não foi possível montar o relatório para exportar.');
+  if not FFrReport.ExportTo(TlrPdfExportFilter, LArquivo) then
+    raise Exception.Create('A exportação para PDF não foi concluída.');
+
+  MessageDlg('PDF gerado com sucesso:' + sLineBreak + LArquivo,
+    mtInformation, [mbOK], 0);
+end;
+
+procedure TfrmMapaProducao.mnuRelTalaoPdfClick(Sender: TObject);
+begin
+  if FMapaId <= 0 then
+  begin
+    MessageDlg('Selecione um mapa de produção na lista.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if (not FTaloes.Active) or FTaloes.IsEmpty then
+  begin
+    MessageDlg('Este mapa ainda não tem talões. Use "Gerar Talões" primeiro.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if not VerificarPermissaoAcao(PERM_IMPRIMIR,
+    'Seu usuário não tem permissão para exportar talões em PDF.') then
+    Exit;
+
+  try
+    PrepararRelatorioTalao;
+    ExportarPdf(Format('taloes_mapa_%d.pdf', [NumeroDoMapa(FMapaId)]));
+  except
+    on E: Exception do
+      MessageDlg('Não foi possível exportar os talões em PDF:' + sLineBreak +
+        E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmMapaProducao.mnuRelMapaPreviewClick(Sender: TObject);
+begin
+  if FMapaId <= 0 then
+  begin
+    MessageDlg('Selecione um mapa de produção na lista.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  try
+    PrepararRelatorioMapa;
+    FFrReport.ShowReport;   { pré-visualização; não altera nada no banco }
+  except
+    on E: Exception do
+      MessageDlg('Não foi possível exibir o relatório do mapa:' + sLineBreak +
+        E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmMapaProducao.mnuRelMapaPdfClick(Sender: TObject);
+begin
+  if FMapaId <= 0 then
+  begin
+    MessageDlg('Selecione um mapa de produção na lista.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if not VerificarPermissaoAcao(PERM_IMPRIMIR,
+    'Seu usuário não tem permissão para exportar o relatório do mapa em PDF.') then
+    Exit;
+
+  try
+    PrepararRelatorioMapa;
+    ExportarPdf(Format('mapa_%d.pdf', [NumeroDoMapa(FMapaId)]));
+  except
+    on E: Exception do
+      MessageDlg('Não foi possível exportar o relatório do mapa em PDF:' +
+        sLineBreak + E.Message, mtError, [mbOK], 0);
+  end;
 end;
 
 procedure TfrmMapaProducao.btnImprimirTalaoClick(Sender: TObject);
