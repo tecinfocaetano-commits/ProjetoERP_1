@@ -10,7 +10,7 @@ unit uFrmLoginTest;
 interface
 
 uses
-  Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao, uSenhaHash;
+  Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao, uSenhaHash, uHMAC;
 
 type
   { TLoginTest }
@@ -261,6 +261,49 @@ var
     end;
   end;
 
+  { --- HMAC-SHA256 (uHMAC) ---------------------------------------- }
+
+  { vetor RFC 4231, caso 1: chave de 20 bytes 0x0B, dados "Hi There" }
+  procedure TestHMACSha256VetorRfc4231;
+  var
+    LChave: string;
+    I: Integer;
+  begin
+    try
+      LChave := StringOfChar(#$0B, 20);
+      for I := 1 to 20 do
+        LChave[I] := Chr($0B);
+      LSuccess := HMAC_SHA256_Hex('Hi There', LChave) =
+        'b0344c61d8db38535ca8afceaf0bf12b' +
+        '881dc200c9833da726e9376c2e32cff7';
+      AssertTrue(LSuccess, 'HMAC-SHA256 deve bater com o vetor RFC 4231 caso 1');
+      ASuite.AddResult('TestHMACSha256VetorRfc4231', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestHMACSha256VetorRfc4231', False, E.Message);
+    end;
+  end;
+
+  { assinatura em bytes crus tem 32 bytes e varia com a chave }
+  procedure TestHMACSha256RawEAoTamanhoChave;
+  var
+    LRaw: string;
+  begin
+    try
+      LRaw := HMAC_SHA256_Raw('dados', 'chave');
+      LSuccess := (Length(LRaw) = 32) and
+        (HMAC_SHA256_Hex('dados', 'chave') <>
+         HMAC_SHA256_Hex('dados', 'outra_chave')) and
+        (HMAC_SHA256_Hex('dados', 'chave') =
+         HMAC_SHA256_Hex('dados', 'chave'));
+      AssertTrue(LSuccess, 'HMAC raw deve ter 32 bytes e depender da chave');
+      ASuite.AddResult('TestHMACSha256RawEAoTamanhoChave', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestHMACSha256RawEAoTamanhoChave', False, E.Message);
+    end;
+  end;
+
 begin
   WriteLn('========================================');
   WriteLn('EXECUTANDO TESTES DE LOGIN');
@@ -310,6 +353,10 @@ begin
     TestHashSenhaVetorAbc;
     TestEhHashSha256;
     TestSenhaLegadaMigraParaHash;
+
+    // HMAC-SHA256 (pendência: JWT HS256 real)
+    TestHMACSha256VetorRfc4231;
+    TestHMACSha256RawEAoTamanhoChave;
 
   finally
     LQuery.Free;

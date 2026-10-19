@@ -10,7 +10,7 @@ unit uMiddlewareJWT;
 interface
 
 uses
-  SysUtils, Classes, fpjson, jsonparser, base64, DateUtils, Horse;
+  SysUtils, Classes, fpjson, jsonparser, base64, DateUtils, Horse, uHMAC;
 
 const
   JWT_SECRET = 'ERP2026_SECRET_KEY_CHANGE_IN_PRODUCTION';
@@ -43,17 +43,29 @@ begin
   Result := DecodeStringBase64(LData);
 end;
 
-function SimpleHMAC(const AData, AKey: string): string;
-var
-  I: Integer;
-  LHash: Cardinal;
+{ Assinatura HS256 real (RFC 2104 sobre SHA-256). A forma crua de
+  32 bytes é o que a RFC 7519 manda codificar em Base64URL. }
+function Assinar(const ADados: string): string;
 begin
-  LHash := 0;
-  for I := 1 to Length(AData) do
-    LHash := LHash * 31 + Ord(AData[I]);
-  for I := 1 to Length(AKey) do
-    LHash := LHash * 37 + Ord(AKey[I]);
-  Result := IntToHex(LHash, 8);
+  Result := Base64URLEncode(HMAC_SHA256_Raw(ADados, JWT_SECRET));
+end;
+
+{ Comparação de assinatura em tempo constante: percorre todos os
+  caracteres acumulando a diferença, sem sair na primeira divergência. }
+function AssinaturaIgual(const A, B: string): Boolean;
+var
+  LDif: Integer;
+  I: Integer;
+begin
+  LDif := Length(A) xor Length(B);
+  for I := 1 to Length(A) do
+    if I <= Length(B) then
+      LDif := LDif or (Ord(A[I]) xor Ord(B[I]))
+    else
+      LDif := LDif or Ord(A[I]);
+  for I := Length(A) + 1 to Length(B) do
+    LDif := LDif or Ord(B[I]);
+  Result := LDif = 0;
 end;
 
 function GerarToken(AUsuarioId: Int64; const ANome, ALogin: string; AEmpresaId: Int64): string;
@@ -83,7 +95,7 @@ begin
     LPayloadJSON.Free;
   end;
 
-  LSignature := Base64URLEncode(SimpleHMAC(LHeader + '.' + LPayload, JWT_SECRET));
+  LSignature := Assinar(LHeader + '.' + LPayload);
   Result := LHeader + '.' + LPayload + '.' + LSignature;
 end;
 
@@ -103,8 +115,10 @@ begin
 
     if LParts.Count <> 3 then Exit;
 
-    LExpectedSig := Base64URLEncode(SimpleHMAC(LParts[0] + '.' + LParts[1], JWT_SECRET));
-    if LExpectedSig <> LParts[2] then Exit;
+    { compara a assinatura em tempo constante (evita timing attack) }
+    LExpectedSig := Assinar(LParts[0] + '.' + LParts[1]);
+    if (Length(LExpectedSig) <> Length(LParts[2])) or
+       (not AssinaturaIgual(LExpectedSig, LParts[2])) then Exit;
 
     LPayloadStr := Base64URLDecode(LParts[1]);
     LPayload := TJSONObject(GetJSON(LPayloadStr));

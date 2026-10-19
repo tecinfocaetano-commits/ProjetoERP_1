@@ -33,6 +33,11 @@ interface
 { SHA-256 puro: devolve o hash em hex minúsculo (64 caracteres). }
 function SHA256Hex(const ATexto: string): string;
 
+{ SHA-256 puro: devolve os 32 bytes crus do hash (string de 32
+  caracteres, sem hex). Base para HMAC-SHA256 (uHMAC), onde os
+  bytes crus do resumo entram em novo cálculo. }
+function SHA256Raw(const ATexto: string): string;
+
 { Hash de senha de usuário (mesmo que SHA256Hex; ponto único de
   decisão sobre o algoritmo guardado no banco). }
 function HashSenha(const ASenha: string): string;
@@ -52,6 +57,10 @@ function SenhaConfere(const ASenhaDigitada, ASenhaGuardada: string): boolean;
   ser regravada como hash no próximo login bem-sucedido. }
 function PrecisaMigrarSenha(const ASenhaGuardada: string): boolean;
 
+type
+  { Estado interno do SHA-256 (8 palavras de 32 bits). }
+  TSHA256State = array[0..7] of LongWord;
+
 implementation
 
 uses
@@ -67,9 +76,6 @@ const
     $a2bfe8a1, $a81a664b, $c24b8b70, $c76c51a3, $d192e819, $d6990624, $f40e3585, $106aa070,
     $19a4c116, $1e376c08, $2748774c, $34b0bcb5, $391c0cb3, $4ed8aa4a, $5b9cca4f, $682e6ff3,
     $748f82ee, $78a5636f, $84c87814, $8cc70208, $90befffa, $a4506ceb, $bef9a3f7, $c67178f2);
-
-type
-  TSHA256State = array[0..7] of LongWord;
 
 function Rotr(X: LongWord; N: Byte): LongWord; inline;
 begin
@@ -115,7 +121,8 @@ begin
   AState[6] := AState[6] + G; AState[7] := AState[7] + H;
 end;
 
-function SHA256Hex(const ATexto: string): string;
+{ Calcula o estado final (8 palavras) do SHA-256 sobre o texto. }
+function SHA256Estado(const ATexto: string): TSHA256State;
 var
   LState: TSHA256State;
   LBlock: array[0..63] of Byte;
@@ -170,9 +177,34 @@ begin
     Transform(LState, LBlock);
   end;
 
+  Result := LState;
+end;
+
+function SHA256Hex(const ATexto: string): string;
+var
+  LState: TSHA256State;
+  LJ: Integer;
+begin
+  LState := SHA256Estado(ATexto);
   Result := '';
   for LJ := 0 to 7 do
     Result := Result + LowerCase(IntToHex(LState[LJ], 8));
+end;
+
+function SHA256Raw(const ATexto: string): string;
+var
+  LState: TSHA256State;
+  LJ: Integer;
+begin
+  LState := SHA256Estado(ATexto);
+  SetLength(Result, 32);
+  for LJ := 0 to 7 do
+  begin
+    Result[LJ * 4 + 1] := Chr((LState[LJ] shr 24) and $FF);
+    Result[LJ * 4 + 2] := Chr((LState[LJ] shr 16) and $FF);
+    Result[LJ * 4 + 3] := Chr((LState[LJ] shr 8) and $FF);
+    Result[LJ * 4 + 4] := Chr(LState[LJ] and $FF);
+  end;
 end;
 
 function HashSenha(const ASenha: string): string;
