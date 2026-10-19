@@ -11,10 +11,17 @@
 - **Pendência SHA-256 concluída (19/10)**: senhas em hash SHA-256 no Desktop,
   API e semente (`uSenhaHash.pas`, migração progressiva no login) — ver
   `Documentacao\TESTES_EXECUTADOS.md` §8.
+- **Pendência parametrização do `uClienteService` concluída (19/10)**: o service
+  não monta mais SQL com `Format`. Métodos novos no `uRepositoryBase`
+  (`InserirParam`, `AtualizarParam`, `BuscarTodosParam`, `ContarParam`) recebem
+  os valores por `ParamByName`. Corrigidos junto: `CpfCnpjExiste` e `Pesquisar`
+  (que interpolavam o texto do usuário — vetor de apóstrofo/injeção) e
+  `BuscarTodos` (filtrava por `Connection.Tag`, sempre 0 → lista vazia; agora
+  filtra pela empresa da sessão).
 - Verificação final verde:
   - `Scripts\build_desktop.bat` → compila.
   - `Scripts\build_api.bat` → compila.
-  - `Scripts\run_tests.bat` → **53/53** (39 base + 10 Produção + 4 SHA-256).
+  - `Scripts\run_tests.bat` → **54/54** (39 base + 10 Produção + 4 SHA-256 + 1 serviço de clientes).
   - `Scripts\testes\fase6_01.ps1` → **FASE6-01 CONCLUIDO** (tela, menu ▼, preview,
     `taloes_mapa_1.pdf`, `mapa_1.pdf`, editor abre/fecha/reabre, `.lrf` intocado) —
     rodada **de dentro do projeto** (sem depender do `%TEMP%`).
@@ -71,7 +78,7 @@
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
-4. Testes unit: `Scripts\run_tests.bat` → esperado **53/53**.
+4. Testes unit: `Scripts\run_tests.bat` → esperado **54/54**.
 5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\fase6_01.ps1`
    → esperado **FASE6-01 CONCLUIDO**.
 
@@ -80,7 +87,7 @@
 ## Pendências (fora do módulo Produção — próximo trabalho)
 
 - ~~Senhas em **SHA-256**~~ — **concluído (19/10)**.
-- `uClienteService.pas` monta SQL com `Format` → parametrizar.
+- ~~`uClienteService.pas` monta SQL com `Format` → parametrizar.~~ — **concluído (19/10)**.
 - `uMiddlewareJWT.pas` rotula HS256 mas usa HMAC próprio → HS256 real (ou remover rótulo).
 - API usa conexão única → pool de conexões (produção).
 - Consolidar `Banco\004_tables.sql` / `banco_simplificado.sql` vs banco real.
@@ -107,3 +114,8 @@
   (só a auditoria foi corrigida); testes rodam no **mesmo** `DADOS.FDB` de desenvolvimento;
   IDs de menu estáveis para o mesmo executável (regenerar com o script se o menu mudar);
   "FASE 8" = encerramento/documentação (não havia plano persistido).
+- **Transação em teste que chama um service**: o `Confirmar` do service faz `Commit`
+  na `TSQLTransaction` compartilhada do singleton. Qualquer `DELETE`/`UPDATE` de
+  limpeza logo depois precisa abrir transação própria (`Transaction.StartTransaction`),
+  senão o SQLDB descarta o comando em silêncio e o teste deixa rastro — foi o caso
+  do `TestServiceClienteApostrofo` (3 linhas de `LOG_SISTEMA` órfãs, já removidas).

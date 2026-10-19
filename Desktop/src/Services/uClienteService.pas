@@ -10,7 +10,7 @@ unit uClienteService;
 interface
 
 uses
-  Classes, SysUtils, SQLDB, uServiceBase, uRepositoryBase, uCliente;
+  Classes, SysUtils, SQLDB, uServiceBase, uRepositoryBase, uCliente, uSessao;
 
 type
   { TClienteService }
@@ -58,13 +58,20 @@ end;
 
 function TClienteService.CpfCnpjExiste(const ACpfCnpj: string;
   AExcluirId: Int64): Boolean;
-var
-  LCondicao: string;
 begin
-  LCondicao := Format('CPF_CNPJ = ''%s''', [ACpfCnpj]);
+  { CPF/CNPJ vem do usuário: entra como parâmetro, nunca no texto da
+    SQL. A condição "ID <> :EXC" evita o falso positivo contra o
+    próprio registro durante a edição. }
   if AExcluirId > 0 then
-    LCondicao := LCondicao + Format(' AND ID <> %d', [AExcluirId]);
-  Result := FClienteRepo.Contar(LCondicao) > 0;
+    Result := FClienteRepo.ContarParam(
+      'CPF_CNPJ = :CPFCNPJ AND ID <> :EXC',
+      ['CPFCNPJ', 'EXC'],
+      [ACpfCnpj, IntToStr(AExcluirId)]) > 0
+  else
+    Result := FClienteRepo.ContarParam(
+      'CPF_CNPJ = :CPFCNPJ',
+      ['CPFCNPJ'],
+      [ACpfCnpj]) > 0;
 end;
 
 function TClienteService.BuscarPorId(AId: Int64): TCliente;
@@ -107,58 +114,64 @@ begin
 end;
 
 function TClienteService.BuscarTodos(const AFiltro: string): TSQLQuery;
-var
-  LCondicao: string;
 begin
-  LCondicao := '';
-  if AFiltro <> '' then
-    LCondicao := Format('EMPRESA_ID = %d', [Conexao.Connection.Tag]);
-  Result := FClienteRepo.BuscarTodos(LCondicao, 'NOME');
+  { lista os clientes da empresa logada. (O código anterior filtrava
+    por Connection.Tag, que nunca é preenchido — ficava EMPRESA_ID = 0
+    e a lista saía vazia; AFiltro era só um sinalizador ligado/desligado.) }
+  Result := FClienteRepo.BuscarTodosParam(
+    'EMPRESA_ID = :EMP',
+    ['EMP'],
+    [IntToStr(TSessao.GetInstance.EmpresaId)],
+    'NOME');
 end;
 
 function TClienteService.Inserir(ACliente: TCliente): Int64;
-var
-  LCampos, LValores: string;
+const
+  CAMPOS = 'EMPRESA_ID, NOME, NOME_FANTASIA, CPF_CNPJ, RG_IE, ' +
+           'ENDERECO, NUMERO, COMPLEMENTO, BAIRRO, CIDADE, UF, CEP, ' +
+           'TELEFONE, EMAIL, ATIVO';
+  VALORES_PARAM = ':EMP, :NOME, :FANTASIA, :CPFCNPJ, :RGIE, ' +
+                  ':END, :NUM, :COMPL, :BAIRRO, :CID, :UF, :CEP, ' +
+                  ':TEL, :EMAIL, :ATIVO';
 begin
   Validar(ACliente);
 
-  LCampos := 'EMPRESA_ID, NOME, NOME_FANTASIA, CPF_CNPJ, RG_IE, ' +
-             'ENDERECO, NUMERO, COMPLEMENTO, BAIRRO, CIDADE, UF, CEP, ' +
-             'TELEFONE, EMAIL, ATIVO';
-
-  LValores := Format('%d, ''%s'', ''%s'', ''%s'', ''%s'', ' +
-                     '''%s'', ''%s'', ''%s'', ''%s'', ''%s'', ''%s'', ''%s'', ' +
-                     '''%s'', ''%s'', ''%s''',
-    [ACliente.EmpresaId, ACliente.Nome,
+  Result := FClienteRepo.InserirParam(
+    CAMPOS, VALORES_PARAM,
+    ['EMP', 'NOME', 'FANTASIA', 'CPFCNPJ', 'RGIE',
+     'END', 'NUM', 'COMPL', 'BAIRRO', 'CID', 'UF', 'CEP',
+     'TEL', 'EMAIL', 'ATIVO'],
+    [IntToStr(ACliente.EmpresaId), ACliente.Nome,
      ACliente.NomeFantasia, ACliente.CpfCnpj, ACliente.RgIe,
      ACliente.Endereco, ACliente.Numero, ACliente.Complemento,
      ACliente.Bairro, ACliente.Cidade, ACliente.Uf, ACliente.Cep,
      ACliente.Telefone, ACliente.Email, ACliente.Ativo]);
 
-  Result := FClienteRepo.Inserir(LCampos, LValores);
   LogOperacao('CLIENTE', 'I', Result);
 end;
 
 function TClienteService.Atualizar(ACliente: TCliente): Boolean;
-var
-  LCamposValores: string;
+const
+  CAMPOS_PARAM = 'NOME = :NOME, NOME_FANTASIA = :FANTASIA, ' +
+                 'CPF_CNPJ = :CPFCNPJ, RG_IE = :RGIE, ENDERECO = :END, ' +
+                 'NUMERO = :NUM, COMPLEMENTO = :COMPL, BAIRRO = :BAIRRO, ' +
+                 'CIDADE = :CID, UF = :UF, CEP = :CEP, ' +
+                 'TELEFONE = :TEL, EMAIL = :EMAIL, ATIVO = :ATIVO';
 begin
   ValidarId(ACliente.Id, 'Cliente');
   Validar(ACliente);
 
-  LCamposValores := Format(
-    'NOME = ''%s'', NOME_FANTASIA = ''%s'', ' +
-    'CPF_CNPJ = ''%s'', RG_IE = ''%s'', ENDERECO = ''%s'', ' +
-    'NUMERO = ''%s'', COMPLEMENTO = ''%s'', BAIRRO = ''%s'', ' +
-    'CIDADE = ''%s'', UF = ''%s'', CEP = ''%s'', ' +
-    'TELEFONE = ''%s'', EMAIL = ''%s'', ATIVO = ''%s''',
+  Result := FClienteRepo.AtualizarParam(
+    ACliente.Id, CAMPOS_PARAM,
+    ['NOME', 'FANTASIA', 'CPFCNPJ', 'RGIE', 'END',
+     'NUM', 'COMPL', 'BAIRRO', 'CID', 'UF', 'CEP',
+     'TEL', 'EMAIL', 'ATIVO'],
     [ACliente.Nome, ACliente.NomeFantasia,
      ACliente.CpfCnpj, ACliente.RgIe, ACliente.Endereco,
      ACliente.Numero, ACliente.Complemento, ACliente.Bairro,
      ACliente.Cidade, ACliente.Uf, ACliente.Cep,
      ACliente.Telefone, ACliente.Email, ACliente.Ativo]);
 
-  Result := FClienteRepo.Atualizar(ACliente.Id, LCamposValores);
   LogOperacao('CLIENTE', 'U', ACliente.Id);
 end;
 
@@ -170,15 +183,17 @@ begin
 end;
 
 function TClienteService.Pesquisar(const ATermo: string): TSQLQuery;
-var
-  LCondicao: string;
 begin
-  LCondicao := Format(
-    '(UPPER(NOME) CONTAINING UPPER(''%s'') OR ' +
-    'CPF_CNPJ CONTAINING ''%s'' OR ' +
-    'UPPER(CIDADE) CONTAINING UPPER(''%s''))',
-    [ATermo, ATermo, ATermo]);
-  Result := FClienteRepo.BuscarTodos(LCondicao, 'NOME');
+  { termo do usuário entra como parâmetro em TODAS as posições — antes
+    era concatenado três vezes em CONTAINING '%s' (quebra com apóstrofo
+    e vetor de injeção). UPPER(:T) funciona: o parâmetro string é
+    convertido pelo SQLDB conforme a coluna. }
+  Result := FClienteRepo.BuscarTodosParam(
+    '(UPPER(NOME) CONTAINING UPPER(:T) OR ' +
+    'CPF_CNPJ CONTAINING :T OR ' +
+    'UPPER(CIDADE) CONTAINING UPPER(:T))',
+    ['T'], [ATermo],
+    'NOME');
 end;
 
 end.

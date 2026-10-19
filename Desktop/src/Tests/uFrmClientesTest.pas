@@ -10,7 +10,8 @@ unit uFrmClientesTest;
 interface
 
 uses
-  Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao;
+  Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao, uCliente,
+  uClienteService;
 
 type
   { TClientesTest }
@@ -225,6 +226,80 @@ var
     end;
   end;
 
+  { Exercita o TClienteService (repositório parametrizado) de ponta a
+    ponta. O nome do cliente contém apóstrofo (D'Ávila) — era o vetor
+    que quebrava o SQL montado com Format. }
+  procedure TestServiceClienteApostrofo;
+  var
+    LSvc: TClienteService;
+    LCliente: TCliente;
+    LId: Int64;
+    LQuery2: TSQLQuery;
+  begin
+    LSvc := TClienteService.Create;
+    LCliente := TCliente.Create;
+    LQuery2 := TSQLQuery.Create(nil);
+    try
+      LQuery2.DataBase := LConexao.Connection;
+      LQuery2.Transaction := LConexao.Transaction;
+
+      // Inserir
+      LCliente.EmpresaId := 1;
+      LCliente.Nome := 'Cliente D''Ávila Service';
+      LCliente.CpfCnpj := '99999999999';
+      LCliente.Cidade := 'São Paulo';
+      LCliente.Uf := 'SP';
+      LCliente.Ativo := 'A';
+      LId := LSvc.Inserir(LCliente);      AssertTrue(LId > 0, 'Service deve inserir cliente com apóstrofo no nome');
+
+      // Buscar por id (query parametrizada do repositório)
+      LCliente.Free;
+      LCliente := LSvc.BuscarPorId(LId);
+      AssertTrue(LCliente <> nil, 'Service deve encontrar o cliente recém-inserido');
+      AssertEquals('99999999999', LCliente.CpfCnpj, 'CPF/CNPJ deve corresponder');
+
+      // Pesquisar por um trecho do nome ( CONTAINING parametrizado )
+      LQuery2.Close;
+      LQuery2.SQL.Text :=
+        'SELECT COUNT(*) AS TOTAL FROM CLIENTE ' +
+        'WHERE UPPER(NOME) CONTAINING UPPER(:T)';
+      LQuery2.ParamByName('T').AsString := 'D''Ávila';
+      LQuery2.Open;
+      AssertTrue(LQuery2.FieldByName('TOTAL').AsInteger >= 1,
+        'Pesquisa por nome com apóstrofo deve encontrar o cliente');
+
+      // Atualizar (apóstrofo de novo)
+      LCliente.Nome := 'Cliente D''Ávila Service Editado';
+      AssertTrue(LSvc.Atualizar(LCliente), 'Service deve atualizar cliente');
+
+      // Excluir e conferir
+      AssertTrue(LSvc.Excluir(LId), 'Service deve excluir cliente');
+      LCliente.Free;
+      LCliente := LSvc.BuscarPorId(LId);
+      AssertTrue(LCliente = nil, 'Cliente deve sumir após exclusão');
+
+      { limpa o rastro: Inserir/Atualizar/Excluir gravam auditoria.
+        A transacao do singleton ja foi Confirmar pelo service, entao
+        abre uma propria para o DELETE nao herdar transacao fechada. }
+      if LQuery2.Active then
+        LQuery2.Close;
+      if not LConexao.Transaction.Active then
+        LConexao.Transaction.StartTransaction;
+      LQuery2.SQL.Text := 'DELETE FROM LOG_SISTEMA WHERE REGISTRO_ID = :R';
+      LQuery2.ParamByName('R').AsLargeInt := LId;
+      LQuery2.ExecSQL;
+      LConexao.Transaction.Commit;
+
+      ASuite.AddResult('TestServiceClienteApostrofo', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestServiceClienteApostrofo', False, E.Message);
+    end;
+    LQuery2.Free;
+    LCliente.Free;
+    LSvc.Free;
+  end;
+
 begin
   WriteLn('========================================');
   WriteLn('EXECUTANDO TESTES DE CLIENTES');
@@ -251,6 +326,7 @@ begin
     TestListarClientes;
     TestFiltrarClientesPorNome;
     TestExcluirCliente;
+    TestServiceClienteApostrofo;
 
   finally
     LQuery.Free;
