@@ -1,3 +1,8 @@
+-- [SUPERADO] Ver Banco\schema_canonico.sql - fonte unica de DDL
+-- gerada do banco real (34 tabelas). Este arquivo criava apenas
+-- 19 tabelas (faltava Producao e Notas) e nao deve mais ser usado
+-- para montar o banco.
+-- Regenerar: Scripts\gerar_schema.bat
 -- Versão simplificada do banco ERP 2026
 -- Sem CHECK constraints problemáticos
 

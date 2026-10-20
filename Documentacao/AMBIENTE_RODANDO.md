@@ -198,8 +198,8 @@ Menu **Produção** do Desktop (IDs de comando em [`MAPA_IDS_MENU.md`](MAPA_IDS_
 
 ## Observações / pendências sugeridas
 
-- **Senhas em texto puro** no banco. O ideal é migrar Desktop, API e semente para SHA-256 (as três pontas mudam juntas).
-- **`uClienteService.pas`** monta SQL com `Format` (risco de injeção) — usar parâmetros, como já é feito na API.
-- **`uMiddlewareJWT.pas`** rotula o token como HS256, mas usa um HMAC simplificado próprio. Trocar por uma implementação HS256 real (ou remover o rótulo).
+- ~~**Senhas em texto puro** no banco~~ **concluído (19/10)**: SHA-256 em `uSenhaHash.pas` (Pascal puro), migração progressiva no login; teste `TestServiceClienteApostrofo` e os de hash/HMAC cobrem o caminho.
+- ~~**`uClienteService.pas`** monta SQL com `Format` (risco de injeção)~~ **concluído (19/10)**: `InserirParam`/`AtualizarParam`/`BuscarTodosParam`/`ContarParam` em `uRepositoryBase` + teste com apóstrofo.
+- ~~**`uMiddlewareJWT.pas`** rotula o token como HS256 mas usa HMAC simplificado~~ **concluído (19/10)**: HS256 real em `uHMAC.pas` (RFC 2104) com comparação em tempo constante; vetor RFC 4231 cobre o teste.
 - A API usa **uma única conexão** (servidor não threaded). Para produção, usar pool de conexões.
-- `Banco\004_tables.sql` e `Banco\banco_simplificado.sql` divergem do banco real — vale consolidar num único script.
+- ~~`Banco\004_tables.sql` e `Banco\banco_simplificado.sql` divergem do banco real~~ **concluído (19/10)**: fonte única = `Banco\schema_canonico.sql`, gerada do banco real por `Scripts\gerar_schema.bat` (34 tabelas, 34 generators, 111 constraints, 36 triggers). Validação: `Scripts\testes\schema_roundtrip.ps1` (450 campos, diff vazio) e `Scripts\testes\banco_fresco.ps1` (banco novo completo + sementes). Os dois arquivos antigos ficaram marcados `[SUPERADO]` com conteúdo intacto e `executar_banco.bat` passou a rodar o script canônico + `007_initial_data.sql` (antes gerava só 22 das 34 tabelas).

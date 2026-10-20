@@ -1,4 +1,11 @@
 /* ============================================================
+   [SUPERADO] Ver Banco\schema_canonico.sql - fonte unica de DDL
+   gerada do banco real (34 tabelas, 111 constraints, 36 triggers).
+   Este arquivo e apenas o historico do build incremental e NAO
+   deve mais receber alteracoes de DDL.
+   Regenerar: Scripts\gerar_schema.bat   (validacao: Scripts\testes\schema_roundtrip.ps1)
+   ============================================================ */
+/* ============================================================
    ERP 2026 - FASE 1 - FUNDAÇÃO
    Arquivo: 004_tables.sql
    Descrição: Criação de todas as tabelas do sistema

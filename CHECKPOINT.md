@@ -88,9 +88,17 @@
 
 - ~~Senhas em **SHA-256**~~ — **concluído (19/10)**.
 - ~~`uClienteService.pas` monta SQL com `Format` → parametrizar.~~ — **concluído (19/10)**.
-- `uMiddlewareJWT.pas` rotula HS256 mas usa HMAC próprio → HS256 real (ou remover rótulo).
+- ~~`uMiddlewareJWT.pas` rotula HS256 mas usa HMAC próprio~~ **concluído (19/10)**: HS256 real em `uHMAC.pas` (HMAC-SHA256 RFC 2104, sobre `SHA256Raw`) + assinatura em tempo constante.
 - API usa conexão única → pool de conexões (produção).
-- Consolidar `Banco\004_tables.sql` / `banco_simplificado.sql` vs banco real.
+- ~~Consolidar `Banco\004_tables.sql` / `banco_simplificado.sql` vs banco real.~~ —
+  **concluído (19/10)**. Gerador `Desktop\src\Tools\GerarSchema.lpr` lê o metadata
+  `RDB$*` do banco real e emite `Banco\schema_canonico.sql` (34 tabelas, 34 generators,
+  6 domains, 111 constraints — 34 PK + 65 NOT NULL + 12 CHECK —, 34 índices, 36 triggers).
+  Validação: `Scripts\testes\schema_roundtrip.ps1` (banco novo × real → 450 campos,
+  diff vazio) e `Scripts\testes\banco_fresco.ps1` (banco novo completo com sementes).
+  `004_tables.sql`/`banco_simplificado.sql` ficaram marcados como `[SUPERADO]`
+  (conteúdo intacto); `executar_banco.bat` passou a usar `schema_canonico.sql`
+  + `007_initial_data.sql` (antes gerava só 22 das 34 tabelas).
 - Itens de menu inertes (sem `OnClick`): Financeiro > Caixa, Sistema > Configurações,
   Sistema > Permissões, grupo Relatórios — implementar só se houver pedido.
 

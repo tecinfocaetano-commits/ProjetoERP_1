@@ -231,3 +231,86 @@ Verificações desta rodada:
 | API senha errada / usuário inexistente | HTTP **401** |
 | Migração via API (senha voltada a texto puro → login → reconsulta) | regravada como hash ✓ |
 | `Scripts\testes\fase6_01.ps1` (login admin/admin123 pela UI) | **FASE6-01 CONCLUIDO** |
+
+---
+
+## Parametrização do `uClienteService` e JWT com HS256 real (19/10/2026)
+
+Duas pendências de segurança fechadas nesta rodada.
+
+**1. Queries parametrizadas no Desktop.** `uRepositoryBase` ganhou `InserirParam`,
+`AtualizarParam`, `BuscarTodosParam` e `ContarParam` (valores aplicados por
+`ParamByName`). No `uClienteService`, `CpfCnpjExiste`, `Inserir`, `Atualizar`,
+`Pesquisar` e `BuscarTodos` deixaram de montar SQL com `Format`. O caso mais grave
+era o `Pesquisar`, que interpolava o termo **três vezes** em `CONTAINING '%s'` —
+um apóstrofo no nome já quebrava a consulta. `BuscarTodos` filtrava por
+`Connection.Tag` (sempre 0, resultando em lista vazia) e passou a usar a empresa
+da sessão (`TSessao.GetInstance.EmpresaId`).
+
+- **Teste novo**: `TestServiceClienteApostrofo` — insere o nome `D'Ávila` e percorre
+  Inserir → BuscarPorId → Pesquisar → Atualizar → Excluir, limpando a própria
+  auditoria no fim (transação explícita).
+
+**2. HS256 de verdade.** `uMiddlewareJWT.pas` anunciava o algoritmo `HS256`, mas usava
+um HMAC caseiro. Nova unit `Desktop\src\Utils\uHMAC.pas` implementa HMAC-SHA256
+conforme a **RFC 2104**, construído sobre o `SHA256Raw` de `uSenhaHash.pas`;
+`Assinar` passou a assinar com ela e a comparação da assinatura é feita em
+**tempo constante** (`AssinaturaIgual`), evitando timing attack na validação do token.
+
+- **Testes novos**: `TestHMACSha256VetorRfc4231` (vetor oficial RFC 4231, caso 1) e
+  `TestHMACSha256RawEAoTamanhoChave` (chave maior e menor que o bloco de 64 bytes).
+
+| Verificação | Resultado |
+|---|---|
+| `Scripts\build_desktop.bat` | compila |
+| `Scripts\build_api.bat` | compila |
+| `Scripts\run_tests.bat` | **56/56** (53 + 3 novos) |
+| API `POST /api/login` admin/admin123 | HTTP **200** com token |
+| API rota protegida sem token / token forjado | HTTP **401** |
+
+---
+
+## Consolidação dos SQLs e do build do banco (19/10/2026)
+
+O DDL do banco estava espalhado em três fontes divergentes: o banco real
+(`DADOS.FDB`, **34 tabelas**), `Banco\004_tables.sql` (**22**) e
+`Banco\banco_simplificado.sql` (**19**). Produção e Notas tinham entrado por
+scripts incrementais (008..012), então um banco montado pelo caminho antigo
+ficava incompleto.
+
+- **Fonte única**: `Banco\schema_canonico.sql`, **gerado do próprio banco real**
+  pela nova ferramenta `Desktop\src\Tools\GerarSchema.lpr` (lê o metadata `RDB$*`
+  via SQLDB — nada de interpretar a saída padronizada do `isql`):
+  **34 tabelas, 34 generators, 6 domains, 111 constraints** (34 PK + 65 NOT NULL +
+  12 CHECK), **34 índices** e **36 triggers**.
+- **Validação round-trip**: `Scripts\testes\schema_roundtrip.ps1` cria um `.fdb`
+  descartável com o script, compara coluna a coluna com o `DADOS.FDB` real pela
+  ferramenta auxiliar `Desktop\src\Tools\DumpSchema.lpr` e exige diff vazio:
+  **450 campos**.
+- **`007_initial_data.sql` ajustado ao schema real**: `UNIDADE.NOME` é obrigatório
+  (domínio `DM_NOME NOT NULL`) e `GRUPO`/`EMPRESA`/`USUARIO` usam `ATIVO`, não
+  `STATUS`; acrescentadas as 4 permissões `PRODUCAO` que existem no banco real.
+  Encoding preservado (UTF-8 **sem** BOM, fim de linha LF).
+- **`Scripts\executar_banco.bat` reescrito**: roda `schema_canonico.sql` e depois
+  `007_initial_data.sql` (antes parava no `007` e gerava só **22 das 34 tabelas**).
+  Falha se o banco já existir; `/recriar` apaga e recria do zero.
+- **`004_tables.sql`** e **`banco_simplificado.sql`** receberam cabeçalho
+  `[SUPERADO]` apontando para o script canônico — **conteúdo intacto**
+  (22 e 19 `CREATE TABLE` seguem lá, como histórico).
+
+| Ferramenta | Função |
+|---|---|
+| `Desktop\src\Tools\GerarSchema.lpr` | Lê `RDB$*` e emite `schema_canonico.sql` |
+| `Desktop\src\Tools\DumpSchema.lpr` | Dump `tabela\|campo\|tipo\|notnull\|default` |
+| `Scripts\gerar_schema.bat` | Compila e roda o gerador |
+| `Scripts\build_dump_schema.bat` | Compila o dump |
+| `Scripts\testes\schema_roundtrip.ps1` | Banco descartável × real, exige diff vazio |
+| `Scripts\testes\banco_fresco.ps1` | Reproduz o build novo + sementes e confere |
+
+| Verificação | Resultado |
+|---|---|
+| `Scripts\testes\schema_roundtrip.ps1` | **450 campos, diff vazio** |
+| `Scripts\testes\banco_fresco.ps1` | 450 campos, 34 tabelas, 34 generators, admin + permissões presentes |
+| `Scripts\build_desktop.bat` | compila |
+| `Scripts\build_api.bat` | compila |
+| `Scripts\run_tests.bat` | **56/56** |

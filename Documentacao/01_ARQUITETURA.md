@@ -41,13 +41,14 @@ Sistema ERP completo com módulos de Cadastros, Estoque, Vendas, PDV, Fiscal, Fi
 ```
 C:\Users\Charles\Documents\ProjetoERP_1\
 ├── Banco/                    # DDL, scripts, migrations
+│   ├── schema_canonico.sql   # FONTE UNICA de DDL (gerada do banco real)
 │   ├── 001_create_database.sql
 │   ├── 002_domains.sql
 │   ├── 003_generators.sql
-│   ├── 004_tables.sql
+│   ├── 004_tables.sql        # [SUPERADO] historico do build incremental
 │   ├── 005_triggers.sql
 │   ├── 006_indexes.sql
-│   ├── 007_initial_data.sql
+│   ├── 007_initial_data.sql  # sementes (admin/admin123, permissoes)
 │   └── dados.fdb
 ├── Desktop/                  # Aplicação principal Lazarus
 │   ├── src/
