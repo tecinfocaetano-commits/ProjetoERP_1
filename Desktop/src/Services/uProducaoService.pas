@@ -85,6 +85,17 @@ const
   { Tolerância para comparação de quantidades (NUMERIC(15,4)) }
   TOLERANCIA_QTD = 0.0001;
 
+  { --- Modelos I e II dos relatórios (Talão e Mapa) ---------------------
+    Modelo I é o .lrf original; Modelo II é uma cópia (arquivo separado)
+    para o usuário ajustar no designer do LazReport sem mexer no Modelo I.
+    Os dois modelos usam os MESMOS datasets - só muda o arquivo carregado.
+    _RELATORIO(_M2) guardam o caminho do .lrf; _MODELO guarda '1' ou '2'
+    (qual modelo vale para visualizar/imprimir/exportar). }
+  CFG_TALAO_RELATORIO    = 'PRODUCAO_TALAO_RELATORIO';
+  CFG_TALAO_RELATORIO_M2 = 'PRODUCAO_TALAO_RELATORIO_M2';
+  CFG_TALAO_MODELO       = 'PRODUCAO_TALAO_MODELO';
+  CFG_MAPA_MODELO        = 'PRODUCAO_MAPA_MODELO';
+
 type
   TProducaoService = class
   private
@@ -94,6 +105,9 @@ type
     function  ProximoNumeroTalao(AEmpresaId: Int64): Integer;
     function  NumeroDoMapa(AMapaId: Int64): Integer;
     function  LerConfiguracao(const AChave, APadrao: string): string;
+    procedure GravarChaveConfig(const AChave, AValor, ADescricao: string);
+    function  ResolverCaminhoRelatorio(const AConfigurado,
+      AArquivoPadrao: string): string;
     function  QuantidadePedidaItem(AItemPedidoId: Int64; out APedidoId,
       AProdutoId: Int64): Double;
     function  QuantidadeMapeadaItem(AItemPedidoId: Int64;
@@ -157,6 +171,22 @@ type
       exe. }
     function  CaminhoRelatorioTalao: string;
     procedure DefinirCaminhoRelatorioTalao(const ACaminho: string);
+
+    { --- modelos I/II (mesmos datasets) ----------------------------------
+      Ambos os modelos apontam para o MESMO dataset do relatório; só o
+      arquivo .lrf carregado muda. Caminho do Modelo II vem da CONFIGURACAO
+      (PRODUCAO_TALAO_RELATORIO_M2) com padrão relatorios\talao_modelo2.lrf;
+      o do mapa é fixo (mapa_producao.lrf / mapa_producao_modelo2.lrf). }
+    function  CaminhoRelatorioTalaoModelo(const AModelo: Integer): string;
+    procedure DefinirCaminhoRelatorioTalaoModelo(const AModelo: Integer;
+      const ACaminho: string);
+    function  CaminhoRelatorioMapaModelo(const AModelo: Integer): string;
+    { Modelo ativo = '1' (padrão) ou '2'. DefinirModeloAtivo devolve True
+      quando realmente gravou (o COMMIT da CONFIGURACAO invalida os cursores
+      SQLDB já abertos, então a tela só recarrega nesse caso). }
+    function  ModeloAtivo(const AChave: string): Integer;
+    function  DefinirModeloAtivo(const AChave: string;
+      const AModelo: Integer): Boolean;
 
     { --- ficha técnica (Fase 5) -----------------------------------------
       Uma ficha por produto (índice único EMPRESA+PRODUTO). QUANTIDADE_BASE
@@ -1466,35 +1496,116 @@ end;
   Relatório de talões - caminho configurável (Fase 4)
   ------------------------------------------------------------ }
 
-function TProducaoService.CaminhoRelatorioTalao: string;
-var
-  LConfigurado: string;
+function TProducaoService.ResolverCaminhoRelatorio(const AConfigurado,
+  AArquivoPadrao: string): string;
 begin
-  LConfigurado := LerConfiguracao('PRODUCAO_TALAO_RELATORIO', '');
-  if LConfigurado = '' then
+  Result := Trim(AConfigurado);
+  if Result = '' then
   begin
-    { padrão: o exe roda de Desktop\bin\ e relatorios\talao.lrf
+    { padrão: o exe roda de Desktop\bin\ e relatorios\<arquivo>
       fica copiado ao lado dele pelo build_desktop.bat }
     Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
-      'relatorios' + PathDelim + 'talao.lrf';
+      'relatorios' + PathDelim + AArquivoPadrao;
     Exit;
   end;
 
-  Result := LConfigurado;
   { caminho relativo (ex.: "meus_relatorios\talao.lrf") é resolvido
     a partir da pasta do exe }
   if ExtractFilePath(Result) = '' then
     Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + Result;
 end;
 
+function TProducaoService.CaminhoRelatorioTalaoModelo(const AModelo: Integer): string;
+begin
+  if AModelo = 2 then
+    Result := ResolverCaminhoRelatorio(
+      LerConfiguracao(CFG_TALAO_RELATORIO_M2, ''), 'talao_modelo2.lrf')
+  else
+    Result := ResolverCaminhoRelatorio(
+      LerConfiguracao(CFG_TALAO_RELATORIO, ''), 'talao.lrf');
+end;
+
+function TProducaoService.CaminhoRelatorioTalao: string;
+begin
+  { o caminho vem da CONFIGURACAO (PRODUCAO_TALAO_RELATORIO); o
+    usuário final pode trocá-lo em "Relatório ▼ → Configurar" }
+  Result := CaminhoRelatorioTalaoModelo(ModeloAtivo(CFG_TALAO_MODELO));
+end;
+
+function TProducaoService.CaminhoRelatorioMapaModelo(const AModelo: Integer): string;
+begin
+  { o mapa nunca teve caminho configurável; cada modelo é um arquivo fixo
+    ao lado do exe (o build copia os dois de Desktop\relatorios) }
+  if AModelo = 2 then
+    Result := ResolverCaminhoRelatorio('', 'mapa_producao_modelo2.lrf')
+  else
+    Result := ResolverCaminhoRelatorio('', 'mapa_producao.lrf');
+end;
+
+{ Modelo ativo do relatório: valor ausente ou inválido = Modelo I. }
+function TProducaoService.ModeloAtivo(const AChave: string): Integer;
+var
+  LValor: string;
+begin
+  LValor := Trim(LerConfiguracao(AChave, ''));
+  if LValor = '2' then
+    Result := 2
+  else
+    Result := 1;
+end;
+
+function TProducaoService.DefinirModeloAtivo(const AChave: string;
+  const AModelo: Integer): Boolean;
+var
+  LValor, LAtual: string;
+begin
+  if AModelo = 2 then
+    LValor := '2'
+  else
+    LValor := '1';
+
+  LAtual := Trim(LerConfiguracao(AChave, ''));
+  if LAtual = '' then
+    LAtual := '1';   { sem chave gravada o padrão é o Modelo I }
+
+  Result := False;
+  if LAtual = LValor then
+    Exit;             { nada a gravar: evita COMMIT que invalidaria cursores }
+
+  GravarChaveConfig(AChave, LValor,
+    'Modelo ativo (1 ou 2) do relatório de produção');
+  Result := True;
+end;
+
 procedure TProducaoService.DefinirCaminhoRelatorioTalao(const ACaminho: string);
+begin
+  { mantém a assinatura da Fase 4: o caminho configurável é o do Modelo I }
+  DefinirCaminhoRelatorioTalaoModelo(1, ACaminho);
+end;
+
+procedure TProducaoService.DefinirCaminhoRelatorioTalaoModelo(
+  const AModelo: Integer; const ACaminho: string);
+begin
+  if AModelo = 2 then
+    GravarChaveConfig(CFG_TALAO_RELATORIO_M2, ACaminho,
+      'Caminho do relatório .lrf dos talões de produção (Modelo II)')
+  else
+    GravarChaveConfig(CFG_TALAO_RELATORIO, ACaminho,
+      'Caminho do relatório .lrf dos talões de produção');
+end;
+
+{ Grava uma chave na CONFIGURACAO da empresa (ou a remove, quando o valor
+  é vazio = restaurar o padrão), com auditoria no mesmo caminho único
+  (uAuditoria.RegistrarAuditoria). Uma única transação: grava/audita/COMMIT. }
+procedure TProducaoService.GravarChaveConfig(const AChave, AValor,
+  ADescricao: string);
 var
   LUpd: TSQLQuery;
   LNovo, LAnterior: string;
   LExiste: Boolean;
 begin
-  LNovo := Trim(ACaminho);
-  LAnterior := CaminhoRelatorioTalao;
+  LNovo := Trim(AValor);
+  LAnterior := Trim(LerConfiguracao(AChave, ''));
 
   FConexao.IniciarTransacao;
   LUpd := NovaConsulta;
@@ -1506,11 +1617,11 @@ begin
         LUpd.SQL.Text :=
           'DELETE FROM CONFIGURACAO ' +
           'WHERE CHAVE = :CHAVE AND EMPRESA_ID = :EMP';
-        LUpd.ParamByName('CHAVE').AsString := 'PRODUCAO_TALAO_RELATORIO';
+        LUpd.ParamByName('CHAVE').AsString := AChave;
         LUpd.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
         LUpd.ExecSQL;
         RegistrarAuditoria('CONFIGURACAO', 'ALTERACAO', 0,
-          'PRODUCAO_TALAO_RELATORIO=' + LAnterior, 'PADRAO');
+          AChave + '=' + LAnterior, AChave + '=PADRAO');
       end
       else
       begin
@@ -1520,7 +1631,7 @@ begin
         LUpd.SQL.Text :=
           'SELECT COUNT(*) AS QTD FROM CONFIGURACAO ' +
           'WHERE CHAVE = :CHAVE AND EMPRESA_ID = :EMP';
-        LUpd.ParamByName('CHAVE').AsString := 'PRODUCAO_TALAO_RELATORIO';
+        LUpd.ParamByName('CHAVE').AsString := AChave;
         LUpd.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
         LUpd.Open;
         LExiste := LUpd.FieldByName('QTD').AsInteger > 0;
@@ -1532,7 +1643,7 @@ begin
             'UPDATE CONFIGURACAO SET VALOR = :VALOR ' +
             'WHERE CHAVE = :CHAVE AND EMPRESA_ID = :EMP';
           LUpd.ParamByName('VALOR').AsString := LNovo;
-          LUpd.ParamByName('CHAVE').AsString := 'PRODUCAO_TALAO_RELATORIO';
+          LUpd.ParamByName('CHAVE').AsString := AChave;
           LUpd.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
           LUpd.ExecSQL;
         end
@@ -1542,15 +1653,13 @@ begin
             'INSERT INTO CONFIGURACAO (EMPRESA_ID, CHAVE, VALOR, DESCRICAO) ' +
             'VALUES (:EMP, :CHAVE, :VALOR, :DESCR)';
           LUpd.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-          LUpd.ParamByName('CHAVE').AsString := 'PRODUCAO_TALAO_RELATORIO';
+          LUpd.ParamByName('CHAVE').AsString := AChave;
           LUpd.ParamByName('VALOR').AsString := LNovo;
-          LUpd.ParamByName('DESCR').AsString :=
-            'Caminho do relatório .lrf dos talões de produção';
+          LUpd.ParamByName('DESCR').AsString := ADescricao;
           LUpd.ExecSQL;
         end;
         RegistrarAuditoria('CONFIGURACAO', 'ALTERACAO', 0,
-          'PRODUCAO_TALAO_RELATORIO=' + LAnterior,
-          'PRODUCAO_TALAO_RELATORIO=' + LNovo);
+          AChave + '=' + LAnterior, AChave + '=' + LNovo);
       end;
 
       FConexao.Confirmar;

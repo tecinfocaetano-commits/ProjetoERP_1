@@ -16,6 +16,11 @@ if not exist "%LAZBUILD%" (
 "%LAZBUILD%" "%ROOT%\Desktop\Tests.lpi"
 if errorlevel 1 goto :erro
 
+REM Relatorios LazReport (.lrf): os testes de Modelo I/II conferem que os
+REM 4 arquivos existem ao lado do Tests.exe (mesma copia do build_desktop).
+if not exist "%ROOT%\Desktop\bin\relatorios" mkdir "%ROOT%\Desktop\bin\relatorios"
+copy /Y "%ROOT%\Desktop\relatorios\*.lrf" "%ROOT%\Desktop\bin\relatorios\" >nul
+
 echo.
 echo === Testes compilados: Desktop\bin\Tests.exe ===
 goto :fim

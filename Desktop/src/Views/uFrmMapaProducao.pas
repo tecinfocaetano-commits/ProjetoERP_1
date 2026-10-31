@@ -59,6 +59,8 @@ type
     btnCancelarTalao: TBitBtn;
     pmRelatorio: TPopupMenu;
     mnuRelVisualizar: TMenuItem;
+    mnuRelTalaoModeloI: TMenuItem;
+    mnuRelTalaoModeloII: TMenuItem;
     mnuRelEditar: TMenuItem;
     mnuRelConfigurar: TMenuItem;
     mnuRelRestaurar: TMenuItem;
@@ -66,6 +68,8 @@ type
     mnuRelTalaoPdf: TMenuItem;
     mnuRelSep2: TMenuItem;
     mnuRelMapaPreview: TMenuItem;
+    mnuRelMapaModeloI: TMenuItem;
+    mnuRelMapaModeloII: TMenuItem;
     mnuRelMapaPdf: TMenuItem;
     lblQtdTaloes: TLabel;
     dbGridTaloes: TDBGrid;
@@ -116,6 +120,10 @@ type
     procedure mnuRelTalaoPdfClick(Sender: TObject);
     procedure mnuRelMapaPreviewClick(Sender: TObject);
     procedure mnuRelMapaPdfClick(Sender: TObject);
+    procedure mnuRelTalaoModelo1Click(Sender: TObject);
+    procedure mnuRelTalaoModelo2Click(Sender: TObject);
+    procedure mnuRelMapaModelo1Click(Sender: TObject);
+    procedure mnuRelMapaModelo2Click(Sender: TObject);
     procedure btnImprimirTalaoClick(Sender: TObject);
     procedure btnCancelarTalaoClick(Sender: TObject);
     procedure DataSourceMapasDataChange(Sender: TObject; Field: TField);
@@ -147,9 +155,14 @@ type
     procedure CarregarDetalheMapa(AMapaId: Int64);
     procedure CarregarTaloes(AMapaId: Int64);
     procedure PrepararRelatorioTalao;
+    procedure PrepararRelatorioTalaoModelo(const AModelo: Integer);
     function  CaminhoRelatorioTalao: string;
     procedure PrepararRelatorioMapa;
+    procedure PrepararRelatorioMapaModelo(const AModelo: Integer);
     function  CaminhoRelatorioMapa: string;
+    procedure VisualizarModeloTalao(const AModelo: Integer);
+    procedure VisualizarModeloMapa(const AModelo: Integer);
+    procedure MarcarModelosNoMenu;
     procedure ExportarPdf(const ASugerido: string);
     function  ItemSelecionadoDoMapa: Int64;
     function  TalaoSelecionado: Int64;
@@ -984,19 +997,29 @@ begin
   Result := FService.CaminhoRelatorioTalao;
 end;
 
-procedure TfrmMapaProducao.PrepararRelatorioTalao;
+{ Carrega o .lrf do modelo pedido (1 ou 2). Os DOIS modelos apontam para
+  os MESMOS datasets (FFrDBTalao): só o arquivo carregado muda, então os
+  dados são idênticos e só o layout difere. }
+procedure TfrmMapaProducao.PrepararRelatorioTalaoModelo(const AModelo: Integer);
 var
   LCaminho: string;
 begin
-  LCaminho := CaminhoRelatorioTalao;
+  LCaminho := FService.CaminhoRelatorioTalaoModelo(AModelo);
   if not FileExists(LCaminho) then
     raise Exception.Create(
-      'Arquivo do relatório de talão não encontrado:' + sLineBreak +
+      'Arquivo do relatório de talão (Modelo ' + IntToStr(AModelo) +
+      ') não encontrado:' + sLineBreak +
       LCaminho + sLineBreak + sLineBreak +
       'Use "Relatório ▼ → Configurar" para indicar onde está o .lrf ' +
       '(ex.: uma cópia editada) ou "Restaurar padrão" para voltar ao ' +
-      'relatorios\talao.lrf ao lado do ERP2026.exe.');
+      'relatório padrão ao lado do ERP2026.exe.');
   FFrReport.LoadFromFile(LCaminho);   { .lrf = XML do LazReport }
+end;
+
+procedure TfrmMapaProducao.PrepararRelatorioTalao;
+begin
+  { visualizar/imprimir/exportar sem escolher usam o modelo ativo }
+  PrepararRelatorioTalaoModelo(FService.ModeloAtivo(CFG_TALAO_MODELO));
 end;
 
 procedure TfrmMapaProducao.btnGerarTaloesClick(Sender: TObject);
@@ -1094,6 +1117,7 @@ end;
 { --- atalhos do relatório (Fase 4) ----------------------------------
   "Relatório ▼" abre um menu com:
     - Visualizar   (o mesmo botão Visualizar);
+    - Modelo I / Modelo II  (escolhe o .lrf de cada relatório);
     - Editar       (abre o editor do LazReport para o usuário final
                     ajustar o layout e salvar no próprio .lrf);
     - Configurar   (troca o "link": o arquivo .lrf usado pelo sistema);
@@ -1111,6 +1135,7 @@ begin
     ao painel que o contém, então converter para coordenadas de tela
     (ClientToScreen) — sem isso o menu abria no topo do formulário }
   LPos := btnRelatorioMenu.ClientToScreen(Point(0, btnRelatorioMenu.Height));
+  MarcarModelosNoMenu;   { ponteiro no modelo ativo de cada relatório }
   pmRelatorio.PopUp(LPos.X, LPos.Y);
 end;
 
@@ -1218,6 +1243,128 @@ begin
   CarregarMapas;   { o COMMIT da CONFIGURACAO invalida os cursores SQLDB }
 end;
 
+{ --- Modelos I e II (mesmos datasets) --------------------------------
+  Cada relatório tem dois arquivos .lrf: Modelo I (o original) e Modelo II
+  (uma cópia, para o usuário editar à parte no designer do LazReport).
+  Os dois apontam para o MESMO dataset — só o layout muda. Escolher um
+  modelo: 1) grava o modelo ativo na CONFIGURACAO (visualizar, imprimir e
+  exportar passam a usá-lo); 2) o COMMIT invalida os cursores SQLDB, então
+  a tela recarrega; 3) carrega o .lrf escolhido e abre a visualização. }
+
+procedure TfrmMapaProducao.VisualizarModeloTalao(const AModelo: Integer);
+begin
+  if FMapaId <= 0 then
+  begin
+    MessageDlg('Selecione um mapa de produção na lista.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  if (not FTaloes.Active) or FTaloes.IsEmpty then
+  begin
+    MessageDlg('Este mapa ainda não tem talões. Use "Gerar Talões" primeiro.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  try
+    if FService.DefinirModeloAtivo(CFG_TALAO_MODELO, AModelo) then
+      CarregarMapas;   { o COMMIT da CONFIGURACAO invalida os cursores SQLDB }
+  except
+    on E: Exception do
+    begin
+      { persistência falhou: avisa o usuário, mas segue para a visualização }
+      MessageDlg('Não foi possível gravar o modelo escolhido:' + sLineBreak +
+        E.Message, mtWarning, [mbOK], 0);
+      try
+        CarregarMapas;
+      except
+      end;
+    end;
+  end;
+
+  try
+    PrepararRelatorioTalaoModelo(AModelo);
+    FFrReport.ShowReport;   { pré-visualização; não altera status dos talões }
+  except
+    on E: Exception do
+      MessageDlg('Não foi possível exibir o relatório de talões:' + sLineBreak +
+        E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmMapaProducao.VisualizarModeloMapa(const AModelo: Integer);
+begin
+  if FMapaId <= 0 then
+  begin
+    MessageDlg('Selecione um mapa de produção na lista.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  try
+    if FService.DefinirModeloAtivo(CFG_MAPA_MODELO, AModelo) then
+      CarregarMapas;   { o COMMIT da CONFIGURACAO invalida os cursores SQLDB }
+  except
+    on E: Exception do
+    begin
+      MessageDlg('Não foi possível gravar o modelo escolhido:' + sLineBreak +
+        E.Message, mtWarning, [mbOK], 0);
+      try
+        CarregarMapas;
+      except
+      end;
+    end;
+  end;
+
+  try
+    PrepararRelatorioMapaModelo(AModelo);
+    FFrReport.ShowReport;   { pré-visualização; não altera nada no banco }
+  except
+    on E: Exception do
+      MessageDlg('Não foi possível exibir o relatório do mapa:' + sLineBreak +
+        E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmMapaProducao.mnuRelTalaoModelo1Click(Sender: TObject);
+begin
+  VisualizarModeloTalao(1);
+end;
+
+procedure TfrmMapaProducao.mnuRelTalaoModelo2Click(Sender: TObject);
+begin
+  VisualizarModeloTalao(2);
+end;
+
+procedure TfrmMapaProducao.mnuRelMapaModelo1Click(Sender: TObject);
+begin
+  VisualizarModeloMapa(1);
+end;
+
+procedure TfrmMapaProducao.mnuRelMapaModelo2Click(Sender: TObject);
+begin
+  VisualizarModeloMapa(2);
+end;
+
+{ Marca com o "radio" qual modelo está ativo em cada relatório. Chamado
+  antes de abrir o menu; se a leitura da CONFIGURACAO falhar, o menu abre
+  mesmo assim marcando os Modelos I (padrão). }
+procedure TfrmMapaProducao.MarcarModelosNoMenu;
+var
+  LTalao, LMapa: Integer;
+begin
+  try
+    LTalao := FService.ModeloAtivo(CFG_TALAO_MODELO);
+    LMapa := FService.ModeloAtivo(CFG_MAPA_MODELO);
+  except
+    LTalao := 1;
+    LMapa := 1;
+  end;
+
+  mnuRelTalaoModeloI.Checked := LTalao = 1;
+  mnuRelTalaoModeloII.Checked := LTalao = 2;
+  mnuRelMapaModeloI.Checked := LMapa = 1;
+  mnuRelMapaModeloII.Checked := LMapa = 2;
+end;
+
 { --- relatórios da Fase 6 (PDF e relatório do mapa) ---------------
   Exportação PDF via TlrPdfExportFilter (pacote lr_pdfexport / unit
   lr_e_fclpdf, que registra o filtro na initialization). O fluxo é
@@ -1226,22 +1373,24 @@ end;
 
 function TfrmMapaProducao.CaminhoRelatorioMapa: string;
 begin
-  { relatório do mapa: fixo em relatorios\mapa_producao.lrf, ao lado
-    do ERP2026.exe (o build copia de Desktop\relatorios) }
-  Result := ExtractFilePath(ParamStr(0)) + 'relatorios' + PathDelim +
-    'mapa_producao.lrf';
+  { relatório do mapa: fixo em relatorios\, ao lado do ERP2026.exe
+    (o build copia de Desktop\relatorios); usa o modelo ativo }
+  Result := FService.CaminhoRelatorioMapaModelo(
+    FService.ModeloAtivo(CFG_MAPA_MODELO));
 end;
 
-procedure TfrmMapaProducao.PrepararRelatorioMapa;
+procedure TfrmMapaProducao.PrepararRelatorioMapaModelo(const AModelo: Integer);
 var
   LCaminho: string;
 begin
-  LCaminho := CaminhoRelatorioMapa;
+  { mesmo dataset do Modelo I (FFrDBMapa): só o .lrf carregado muda }
+  LCaminho := FService.CaminhoRelatorioMapaModelo(AModelo);
   if not FileExists(LCaminho) then
     raise Exception.Create(
-      'Arquivo do relatório do mapa não encontrado:' + sLineBreak +
+      'Arquivo do relatório do mapa (Modelo ' + IntToStr(AModelo) +
+      ') não encontrado:' + sLineBreak +
       LCaminho + sLineBreak + sLineBreak +
-      'Ele fica em "relatorios\mapa_producao.lrf" ao lado do ERP2026.exe.');
+      'Ele fica em "relatorios" ao lado do ERP2026.exe.');
 
   if FRelMapa.Active then
     FRelMapa.Close;
@@ -1288,6 +1437,12 @@ begin
     raise Exception.Create('Este mapa não tem itens: não há o que relatar.');
 
   FFrReport.LoadFromFile(LCaminho);   { .lrf = XML do LazReport }
+end;
+
+procedure TfrmMapaProducao.PrepararRelatorioMapa;
+begin
+  { visualizar/exportar do mapa sem escolher usam o modelo ativo }
+  PrepararRelatorioMapaModelo(FService.ModeloAtivo(CFG_MAPA_MODELO));
 end;
 
 procedure TfrmMapaProducao.ExportarPdf(const ASugerido: string);

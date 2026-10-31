@@ -17,14 +17,18 @@ unit uProducaoTest;
     - proximo numero do mapa (mesmo SQL do service);
     - copiloto: fluxo de caixa tipado apos o CAST
       (SQLDB le COALESCE((subquery),0) sem tipo como 0);
-    - taloes com codigo de barras.
+    - taloes com codigo de barras;
+    - modelos I e II dos relatorios de talao e de mapa (mesmos
+      datasets, arquivos .lrf distintos, escolha persistida na
+      CONFIGURACAO e restaurada no fim do teste).
   ============================================================ }
 
 interface
 
 uses
   Classes, SysUtils, DB, SQLDB, uAssert, uConexao, uSessao, uPermissao,
-  uAuditoria, uServiceBase, uRepositoryBase, uCopilotoERP, uACBrHelper;
+  uAuditoria, uServiceBase, uRepositoryBase, uCopilotoERP, uACBrHelper,
+  uProducaoService;
 
 type
   { TProducaoTest }
@@ -397,6 +401,154 @@ var
     end;
   end;
 
+  { Modelo I e Modelo II do talao e do mapa: dois arquivos .lrf distintos,
+    os dois copiados para relatorios\ ao lado do exe. }
+  procedure TestModelosRelatorioApontamArquivosDiferentes;
+  var
+    LService: TProducaoService;
+    LTalao1, LTalao2, LMapa1, LMapa2: string;
+  begin
+    try
+      LService := TProducaoService.Create;
+      try
+        LTalao1 := LService.CaminhoRelatorioTalaoModelo(1);
+        LTalao2 := LService.CaminhoRelatorioTalaoModelo(2);
+        LMapa1 := LService.CaminhoRelatorioMapaModelo(1);
+        LMapa2 := LService.CaminhoRelatorioMapaModelo(2);
+      finally
+        LService.Free;
+      end;
+
+      AssertEquals('talao.lrf', ExtractFileName(LTalao1),
+        'Modelo I do talao deve ser talao.lrf');
+      AssertEquals('talao_modelo2.lrf', ExtractFileName(LTalao2),
+        'Modelo II do talao deve ser talao_modelo2.lrf');
+      AssertEquals('mapa_producao.lrf', ExtractFileName(LMapa1),
+        'Modelo I do mapa deve ser mapa_producao.lrf');
+      AssertEquals('mapa_producao_modelo2.lrf', ExtractFileName(LMapa2),
+        'Modelo II do mapa deve ser mapa_producao_modelo2.lrf');
+      AssertTrue(AnsiCompareText(LTalao1, LTalao2) <> 0,
+        'Modelos I e II do talao nao podem apontar o mesmo arquivo');
+      AssertTrue(AnsiCompareText(LMapa1, LMapa2) <> 0,
+        'Modelos I e II do mapa nao podem apontar o mesmo arquivo');
+
+      { os 4 arquivos precisam existir ao lado do exe; o build_desktop.bat
+        e o build_tests.bat copiam Desktop\relatorios\*.lrf para bin }
+      AssertTrue(FileExists(LTalao1), 'falta o arquivo: ' + LTalao1);
+      AssertTrue(FileExists(LTalao2), 'falta o arquivo: ' + LTalao2);
+      AssertTrue(FileExists(LMapa1), 'falta o arquivo: ' + LMapa1);
+      AssertTrue(FileExists(LMapa2), 'falta o arquivo: ' + LMapa2);
+
+      ASuite.AddResult('TestModelosRelatorioApontamArquivosDiferentes',
+        True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestModelosRelatorioApontamArquivosDiferentes',
+          False, E.Message);
+    end;
+  end;
+
+  { A escolha do modelo fica na CONFIGURACAO e vale para CaminhoRelatorioTalao
+    (visualizar/imprimir/exportar usam o modelo ativo). No fim o teste restaura
+    o estado original: nao deixa rastro na CONFIGURACAO. }
+  procedure TestEscolhaDoModeloFicaNaConfiguracao;
+  var
+    LService: TProducaoService;
+    LTalaoAntes, LMapaAntes: Integer;
+    LLogAntes: Int64;
+  begin
+    LTalaoAntes := 1;
+    LMapaAntes := 1;
+    LLogAntes := 0;
+
+    { maior ID de LOG_SISTEMA antes das gravacoes: no fim apaga somente o
+      rastro de auditoria que este proprio teste gerar (append-only) }
+    LQuery.Close;
+    LQuery.SQL.Text := 'SELECT FIRST 1 ID FROM LOG_SISTEMA ORDER BY ID DESC';
+    LQuery.Open;
+    if not LQuery.IsEmpty then
+      LLogAntes := LQuery.FieldByName('ID').AsLargeInt;
+    LQuery.Close;
+
+    LService := TProducaoService.Create;
+    try
+      try
+        LTalaoAntes := LService.ModeloAtivo(CFG_TALAO_MODELO);
+        LMapaAntes := LService.ModeloAtivo(CFG_MAPA_MODELO);
+
+        { leva o talao a um estado conhecido (Modelo I) antes de trocar }
+        LService.DefinirModeloAtivo(CFG_TALAO_MODELO, 1);
+        AssertEquals('talao.lrf',
+          ExtractFileName(LService.CaminhoRelatorioTalao),
+          'Modelo I deve valer para CaminhoRelatorioTalao');
+
+        AssertTrue(LService.DefinirModeloAtivo(CFG_TALAO_MODELO, 2),
+          'trocar do Modelo I para o Modelo II deve gravar');
+        AssertTrue(LService.ModeloAtivo(CFG_TALAO_MODELO) = 2,
+          'Modelo II deve ficar gravado na CONFIGURACAO');
+        AssertEquals('talao_modelo2.lrf',
+          ExtractFileName(LService.CaminhoRelatorioTalao),
+          'CaminhoRelatorioTalao deve seguir o modelo ativo');
+
+        AssertFalse(LService.DefinirModeloAtivo(CFG_TALAO_MODELO, 2),
+          'a mesma escolha nao deve gerar nova gravacao/COMMIT');
+
+        AssertTrue(LService.DefinirModeloAtivo(CFG_TALAO_MODELO, 1),
+          'voltar ao Modelo I deve gravar');
+        AssertTrue(LService.ModeloAtivo(CFG_TALAO_MODELO) = 1,
+          'Modelo I deve voltar a valer');
+
+        { o mapa usa o mesmo mecanismo, com chave propria }
+        LService.DefinirModeloAtivo(CFG_MAPA_MODELO, 1);
+        AssertTrue(LService.DefinirModeloAtivo(CFG_MAPA_MODELO, 2),
+          'trocar o modelo do mapa deve gravar');
+        AssertTrue(LService.ModeloAtivo(CFG_MAPA_MODELO) = 2,
+          'Modelo II do mapa deve ficar gravado');
+        AssertTrue(LService.DefinirModeloAtivo(CFG_MAPA_MODELO, 1),
+          'voltar ao Modelo I do mapa deve gravar');
+
+        ASuite.AddResult('TestEscolhaDoModeloFicaNaConfiguracao', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestEscolhaDoModeloFicaNaConfiguracao',
+            False, E.Message);
+      end;
+    finally
+      { limpeza: apaga as chaves, recria apenas o que existia antes e apaga
+        o rastro de auditoria gerado por este teste (um rodar limpo nao
+        deixa nem CONFIGURACAO nem LOG_SISTEMA) }
+      try
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'DELETE FROM CONFIGURACAO WHERE CHAVE IN (:C1, :C2) ' +
+          'AND EMPRESA_ID = :E';
+        LQuery.ParamByName('C1').AsString := CFG_TALAO_MODELO;
+        LQuery.ParamByName('C2').AsString := CFG_MAPA_MODELO;
+        LQuery.ParamByName('E').AsLargeInt := LSessao.EmpresaId;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+
+        if LTalaoAntes <> 1 then
+          LService.DefinirModeloAtivo(CFG_TALAO_MODELO, LTalaoAntes);
+        if LMapaAntes <> 1 then
+          LService.DefinirModeloAtivo(CFG_MAPA_MODELO, LMapaAntes);
+
+        { por ultimo: as linhas de LOG_SISTEMA acima do topo capturado no
+          inicio (inclui as que a restauracao acima acabou de gravar) }
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'DELETE FROM LOG_SISTEMA WHERE TABELA = :T AND ID > :ID';
+        LQuery.ParamByName('T').AsString := 'CONFIGURACAO';
+        LQuery.ParamByName('ID').AsLargeInt := LLogAntes;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+      except
+        { limpeza nao pode derrubar a suite }
+      end;
+      LService.Free;
+    end;
+  end;
+
 begin
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
@@ -419,6 +571,8 @@ begin
     TestProximoNumeroDoMapa;
     TestCopilotoFluxoCaixaTipado;
     TestTaloesComCodigoBarras;
+    TestModelosRelatorioApontamArquivosDiferentes;
+    TestEscolhaDoModeloFicaNaConfiguracao;
   finally
     LQuery.Free;
   end;

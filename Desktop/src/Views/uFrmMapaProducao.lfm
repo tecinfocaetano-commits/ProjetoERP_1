@@ -761,6 +761,14 @@ object frmMapaProducao: TfrmMapaProducao
       Caption = 'Visualizar talões'
       OnClick = btnVisualizarTalaoClick
     end
+    object mnuRelTalaoModeloI: TMenuItem
+      Caption = 'Modelo I - visualizar talões'
+      OnClick = mnuRelTalaoModelo1Click
+    end
+    object mnuRelTalaoModeloII: TMenuItem
+      Caption = 'Modelo II - visualizar talões'
+      OnClick = mnuRelTalaoModelo2Click
+    end
     object mnuRelEditar: TMenuItem
       Caption = 'Editar relatório (abrir editor)...'
       OnClick = mnuRelEditarClick
@@ -786,6 +794,14 @@ object frmMapaProducao: TfrmMapaProducao
     object mnuRelMapaPreview: TMenuItem
       Caption = 'Relatório do mapa (visualizar)'
       OnClick = mnuRelMapaPreviewClick
+    end
+    object mnuRelMapaModeloI: TMenuItem
+      Caption = 'Modelo I - visualizar mapa'
+      OnClick = mnuRelMapaModelo1Click
+    end
+    object mnuRelMapaModeloII: TMenuItem
+      Caption = 'Modelo II - visualizar mapa'
+      OnClick = mnuRelMapaModelo2Click
     end
     object mnuRelMapaPdf: TMenuItem
       Caption = 'Relatório do mapa (exportar PDF)...'

@@ -1,4 +1,4 @@
-# Testes Executados — 17/10/2026 (atualizado em 18/10/2026 — Módulo de Produção, Fases 0–7)
+# Testes Executados — 17/10/2026 (atualizado em 30/10/2026 — Modelos I/II dos relatórios)
 
 Bateria completa de testes do ERP 2026: **Desktop (16 telas)**, **API REST (transações)**,
 **App Android (8 telas + transação real)** e, desde 18/10, o **Módulo de Produção
@@ -314,3 +314,52 @@ ficava incompleto.
 | `Scripts\build_desktop.bat` | compila |
 | `Scripts\build_api.bat` | compila |
 | `Scripts\run_tests.bat` | **56/56** |
+
+---
+
+## Modelos I e II dos relatórios de Talão e de Mapa (30/10/2026)
+
+Pedido: no "visualizar" dos relatórios, ter **Modelo I e Modelo II com os mesmos
+links (mesmos datasets)**, para o usuário configurar como preferir. O Modelo II é
+uma **cópia do Modelo I** que o usuário ajusta no designer do LazReport: os dois
+usam o mesmo dataset — só o arquivo `.lrf` carregado muda.
+
+| Relatório | Modelo I | Modelo II |
+|---|---|---|
+| Talão | `relatorios\talao.lrf` (caminho configurável, chave `PRODUCAO_TALAO_RELATORIO`) | `relatorios\talao_modelo2.lrf` (chave `PRODUCAO_TALAO_RELATORIO_M2`) |
+| Mapa | `relatorios\mapa_producao.lrf` | `relatorios\mapa_producao_modelo2.lrf` |
+
+- **Mesmos datasets nos dois modelos**: `frDBTalao` (talão) e `frDBMapa`/`qryMapaRel`
+  (mapa), criados no `FormCreate` e compartilhados — trocar o `.lrf` não muda
+  nenhuma ligação de dados.
+- **Modelo ativo** fica na `CONFIGURACAO` (chaves `PRODUCAO_TALAO_MODELO` e
+  `PRODUCAO_MAPA_MODELO`, `'1'`/`'2'`, ausente = Modelo I). Botão *Visualizar*,
+  menu, impressão e exportação em PDF usam o modelo ativo.
+- O menu `Relatório ▼` ganhou 4 itens **puramente aditivos** (`Modelo I/II -
+  visualizar talões` e `Modelo I/II - visualizar mapa`). Nenhum item existente
+  mudou de legenda nem virou submenu: a suíte de UI só enxerga itens de nível
+  superior (MSAA no `HMENU`) e exige que `'(visualizar)'`, `'Exportar talões'`,
+  `'mapa (exportar PDF)'` e `'abrir editor'` continuem **ações diretas** (clique
+  que abre janela).
+- Escolher um modelo grava a chave e **só se realmente gravou** recarrega a tela
+  (o `COMMIT` da `CONFIGURACAO` invalida os cursores SQLDB).
+
+**Testes novos** (`Desktop\src\Tests\uProducaoTest.pas`)
+
+- `TestModelosRelatorioApontamArquivosDiferentes` — nomes esperados dos 4 arquivos,
+  caminhos distintos entre os modelos e existência ao lado do exe (o
+  `Scripts\build_tests.bat` passou a copiar os `.lrf` para `bin\relatorios`, o
+  mesmo que já fazia o `build_desktop.bat`).
+- `TestEscolhaDoModeloFicaNaConfiguracao` — round-trip `1 → 2 → 1` nas duas chaves
+  (`DefinirModeloAtivo` devolve `False` quando a escolha não muda, evitando COMMIT
+  à toa), `CaminhoRelatorioTalao` seguindo o modelo ativo e **restauração do
+  estado original**. Um rodar limpo não deixa rastro: nem `CONFIGURACAO` nem
+  `LOG_SISTEMA` — o `finally` apaga as chaves e as linhas de auditoria acima do
+  topo capturado no início.
+
+| Verificação | Resultado |
+|---|---|
+| `Scripts\build_desktop.bat` | compila, **0 warning / 0 erro** |
+| `Scripts\run_tests.bat` | **58/58** (56 + 2 novos), inclusive a partir de banco limpo |
+| `Scripts\testes\fase6_01.ps1` | **FASE6-01 CONCLUIDO** (menu com os 4 itens novos, preview, `taloes_mapa_1.pdf`, `mapa_1.pdf`, `Designer - talao.lrf`, `.lrf` intocado) |
+| Rastro da suíte de unit e da suíte de UI nas chaves de modelo | `RESTOS = 0` e auditoria estável após cada run |
