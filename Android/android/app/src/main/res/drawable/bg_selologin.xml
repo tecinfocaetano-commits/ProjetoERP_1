@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Selo circular do login. Usa a cor nomeada (nao ?attr/, que nao resolve
+  dentro de <shape>): values aponta para a paleta clara e values-night
+  para a escura; no Android 12+ o Material You troca as duas.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/erp_primary_container"/>
+    <size android:width="72dp" android:height="72dp"/>
+</shape>

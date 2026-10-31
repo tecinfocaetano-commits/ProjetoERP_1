@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    android:background="?android:attr/colorBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,74 +17,90 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Bem-vindo"
-            android:textSize="22sp"
-            android:textStyle="bold"/>
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:fontFamily="sans-serif"/>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Módulos do Sistema"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:layout_marginTop="4dp"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="20dp"
+            android:textColor="?attr/colorOnSurfaceVariant"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonClientes"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:text="Clientes"
-            android:textSize="18sp"
-            android:layout_marginBottom="8dp"/>
+            android:textSize="17sp"
+            app:cornerRadius="20dp"
+            android:layout_marginBottom="12dp"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonInserirCliente"
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:text="Inserir Cliente"
-            android:textSize="18sp"
-            android:layout_marginBottom="8dp"
-            android:backgroundTint="#4CAF50"/>
+            android:textSize="17sp"
+            app:cornerRadius="20dp"
+            android:layout_marginBottom="12dp"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonConsultarClientes"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:text="Consultar Clientes"
-            android:textSize="18sp"
-            android:layout_marginBottom="8dp"
-            android:backgroundTint="#2196F3"/>
+            android:textSize="17sp"
+            app:cornerRadius="20dp"
+            android:layout_marginBottom="12dp"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonEstoque"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:text="Estoque"
-            android:textSize="18sp"
-            android:layout_marginBottom="8dp"/>
+            android:textSize="17sp"
+            app:cornerRadius="20dp"
+            android:layout_marginBottom="12dp"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonVendas"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:text="Vendas"
-            android:textSize="18sp"
-            android:layout_marginBottom="8dp"/>
+            android:textSize="17sp"
+            app:cornerRadius="20dp"
+            android:layout_marginBottom="12dp"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonFinanceiro"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:text="Financeiro"
-            android:textSize="18sp"
-            android:layout_marginBottom="24dp"/>
+            android:textSize="17sp"
+            app:cornerRadius="20dp"
+            android:layout_marginBottom="28dp"/>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonSair"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="52dp"
             android:text="Sair"
-            android:textSize="16sp"
-            android:backgroundTint="#F44336"/>
+            android:textSize="15sp"
+            android:textColor="?attr/colorError"
+            app:strokeColor="?attr/colorError"
+            app:cornerRadius="20dp"
+            app:strokeWidth="1.5dp"/>
 
     </LinearLayout>
 

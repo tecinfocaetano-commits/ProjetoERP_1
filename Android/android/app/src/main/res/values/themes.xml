@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tema base do app: Material 3 (claro).
+  No Android 12+ o App.java aplica as cores dinamicas (Material You),
+  que sobrescrevem a paleta a partir do papel de parede do aparelho.
+  Abaixo do 12 fica esta paleta estatica.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.Erp2026" parent="Theme.Material3.DayNight">
+        <item name="colorPrimary">@color/erp_primary</item>
+        <item name="colorOnPrimary">@color/erp_on_primary</item>
+        <item name="colorPrimaryContainer">@color/erp_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/erp_on_primary_container</item>
+        <item name="colorSecondary">@color/erp_secondary</item>
+        <item name="colorOnSecondary">@color/erp_on_primary</item>
+        <item name="colorSurface">@color/erp_surface</item>
+        <item name="colorOnSurface">@color/erp_on_surface</item>
+        <item name="colorSurfaceVariant">@color/erp_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/erp_on_surface_variant</item>
+        <item name="colorOutline">@color/erp_outline</item>
+        <item name="colorError">@color/erp_error</item>
+        <item name="android:colorBackground">@color/erp_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/erp_background</item>
+        <item name="android:navigationBarColor" tools:targetApi="l">@color/erp_background</item>
+    </style>
+
+</resources>

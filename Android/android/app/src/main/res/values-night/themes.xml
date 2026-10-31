@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Versao escura do tema Material 3 (respeita o modo escuro do sistema). -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.Erp2026" parent="Theme.Material3.DayNight">
+        <item name="colorPrimary">@color/erp_primary_dark</item>
+        <item name="colorOnPrimary">@color/erp_on_primary_dark</item>
+        <item name="colorPrimaryContainer">@color/erp_primary_container_dark</item>
+        <item name="colorOnPrimaryContainer">@color/erp_on_primary_container_dark</item>
+        <item name="colorSecondary">@color/erp_secondary_dark</item>
+        <item name="colorOnSecondary">@color/erp_on_primary_dark</item>
+        <item name="colorSurface">@color/erp_surface_dark</item>
+        <item name="colorOnSurface">@color/erp_on_surface_dark</item>
+        <item name="colorSurfaceVariant">@color/erp_surface_variant_dark</item>
+        <item name="colorOnSurfaceVariant">@color/erp_on_surface_variant_dark</item>
+        <item name="colorOutline">@color/erp_outline_dark</item>
+        <item name="colorError">@color/erp_error_dark</item>
+        <item name="android:colorBackground">@color/erp_background_dark</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/erp_background_dark</item>
+        <item name="android:navigationBarColor" tools:targetApi="l">@color/erp_background_dark</item>
+    </style>
+
+</resources>

@@ -1,4 +1,4 @@
-# Testes Executados - 17/10/2026 (atualizado em 30/10/2026 - telas de administração, Modelos I/II dos relatórios e pool de conexões da API)
+# Testes Executados - 17/10/2026 (atualizado em 30/10/2026 - telas de administração, Material You no Android, Modelos I/II dos relatórios e pool de conexões da API)
 
 Bateria completa de testes do ERP 2026: **Desktop (16 telas)**, **API REST (transações)**,
 **App Android (8 telas + transação real)** e, desde 18/10, o **Módulo de Produção
@@ -473,3 +473,42 @@ A evidência acima é a da **revalidação depois do fix**.
 | `Scripts\run_tests.bat` | **62/62** |
 | `Scripts\testes\telas_adm_ui.ps1` | **TELAS-ADM-UI CONCLUIDO** |
 | Rastro no banco após a suíte | **nenhum** (`LOG_SISTEMA` = 63, zero linhas `TESTE_*`) |
+
+---
+
+## Redesenho do layout Android — Material You (30/10/2026)
+
+O app Android ganhou o visual Material You (paleta extraída do papel de
+parede no Android 12+, com fallback estático claro/escuro abaixo do 12).
+Escopo: **só visual** — nenhuma Activity/`ApiClient`/`Sessao` foi tocada; os
+8 layouts foram reescritos com Material 3 (`TextInputLayout`,
+`MaterialButton`, `MaterialCardView`) mantendo **os mesmos `android:id`**.
+
+### Build do APK
+
+| Verificação | Resultado |
+|---|---|
+| `Scripts\build_android.bat` | **BUILD SUCCESSFUL** (material 1.12.0, 0 erros) |
+| Instalação no emulador `Pixel_9` | **Success** (APK novo por cima do antigo) |
+
+### Telas validadas no emulador (8/8, dados reais da API)
+
+Login feito de verdade (`admin`/`admin123` contra a API em `10.0.2.2:9000`);
+cada tela foi aberta pelo menu e fotografada (evidências em
+`Documentacao\evidencias\`):
+
+| Tela | O que foi conferido | Evidência |
+|---|---|---|
+| Login | selo "ERP", campos outlined, password toggle, botão filled | `android_00_login_materialyou.png` |
+| Menu (dashboard) | botões tonal/filled/"Sair" outlined, cantos 20dp | `android_01_dashboard.png` |
+| Clientes | card com **8 clientes** reais da API | `android_02_clientes.png` |
+| Financeiro | totais verde/vermelho no cartão (sem contas = lista vazia, como antes) | `android_03_financeiro.png` |
+| Inserir Cliente | formulário em card, UF+CEP lado a lado | `android_04_inserir_cliente.png` |
+| Consultar Clientes | relatório monoespaçado, **8 clientes** | `android_05_consultar_clientes.png` |
+| Estoque | card com **3 produtos** reais | `android_06_estoque.png` |
+| Vendas | card de lista (mesmo padrão de Clientes) | `android_07_vendas.png` |
+
+Nenhuma mudança de comportamento: mesmas Activities, mesmos IDs, mesma API —
+só a paleta e os widgets visuais. No Android 12+ o `App.java` aplica as cores
+dinâmicas em todas as Activities (`DynamicColors.applyToActivitiesIfAvailable`).
+

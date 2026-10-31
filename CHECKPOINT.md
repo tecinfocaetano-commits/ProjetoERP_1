@@ -22,6 +22,10 @@
   Permissões, Relatórios ▸ Central de Relatórios) estão implementadas e ligadas ao
   menu — seção própria abaixo + `TESTES_EXECUTADOS.md`. Os itens deixaram de ser
   inertes (todos têm `OnClick`).
+- **Redesenho do layout Android (Material You) concluído (30/10)**: tema
+  Material 3 com cores dinâmicas (Android 12+) + paleta estática claro/escuro
+  como fallback; 8 layouts redesenhados com IDs intactos — seção própria abaixo
+  + `TESTES_EXECUTADOS.md`.
 - **Pendência SHA-256 concluída (19/10)**: senhas em hash SHA-256 no Desktop,
   API e semente (`uSenhaHash.pas`, migração progressiva no login) — ver
   `Documentacao\TESTES_EXECUTADOS.md` §8.
@@ -266,6 +270,49 @@ regenerado (Mapa de Produção segue = 21). Evidências em
 
 ---
 
+## Redesenho do layout Android — Material You (concluído em 30/10)
+
+Pedido explícito: modernizar o visual do app Android. Escopo acordado: **só
+visual** (nenhuma lógica de Activity/ViewModel/API foi tocada), direção
+**Material You + cores dinâmicas**, validado com **APK + screenshots** no
+emulador `Pixel_9`.
+
+**Bases novas** (`Android\android\app\src\main\`):
+
+- `res\values\themes.xml` + `res\values-night\themes.xml` — `Theme.Erp2026`
+  sobre `Theme.Material3.DayNight` (**com** ActionBar, para os títulos das
+  telas de lista continuarem aparecendo como antes), status/nav bar no tom de
+  fundo.
+- `res\values\colors.xml` + `res\values-night\colors.xml` — paleta estática
+  (azul `#4F6BED`) com variantes clara/escura; verde/vermelho semânticos para
+  o Financeiro.
+- `java\...\App.java` (novo, registrado no Manifest) —
+  `DynamicColors.applyToActivitiesIfAvailable`: no **Android 12+** a paleta
+  inteira vem do papel de parede (Material You); abaixo do 12 fica a paleta
+  estática. Nenhuma Activity foi alterada.
+- `app\build.gradle` — material `1.9.0` → `1.12.0`.
+- `AndroidManifest.xml` — `android:theme=@style/Theme.Erp2026` +
+  `android:name=.App`.
+
+**Os 8 layouts redesenhados** (`res\layout\`), todos com **os mesmos
+`android:id`** (o Java os lê por `findViewById`; nada mudou de comportamento):
+
+| Layout | O que mudou no visual |
+|---|---|
+| `activity_main` (login) | selo circular "ERP", `TextInputLayout` outlined com cantos 16dp, password toggle, botão filled 56dp |
+| `activity_dashboard` | botões `MaterialButton` (1 filled + 5 tonal + "Sair" outlined vermelho), cantos 20dp |
+| `activity_clientes` / `_estoque` / `_vendas` | lista dentro de `MaterialCardView` (cantos 20dp), divisores com cor do tema, "Tentar novamente" tonal |
+| `activity_financeiro` | cartão de totais em `colorPrimaryContainer` (verde/vermelho semânticos) + lista em card |
+| `activity_inserir_cliente` | formulário em card com `TextInputLayout` outlined (UF+CEP lado a lado) |
+| `activity_consultar_clientes` | texto monoespaçado dentro de card |
+
+**Validação (30/10)**: `Scripts\build_android.bat` → **BUILD SUCCESSFUL**;
+APK instalado no emulador `Pixel_9` (login `admin`/`admin123` via API no ar);
+as 8 telas abrem e listam **dados reais** da API (8 clientes, 3 produtos);
+evidências em `Documentacao\evidencias\android_0*_*.png`.
+
+---
+
 ## O que foi feito nas últimas rodadas (FASEs 6–8)
 
 - **Bug "editar relatório" (reportado) — resolvido e commitado na FASE 6**: a unit
@@ -292,8 +339,9 @@ regenerado (Mapa de Produção segue = 21). Evidências em
 | Testes de Produção | `Desktop\src\Tests\uProducaoTest.pas` (+ `uTestRunner.pas`, `Tests.lpi`) |
 | Testes das telas de administração | `Desktop\src\Tests\uTelasAdmTest.pas` (+ `uTestRunner.pas`, `Tests.lpi`) |
 | Suíte de UI das telas novas | `Scripts\testes\telas_adm_ui.ps1` (abre as 4 telas pelo menu) |
+| App Android (tema Material You) | `Android\android\app\src\main\res\{values,values-night}\` + `java\...\App.java` (cores dinâmicas 12+) |
 | IDs de menu | `Documentacao\MAPA_IDS_MENU.md` (+ gerador `Scripts\dump_menu_ids.ps1`) |
-| Evidências PNG (gitignored) | `Documentacao\evidencias\fase6_01..06_*.png`, `telas_adm_0*.png` |
+| Evidências PNG (gitignored) | `Documentacao\evidencias\fase6_01..06_*.png`, `telas_adm_0*.png`, `android_0*_*.png` |
 | PDFs gerados | `Desktop\bin\relatorios\taloes_mapa_1.pdf`, `mapa_1.pdf` |
 
 ---
@@ -311,6 +359,9 @@ regenerado (Mapa de Produção segue = 21). Evidências em
 6. Teste da API: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\pool_api.ps1`
    → esperado **POOL-TEST CONCLUIDO** (sobe a API com `ERP_API_POOL=3`; se a porta
    9000 estiver ocupada, mate `ERP2026API.exe` antes).
+7. APK Android: `Scripts\build_android.bat` → esperado **BUILD SUCCESSFUL**
+   (visual Material You — conferir no emulador `Pixel_9`; o app consome a API
+   em `10.0.2.2:9000`, então a API precisa estar no ar).
 
 ---
 
@@ -333,8 +384,11 @@ regenerado (Mapa de Produção segue = 21). Evidências em
   + `007_initial_data.sql` (antes gerava só 22 das 34 tabelas).
 - ~~Itens de menu inertes (sem `OnClick`): Financeiro > Caixa, Sistema > Configurações,
   Sistema > Permissões, grupo Relatórios.~~ — **concluído (30/10)**: as 4 telas foram
-  implementadas e ligadas ao menu (seção própria abaixo). Próximo passo pedido:
-  **redesenhar o layout do app Android** para visual mais moderno.
+  implementadas e ligadas ao menu (seção própria abaixo).
+- ~~Redesenhar o layout do app Android para visual mais moderno.~~ — **concluído
+  (30/10)**: Material You (cores dinâmicas no 12+) + Material 3 claro/escuro,
+  8 layouts redesenhados com IDs intactos (seção própria acima). Sem pendências
+  abertas do usuário — o próximo passo é o que for pedido.
 
 ---
 

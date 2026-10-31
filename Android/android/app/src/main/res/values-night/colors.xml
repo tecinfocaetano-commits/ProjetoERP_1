@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paleta estatica escura (fallback para Android < 12 no modo escuro). -->
+<resources>
+
+    <color name="erp_primary_dark">#BAC3FF</color>
+    <color name="erp_on_primary_dark">#172A78</color>
+    <color name="erp_primary_container_dark">#3143A1</color>
+    <color name="erp_on_primary_container_dark">#DFE1FF</color>
+    <color name="erp_secondary_dark">#C4C5DD</color>
+    <color name="erp_surface_dark">#121318</color>
+    <color name="erp_on_surface_dark">#E2E1E9</color>
+    <color name="erp_surface_variant_dark">#46464F</color>
+    <color name="erp_on_surface_variant_dark">#C7C5D0</color>
+    <color name="erp_outline_dark">#90909A</color>
+    <color name="erp_background_dark">#121318</color>
+    <color name="erp_error_dark">#FFB4AB</color>
+
+    <!-- Totais financeiros (escuro) -->
+    <color name="erp_receber">#7DDA9B</color>
+    <color name="erp_pagar">#FFB4AB</color>
+
+</resources>

@@ -3,8 +3,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     
     <application
+        android:name=".App"
         android:label="ERP 2026"
-        android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
+        android:theme="@style/Theme.Erp2026"
         android:windowSoftInputMode="adjustResize"
         android:usesCleartextTraffic="true">
         
