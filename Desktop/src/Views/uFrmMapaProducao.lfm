@@ -691,6 +691,17 @@ object frmMapaProducao: TfrmMapaProducao
         TabOrder = 1
         Text = '0'
       end
+      object chkConsumoAutomatico: TCheckBox
+        Left = 640
+        Height = 23
+        Top = 26
+        Width = 145
+        Caption = 'Consumo automático'
+        Hint = 'Gera o consumo pela quantidade planejada do mapa, ainda sem talões concluídos.'
+        ParentShowHint = False
+        ShowHint = True
+        TabOrder = 4
+      end
       object btnGerarMapa: TBitBtn
         Left = 790
         Height = 46

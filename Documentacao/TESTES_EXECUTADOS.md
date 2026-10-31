@@ -550,8 +550,17 @@ novos. Desenho completo em `DESENHO_NOVAS_ABAS.md`; resumo em
 | `uFrmCompras` | `PEDIDO_COMPRA`(+item) | master-detail (cabeçalho + itens) |
 
 Menu reorganizado em **Suprimentos · Produção · Financeiro · Fiscal** (+ os
-utilitários Cadastros, Estoque, PDV, Relatórios, IA, Sistema). Ver CHECKPOINT
-para a lista de movimentos e as pendências da fase (consumo automático,
-`STATUS_PRODUCAO` por talão, re-layout do Consumo, Produto Produção com Cores,
+utilitários Cadastros, Estoque, PDV, Relatórios, IA, Sistema).
+
+**Consumo automático** (mesma rodada): `TProducaoService.GerarConsumoMaterial`
+ganhou `APorPlanejado: Boolean = False` — a base deixa de ser só o **produzido**
+(talões concluídos) e passa a aceitar o **planejado** (`MAPA_PRODUCAO_ITEM.
+QUANTIDADE`), mesma fórmula. Checkbox "Consumo automático" na criação do Mapa.
+Build 0/0 e suíte 62/62 continuam verdes (nenhum teste quebrou). Sem teste
+automatizado para a base planejada (fixture pesada) — verificação manual
+descrita no `CHECKPOINT.md`.
+
+Ver CHECKPOINT para a lista de movimentos e as demais pendências da fase
+(`STATUS_PRODUCAO` por talão, re-layout do Consumo, Produto Produção com Cores,
 notas via `PRODUTO_FISCAL`, Compras → Nota de Entrada, Android).
 

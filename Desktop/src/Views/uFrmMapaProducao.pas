@@ -93,6 +93,7 @@ type
     edtDataPrevista: TEdit;
     btnGerarMapa: TBitBtn;
     btnVoltar: TBitBtn;
+    chkConsumoAutomatico: TCheckBox;
     DataSourceMapas: TDataSource;
     DataSourceItensMapa: TDataSource;
     DataSourcePedidos: TDataSource;
@@ -336,6 +337,7 @@ begin
   LimparItensNovos;
   edtObservacao.Text := '';
   edtDataPrevista.Text := FormatDateTime('dd/mm/yyyy', IncDay(Now, 7));
+  chkConsumoAutomatico.Checked := False;
   CarregarPedidos;
 end;
 
@@ -807,6 +809,21 @@ begin
       MessageDlg('Não foi possível gerar o mapa de produção:' + sLineBreak + E.Message,
         mtError, [mbOK], 0);
       Exit;
+    end;
+  end;
+
+  { consumo automático: gera o consumo pela base planejada ainda sem
+    talões concluídos. Uma falha aqui não desfaz o mapa já criado. }
+  if chkConsumoAutomatico.Checked then
+  begin
+    try
+      FService.GerarConsumoMaterial(LMapaId,
+        'Consumo automático (base planejada) - mapa nº ' +
+        IntToStr(NumeroDoMapa(LMapaId)), True);
+    except
+      on E: Exception do
+        MessageDlg('Mapa gerado, mas o consumo automático falhou:' +
+          sLineBreak + E.Message, mtWarning, [mbOK], 0);
     end;
   end;
 

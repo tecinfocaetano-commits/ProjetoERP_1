@@ -9,9 +9,9 @@
 
 - **Redesenho em 4 abas + cadastros da fase 1 concluído (31/10)** — ver seção
   própria abaixo: migração `014` (9 tabelas + 4 colunas), 4 models, 5 services,
-  5 telas novas e o menu reorganizado em **Suprimentos · Produção · Financeiro ·
-  Fiscal**. Verde: build **0/0**, suíte **62/62**. Pendências da fase listadas
-  na mesma seção.
+  5 telas novas, o menu reorganizado em **Suprimentos · Produção · Financeiro ·
+  Fiscal** e o **consumo automático** (base planejada). Verde: build **0/0**,
+  suíte **62/62**. Pendências da fase listadas na mesma seção.
 - **Módulo de Produção: 8 fases COMPLETAS e commitadas** — última: FASE 8 = `40bbd8b`.
 - **Modelos I/II dos relatórios concluídos e commitados (30/10)** — `74df45a`
   (Talão e Mapa com Modelo I e Modelo II, mesmos datasets; escolha na
@@ -374,12 +374,41 @@ Redesenho de navegação do Desktop e cadastros novos (ver
   app fica em sessão/desktop isolado — `GetWindowRect` devolve 0×0); a
   confiança vem da verificação estática + build + suíte acima.
 
+### Consumo automático no mapa (concluído em 31/10)
+
+O consumo passou a ter duas **bases de cálculo**, escolhidas ao gerar:
+
+- **Produzido** (padrão, manual): só os talões **CONCLUÍDOS** entram —
+  comportamento antigo, preservado;
+- **Planejado** (automático): usa a **quantidade planejada do item do mapa**
+  (`MAPA_PRODUCAO_ITEM.QUANTIDADE`), gerando o consumo já no início da
+  produção, sem depender de talão concluído.
+
+`TProducaoService.GerarConsumoMaterial` ganhou o parâmetro opcional
+`APorPlanejado: Boolean = False` (quem já chamava continua igual). A fórmula é
+a mesma nos dois casos — só muda a base (numerador):
+
+    QTD_PREVISTA = (base / QUANTIDADE_BASE) × insumo × (1 + perda%)
+
+`base` = produzido (talões concluídos) ou planejado (item do mapa). A auditoria
+passou a registrar `BASE=PLANEJADO|PRODUZIDO`. **Confirmar** (baixa no estoque)
+e **Estorno** continuam iguais para as duas bases.
+
+Na tela **Mapa de Produção → Novo Mapa** há o checkbox **"Consumo automático"**
+(`chkConsumoAutomatico`, em `pnlRodapeCriar`): marcado, ao gerar o mapa o
+sistema chama `GerarConsumoMaterial(..., APorPlanejado=True)` na sequência.
+Falha na geração do consumo **não desfaz** o mapa já criado (só avisa).
+
+**Verificação manual sugerida** (sem teste automatizado — a fixture de
+PRODUTO/FICHA/MAPA é pesada e poderia ser frágil; anotado como follow-up):
+criar um produto com ficha técnica ativa; criar um mapa com quantidade
+planejada e **nenhum** talão concluído; marcar "Consumo automático"; gerar. O
+`CONSUMO_MATERIAL_ITEM` deve gravar `QTD_PREVISTA = (planejada / base) × insumo
+× (1 + perda)`. Repetir **sem** marcar: deve falhar com "o mapa ainda não tem
+produção concluída".
+
 ### Pendências desta fase (próximos passos)
 
-- **Consumo automático no mapa**: checkbox "Gerar consumo automaticamente" na
-  criação do Mapa; calcula pela qtd **planejada** (mesma fórmula), grava
-  `CONSUMO_MATERIAL_ITEM` com `QTD_PREVISTA`. O consumo pelo **produzido**
-  continua manual.
 - **`STATUS_PRODUCAO` por talão**: atualizar a cada talão concluído
   (ABERTO/PARCIALMENTE_CONCLUIDO/CONCLUÍDO) — coluna já existe, falta a regra.
 - **Re-layout da tela de Consumo** (topo = lista de mapas + item; rodapé = grid

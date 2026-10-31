@@ -202,8 +202,11 @@ type
 
     { --- consumo de materiais (Fase 5) -----------------------------------
       GerarConsumoMaterial: cria o consumo PENDENTE do mapa a partir das
-      fichas técnicas dos produtos já CONCLUÍDOS (QTD_PREVISTA inclui a
-      perda). Um consumo PENDENTE existente é substituído (ainda não
+      fichas técnicas dos produtos. Por padrão usa a base PRODUZIDA
+      (só talões CONCLUÍDOS); com APorPlanejado=True usa a base PLANEJADA
+      (a quantidade prevista do item do mapa), que é o consumo automático
+      gerado ainda no início da produção. Em ambos a QTD_PREVISTA inclui
+      a perda. Um consumo PENDENTE existente é substituído (ainda não
       movimentou estoque); consumo CONFIRMADO exige estorno prévio.
       ConfirmarConsumo: dá baixa no estoque (MOVIMENTO_ESTOQUE 'S', custo
       do ESTOQUE.CUSTO_MEDIO) e marca CONFIRMADO; respeita
@@ -211,7 +214,8 @@ type
       EstornarConsumo: devolve ao estoque ('E') e marca ESTORNADO
       (somente um consumo CONFIRMADO pode ser estornado). }
     function  GerarConsumoMaterial(AMapaId: Int64;
-      const AJustificativa: string): Int64;
+      const AJustificativa: string;
+      APorPlanejado: Boolean = False): Int64;
     procedure ConfirmarConsumo(AConsumoId: Int64;
       const AItens: TItensConsumoConfirmar);
     procedure EstornarConsumo(AConsumoId: Int64; const AMotivo: string);
@@ -1899,7 +1903,7 @@ begin
 end;
 
 function TProducaoService.GerarConsumoMaterial(AMapaId: Int64;
-  const AJustificativa: string): Int64;
+  const AJustificativa: string; APorPlanejado: Boolean): Int64;
 var
   LQry, LGrava: TSQLQuery;
   LConsumoId: Int64;
@@ -1907,12 +1911,13 @@ var
   LStatusMapa: string;
   LProdutoId: Int64;
   LCodigoProduto, LDescFicha: string;
-  LProduzido, LBase, LQtdPrevista: Double;
+  LProduzido, LBase, LQtdPrevista, LQtdBase: Double;
   LItensFicha: TItensFichaTecnica;
   LIndice, LJ, LPos: Integer;
   LMatIds: array of Int64;
   LMatQtds: array of Double;
   SSemFicha: string;
+  LBaseModo: string;
 begin
   if AMapaId <= 0 then
     raise EProducao.Create('Selecione o mapa de produção para gerar o consumo.');
@@ -1975,7 +1980,7 @@ begin
       { produção concluída por produto (talões CONCLUÍDOS) }
       { CAST obrigatório: o SQLDB lê COALESCE((subquery),0) sem tipo como 0 }
       LQry.SQL.Text :=
-        'SELECT MI.PRODUTO_ID, P.CODIGO, ' +
+        'SELECT MI.PRODUTO_ID, P.CODIGO, MI.QUANTIDADE AS PLANEJADO, ' +
         '  CAST(COALESCE((SELECT SUM(T.QUANTIDADE) FROM TALAO T ' +
         '     WHERE T.MAPA_PRODUCAO_ITEM_ID = MI.ID ' +
         '       AND T.STATUS = ''CONCLUIDO''), 0) AS NUMERIC(18,4)) AS PRODUZIDO ' +
@@ -1990,9 +1995,13 @@ begin
         LProdutoId := LQry.FieldByName('PRODUTO_ID').AsLargeInt;
         LCodigoProduto := Trim(LQry.FieldByName('CODIGO').AsString);
         LProduzido := LQry.FieldByName('PRODUZIDO').AsFloat;
+        if APorPlanejado then
+          LQtdBase := LQry.FieldByName('PLANEJADO').AsFloat
+        else
+          LQtdBase := LProduzido;
         LQry.Next;
 
-        if LProduzido <= 0 then
+        if LQtdBase <= 0 then
           Continue;
 
         LItensFicha := FichaTecnicaDoProduto(LProdutoId, LDescFicha, LBase);
@@ -2006,8 +2015,9 @@ begin
 
         for LIndice := 0 to High(LItensFicha) do
         begin
-          { QTD_PREVISTA = (produzido / rendimento) x consumo x (1 + perda%) }
-          LQtdPrevista := (LProduzido / LBase) *
+          { QTD_PREVISTA = (base / rendimento) x consumo x (1 + perda%)
+            base = produzido (talões concluídos) ou planejado (item do mapa) }
+          LQtdPrevista := (LQtdBase / LBase) *
             LItensFicha[LIndice].Quantidade *
             (1 + LItensFicha[LIndice].PerdaPercentual / 100);
           LQtdPrevista := SimpleRoundTo(LQtdPrevista, -4);
@@ -2034,12 +2044,26 @@ begin
       LQry.Close;
 
       if SSemFicha <> '' then
-        raise EProducao.Create(
-          'Produto(s) concluído(s) sem ficha técnica ativa: ' + SSemFicha + '.' +
-          sLineBreak + 'Cadastre a ficha técnica antes de gerar o consumo.');
+      begin
+        if APorPlanejado then
+          raise EProducao.Create(
+            'Produto(s) do mapa sem ficha técnica ativa: ' + SSemFicha + '.' +
+            sLineBreak + 'Cadastre a ficha técnica antes de gerar o consumo.')
+        else
+          raise EProducao.Create(
+            'Produto(s) concluído(s) sem ficha técnica ativa: ' + SSemFicha + '.' +
+            sLineBreak + 'Cadastre a ficha técnica antes de gerar o consumo.');
+      end;
       if Length(LMatIds) = 0 then
-        raise EProducao.Create(
-          'Nenhum material calculado: o mapa ainda não tem produção concluída.');
+      begin
+        if APorPlanejado then
+          raise EProducao.Create(
+            'Nenhum material calculado: o mapa não tem itens com quantidade ' +
+            'planejada.')
+        else
+          raise EProducao.Create(
+            'Nenhum material calculado: o mapa ainda não tem produção concluída.');
+      end;
 
       { cabeçalho do consumo }
       LGrava.SQL.Text :=
@@ -2070,9 +2094,14 @@ begin
         LGrava.ExecSQL;
       end;
 
+      if APorPlanejado then
+        LBaseModo := 'PLANEJADO'
+      else
+        LBaseModo := 'PRODUZIDO';
       RegistrarAuditoria('CONSUMO_MATERIAL', 'GERAR', LConsumoId, '',
         ResumoAuditoria([
           'MAPA=' + IntToStr(AMapaId),
+          'BASE=' + LBaseModo,
           'ITENS=' + IntToStr(Length(LMatIds))]));
 
       FConexao.Confirmar;
