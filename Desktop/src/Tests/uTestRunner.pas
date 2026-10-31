@@ -19,6 +19,7 @@ uses
   uFrmCategoriasTest,
   uFrmUsuariosTest,
   uProducaoTest,
+  uTelasAdmTest,
   uConexao,
   uSessao;
 
@@ -72,6 +73,10 @@ begin
 
     // Executar testes de Produção (Fase 7)
     TProducaoTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes das telas de administração (30/10/2026)
+    TTelasAdmTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais

@@ -172,6 +172,7 @@ object frmPrincipal: TfrmPrincipal
       end
       object mnuFinCaixa: TMenuItem
         Caption = 'Caixa'
+        OnClick = mnuFinCaixaClick
       end
     end
     object mnuFiscal: TMenuItem
@@ -183,6 +184,10 @@ object frmPrincipal: TfrmPrincipal
     end
     object mnuRelatorios: TMenuItem
       Caption = 'Relatórios'
+      object mnuRelCentral: TMenuItem
+        Caption = 'Central de Relatórios...'
+        OnClick = mnuRelCentralClick
+      end
     end
     object mnuIA: TMenuItem
       Caption = 'IA Copiloto'
@@ -195,9 +200,11 @@ object frmPrincipal: TfrmPrincipal
       Caption = 'Sistema'
       object mnuSisConfiguracoes: TMenuItem
         Caption = 'Configurações'
+        OnClick = mnuSisConfiguracoesClick
       end
       object mnuSisPermissoes: TMenuItem
         Caption = 'Permissões'
+        OnClick = mnuSisPermissoesClick
       end
       object mnuSep2: TMenuItem
         Caption = '-'

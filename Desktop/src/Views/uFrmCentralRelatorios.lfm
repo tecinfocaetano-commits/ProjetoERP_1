@@ -1,0 +1,74 @@
+object frmCentralRelatorios: TfrmCentralRelatorios
+  Height = 480
+  Width = 900
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  Caption = 'Central de Relatórios'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 60
+    Top = 0
+    Width = 884
+    Align = alTop
+    BevelOuter = bvNone
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 16
+      Top = 10
+      Width = 240
+      Caption = 'Central de Relatórios'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblModelos: TLabel
+      Left = 16
+      Height = 16
+      Top = 34
+      Width = 700
+      Caption = 'Modelo ativo: talão = Modelo I   |   mapa = Modelo I'
+    end
+  end
+  object gridRelatorios: TStringGrid
+    Left = 0
+    Height = 320
+    Top = 60
+    Width = 884
+    Align = alClient
+    TabOrder = 0
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 50
+    Top = 380
+    Width = 884
+    Align = alBottom
+    BevelOuter = bvNone
+    object btnAbrirMapa: TBitBtn
+      Left = 16
+      Height = 30
+      Top = 10
+      Width = 220
+      Caption = '&Abrir Mapa de Produção...'
+      OnClick = btnAbrirMapaClick
+      TabOrder = 0
+    end
+    object btnAtualizar: TBitBtn
+      Left = 250
+      Height = 30
+      Top = 10
+      Width = 110
+      Caption = 'At&ualizar'
+      OnClick = btnAtualizarClick
+      TabOrder = 1
+    end
+    object btnFechar: TBitBtn
+      Left = 780
+      Height = 30
+      Top = 10
+      Width = 90
+      Caption = '&Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 2
+    end
+  end
+end

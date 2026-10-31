@@ -68,7 +68,12 @@ uses
   // Views - Fase 6
   uFrmNFe,
   // Views - Fase 9
-  uFrmCopiloto;
+  uFrmCopiloto,
+  // Views - telas de administração (menu Sistema / Financeiro / Relatórios)
+  uFrmCaixa,
+  uFrmConfiguracoes,
+  uFrmPermissoes,
+  uFrmCentralRelatorios;
 
 {$R *.res}
 

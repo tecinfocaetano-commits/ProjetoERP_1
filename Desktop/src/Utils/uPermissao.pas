@@ -37,6 +37,16 @@ const
   TELA_CONSUMO          = 'CONSUMO';
   TELA_FICHA_TECNICA    = 'FICHA_TECNICA';
 
+{ Módulo/telas das telas de administração abertas pelo menu principal
+  (seed em Banco\013_telas_administracao.sql) }
+  MODULO_SISTEMA          = 'SISTEMA';
+  TELA_CONFIGURACOES      = 'CONFIGURACOES';
+  TELA_PERMISSOES         = 'PERMISSOES';
+  MODULO_FINANCEIRO       = 'FINANCEIRO';
+  TELA_CAIXA              = 'CAIXA';
+  MODULO_RELATORIOS       = 'RELATORIOS';
+  TELA_CENTRAL_RELATORIOS = 'CENTRAL_RELATORIOS';
+
 { Verdadeiro quando o usuário logado pode executar a ação. }
 function TemPermissao(const AModulo, ATela, AAcao: string): Boolean;
 

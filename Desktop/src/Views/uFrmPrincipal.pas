@@ -51,6 +51,7 @@ type
     mnuFiscal: TMenuItem;
     mnuFisNFe: TMenuItem;
     mnuRelatorios: TMenuItem;
+    mnuRelCentral: TMenuItem;
     mnuIA: TMenuItem;
     mnuIACopiloto: TMenuItem;
     mnuSistema: TMenuItem;
@@ -85,8 +86,12 @@ procedure mnuVenNotaSaidaClick(Sender: TObject);
     procedure mnuPDVAbrirPDVClick(Sender: TObject);
     procedure mnuFinContasReceberClick(Sender: TObject);
     procedure mnuFinContasPagarClick(Sender: TObject);
+    procedure mnuFinCaixaClick(Sender: TObject);
     procedure mnuFisNFeClick(Sender: TObject);
     procedure mnuIACopilotoClick(Sender: TObject);
+    procedure mnuRelCentralClick(Sender: TObject);
+    procedure mnuSisConfiguracoesClick(Sender: TObject);
+    procedure mnuSisPermissoesClick(Sender: TObject);
     procedure mnuSisSairClick(Sender: TObject);
   private
     procedure AtualizarStatusBar;
@@ -106,7 +111,8 @@ uses
   uFrmFichaTecnica, uFrmConsumoMaterial,
   uFrmPedidoVenda, uFrmListaPedidos, uFrmOrcamento,
   uFrmPDV, uFrmContasReceber, uFrmContasPagar,
-  uFrmNFe, uFrmCopiloto;
+  uFrmNFe, uFrmCopiloto,
+  uFrmCaixa, uFrmConfiguracoes, uFrmPermissoes, uFrmCentralRelatorios;
 
 {$R *.lfm}
 
@@ -293,6 +299,17 @@ begin
   AbrirFormulario(TfrmContasPagar);
 end;
 
+procedure TfrmPrincipal.mnuFinCaixaClick(Sender: TObject);
+begin
+  if not TemPermissao(MODULO_FINANCEIRO, TELA_CAIXA, PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para acessar o Caixa.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  AbrirFormulario(TfrmCaixa);
+end;
+
 // === FISCAL ===
 procedure TfrmPrincipal.mnuFisNFeClick(Sender: TObject);
 begin
@@ -305,7 +322,42 @@ begin
   AbrirFormulario(TfrmCopiloto);
 end;
 
+// === RELATORIOS ===
+procedure TfrmPrincipal.mnuRelCentralClick(Sender: TObject);
+begin
+  if not TemPermissao(MODULO_RELATORIOS, TELA_CENTRAL_RELATORIOS,
+    PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para abrir a Central de Relatórios.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  AbrirFormulario(TfrmCentralRelatorios);
+end;
+
 // === SISTEMA ===
+procedure TfrmPrincipal.mnuSisConfiguracoesClick(Sender: TObject);
+begin
+  if not TemPermissao(MODULO_SISTEMA, TELA_CONFIGURACOES, PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para acessar as Configurações.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  AbrirFormulario(TfrmConfiguracoes);
+end;
+
+procedure TfrmPrincipal.mnuSisPermissoesClick(Sender: TObject);
+begin
+  if not TemPermissao(MODULO_SISTEMA, TELA_PERMISSOES, PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para acessar as Permissões.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+  AbrirFormulario(TfrmPermissoes);
+end;
+
 procedure TfrmPrincipal.mnuSisSairClick(Sender: TObject);
 begin
   Close;

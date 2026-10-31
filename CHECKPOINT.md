@@ -17,6 +17,10 @@
   corrida), `TConexao.GetInstance` **não mudou** (as 6 rotas intocadas), tamanho
   via `ERP_API_POOL` (padrão 8) e reciclagem de vagas por detecção de thread
   morta.
+- **Pendência "itens de menu inertes" concluída (30/10)**: as 4 telas novas
+  (Financeiro ▸ Caixa, Sistema ▸ Configurações, Sistema ▸ Permissões, Relatórios ▸
+  Central de Relatórios) estão implementadas e ligadas ao menu — seção própria abaixo
+  + `TESTES_EXECUTADOS.md`. Os itens deixaram de ser inertes (todos têm `OnClick`).
 - **Pendência SHA-256 concluída (19/10)**: senhas em hash SHA-256 no Desktop,
   API e semente (`uSenhaHash.pas`, migração progressiva no login) — ver
   `Documentacao\TESTES_EXECUTADOS.md` §8.
@@ -43,6 +47,16 @@
     exercita a reciclagem de vagas — e 401 sem token).
   - Desktop inalterado nesta rodada (build/testes verdes na verificação do
     Modelo I/II acima).
+- Verificação final verde (**30/10, após as 4 telas de administração**):
+  - `Scripts\build_desktop.bat` → compila, **0 warning / 0 erro** (2 Notes
+    inofensivas: 1 pré-existente em `uFrmMapaProducao`, 1 de `Locate` Int64→Variant
+    em `uFrmConfiguracoes`).
+  - `Scripts\run_tests.bat` → **62/62** (58 anteriores + 4 novos de
+    `uTelasAdmTest`).
+  - `Scripts\testes\telas_adm_ui.ps1` → **TELAS-ADM-UI CONCLUIDO** (as 4 telas
+    abrem pelo menu — IDs lidos por caption, não fixos —, têm botões, tiram
+    evidência e fecham). `Scripts\dump_menu_ids.ps1` regenerado: `Mapa de Produção`
+    continua = **21** (a suíte da Fase 6 segue válida); novos IDs 31/35/39/40.
 
 ### Commits do módulo Produção
 
@@ -203,6 +217,54 @@ requisições simultâneas disputariam a **mesma** conexão e a **mesma** transa
 
 ---
 
+## Telas de administração (concluído em 30/10)
+
+Os 4 itens que eram inertes no menu principal foram implementados e ligados
+(`OnClick`): **Financeiro ▸ Caixa**, **Sistema ▸ Configurações**,
+**Sistema ▸ Permissões** e **Relatórios ▸ Central de Relatórios**.
+
+**Services novos** (`Desktop\src\Services\`, regra de negócio fora dos forms):
+
+- `uCaixaService.pas` — `CarregarCaixas` / `CarregarMovimentos` /
+  `CarregarResumo`. **Só leitura** (o PDV é quem abre/fecha caixa);
+  `SALDO`/`ENTRADAS`/`SAIDAS` usam `CAST(... AS NUMERIC(18,4))` na subconsulta
+  `COALESCE` (sem isso o SQLDB devolve `ftUnknown`).
+- `uConfiguracaoService.pas` — `Carregar` / `Gravar` / `Excluir` da
+  `CONFIGURACAO` da empresa, com auditoria na mesma transação. **Valor vazio =
+  apagar a chave** (ela volta ao padrão do código).
+- `uPermissaoService.pas` — `CarregarGrupos` / `CarregarPermissoes` /
+  `Gravar` (**UPSERT** por `GRUPO_ID`+`MODULO`+`TELA`, comparados em
+  MAIÚSCULAS, igual ao `TemPermissao`) / `Excluir`; tudo com auditoria.
+
+**Telas novas** (`Desktop\src\Views\`): `uFrmCaixa` (2 grades + resumo),
+`uFrmConfiguracoes` (herda `TfrmCadastroBase`), `uFrmPermissoes` (matriz
+grupo × tela + gates `PODE_*`), `uFrmCentralRelatorios` (`.lrf` com caminho,
+modelo ativo e situação + atalho para a tela do Mapa — a **execução** do
+relatório continua na tela do Mapa, porque depende do mapa selecionado).
+
+**Permissões**: as 4 telas têm gate de **abrir** (`VISUALIZAR`) no menu e gates
+de **INSERIR/EXCLUIR** nos botões de gravar/excluir da própria tela de
+Permissões (`uPermissao` ganhou `MODULO_SISTEMA/TELA_CONFIGURACOES/
+TELA_PERMISSOES/MODULO_FINANCEIRO/TELA_CAIXA/MODULO_RELATORIOS/
+TELA_CENTRAL_RELATORIOS`). Seed em dois lugares, como no precedente do 012:
+`Banco\007_initial_data.sql` (banco novo) + `Banco\013_telas_administracao.sql`
+(idempotente, já executado no `DADOS.FDB`; `PERMISSAO` = 8 linhas).
+
+**Bug visual corrigido na tela Permissões**: a grade ficava **em branco** (sem a
+linha de títulos) — as colunas existiam (`cols=8`) mas a linha de títulos saía
+com altura zero. Fix: colunas **persistentes no `.lfm`** (mesmo padrão da tela
+do Mapa), em vez de criadas só em runtime; `ConfigurarGrid` ficou só com
+`ReadOnly := True`.
+
+**Validação (30/10)**: `build_desktop.bat` 0/0; `run_tests.bat` **62/62** (4
+testes novos em `uTelasAdmTest`, que limpam todo o rastro — `LOG_SISTEMA`
+voltou a 63, nenhum resíduo); `Scripts\testes\telas_adm_ui.ps1` **CONCLUIDO**
+(abre as 4 telas pelo menu lendo os IDs por caption); `dump_menu_ids.ps1`
+regenerado (Mapa de Produção segue = 21). Evidências em
+`Documentacao\evidencias\telas_adm_0*.png`.
+
+---
+
 ## O que foi feito nas últimas rodadas (FASEs 6–8)
 
 - **Bug "editar relatório" (reportado) — resolvido e commitado na FASE 6**: a unit
@@ -227,8 +289,10 @@ requisições simultâneas disputariam a **mesma** conexão e a **mesma** transa
 | Suíte de **UI** (autônoma) | `Scripts\testes\{erpui, fase5lib, fase6_01, fase6_pdftext}.ps1` |
 | Suíte de **unit tests** | `Scripts\build_tests.bat` / `Scripts\run_tests.bat` → `Desktop\bin\Tests.exe` |
 | Testes de Produção | `Desktop\src\Tests\uProducaoTest.pas` (+ `uTestRunner.pas`, `Tests.lpi`) |
+| Testes das telas de administração | `Desktop\src\Tests\uTelasAdmTest.pas` (+ `uTestRunner.pas`, `Tests.lpi`) |
+| Suíte de UI das telas novas | `Scripts\testes\telas_adm_ui.ps1` (abre as 4 telas pelo menu) |
 | IDs de menu | `Documentacao\MAPA_IDS_MENU.md` (+ gerador `Scripts\dump_menu_ids.ps1`) |
-| Evidências PNG (gitignored) | `Documentacao\evidencias\fase6_01..06_*.png` |
+| Evidências PNG (gitignored) | `Documentacao\evidencias\fase6_01..06_*.png`, `telas_adm_0*.png` |
 | PDFs gerados | `Desktop\bin\relatorios\taloes_mapa_1.pdf`, `mapa_1.pdf` |
 
 ---
@@ -238,9 +302,11 @@ requisições simultâneas disputariam a **mesma** conexão e a **mesma** transa
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
-4. Testes unit: `Scripts\run_tests.bat` → esperado **58/58**.
+4. Testes unit: `Scripts\run_tests.bat` → esperado **62/62**.
 5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\fase6_01.ps1`
-   → esperado **FASE6-01 CONCLUIDO**.
+   → esperado **FASE6-01 CONCLUIDO**; e
+   `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\telas_adm_ui.ps1`
+   → esperado **TELAS-ADM-UI CONCLUIDO**.
 6. Teste da API: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\pool_api.ps1`
    → esperado **POOL-TEST CONCLUIDO** (sobe a API com `ERP_API_POOL=3`; se a porta
    9000 estiver ocupada, mate `ERP2026API.exe` antes).
@@ -264,8 +330,10 @@ requisições simultâneas disputariam a **mesma** conexão e a **mesma** transa
   `004_tables.sql`/`banco_simplificado.sql` ficaram marcados como `[SUPERADO]`
   (conteúdo intacto); `executar_banco.bat` passou a usar `schema_canonico.sql`
   + `007_initial_data.sql` (antes gerava só 22 das 34 tabelas).
-- Itens de menu inertes (sem `OnClick`): Financeiro > Caixa, Sistema > Configurações,
-  Sistema > Permissões, grupo Relatórios — implementar só se houver pedido.
+- ~~Itens de menu inertes (sem `OnClick`): Financeiro > Caixa, Sistema > Configurações,
+  Sistema > Permissões, grupo Relatórios.~~ — **concluído (30/10)**: as 4 telas foram
+  implementadas e ligadas ao menu (seção própria abaixo). Próximo passo pedido:
+  **redesenhar o layout do app Android** para visual mais moderno.
 
 ---
 

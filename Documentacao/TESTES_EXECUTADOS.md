@@ -1,4 +1,4 @@
-# Testes Executados - 17/10/2026 (atualizado em 30/10/2026 - Modelos I/II dos relatórios e pool de conexões da API)
+# Testes Executados - 17/10/2026 (atualizado em 30/10/2026 - telas de administração, Modelos I/II dos relatórios e pool de conexões da API)
 
 Bateria completa de testes do ERP 2026: **Desktop (16 telas)**, **API REST (transações)**,
 **App Android (8 telas + transação real)** e, desde 18/10, o **Módulo de Produção
@@ -410,3 +410,66 @@ requisições simultâneas disputariam a **mesma** conexão e a **mesma** transa
 | Fase 1 — keep-alive, 40 req / 20 simultâneas | **200=40, 401=0, outros=0, exceções=0** |
 | Fase 2 — TCP nova por req (thread nova), 40 req / 20 simultâneas | **200=40, 401=0, outros=0, exceções=0** |
 | `GET /api/clientes` sem token | **401** (o pool não quebra a segurança) |
+
+---
+
+## Telas de administração (30/10/2026)
+
+As 4 telas que eram itens inertes do menu foram implementadas e ligadas
+(`OnClick`): **Financeiro > Caixa**, **Sistema > Configurações**,
+**Sistema > Permissões** e **Relatórios > Central de Relatórios**. Regra de
+negócio toda em Services (`uCaixaService`, `uConfiguracaoService`,
+`uPermissaoService`); grades da Caixa e da Permissões com colunas
+**persistentes no `.lfm`** (padrão da tela do Mapa).
+
+### Suíte de testes unitários - 62/62 (4 novos)
+
+`Desktop\src\Tests\uTelasAdmTest.pas` (`TTelasAdmTest`, registrada no
+`uTestRunner.pas` e no `Tests.lpi`), rodada por `Scripts\run_tests.bat` junto
+com as 58 anteriores:
+
+| Teste | O que prova |
+|---|---|
+| `TestSeedPermissoesTelasAdministracao` | as 4 telas novas têm linha em `PERMISSAO` para o grupo Administradores (banco novo via `007` e existentes via `013`) |
+| `TestConfiguracaoServiceGravaEhLimpa` | round-trip `Gravar`/`Excluir` da `CONFIGURACAO` + auditoria; limpa tudo (inclusive `LOG_SISTEMA` acima do topo capturado) |
+| `TestPermissaoServiceFazUpsertSemDuplicar` | `Gravar` 2x a mesma (grupo, módulo, tela) mantém **1** linha; `Excluir` some com ela; rastro zerado |
+| `TestCaixaServiceLeSemGravar` | `CarregarCaixas/Movimentos/Resumo` devolvem campos numéricos (não `ftUnknown`) e **nenhuma** linha nova de auditoria |
+
+Resultado: **62/62** (`Total: 62 | Passou: 62 | Falhou: 0`).
+Rastro conferido **depois** da suíte: `LOG_SISTEMA` = 63 (o mesmo de antes),
+`CONFIGURACAO`/`GRUPO`/`PERMISSAO` sem nenhuma linha `TESTE_*`.
+
+### Automação de UI - as 4 telas abrem pelo menu
+
+`Scripts\testes\telas_adm_ui.ps1` (novo): sobe o app, loga, abre cada uma das
+4 telas **enviando `WM_COMMAND` com o ID lido do menu Win32 por caption** (não
+depende de número fixo), confere que a janela abriu com botões, tira evidência
+e fecha (esse script e o `dump_menu_ids.ps1` não matam instâncias antigas do
+`ERP2026` — mate o processo antes de rodar).
+
+| Tela | ID do menu | Botões | Evidência |
+|---|---|---|---|
+| Caixa | 31 | 2 | `evidencias\telas_adm_01_caixa.png` |
+| Configurações | 39 | 7 | `evidencias\telas_adm_02_configuracoes.png` |
+| Permissões | 40 | 9 | `evidencias\telas_adm_03_permissoes.png` |
+| Central de Relatórios | 35 | 3 | `evidencias\telas_adm_04_central_relatorios.png` |
+
+Resultado: **TELAS-ADM-UI CONCLUIDO** (exit 0). `Scripts\dump_menu_ids.ps1`
+regenerado (`Documentacao\MAPA_IDS_MENU.md`): nenhum item inerte e **"Mapa de
+Produção" continua = 21**, então a automação da Fase 6 segue válida.
+
+### Bug visual corrigido no caminho
+
+A primeira evidência da tela **Permissões** mostrou a grade **em branco**, sem
+a linha de títulos — as colunas existiam (diagnóstico: `cols=8`, `ds=True`,
+`visible=True`) mas a linha de títulos saía com altura zero. Fix: colunas
+**persistentes no `.lfm`** em vez de criadas só em runtime (mesmo padrão das
+telas que já funcionavam); `ConfigurarGrid` ficou só com `ReadOnly := True`.
+A evidência acima é a da **revalidação depois do fix**.
+
+| Verificação | Resultado |
+|---|---|
+| `Scripts\build_desktop.bat` | compila, **0 warning / 0 erro** |
+| `Scripts\run_tests.bat` | **62/62** |
+| `Scripts\testes\telas_adm_ui.ps1` | **TELAS-ADM-UI CONCLUIDO** |
+| Rastro no banco após a suíte | **nenhum** (`LOG_SISTEMA` = 63, zero linhas `TESTE_*`) |

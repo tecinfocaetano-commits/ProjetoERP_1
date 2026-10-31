@@ -157,11 +157,12 @@ $mapa = @{
   'abrir pdv'            = @('mnuPDVAbrirPDV', 'TfrmPDV')
   'contas a receber'     = @('mnuFinContasReceber', 'TfrmContasReceber')
   'contas a pagar'       = @('mnuFinContasPagar', 'TfrmContasPagar')
-  'caixa'                = @('mnuFinCaixa', '(sem handler - item inerte)')
+  'caixa'                = @('mnuFinCaixa', 'TfrmCaixa (consulta de caixas e movimentos)')
   'nf-e / nfc-e'        = @('mnuFisNFe', 'TfrmNFe')
+  'central de relatorios...' = @('mnuRelCentral', 'TfrmCentralRelatorios (caminhos/.lrf, modelo ativo, atalho p/ tela do Mapa)')
   'abrir copiloto erp'   = @('mnuIACopiloto', 'TfrmCopiloto')
-  'configuracoes'        = @('mnuSisConfiguracoes', '(sem handler - item inerte)')
-  'permissoes'           = @('mnuSisPermissoes', '(sem handler - item inerte)')
+  'configuracoes'        = @('mnuSisConfiguracoes', 'TfrmConfiguracoes (editor da CONFIGURACAO da empresa)')
+  'permissoes'           = @('mnuSisPermissoes', 'TfrmPermissoes (editor da matriz PERMISSAO)')
   'sair'                 = @('mnuSisSair', 'Close do formulario principal')
 }
 
@@ -241,9 +242,6 @@ foreach ($r in $rows) {
   }
   $comp = '?'; $tela = '?'
   if ($mapa.ContainsKey($key)) { $comp = $mapa[$key][0]; $tela = $mapa[$key][1] }
-  if ($r.Text -eq '(grupo sem itens)' -and (Fold $r.Path) -eq 'relatorios') {
-    $comp = 'mnuRelatorios'; $tela = '(sem subitens - dropdown vazio)'
-  }
   $idTxt = if ($r.Id -lt 0) { '-' } else { [string]$r.Id }
   $md += ("| {0} | {1} | {2} | {3} | {4} |" -f $idTxt, $r.Path, $r.Text, $comp, $tela)
   if ($key -eq 'mapa de producao') { $mapaIdEsperado = $r.Id }
@@ -252,8 +250,8 @@ foreach ($r in $rows) {
 $md += ''
 $md += 'Notas:'
 $md += ''
-$md += '- Itens marcados "(sem handler - item inerte)" nao possuem `OnClick` - clicar nao faz nada.'
-$md += '- O grupo "Relatorios" nao tem subitens (dropdown vazio).'
+$md += '- Nenhum item do menu principal e inerte (todos tem OnClick).'
+$md += '- O grupo "Relatorios" tem o subitem "Central de Relatorios...".'
 $md += '- Menus de popup das telas (ex.: botao "Relatorio" da tela do Mapa) nao sao menu de'
 $md += '  janela: a automacao de testes le por MSAA e clica por coordenadas.'
 $md += ''

@@ -47,19 +47,19 @@ PostMessage(hMain, 0x0111, 21, 0);   // ID 21 = Mapa de Producao
 | 27 | PDV | Abrir PDV | mnuPDVAbrirPDV | TfrmPDV |
 | 29 | Financeiro | Contas a Receber | mnuFinContasReceber | TfrmContasReceber |
 | 30 | Financeiro | Contas a Pagar | mnuFinContasPagar | TfrmContasPagar |
-| 31 | Financeiro | Caixa | mnuFinCaixa | (sem handler - item inerte) |
+| 31 | Financeiro | Caixa | mnuFinCaixa | TfrmCaixa (consulta de caixas e movimentos) |
 | 33 | Fiscal | NF-e / NFC-e | mnuFisNFe | TfrmNFe |
-| - | Relatórios | (grupo sem itens) | mnuRelatorios | (sem subitens - dropdown vazio) |
-| 36 | IA Copiloto | Abrir Copiloto ERP | mnuIACopiloto | TfrmCopiloto |
-| 38 | Sistema | Configurações | mnuSisConfiguracoes | (sem handler - item inerte) |
-| 39 | Sistema | Permissões | mnuSisPermissoes | (sem handler - item inerte) |
+| 35 | Relatórios | Central de Relatórios... | mnuRelCentral | TfrmCentralRelatorios (caminhos/.lrf, modelo ativo, atalho p/ tela do Mapa) |
+| 37 | IA Copiloto | Abrir Copiloto ERP | mnuIACopiloto | TfrmCopiloto |
+| 39 | Sistema | Configurações | mnuSisConfiguracoes | TfrmConfiguracoes (editor da CONFIGURACAO da empresa) |
+| 40 | Sistema | Permissões | mnuSisPermissoes | TfrmPermissoes (editor da matriz PERMISSAO) |
 | - | Sistema | (separador) | - | - |
-| 41 | Sistema | Sair | mnuSisSair | Close do formulario principal |
+| 42 | Sistema | Sair | mnuSisSair | Close do formulario principal |
 
 Notas:
 
-- Itens marcados "(sem handler - item inerte)" nao possuem `OnClick` - clicar nao faz nada.
-- O grupo "Relatorios" nao tem subitens (dropdown vazio).
+- Nenhum item do menu principal e inerte (todos tem OnClick).
+- O grupo "Relatorios" tem o subitem "Central de Relatorios...".
 - Menus de popup das telas (ex.: botao "Relatorio" da tela do Mapa) nao sao menu de
   janela: a automacao de testes le por MSAA e clica por coordenadas.
 

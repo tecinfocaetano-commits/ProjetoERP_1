@@ -1,0 +1,101 @@
+object frmCaixa: TfrmCaixa
+  Height = 540
+  Width = 840
+  OnCreate = FormCreate
+  Caption = 'Caixa'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 40
+    Top = 0
+    Width = 824
+    Align = alTop
+    BevelOuter = bvNone
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 16
+      Top = 12
+      Width = 260
+      Caption = 'Caixas da Empresa'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object btnAtualizar: TBitBtn
+      Left = 520
+      Height = 30
+      Top = 4
+      Width = 100
+      Caption = '&Atualizar'
+      OnClick = btnAtualizarClick
+      TabOrder = 0
+    end
+    object btnFechar: TBitBtn
+      Left = 630
+      Height = 30
+      Top = 4
+      Width = 100
+      Caption = '&Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 1
+    end
+  end
+  object dbGridCaixas: TDBGrid
+    Left = 0
+    Height = 200
+    Top = 40
+    Width = 824
+    Align = alTop
+    DataSource = DataSource1
+    Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+    TabOrder = 1
+    OnCellClick = dbGridCaixasCellClick
+  end
+  object pnlResumo: TPanel
+    Left = 0
+    Height = 36
+    Top = 240
+    Width = 824
+    Align = alTop
+    BevelOuter = bvNone
+    object lblEntradas: TLabel
+      Left = 16
+      Height = 16
+      Top = 10
+      Width = 140
+      Caption = 'Entradas: 0.00'
+    end
+    object lblSaidas: TLabel
+      Left = 220
+      Height = 16
+      Top = 10
+      Width = 120
+      Caption = 'Saídas: 0.00'
+    end
+    object lblSaldo: TLabel
+      Left = 420
+      Height = 16
+      Top = 10
+      Width = 160
+      Caption = 'Saldo: 0.00'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object dbGridMovimentos: TDBGrid
+    Left = 0
+    Height = 244
+    Top = 276
+    Width = 824
+    Align = alClient
+    DataSource = DataSource2
+    Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+    TabOrder = 2
+  end
+  object DataSource1: TDataSource
+    Left = 700
+    Top = 16
+  end
+  object DataSource2: TDataSource
+    Left = 748
+    Top = 16
+  end
+end

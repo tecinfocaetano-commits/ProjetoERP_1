@@ -1,0 +1,242 @@
+object frmPermissoes: TfrmPermissoes
+  Height = 520
+  Width = 760
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  Caption = 'Permissões'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 40
+    Top = 0
+    Width = 744
+    Align = alTop
+    BevelOuter = bvNone
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 16
+      Top = 12
+      Width = 220
+      Caption = 'Permissões por Grupo'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlGrupo: TPanel
+    Left = 0
+    Height = 40
+    Top = 40
+    Width = 744
+    Align = alTop
+    BevelOuter = bvNone
+    object lblGrupo: TLabel
+      Left = 16
+      Height = 16
+      Top = 12
+      Width = 45
+      Caption = 'Grupo:'
+    end
+    object cmbGrupo: TComboBox
+      Left = 72
+      Height = 25
+      Top = 8
+      Width = 240
+      Style = csDropDownList
+      TabOrder = 0
+      OnChange = cmbGrupoChange
+    end
+    object lblDica: TLabel
+      Left = 328
+      Height = 16
+      Top = 12
+      Width = 400
+      Caption = 'Clique numa linha da grade para editar. "Novo" cadastra outra tela.'
+    end
+  end
+  object dbGrid: TDBGrid
+    Left = 0
+    Height = 250
+    Top = 80
+    Width = 744
+    Align = alClient
+    Columns = <
+      item
+        Expanded = False
+        FieldName = 'ID'
+        Title.Caption = 'ID'
+        Width = 50
+        Visible = True
+      end
+      item
+        Expanded = False
+        FieldName = 'MODULO'
+        Title.Caption = 'M'#243'dulo'
+        Width = 130
+        Visible = True
+      end
+      item
+        Expanded = False
+        FieldName = 'TELA'
+        Title.Caption = 'Tela'
+        Width = 170
+        Visible = True
+      end
+      item
+        Expanded = False
+        FieldName = 'PODE_VISUALIZAR'
+        Title.Caption = 'Ver'
+        Width = 45
+        Visible = True
+      end
+      item
+        Expanded = False
+        FieldName = 'PODE_INSERIR'
+        Title.Caption = 'Inserir'
+        Width = 55
+        Visible = True
+      end
+      item
+        Expanded = False
+        FieldName = 'PODE_EDITAR'
+        Title.Caption = 'Editar'
+        Width = 55
+        Visible = True
+      end
+      item
+        Expanded = False
+        FieldName = 'PODE_EXCLUIR'
+        Title.Caption = 'Excluir'
+        Width = 55
+        Visible = True
+      end
+      item
+        Expanded = False
+        FieldName = 'PODE_IMPRIMIR'
+        Title.Caption = 'Imprimir'
+        Width = 60
+        Visible = True
+      end>
+    DataSource = DataSource1
+    Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+    ReadOnly = True
+    TabOrder = 1
+    OnCellClick = dbGridCellClick
+  end
+  object pnlEdicao: TPanel
+    Left = 0
+    Height = 150
+    Top = 330
+    Width = 744
+    Align = alBottom
+    BevelOuter = bvNone
+    object lblModulo: TLabel
+      Left = 16
+      Height = 16
+      Top = 10
+      Width = 70
+      Caption = 'Módulo: *'
+    end
+    object edtModulo: TEdit
+      Left = 16
+      Height = 25
+      Top = 28
+      Width = 170
+      MaxLength = 50
+      TabOrder = 0
+    end
+    object lblTela: TLabel
+      Left = 200
+      Height = 16
+      Top = 10
+      Width = 55
+      Caption = 'Tela: *'
+    end
+    object edtTela: TEdit
+      Left = 200
+      Height = 25
+      Top = 28
+      Width = 170
+      MaxLength = 50
+      TabOrder = 1
+    end
+    object chkVisualizar: TCheckBox
+      Left = 16
+      Height = 17
+      Top = 64
+      Width = 110
+      Caption = 'Visualizar'
+      TabOrder = 2
+    end
+    object chkInserir: TCheckBox
+      Left = 140
+      Height = 17
+      Top = 64
+      Width = 80
+      Caption = 'Inserir'
+      TabOrder = 3
+    end
+    object chkEditar: TCheckBox
+      Left = 240
+      Height = 17
+      Top = 64
+      Width = 80
+      Caption = 'Editar'
+      TabOrder = 4
+    end
+    object chkExcluir: TCheckBox
+      Left = 340
+      Height = 17
+      Top = 64
+      Width = 80
+      Caption = 'Excluir'
+      TabOrder = 5
+    end
+    object chkImprimir: TCheckBox
+      Left = 440
+      Height = 17
+      Top = 64
+      Width = 90
+      Caption = 'Imprimir'
+      TabOrder = 6
+    end
+    object btnNovo: TBitBtn
+      Left = 16
+      Height = 30
+      Top = 100
+      Width = 90
+      Caption = '&Novo'
+      OnClick = btnNovoClick
+      TabOrder = 7
+    end
+    object btnSalvar: TBitBtn
+      Left = 116
+      Height = 30
+      Top = 100
+      Width = 90
+      Caption = '&Salvar'
+      OnClick = btnSalvarClick
+      TabOrder = 8
+    end
+    object btnExcluir: TBitBtn
+      Left = 216
+      Height = 30
+      Top = 100
+      Width = 90
+      Caption = 'E&xcluir'
+      OnClick = btnExcluirClick
+      TabOrder = 9
+    end
+    object btnFechar: TBitBtn
+      Left = 620
+      Height = 30
+      Top = 100
+      Width = 90
+      Caption = '&Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 10
+    end
+  end
+  object DataSource1: TDataSource
+    Left = 400
+    Top = 16
+  end
+end
