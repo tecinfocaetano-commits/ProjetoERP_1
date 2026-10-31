@@ -11,6 +11,12 @@
 - **Modelos I/II dos relatórios concluídos e commitados (30/10)** — `74df45a`
   (Talão e Mapa com Modelo I e Modelo II, mesmos datasets; escolha na
   `CONFIGURACAO`; seção própria abaixo + `TESTES_EXECUTADOS.md`).
+- **Pool de conexões da API concluído e commitado (30/10)** — seção própria
+  abaixo + `TESTES_EXECUTADOS.md`: cada thread de requisição passou a ter a
+  **sua** `TConexao` (o Horse atende em thread própria; conexão única era
+  corrida), `TConexao.GetInstance` **não mudou** (as 6 rotas intocadas), tamanho
+  via `ERP_API_POOL` (padrão 8) e reciclagem de vagas por detecção de thread
+  morta.
 - **Pendência SHA-256 concluída (19/10)**: senhas em hash SHA-256 no Desktop,
   API e semente (`uSenhaHash.pas`, migração progressiva no login) — ver
   `Documentacao\TESTES_EXECUTADOS.md` §8.
@@ -29,6 +35,14 @@
   - `Scripts\testes\fase6_01.ps1` → **FASE6-01 CONCLUIDO** (tela, menu ▼, preview,
     `taloes_mapa_1.pdf`, `mapa_1.pdf`, editor abre/fecha/reabre, `.lrf` intocado) —
     rodada **de dentro do projeto** (sem depender do `%TEMP%`).
+- Verificação final verde (**30/10, após o pool da API**):
+  - `Scripts\build_api.bat` → compila, **0 warning / 0 erro** (API reescrita).
+  - `Scripts\testes\pool_api.ps1` → **POOL-TEST CONCLUIDO** (API com
+    `ERP_API_POOL=3`; 40 req / 20 simultâneas = **200=40, 401=0, outros=0** nas
+    duas fases — keep-alive e **TCP nova por requisição/thread nova**, que é o que
+    exercita a reciclagem de vagas — e 401 sem token).
+  - Desktop inalterado nesta rodada (build/testes verdes na verificação do
+    Modelo I/II acima).
 
 ### Commits do módulo Produção
 
@@ -121,8 +135,70 @@ preferir. Modelo II = cópia do Modelo I, que o usuário edita no designer LazRe
    `run_tests.bat` **58/58** (inclusive de banco limpo); `fase6_01.ps1`
    **FASE6-01 CONCLUIDO**.
 
-**Não é desta rodada**: **pool de conexões da API** e **itens de menu inertes** —
-ver "Pendências (fora do módulo Produção)".
+**Não é desta rodada**: **itens de menu inertes** — ver "Pendências (fora do
+módulo Produção)".
+
+---
+
+## Pool de conexões da API (concluído em 30/10)
+
+Pendência: *"API usa conexão única → pool de conexões (produção)"*.
+
+**O problema.** O Horse (provider `FPC.HTTPApplication`) atende cada requisição em
+**thread própria** (`THTTPApplication.Threaded := True`, `TFPHTTPConnectionThread`,
+com keep-alive). Com uma única `TIBConnection` para o servidor inteiro, duas
+requisições simultâneas disputariam a **mesma** conexão e a **mesma** transação.
+
+**O que foi feito:**
+
+- `API\src\Config\uConexao.pas` reescrito: **pool com afinidade por thread** —
+  cada thread de requisição recebe a **sua** `TConexao` (conexão + transação).
+  `TConexaoPool` com `Obter`, `Devolver`, `LiberarThreadsMortas` e `Descricao`.
+- **API pública não mudou** (`GetInstance`, `ReleaseInstance`, `Conectar`,
+  `Confirmar`/`Cancelar`…) → as **6 unidades de rota (15 pontos** de
+  `TConexao.GetInstance`) **não foram tocadas**.
+- Conexões já saem **conectadas** (reconectam sozinhas se o Firebird reiniciar) e
+  `Desconectar` faz `Rollback` antes de fechar (nada fica transação pendurada).
+- **Reciclagem de vagas por thread morta** (Windows: `OpenThread` +
+  `GetExitCodeThread` = `STILL_ACTIVE`): a thread keep-alive morreu → a vaga
+  volta ao pool e a conexão do Firebird é fechada; sem isso o servidor esgotaria
+  o pool com o tempo. Fora do Windows `ThreadViva` assume viva (`{$ELSE}` perde só
+  a reciclagem, o limite continua valendo).
+- **Espera em vez de compartilhar**: sem vaga livre, `Obter` espera ~5 s
+  (250 × 20 ms) e só então falha apontando `ERP_API_POOL` — **nunca** entrega a
+  mesma conexão a duas threads.
+- Tamanho via variável de ambiente **`ERP_API_POOL`** (padrão **8**, limitada a
+  2..64); o pool nasce no `initialization` e morre no `finalization`.
+- `TConexao.PoolDescricao` impresso no startup (`ERP2026API.lpr`), ex.:
+  `Pool de conexoes: pool=3 conexoes, 1 em uso`.
+- `DevolverAtual` existe como opção, mas **nenhuma rota o chama**: a reciclagem é
+  pela morte da thread — e é justamente isso que o teste comprova.
+
+**Teste de concorrência** (`Scripts\testes\pool_api.ps1`):
+
+1. API subida com **`ERP_API_POOL=3`** de propósito (força o caminho de espera).
+2. `POST /api/login` → token.
+3. **Fase 1 (keep-alive)**: 40 requisições / 20 simultâneas em `GET /api/clientes`.
+4. **Fase 2 (TCP nova por requisição)**: no servidor cada request roda numa
+   **thread nova** — com só 3 conexões no pool as 40 passam **só** reciclando vagas
+   de thread morta.
+5. `GET /api/clientes` sem token; encerra a API no fim.
+
+**Verificação (30/10):**
+
+- `Scripts\build_api.bat` → **0 warning / 0 erro**.
+- `Scripts\testes\pool_api.ps1` → **POOL-TEST CONCLUIDO**: fase 1
+  **200=40, 401=0, outros=0, exceções=0**; fase 2 idem; sem token **401**.
+- **Rastro no banco: nenhum** — a API não grava em `LOG_SISTEMA` e o teste só lê.
+  Conferido depois do run: `LOG_SISTEMA` = 63 linhas **todas de 18/10** (história
+  legítima do módulo, incluindo os 3 audits de `CONFIGURACAO` 52/58/59) e
+  `CONFIGURACAO` = só as 3 chaves de produção (os modelos seguem ausentes =
+  Modelo I, que é o padrão).
+- Desktop **não foi tocado** nesta rodada (build/testes verdes na verificação do
+  Modelo I/II acima).
+
+**Docs**: `TESTES_EXECUTADOS.md` ganhou a seção "Pool de conexões da API
+(30/10/2026)" e o título foi atualizado.
 
 ---
 
@@ -164,6 +240,9 @@ ver "Pendências (fora do módulo Produção)".
 4. Testes unit: `Scripts\run_tests.bat` → esperado **58/58**.
 5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\fase6_01.ps1`
    → esperado **FASE6-01 CONCLUIDO**.
+6. Teste da API: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\pool_api.ps1`
+   → esperado **POOL-TEST CONCLUIDO** (sobe a API com `ERP_API_POOL=3`; se a porta
+   9000 estiver ocupada, mate `ERP2026API.exe` antes).
 
 ---
 
@@ -172,7 +251,9 @@ ver "Pendências (fora do módulo Produção)".
 - ~~Senhas em **SHA-256**~~ — **concluído (19/10)**.
 - ~~`uClienteService.pas` monta SQL com `Format` → parametrizar.~~ — **concluído (19/10)**.
 - ~~`uMiddlewareJWT.pas` rotula HS256 mas usa HMAC próprio~~ **concluído (19/10)**: HS256 real em `uHMAC.pas` (HMAC-SHA256 RFC 2104, sobre `SHA256Raw`) + assinatura em tempo constante.
-- API usa conexão única → pool de conexões (produção).
+- ~~API usa conexão única → pool de conexões (produção).~~ — **concluído (30/10)**:
+  pool com afinidade por thread em `uConexao.pas` (seção própria acima);
+  `Scripts\testes\pool_api.ps1` prova 40 req / 20 simultâneas com pool de 3.
 - ~~Consolidar `Banco\004_tables.sql` / `banco_simplificado.sql` vs banco real.~~ —
   **concluído (19/10)**. Gerador `Desktop\src\Tools\GerarSchema.lpr` lê o metadata
   `RDB$*` do banco real e emite `Banco\schema_canonico.sql` (34 tabelas, 34 generators,

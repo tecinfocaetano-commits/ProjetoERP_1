@@ -48,10 +48,14 @@ begin
   WriteLn('  GET/POST /api/vendas');
   WriteLn('  GET/POST /api/financeiro');
 
-  // Conecta ao Firebird uma unica vez para todo o servidor
+  // Primeira conexao (do thread principal) sinaliza que o banco esta no ar;
+  // as requisicoes usam cada uma a sua conexao tirada do pool
   try
     TConexao.GetInstance.Conectar;
     WriteLn('Banco conectado: ', TConexao.GetInstance.Database);
+    // cada thread de requisicao recebe a propria conexao (pool com afinidade
+    // por thread; tamanho via variavel de ambiente ERP_API_POOL)
+    WriteLn('Pool de conexoes: ', TConexao.PoolDescricao);
   except
     on E: Exception do
       WriteLn('ATENCAO - falha ao conectar no banco: ', E.Message);

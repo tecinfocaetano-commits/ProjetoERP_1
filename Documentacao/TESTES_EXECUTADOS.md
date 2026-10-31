@@ -1,4 +1,4 @@
-# Testes Executados — 17/10/2026 (atualizado em 30/10/2026 — Modelos I/II dos relatórios)
+# Testes Executados - 17/10/2026 (atualizado em 30/10/2026 - Modelos I/II dos relatórios e pool de conexões da API)
 
 Bateria completa de testes do ERP 2026: **Desktop (16 telas)**, **API REST (transações)**,
 **App Android (8 telas + transação real)** e, desde 18/10, o **Módulo de Produção
@@ -363,3 +363,50 @@ usam o mesmo dataset — só o arquivo `.lrf` carregado muda.
 | `Scripts\run_tests.bat` | **58/58** (56 + 2 novos), inclusive a partir de banco limpo |
 | `Scripts\testes\fase6_01.ps1` | **FASE6-01 CONCLUIDO** (menu com os 4 itens novos, preview, `taloes_mapa_1.pdf`, `mapa_1.pdf`, `Designer - talao.lrf`, `.lrf` intocado) |
 | Rastro da suíte de unit e da suíte de UI nas chaves de modelo | `RESTOS = 0` e auditoria estável após cada run |
+
+## Pool de conexões da API (30/10/2026)
+
+Pendência do CHECKPOINT: *"API usa conexão única → pool de conexões (produção)"*.
+
+**O problema.** O Horse (provider `FPC.HTTPApplication`) atende cada requisição em
+**thread própria** (`THTTPApplication.Threaded := True`, `TFPHTTPConnectionThread`,
+com keep-alive). Com uma `TIBConnection` única para todo o servidor, duas
+requisições simultâneas disputariam a **mesma** conexão e a **mesma** transação.
+
+**Solução** (`API\src\Config\uConexao.pas`, reescrito):
+
+- **Pool com afinidade por thread**: cada thread de requisição recebe a **sua**
+  `TConexao` (conexão + transação) — nunca há duas threads no mesmo objeto.
+- `TConexao.GetInstance` **manteve a assinatura**, então as 6 unidades de rota
+  (**15 pontos** de chamada) **não mudaram**.
+- Toda conexão retirada já sai **conectada** (reconecta sozinha se o Firebird
+  reiniciar) e, ao ser devolvida, faz `Rollback` antes de fechar.
+- **Reciclagem de vagas** por detecção de thread morta (Windows: `OpenThread` +
+  `GetExitCodeThread` = `STILL_ACTIVE`): quando a thread keep-alive morre, a vaga
+  volta ao pool e a conexão do Firebird é fechada — nada envelhece.
+- Se todas as conexões estiverem em uso por threads vivas, `Obter` **espera ~5 s**
+  (250 × 20 ms) e só então falha com mensagem clara — **nunca compartilha conexão
+  em silêncio**.
+- Tamanho via variável de ambiente **`ERP_API_POOL`** (padrão 8, limitada a 2..64);
+  `initialization` cria o pool e `finalization` o libera.
+- `TConexao.PoolDescricao` (ex.: `pool=3 conexoes, 1 em uso`) impresso no startup.
+- Fora do Windows, `ThreadViva` assume a thread viva: o pool continua limitado,
+  perde só a reciclagem.
+
+**Teste de concorrência** (`Scripts\testes\pool_api.ps1`) — API subida com
+**`ERP_API_POOL=3`** (pool pequeno de propósito, para forçar o caminho de espera):
+
+1. `POST /api/login` (`admin`/`admin123`) → token.
+2. **Fase 1 (keep-alive)**: 40 requisições / 20 simultâneas em `GET /api/clientes`.
+3. **Fase 2 (TCP nova por requisição)**: cada request do servidor roda numa
+   **thread nova** — com apenas 3 conexões no pool, as 40 requisições só passam se
+   a reciclagem das vagas das threads mortas funcionar.
+4. `GET /api/clientes` sem token.
+
+| Verificação | Resultado |
+|---|---|
+| `Scripts\build_api.bat` | compila, **0 warning / 0 erro** |
+| Linha de startup | `Pool de conexoes: pool=3 conexoes, 1 em uso` |
+| Fase 1 — keep-alive, 40 req / 20 simultâneas | **200=40, 401=0, outros=0, exceções=0** |
+| Fase 2 — TCP nova por req (thread nova), 40 req / 20 simultâneas | **200=40, 401=0, outros=0, exceções=0** |
+| `GET /api/clientes` sem token | **401** (o pool não quebra a segurança) |
