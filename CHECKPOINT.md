@@ -1,14 +1,16 @@
 # CHECKPOINT — último ponto de parada (19/10/2026)
 
 > Documento de retomada. O PC foi desligado neste ponto; ao voltar, seguir
-> "Para continuar" abaixo. **ATENÇÃO: há trabalho NÃO commitado** (Modelo I/II
-> dos relatórios) — ler antes a seção "Em andamento: Modelo I e Modelo II".
+> "Para continuar" abaixo. Árvore git **limpa** (nada pendente de commit).
 
 ---
 
 ## Estado
 
 - **Módulo de Produção: 8 fases COMPLETAS e commitadas** — última: FASE 8 = `40bbd8b`.
+- **Modelos I/II dos relatórios concluídos e commitados (30/10)** — `74df45a`
+  (Talão e Mapa com Modelo I e Modelo II, mesmos datasets; escolha na
+  `CONFIGURACAO`; seção própria abaixo + `TESTES_EXECUTADOS.md`).
 - **Pendência SHA-256 concluída (19/10)**: senhas em hash SHA-256 no Desktop,
   API e semente (`uSenhaHash.pas`, migração progressiva no login) — ver
   `Documentacao\TESTES_EXECUTADOS.md` §8.
@@ -40,6 +42,7 @@
 | 6 | `2eeb642` |
 | 7 | `90fdd44` |
 | 8 | `40bbd8b` |
+| Modelos I/II dos relatórios | `74df45a` |
 
 (Anteriores, já commitados: Android `40bd164`, Módulo 1 `ea32594`, Módulo 2 `c776076`.)
 
