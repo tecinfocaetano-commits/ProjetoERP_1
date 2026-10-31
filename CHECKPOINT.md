@@ -11,9 +11,9 @@
 - **Modelos I/II dos relatórios concluídos e commitados (30/10)** — `74df45a`
   (Talão e Mapa com Modelo I e Modelo II, mesmos datasets; escolha na
   `CONFIGURACAO`; seção própria abaixo + `TESTES_EXECUTADOS.md`).
-- **Pool de conexões da API concluído e commitado (30/10)** — seção própria
-  abaixo + `TESTES_EXECUTADOS.md`: cada thread de requisição passou a ter a
-  **sua** `TConexao` (o Horse atende em thread própria; conexão única era
+- **Pool de conexões da API concluído e commitado (30/10)** — `f9df7d7` (seção
+  própria abaixo + `TESTES_EXECUTADOS.md`): cada thread de requisição passou a ter
+  a **sua** `TConexao` (o Horse atende em thread própria; conexão única era
   corrida), `TConexao.GetInstance` **não mudou** (as 6 rotas intocadas), tamanho
   via `ERP_API_POOL` (padrão 8) e reciclagem de vagas por detecção de thread
   morta.
@@ -57,6 +57,7 @@
 | 7 | `90fdd44` |
 | 8 | `40bbd8b` |
 | Modelos I/II dos relatórios | `74df45a` |
+| Pool de conexões da API | `f9df7d7` |
 
 (Anteriores, já commitados: Android `40bd164`, Módulo 1 `ea32594`, Módulo 2 `c776076`.)
 
