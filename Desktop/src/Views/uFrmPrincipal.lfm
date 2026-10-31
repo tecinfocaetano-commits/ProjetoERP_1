@@ -127,10 +127,6 @@ object frmPrincipal: TfrmPrincipal
         Caption = 'Caixa'
         OnClick = mnuFinCaixaClick
       end
-      object mnuFinProdFinanceiros: TMenuItem
-        Caption = 'Produtos Financeiros'
-        OnClick = mnuFinProdFinanceirosClick
-      end
       object mnuFinProdutoFiscal: TMenuItem
         Caption = 'Produto Fiscal'
         OnClick = mnuFinProdutoFiscalClick

@@ -525,6 +525,15 @@ novos. Desenho completo em `DESENHO_NOVAS_ABAS.md`; resumo em
 - 9 tabelas novas, 4 colunas aditivas, permissões de SUPRIMENTOS/FINANCEIRO sem
   duplicar (grupo 1). `PRODUTO` **não renomeada** (Firebird não tem
   `ALTER TABLE ... RENAME`; `PRODUTO` já é o produto de produção).
+- `Banco\015_completar_fase1.sql` (+ rollback) — **testada em cópia** (aplica limpo,
+  exit 0; seed geo com acentos via `SET NAMES UTF8`) e **aplicada no `DADOS.FDB`
+  real** (backup `DADOS_backup_antes_015.fdb`). Fechou o banco da fase 1:
+  CHECK em `STATUS_PRODUCAO`; **fusão Fiscal+Financeiro** (`PRODUTO_FISCAL`
+  absorve `TIPO`+`VALOR`, `PRODUTO_FINANCEIRO` removida — vazia); itens de nota
+  + `PRODUTO_FISCAL_ID`/`MATERIAL_ID`; rename `CONTAPRODUCAO_ID`→`CONTA_ID`;
+  cadastros `PAIS`→`ESTADO`→`CIDADE` (seed Brasil + 27 UFs). Pós-aplicação
+  conferido no real: 1 país / 27 estados / 0 cidades, `PRODUTO_FISCAL.TIPO`
+  presente, `PRODUTO_FINANCEIRO` ausente.
 
 ### Validação verde (31/10/2026)
 

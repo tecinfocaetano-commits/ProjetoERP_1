@@ -33,7 +33,6 @@ uses
   // Models - fase 1 redesenho (suprimentos/fiscal/financeiro)
   uProdutoFiscal,
   uMaterial,
-  uProdutoFinanceiro,
   uCor,
   // Repositories
   uRepositoryBase,
@@ -42,7 +41,6 @@ uses
   uClienteService,
   uProdutoFiscalService,
   uMaterialService,
-  uProdutoFinanceiroService,
   uCorService,
   uACBrHelper,
   // Utils
@@ -60,7 +58,6 @@ uses
   // Views - fase 1 (redesenho): cadastros novos
   uFrmProdutoFiscal,
   uFrmMaterial,
-  uFrmProdutoFinanceiro,
   uFrmMovimentoFinanceiro,
   uFrmCompras,
   // Views - Fase 3

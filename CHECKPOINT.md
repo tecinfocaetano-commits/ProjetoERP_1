@@ -407,20 +407,39 @@ planejada e **nenhum** talão concluído; marcar "Consumo automático"; gerar. O
 × (1 + perda)`. Repetir **sem** marcar: deve falhar com "o mapa ainda não tem
 produção concluída".
 
+### Banco da fase 1 — PRONTO (migration `015_completar_fase1.sql`)
+
+Aplicado no `DADOS.FDB` real (backup `DADOS_backup_antes_015.fdb`), testado antes
+em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
+- **`STATUS_PRODUCAO`** ganhou CHECK (`ABERTO`/`PARCIALMENTE_CONCLUIDO`/`CONCLUIDO`).
+- **Fusão Fiscal+Financeiro** (decisão: "produto fiscal e financeiro é o mesmo"):
+  `PRODUTO_FISCAL` absorveu `TIPO` (S/O) + `VALOR`; `PRODUTO_FINANCEIRO` (vazia)
+  **removida**; tela de Produto Fiscal virou a única (ganhou Tipo/Valor); menu e
+  build limpos.
+- **Itens de nota → `PRODUTO_FISCAL`** (B2): `NOTA_ENTRADA_ITEM` + `MATERIAL_ID`
+  + `PRODUTO_FISCAL_ID`; `NOTA_SAIDA_ITEM` + `PRODUTO_FISCAL_ID`.
+- **Rename** `MOVIMENTO_FINANCEIRO.CONTAPRODUCAO_ID` → `CONTA_ID` (pend. 7).
+- **Cadastros geográficos (novos):** `PAIS`→`ESTADO`→`CIDADE`; seed Brasil + 27 UFs.
+
 ### Pendências desta fase (próximos passos)
 
-- **`STATUS_PRODUCAO` por talão**: atualizar a cada talão concluído
-  (ABERTO/PARCIALMENTE_CONCLUIDO/CONCLUÍDO) — coluna já existe, falta a regra.
+- **`STATUS_PRODUCAO` por talão**: a regra (recalcular a cada talão concluído) —
+  coluna e CHECK prontos, falta o hook no service de bipagem/conclusão.
+- **Notas lerem o `PRODUTO_FISCAL`**: colunas prontas; falta o Service preencher
+  NCM/CFOP/CST/alíquotas a partir do produto fiscal vinculado.
+- **Unificar CLIENTE + FORNECEDOR** (novo, decidido): tabela única com `TIPO`
+  (C=cliente/F=fornecedor). **Alto risco — adiado para etapa própria:** 49 refs
+  de `CLIENTE_ID`/`FORNECEDOR_ID` (NF-e, contas a receber/pagar, pedidos, API) e
+  estruturas diferentes (`NOME` vs `RAZAO_SOCIAL`/`NOME_FANTASIA`/`TIPO_PESSOA`/
+  `IE`). Precisa de plano detalhado + aprovação antes de mexer no núcleo fiscal.
+- **CRUD de País/Estado/Cidade** (telas) + eventual vínculo em CLIENTE/FORNECEDOR
+  (hoje ainda em texto).
 - **Re-layout da tela de Consumo** (topo = lista de mapas + item; rodapé = grid
   dos materiais com prevista/real/custo/status).
 - **Produto Produção com Cores**: expor `COR` + Ficha Técnica da Cor na tela de
   produto (`uFrmProdutos`) — models/services já prontos.
-- **Notas lerem o `PRODUTO_FISCAL`** (NCM/CFOP/CST/alíquotas vêm do produto
-  fiscal, não mais campos soltos).
 - **Compras → Nota de Entrada**: o botão Confirmar hoje só grava o pedido;
   falta gerar a `NOTA_ENTRADA` a partir dele.
-- **Corrigir nome da coluna** `MOVIMENTO_FINANCEIRO.CONTAPRODUCAO_ID` (nome
-  saiu estranho; é um vínculo de conta opcional).
 - **Android** (deferido): API `POST /api/orcamentos` + bottom nav Material +
   telas.
 

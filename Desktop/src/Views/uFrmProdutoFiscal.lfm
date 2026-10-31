@@ -256,6 +256,43 @@ inherited frmProdutoFiscal: TfrmProdutoFiscal
         Style = csDropDownList
         TabOrder = 15
       end
+      object lblTipo: TLabel
+        Left = 130
+        Height = 16
+        Top = 220
+        Width = 30
+        Caption = 'Tipo:'
+      end
+      object cmbTipo: TComboBox
+        Left = 130
+        Height = 25
+        Top = 238
+        Width = 170
+        Items.Strings = (
+          'Classificação'
+          'Serviço'
+          'Outros'
+        )
+        ItemIndex = 0
+        Style = csDropDownList
+        TabOrder = 16
+      end
+      object lblValor: TLabel
+        Left = 314
+        Height = 16
+        Top = 220
+        Width = 40
+        Caption = 'Valor:'
+      end
+      object edtValor: TEdit
+        Left = 314
+        Height = 25
+        Top = 238
+        Width = 110
+        Alignment = taRightJustify
+        TabOrder = 17
+        Text = '0,00'
+      end
       object lblObservacoes: TLabel
         Left = 16
         Height = 16
@@ -268,7 +305,7 @@ inherited frmProdutoFiscal: TfrmProdutoFiscal
         Height = 60
         Top = 292
         Width = 700
-        TabOrder = 16
+        TabOrder = 18
       end
     end
   end

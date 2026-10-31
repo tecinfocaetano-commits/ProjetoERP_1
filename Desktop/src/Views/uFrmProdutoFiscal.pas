@@ -4,9 +4,12 @@ unit uFrmProdutoFiscal;
 
 { ============================================================
   ERP 2026 - Fase 1 (redesenho) - Formulário: Produto Fiscal
-  Descrição: CRUD da classificação fiscal (NCM/CEST/CFOP/CST/
-             alíquotas). Reaproveitada por Material, Produto e
-             Produto Financeiro.
+  Descrição: CRUD do PRODUTO_FISCAL (unificado). Cobre a
+             classificação fiscal (NCM/CEST/CFOP/CST/alíquotas) E os
+             itens financeiros (serviço/outro) via TIPO + VALOR — o
+             antigo "Produto Financeiro" foi fundido aqui (decisão:
+             "produto fiscal e financeiro é o mesmo").
+             Reaproveitada por Material, Produto e itens de nota.
   ============================================================ }
 
 interface
@@ -51,6 +54,10 @@ type
     edtPesoBruto: TEdit;
     lblStatus: TLabel;
     cmbStatus: TComboBox;
+    lblTipo: TLabel;
+    cmbTipo: TComboBox;
+    lblValor: TLabel;
+    edtValor: TEdit;
     lblObservacoes: TLabel;
     mmoObservacoes: TMemo;
     procedure FormCreate(Sender: TObject);
@@ -66,6 +73,8 @@ type
   private
     FQuery: TSQLQuery;
     procedure ConfigurarGrid;
+    function TipoSelecionado: string;      // '', 'S' ou 'O'
+    procedure SelecionarTipo(const ATipo: string);
   end;
 
 var
@@ -100,6 +109,12 @@ begin
     cmbStatus.Items.Add('Inativo');
     cmbStatus.ItemIndex := 0;
 
+    cmbTipo.Items.Clear;
+    cmbTipo.Items.Add('Classificação');
+    cmbTipo.Items.Add('Serviço');
+    cmbTipo.Items.Add('Outros');
+    cmbTipo.ItemIndex := 0;
+
     FEstado := efNavegando;
     Position := poScreenCenter;
     BorderStyle := bsSizeable;
@@ -110,12 +125,34 @@ begin
   end;
 end;
 
+function TfrmProdutoFiscal.TipoSelecionado: string;
+begin
+  case cmbTipo.ItemIndex of
+    1: Result := 'S';
+    2: Result := 'O';
+  else
+    Result := '';
+  end;
+end;
+
+procedure TfrmProdutoFiscal.SelecionarTipo(const ATipo: string);
+begin
+  if ATipo = 'S' then
+    cmbTipo.ItemIndex := 1
+  else if ATipo = 'O' then
+    cmbTipo.ItemIndex := 2
+  else
+    cmbTipo.ItemIndex := 0;
+end;
+
 procedure TfrmProdutoFiscal.ConfigurarGrid;
 begin
   dbGrid.Columns.Clear;
   with dbGrid.Columns.Add do begin Title.Caption := 'ID'; FieldName := 'ID'; Width := 50; end;
   with dbGrid.Columns.Add do begin Title.Caption := 'Código'; FieldName := 'CODIGO'; Width := 80; end;
-  with dbGrid.Columns.Add do begin Title.Caption := 'Descrição'; FieldName := 'DESCRICAO'; Width := 220; end;
+  with dbGrid.Columns.Add do begin Title.Caption := 'Descrição'; FieldName := 'DESCRICAO'; Width := 200; end;
+  with dbGrid.Columns.Add do begin Title.Caption := 'Tipo'; FieldName := 'TIPO'; Width := 50; end;
+  with dbGrid.Columns.Add do begin Title.Caption := 'Valor'; FieldName := 'VALOR'; Width := 80; end;
   with dbGrid.Columns.Add do begin Title.Caption := 'NCM'; FieldName := 'NCM'; Width := 80; end;
   with dbGrid.Columns.Add do begin Title.Caption := 'CFOP'; FieldName := 'CFOP'; Width := 60; end;
   with dbGrid.Columns.Add do begin Title.Caption := 'Aliq ICMS'; FieldName := 'ALIQ_ICMS'; Width := 80; end;
@@ -126,7 +163,7 @@ procedure TfrmProdutoFiscal.CarregarDados(const AFiltro: string);
 var
   LSQL: string;
 begin
-  LSQL := 'SELECT ID, CODIGO, DESCRICAO, NCM, CFOP, ALIQ_ICMS, ATIVO FROM PRODUTO_FISCAL';
+  LSQL := 'SELECT ID, CODIGO, DESCRICAO, TIPO, VALOR, NCM, CFOP, ALIQ_ICMS, ATIVO FROM PRODUTO_FISCAL';
   if AFiltro <> '' then
     LSQL := LSQL + ' WHERE UPPER(DESCRICAO) CONTAINING UPPER(:FILTRO) OR CODIGO CONTAINING :FILTRO2 OR NCM CONTAINING :FILTRO3';
   LSQL := LSQL + ' ORDER BY DESCRICAO';
@@ -162,6 +199,8 @@ begin
   edtPesoLiquido.Enabled := AHabilitar;
   edtPesoBruto.Enabled := AHabilitar;
   cmbStatus.Enabled := AHabilitar;
+  cmbTipo.Enabled := AHabilitar;
+  edtValor.Enabled := AHabilitar;
   mmoObservacoes.Enabled := AHabilitar;
 end;
 
@@ -183,6 +222,8 @@ begin
   edtPesoLiquido.Text := '0,0000';
   edtPesoBruto.Text := '0,0000';
   cmbStatus.ItemIndex := 0;
+  cmbTipo.ItemIndex := 0;
+  edtValor.Text := '0,00';
   mmoObservacoes.Clear;
 end;
 
@@ -215,6 +256,8 @@ begin
       edtAliqCofins.Text := FormatFloat('#,##0.00', LQuery.FieldByName('ALIQ_COFINS').AsFloat);
       edtPesoLiquido.Text := FormatFloat('#,##0.0000', LQuery.FieldByName('PESO_LIQUIDO').AsFloat);
       edtPesoBruto.Text := FormatFloat('#,##0.0000', LQuery.FieldByName('PESO_BRUTO').AsFloat);
+      SelecionarTipo(LQuery.FieldByName('TIPO').AsString);
+      edtValor.Text := FormatFloat('#,##0.00', LQuery.FieldByName('VALOR').AsFloat);
 
       if LQuery.FieldByName('ATIVO').AsString = 'A' then
         cmbStatus.ItemIndex := 0
@@ -264,9 +307,9 @@ begin
       LQuery.SQL.Text :=
         'INSERT INTO PRODUTO_FISCAL (EMPRESA_ID, CODIGO, DESCRICAO, NCM, CEST, CFOP, ' +
         'CFOP_VENDA, CFOP_COMPRA, CST_ICMS, CST_PIS, CST_COFINS, ALIQ_ICMS, ' +
-        'ALIQ_PIS, ALIQ_COFINS, PESO_LIQUIDO, PESO_BRUTO, ATIVO, OBSERVACOES) ' +
+        'ALIQ_PIS, ALIQ_COFINS, PESO_LIQUIDO, PESO_BRUTO, TIPO, VALOR, ATIVO, OBSERVACOES) ' +
         'VALUES (:EMP, :COD, :DESC, :NCM, :CEST, :CFOP, :CFOPV, :CFOPC, :CSTI, ' +
-        ':CSTP, :CSTC, :ALII, :ALIP, :ALIC, :PESOL, :PESOB, :ATIVO, :OBS)';
+        ':CSTP, :CSTC, :ALII, :ALIP, :ALIC, :PESOL, :PESOB, :TIPO, :VALOR, :ATIVO, :OBS)';
       LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     end
     else
@@ -276,7 +319,8 @@ begin
         'CEST = :CEST, CFOP = :CFOP, CFOP_VENDA = :CFOPV, CFOP_COMPRA = :CFOPC, ' +
         'CST_ICMS = :CSTI, CST_PIS = :CSTP, CST_COFINS = :CSTC, ALIQ_ICMS = :ALII, ' +
         'ALIQ_PIS = :ALIP, ALIQ_COFINS = :ALIC, PESO_LIQUIDO = :PESOL, ' +
-        'PESO_BRUTO = :PESOB, ATIVO = :ATIVO, OBSERVACOES = :OBS WHERE ID = :ID';
+        'PESO_BRUTO = :PESOB, TIPO = :TIPO, VALOR = :VALOR, ATIVO = :ATIVO, ' +
+        'OBSERVACOES = :OBS WHERE ID = :ID';
       LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
     end;
 
@@ -295,6 +339,12 @@ begin
     LQuery.ParamByName('ALIC').AsFloat := StrToFloatDef(edtAliqCofins.Text, 0);
     LQuery.ParamByName('PESOL').AsFloat := StrToFloatDef(edtPesoLiquido.Text, 0);
     LQuery.ParamByName('PESOB').AsFloat := StrToFloatDef(edtPesoBruto.Text, 0);
+
+    if TipoSelecionado = '' then
+      LQuery.ParamByName('TIPO').Clear
+    else
+      LQuery.ParamByName('TIPO').AsString := TipoSelecionado;
+    LQuery.ParamByName('VALOR').AsFloat := StrToFloatDef(edtValor.Text, 0);
     LQuery.ParamByName('OBS').AsString := mmoObservacoes.Text;
 
     if cmbStatus.ItemIndex = 0 then

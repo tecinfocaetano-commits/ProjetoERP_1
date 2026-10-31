@@ -101,10 +101,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src/Models/uProdutoFinanceiro.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="src/Models/uCor.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -126,10 +122,6 @@
       </Unit>
       <Unit>
         <Filename Value="src/Services/uMaterialService.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src/Services/uProdutoFinanceiroService.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -215,13 +207,6 @@
         <Filename Value="src/Views/uFrmMaterial.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmMaterial"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src/Views/uFrmProdutoFinanceiro.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="frmProdutoFinanceiro"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>

@@ -49,7 +49,6 @@ type
     mnuFinContasReceber: TMenuItem;
     mnuFinContasPagar: TMenuItem;
     mnuFinCaixa: TMenuItem;
-    mnuFinProdFinanceiros: TMenuItem;
     mnuFinProdutoFiscal: TMenuItem;
     mnuFinMovimentacao: TMenuItem;
     mnuFiscal: TMenuItem;
@@ -91,7 +90,6 @@ procedure mnuVenNotaSaidaClick(Sender: TObject);
     procedure mnuFinContasReceberClick(Sender: TObject);
     procedure mnuFinContasPagarClick(Sender: TObject);
     procedure mnuFinCaixaClick(Sender: TObject);
-    procedure mnuFinProdFinanceirosClick(Sender: TObject);
     procedure mnuFinProdutoFiscalClick(Sender: TObject);
     procedure mnuFinMovimentacaoClick(Sender: TObject);
     procedure mnuSupMateriaisClick(Sender: TObject);
@@ -121,7 +119,7 @@ uses
   uFrmPedidoVenda, uFrmListaPedidos, uFrmOrcamento,
   uFrmPDV, uFrmContasReceber, uFrmContasPagar,
   uFrmNFe, uFrmCopiloto,
-  uFrmProdutoFiscal, uFrmMaterial, uFrmProdutoFinanceiro,
+  uFrmProdutoFiscal, uFrmMaterial,
   uFrmMovimentoFinanceiro, uFrmCompras,
   uFrmCaixa, uFrmConfiguracoes, uFrmPermissoes, uFrmCentralRelatorios;
 
@@ -319,11 +317,6 @@ begin
     Exit;
   end;
   AbrirFormulario(TfrmCaixa);
-end;
-
-procedure TfrmPrincipal.mnuFinProdFinanceirosClick(Sender: TObject);
-begin
-  AbrirFormulario(TfrmProdutoFinanceiro);
 end;
 
 procedure TfrmPrincipal.mnuFinProdutoFiscalClick(Sender: TObject);

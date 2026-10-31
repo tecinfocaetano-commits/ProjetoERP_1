@@ -13,9 +13,10 @@ separados por natureza, cada um com seu vínculo ao **produto fiscal (NF)**:
 
 - **MATERIAL** — insumo comprado e consumido na produção.
 - **PRODUTO_PRODUCAO** — item fabricado e usado em **pedido e venda**.
-- **PRODUTO_FINANCEIRO** — serviço/outros, usado na nota e no financeiro.
 - **PRODUTO_FISCAL** — classificação fiscal (NCM, CEST, CFOP, CST, alíquotas)
-  referenciada pelos cadastros acima.
+  referenciada pelos cadastros acima. **Também cobre serviço/outro** via
+  `TIPO` (S/O) + `VALOR` — o antigo `PRODUTO_FINANCEIRO` foi **fundido**
+  aqui (decisão: "produto fiscal e financeiro é o mesmo").
 
 ---
 
@@ -129,11 +130,11 @@ total de talões daquele produto.
 - **`PRODUTO_FISCAL_ID`** → combobox do vínculo fiscal
 - `PRECO_CUSTO`, `CONTROLA_ESTOQUE`, `ESTOQUE_MINIMO`, `ATIVO`, `DATA_CADASTRO`
 
-**`PRODUTO_FINANCEIRO`** — serviço / outros.
-- `ID`, `EMPRESA_ID`, `CODIGO`, `DESCRICAO`
-- **`TIPO`** (`S` = serviço, `O` = outros)
-- **`PRODUTO_FISCAL_ID`** → combobox do vínculo fiscal
-- `VALOR`, `ATIVO`, `DATA_CADASTRO`
+**`PRODUTO_FINANCEIRO`** — ~~serviço / outros.~~ **REMOVIDA (fundida no
+`PRODUTO_FISCAL`)** durante a implementação — "produto fiscal e financeiro
+é o mesmo". O `PRODUTO_FISCAL` passou a ter **`TIPO`** (`S` = serviço,
+`O` = outros, `NULL` = classificação pura) e **`VALOR`**. Uma tabela só;
+a tela de Produto Fiscal é a única (absorveu a de Produtos Financeiros).
 
 **`PRODUTO_PRODUCAO`** — **substitui o `PRODUTO` atual** (ver §5).
 - Toda a estrutura atual de `PRODUTO` (código, descrição, preços, estoque,
@@ -162,9 +163,10 @@ Precisam passar a referenciar também `MATERIAL` (e eventualmente
 `PRODUTO_FINANCEIRO`) → **ver ponto bloqueante B1**.
 
 **`ITEM_PEDIDO`** (`PRODUTO_ID`) → `PRODUTO_PRODUCAO_ID`.
-**`NOTA_SAIDA_ITEM`** (`PRODUTO_ID`) → `PRODUTO_PRODUCAO_ID`.
-**`NOTA_ENTRADA_ITEM`** (`PRODUTO_ID`) → **`MATERIAL_ID`** (compra de insumos)
-→ **ver ponto bloqueante B2**.
+**`NOTA_SAIDA_ITEM`** (`PRODUTO_ID`) → `PRODUTO_PRODUCAO_ID`; **+ `PRODUTO_FISCAL_ID`**
+(aditivo no 015).
+**`NOTA_ENTRADA_ITEM`** (`PRODUTO_ID`) → **`MATERIAL_ID`** (compra de insumos);
+**+ `MATERIAL_ID` + `PRODUTO_FISCAL_ID`** (aditivo no 015) → **ver ponto bloqueante B2**.
 **`MAPA_PRODUCAO_ITEM`** → `PRODUTO_PRODUCAO_ID`.
 
 ### 3.3 Hierarquia do produto de produção
@@ -180,6 +182,18 @@ PRODUTO_PRODUCAO ──┬── PRODUTO_FISCAL (combobox no cadastro)
                                            · cadastrar linha a linha
                                            · ou IMPORTAR vários (arquivo)
 ```
+
+### 3.4 Adicionais de implementação (migration 015)
+
+- **Cadastros geográficos (novos):** `PAIS` → `ESTADO` (UF + IBGE) →
+  `CIDADE` (IBGE + CEP padrão). Globais (sem `EMPRESA_ID`; dado geográfico
+  é universal). Seed: Brasil + 27 UFs (IBGE); `CIDADE` preenchida por
+  cadastro/importação. **CLIENTE/FORNECEDOR ainda usam `CIDADE`/`UF` em
+  texto** (unificação é etapa separada — alto risco, ver CHECKPOINT).
+- **Rename:** `MOVIMENTO_FINANCEIRO.CONTAPRODUCAO_ID` → **`CONTA_ID`**
+  (pendência 7; vínculo opcional de conta).
+- **`CONSUMO_MATERIAL_ITEM.STATUS_PRODUCAO`** ganhou CHECK
+  (`ABERTO`/`PARCIALMENTE_CONCLUIDO`/`CONCLUIDO`, sem acento).
 
 ---
 
