@@ -118,6 +118,10 @@ type
     { Fase 5: custo do material (CUSTO_MEDIO do estoque, senão
       PRECO_CUSTO do produto). }
     function  CustoMaterial(AProdutoId: Int64): Double;
+    { Recalcula CONSUMO_MATERIAL_ITEM.STATUS_PRODUCAO do mapa conforme
+      talões concluídos × total (exclui cancelados): ABERTO /
+      PARCIALMENTE_CONCLUIDO / CONCLUIDO. }
+    procedure AtualizarStatusProducaoConsumo(AMapaId: Int64);
   public
     constructor Create;
 
@@ -239,6 +243,58 @@ begin
   Result := TSQLQuery.Create(nil);
   Result.DataBase := FConexao.Connection;
   Result.Transaction := FConexao.Transaction;
+end;
+
+procedure TProducaoService.AtualizarStatusProducaoConsumo(AMapaId: Int64);
+var
+  LQry, LUpd: TSQLQuery;
+  LTotal, LConcluidos: Integer;
+  LNovoStatus: string;
+begin
+  if AMapaId <= 0 then
+    Exit;
+
+  LQry := NovaConsulta;
+  LUpd := NovaConsulta;
+  try
+    { total de talões do mapa (exclui cancelados) e quantos concluídos }
+    LQry.SQL.Text :=
+      'SELECT COUNT(*) AS TOTAL, ' +
+      '  SUM(CASE WHEN T.STATUS = ''CONCLUIDO'' THEN 1 ELSE 0 END) AS CONCLUIDOS ' +
+      'FROM TALAO T ' +
+      '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
+      'WHERE MI.MAPA_PRODUCAO_ID = :MAPA AND T.STATUS <> ''CANCELADO''';
+    LQry.ParamByName('MAPA').AsLargeInt := AMapaId;
+    LQry.Open;
+    LTotal := LQry.FieldByName('TOTAL').AsInteger;
+    LConcluidos := LQry.FieldByName('CONCLUIDOS').AsInteger;
+    LQry.Close;
+
+    if (LTotal > 0) and (LConcluidos >= LTotal) then
+      LNovoStatus := 'CONCLUIDO'
+    else if LConcluidos > 0 then
+      LNovoStatus := 'PARCIALMENTE_CONCLUIDO'
+    else
+      LNovoStatus := 'ABERTO';
+
+    { consumo é por mapa (agregado por material): aplica o andamento a
+      todos os itens de consumo do mapa; só grava o que mudou }
+    LUpd.SQL.Text :=
+      'UPDATE CONSUMO_MATERIAL_ITEM SET STATUS_PRODUCAO = :NOVO ' +
+      'WHERE CONSUMO_MATERIAL_ID IN ' +
+      '  (SELECT ID FROM CONSUMO_MATERIAL WHERE MAPA_PRODUCAO_ID = :MAPA) ' +
+      '  AND COALESCE(STATUS_PRODUCAO, '''') <> :NOVO';
+    LUpd.ParamByName('NOVO').AsString := LNovoStatus;
+    LUpd.ParamByName('MAPA').AsLargeInt := AMapaId;
+    LUpd.ExecSQL;
+
+    RegistrarAuditoria('CONSUMO_MATERIAL_ITEM', 'STATUS_PRODUCAO', AMapaId,
+      '', LNovoStatus + '; CONCLUIDOS=' + IntToStr(LConcluidos) +
+      '; TOTAL=' + IntToStr(LTotal));
+  finally
+    LQry.Free;
+    LUpd.Free;
+  end;
 end;
 
 function TProducaoService.ProximoNumeroMapa(AEmpresaId: Int64): Integer;
@@ -1140,7 +1196,7 @@ var
   LTalao, LUpd: TSQLQuery;
   LStatus, LStatusItem: string;
   LNumero: Integer;
-  LItemId: Int64;
+  LItemId, LMapaId: Int64;
 begin
   if Trim(AMotivo) = '' then
     raise EProducao.Create('Informe o motivo do cancelamento do talão.');
@@ -1152,7 +1208,7 @@ begin
     try
       LTalao.SQL.Text :=
         'SELECT T.NUMERO, T.STATUS, T.MAPA_PRODUCAO_ITEM_ID, ' +
-        '  MI.STATUS AS ITEM_STATUS ' +
+        '  MI.STATUS AS ITEM_STATUS, MI.MAPA_PRODUCAO_ID ' +
         'FROM TALAO T ' +
         '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
         'WHERE T.ID = :ID';
@@ -1163,6 +1219,7 @@ begin
       LNumero := LTalao.FieldByName('NUMERO').AsInteger;
       LStatus := Trim(LTalao.FieldByName('STATUS').AsString);
       LItemId := LTalao.FieldByName('MAPA_PRODUCAO_ITEM_ID').AsLargeInt;
+      LMapaId := LTalao.FieldByName('MAPA_PRODUCAO_ID').AsLargeInt;
       LStatusItem := Trim(LTalao.FieldByName('ITEM_STATUS').AsString);
       LTalao.Close;
 
@@ -1209,6 +1266,9 @@ begin
         else
           LUpd.Close;
       end;
+
+      { cancelamento muda o total de talões: recalcula o andamento }
+      AtualizarStatusProducaoConsumo(LMapaId);
 
       FConexao.Confirmar;
     except
@@ -1407,6 +1467,9 @@ begin
         LUpd.ParamByName('ID').AsLargeInt := LMapaId;
         LUpd.ExecSQL;
 
+        { andamento do consumo do mapa acompanha o início do talão }
+        AtualizarStatusProducaoConsumo(LMapaId);
+
         Result.Etapa := 'INICIO';
         Result.StatusNovo := 'EM_PRODUCAO';
         Result.Mensagem := Format('Talão %d iniciado. Bom trabalho!', [LNumero]);
@@ -1472,6 +1535,9 @@ begin
           ele só vira "Produzido" quando toda a quantidade mapeada
           foi produzida (ReavaliarPedido decide) }
         ReavaliarPedido(LPedidoId);
+
+        { andamento do consumo do mapa acompanha a conclusão do talão }
+        AtualizarStatusProducaoConsumo(LMapaId);
 
         Result.Etapa := 'CONCLUSAO';
         Result.StatusNovo := 'CONCLUIDO';

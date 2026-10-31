@@ -24,7 +24,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, Grids, DBGrids, DB, SQLDB, DateUtils, Menus,
   LR_Class, LR_DBSet, LR_Barc, lr_e_fclpdf,
-  uConexao, uSessao, uProducaoService, uPedidoStatus, uPermissao;
+  uConexao, uSessao, uProducaoService, uPedidoStatus, uMapaProducaoStatus, uPermissao;
 
 type
   { TfrmMapaProducao }
@@ -197,21 +197,6 @@ uses
 const
   TOL_QTD = 0.0001;
 
-{ Descrição amigável do status do mapa (a tela não depende do literal). }
-function DescricaoStatusMapa(const AStatus: string): string;
-begin
-  if AStatus = 'ABERTO' then
-    Result := 'Aberto'
-  else if AStatus = 'EM_PRODUCAO' then
-    Result := 'Em produção'
-  else if AStatus = 'CONCLUIDO' then
-    Result := 'Concluído'
-  else if AStatus = 'CANCELADO' then
-    Result := 'Cancelado'
-  else
-    Result := Trim(AStatus);
-end;
-
 { Converte o texto digitado em quantidade, aceitando vírgula ou ponto. }
 function TfrmMapaProducao.LerQuantidade(const ATexto: string): Double;
 var
@@ -355,10 +340,7 @@ begin
   FMapas.SQL.Text :=
     'SELECT M.ID, M.NUMERO, M.DATA_CRIACAO, M.DATA_PREVISTA, M.DATA_FIM, ' +
     '  M.STATUS, PV.NUMERO AS PEDIDO, COALESCE(C.NOME, ''(sem cliente)'') AS CLIENTE, ' +
-    '  CASE M.STATUS WHEN ''ABERTO'' THEN ''Aberto'' ' +
-    '       WHEN ''EM_PRODUCAO'' THEN ''Em produção'' ' +
-    '       WHEN ''CONCLUIDO'' THEN ''Concluído'' ' +
-    '       WHEN ''CANCELADO'' THEN ''Cancelado'' ELSE M.STATUS END AS STATUS_DESC, ' +
+    '  ' + SqlCaseStatusMapa('M.STATUS') + ' AS STATUS_DESC, ' +
     '  (SELECT COUNT(*) FROM MAPA_PRODUCAO_ITEM MI ' +
     '     WHERE MI.MAPA_PRODUCAO_ID = M.ID AND MI.STATUS <> ''CANCELADO'') AS ITENS ' +
     'FROM MAPA_PRODUCAO M ' +
@@ -468,7 +450,7 @@ begin
       LStatus := Trim(LCabecalho.FieldByName('STATUS').AsString);
       lblDetalheTitulo.Caption := Format('Mapa %s   |   Pedido %s   |   %s   |   %s',
         [Trim(LCabecalho.FieldByName('NUMERO').AsString), LPedido, LCliente,
-         DescricaoStatusMapa(LStatus)]);
+         DescricaoDoStatus(LStatus)]);
     end;
   finally
     LCabecalho.Free;
@@ -1064,7 +1046,7 @@ begin
   begin
     MessageDlg(Format(
       'O mapa nº %d está como "%s": talões só podem ser gerados em mapa aberto ou em produção.',
-      [NumeroDoMapa(FMapaId), DescricaoStatusMapa(LStatus)]),
+      [NumeroDoMapa(FMapaId), DescricaoDoStatus(LStatus)]),
       mtWarning, [mbOK], 0);
     Exit;
   end;
@@ -1579,7 +1561,7 @@ begin
   begin
     MessageDlg(Format(
       'O mapa nº %d está como "%s": talões só podem ser impressos em mapa aberto ou em produção.',
-      [NumeroDoMapa(FMapaId), DescricaoStatusMapa(LStatus)]),
+      [NumeroDoMapa(FMapaId), DescricaoDoStatus(LStatus)]),
       mtWarning, [mbOK], 0);
     Exit;
   end;

@@ -24,7 +24,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Grids, SQLDB,
-  uConexao, uSessao, uProducaoService, uPermissao;
+  uConexao, uSessao, uProducaoService, uMapaProducaoStatus, uPermissao;
 
 type
   { TfrmConsumoMaterial }
@@ -169,7 +169,7 @@ begin
         FMapaIds[LIdx] := LQry.FieldByName('ID').AsLargeInt;
         cmbMapas.Items.Add(Format('Mapa nº %d - %s',
           [LQry.FieldByName('NUMERO').AsInteger,
-           Trim(LQry.FieldByName('STATUS').AsString)]));
+           DescricaoDoStatus(Trim(LQry.FieldByName('STATUS').AsString))]));
         LQry.Next;
       end;
     finally

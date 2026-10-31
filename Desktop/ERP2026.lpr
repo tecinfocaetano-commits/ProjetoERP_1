@@ -30,6 +30,8 @@ uses
   uUnidade,
   uEstoque,
   uPedidoVenda,
+  uPedidoStatus,
+  uMapaProducaoStatus,
   // Models - fase 1 redesenho (suprimentos/fiscal/financeiro)
   uProdutoFiscal,
   uMaterial,
