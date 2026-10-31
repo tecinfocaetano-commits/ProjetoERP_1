@@ -22,10 +22,10 @@
   Permissões, Relatórios ▸ Central de Relatórios) estão implementadas e ligadas ao
   menu — seção própria abaixo + `TESTES_EXECUTADOS.md`. Os itens deixaram de ser
   inertes (todos têm `OnClick`).
-- **Redesenho do layout Android (Material You) concluído (30/10)**: tema
-  Material 3 com cores dinâmicas (Android 12+) + paleta estática claro/escuro
-  como fallback; 8 layouts redesenhados com IDs intactos — seção própria abaixo
-  + `TESTES_EXECUTADOS.md`.
+- **Redesenho do layout Android (Material You) concluído e commitado (30/10)** —
+  `d16500e`: tema Material 3 com cores dinâmicas (Android 12+) + paleta estática
+  claro/escuro como fallback; 8 layouts redesenhados com IDs intactos — seção
+  própria abaixo + `TESTES_EXECUTADOS.md`.
 - **Pendência SHA-256 concluída (19/10)**: senhas em hash SHA-256 no Desktop,
   API e semente (`uSenhaHash.pas`, migração progressiva no login) — ver
   `Documentacao\TESTES_EXECUTADOS.md` §8.
@@ -270,7 +270,7 @@ regenerado (Mapa de Produção segue = 21). Evidências em
 
 ---
 
-## Redesenho do layout Android — Material You (concluído em 30/10)
+## Redesenho do layout Android — Material You (concluído e commitado em 30/10 — `d16500e`)
 
 Pedido explícito: modernizar o visual do app Android. Escopo acordado: **só
 visual** (nenhuma lógica de Activity/ViewModel/API foi tocada), direção
