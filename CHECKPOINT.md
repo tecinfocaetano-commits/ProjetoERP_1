@@ -17,10 +17,11 @@
   corrida), `TConexao.GetInstance` **não mudou** (as 6 rotas intocadas), tamanho
   via `ERP_API_POOL` (padrão 8) e reciclagem de vagas por detecção de thread
   morta.
-- **Pendência "itens de menu inertes" concluída (30/10)**: as 4 telas novas
-  (Financeiro ▸ Caixa, Sistema ▸ Configurações, Sistema ▸ Permissões, Relatórios ▸
-  Central de Relatórios) estão implementadas e ligadas ao menu — seção própria abaixo
-  + `TESTES_EXECUTADOS.md`. Os itens deixaram de ser inertes (todos têm `OnClick`).
+- **Pendência "itens de menu inertes" concluída e commitada (30/10)** — `f746c12`:
+  as 4 telas novas (Financeiro ▸ Caixa, Sistema ▸ Configurações, Sistema ▸
+  Permissões, Relatórios ▸ Central de Relatórios) estão implementadas e ligadas ao
+  menu — seção própria abaixo + `TESTES_EXECUTADOS.md`. Os itens deixaram de ser
+  inertes (todos têm `OnClick`).
 - **Pendência SHA-256 concluída (19/10)**: senhas em hash SHA-256 no Desktop,
   API e semente (`uSenhaHash.pas`, migração progressiva no login) — ver
   `Documentacao\TESTES_EXECUTADOS.md` §8.
@@ -217,7 +218,7 @@ requisições simultâneas disputariam a **mesma** conexão e a **mesma** transa
 
 ---
 
-## Telas de administração (concluído em 30/10)
+## Telas de administração (concluído e commitado em 30/10 — `f746c12`)
 
 Os 4 itens que eram inertes no menu principal foram implementados e ligados
 (`OnClick`): **Financeiro ▸ Caixa**, **Sistema ▸ Configurações**,
