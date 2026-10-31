@@ -30,11 +30,20 @@ uses
   uUnidade,
   uEstoque,
   uPedidoVenda,
+  // Models - fase 1 redesenho (suprimentos/fiscal/financeiro)
+  uProdutoFiscal,
+  uMaterial,
+  uProdutoFinanceiro,
+  uCor,
   // Repositories
   uRepositoryBase,
   // Services
   uServiceBase,
   uClienteService,
+  uProdutoFiscalService,
+  uMaterialService,
+  uProdutoFinanceiroService,
+  uCorService,
   uACBrHelper,
   // Utils
   uValidacoes,
@@ -48,6 +57,12 @@ uses
   uFrmProdutos,
   uFrmCategorias,
   uFrmUsuarios,
+  // Views - fase 1 (redesenho): cadastros novos
+  uFrmProdutoFiscal,
+  uFrmMaterial,
+  uFrmProdutoFinanceiro,
+  uFrmMovimentoFinanceiro,
+  uFrmCompras,
   // Views - Fase 3
   uFrmMovEstoque,
   uFrmKardex,

@@ -93,6 +93,22 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src/Models/uProdutoFiscal.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Models/uMaterial.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Models/uProdutoFinanceiro.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Models/uCor.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/Repositories/uRepositoryBase.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -102,6 +118,22 @@
       </Unit>
       <Unit>
         <Filename Value="src/Services/uClienteService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uProdutoFiscalService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uMaterialService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uProdutoFinanceiroService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uCorService.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -169,6 +201,41 @@
         <Filename Value="src/Views/uFrmUsuarios.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmUsuarios"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmProdutoFiscal.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmProdutoFiscal"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmMaterial.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmMaterial"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmProdutoFinanceiro.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmProdutoFinanceiro"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmMovimentoFinanceiro.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmMovimentoFinanceiro"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmCompras.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmCompras"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>

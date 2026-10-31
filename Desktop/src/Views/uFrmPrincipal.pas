@@ -17,6 +17,9 @@ type
   { TfrmPrincipal }
   TfrmPrincipal = class(TForm)
     MainMenu1: TMainMenu;
+    mnuSuprimentos: TMenuItem;
+    mnuSupMateriais: TMenuItem;
+    mnuSupCompras: TMenuItem;
     mnuCadastros: TMenuItem;
     mnuCadClientes: TMenuItem;
     mnuCadFornecedores: TMenuItem;
@@ -28,9 +31,7 @@ type
     mnuEstMovimentacao: TMenuItem;
     mnuEstInventario: TMenuItem;
     mnuEstKardex: TMenuItem;
-    mnuCompras: TMenuItem;
     mnuComNotaEntrada: TMenuItem;
-    mnuVendas: TMenuItem;
     mnuVenPedidos: TMenuItem;
     mnuVenOrcamentos: TMenuItem;
     mnuSep3: TMenuItem;
@@ -48,6 +49,9 @@ type
     mnuFinContasReceber: TMenuItem;
     mnuFinContasPagar: TMenuItem;
     mnuFinCaixa: TMenuItem;
+    mnuFinProdFinanceiros: TMenuItem;
+    mnuFinProdutoFiscal: TMenuItem;
+    mnuFinMovimentacao: TMenuItem;
     mnuFiscal: TMenuItem;
     mnuFisNFe: TMenuItem;
     mnuRelatorios: TMenuItem;
@@ -87,6 +91,11 @@ procedure mnuVenNotaSaidaClick(Sender: TObject);
     procedure mnuFinContasReceberClick(Sender: TObject);
     procedure mnuFinContasPagarClick(Sender: TObject);
     procedure mnuFinCaixaClick(Sender: TObject);
+    procedure mnuFinProdFinanceirosClick(Sender: TObject);
+    procedure mnuFinProdutoFiscalClick(Sender: TObject);
+    procedure mnuFinMovimentacaoClick(Sender: TObject);
+    procedure mnuSupMateriaisClick(Sender: TObject);
+    procedure mnuSupComprasClick(Sender: TObject);
     procedure mnuFisNFeClick(Sender: TObject);
     procedure mnuIACopilotoClick(Sender: TObject);
     procedure mnuRelCentralClick(Sender: TObject);
@@ -112,6 +121,8 @@ uses
   uFrmPedidoVenda, uFrmListaPedidos, uFrmOrcamento,
   uFrmPDV, uFrmContasReceber, uFrmContasPagar,
   uFrmNFe, uFrmCopiloto,
+  uFrmProdutoFiscal, uFrmMaterial, uFrmProdutoFinanceiro,
+  uFrmMovimentoFinanceiro, uFrmCompras,
   uFrmCaixa, uFrmConfiguracoes, uFrmPermissoes, uFrmCentralRelatorios;
 
 {$R *.lfm}
@@ -308,6 +319,31 @@ begin
     Exit;
   end;
   AbrirFormulario(TfrmCaixa);
+end;
+
+procedure TfrmPrincipal.mnuFinProdFinanceirosClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmProdutoFinanceiro);
+end;
+
+procedure TfrmPrincipal.mnuFinProdutoFiscalClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmProdutoFiscal);
+end;
+
+procedure TfrmPrincipal.mnuFinMovimentacaoClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmMovimentoFinanceiro);
+end;
+
+procedure TfrmPrincipal.mnuSupMateriaisClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmMaterial);
+end;
+
+procedure TfrmPrincipal.mnuSupComprasClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmCompras);
 end;
 
 // === FISCAL ===

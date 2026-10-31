@@ -1,0 +1,336 @@
+object frmCompras: TfrmCompras
+  Left = 200
+  Height = 620
+  Top = 100
+  Width = 900
+  Caption = 'Compras - Pedido de Compra'
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 50
+    Top = 0
+    Width = 900
+    Align = alTop
+    Color = clNavy
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 24
+      Top = 12
+      Width = 300
+      Caption = 'Pedido de Compra de Materiais'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlCabecalho: TPanel
+    Left = 0
+    Height = 80
+    Top = 50
+    Width = 900
+    Align = alTop
+    TabOrder = 1
+    object lblNumero: TLabel
+      Left = 16
+      Height = 16
+      Top = 10
+      Width = 50
+      Caption = 'Número:'
+    end
+    object edtNumero: TEdit
+      Left = 16
+      Height = 25
+      Top = 28
+      Width = 80
+      ReadOnly = True
+      TabOrder = 0
+    end
+    object lblFornecedor: TLabel
+      Left = 110
+      Height = 16
+      Top = 10
+      Width = 70
+      Caption = 'Fornecedor: *'
+    end
+    object cmbFornecedor: TComboBox
+      Left = 110
+      Height = 25
+      Top = 28
+      Width = 300
+      Style = csDropDownList
+      TabOrder = 1
+    end
+    object lblDataEmissao: TLabel
+      Left = 424
+      Height = 16
+      Top = 10
+      Width = 80
+      Caption = 'Data Emissão:'
+    end
+    object edtDataEmissao: TEdit
+      Left = 424
+      Height = 25
+      Top = 28
+      Width = 100
+      TabOrder = 2
+      Text = '00/00/0000'
+    end
+    object lblDataEntrega: TLabel
+      Left = 538
+      Height = 16
+      Top = 10
+      Width = 85
+      Caption = 'Data Entrega:'
+    end
+    object edtDataEntrega: TEdit
+      Left = 538
+      Height = 25
+      Top = 28
+      Width = 100
+      TabOrder = 3
+      Text = '00/00/0000'
+    end
+    object lblStatus: TLabel
+      Left = 652
+      Height = 16
+      Top = 10
+      Width = 50
+      Caption = 'Status:'
+    end
+    object cmbStatus: TComboBox
+      Left = 652
+      Height = 25
+      Top = 28
+      Width = 130
+      Items.Strings = (
+        'Aberto'
+        'Confirmado'
+        'Cancelado'
+      )
+      ItemIndex = 0
+      Style = csDropDownList
+      TabOrder = 4
+    end
+  end
+  object pnlItens: TPanel
+    Left = 0
+    Height = 300
+    Top = 130
+    Width = 900
+    Align = alClient
+    TabOrder = 2
+    object lblItens: TLabel
+      Left = 16
+      Height = 16
+      Top = 4
+      Width = 120
+      Caption = 'Materiais do pedido:'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object pnlAddItem: TPanel
+      Left = 0
+      Height = 50
+      Top = 24
+      Width = 900
+      Align = alTop
+      TabOrder = 0
+      object lblMaterial: TLabel
+        Left = 16
+        Height = 16
+        Top = 4
+        Width = 75
+        Caption = 'Material ID: *'
+      end
+      object edtMaterial: TEdit
+        Left = 16
+        Height = 25
+        Top = 22
+        Width = 80
+        TabOrder = 0
+      end
+      object btnBuscarMaterial: TBitBtn
+        Left = 102
+        Height = 27
+        Top = 21
+        Width = 80
+        Caption = 'Buscar'
+        OnClick = btnBuscarMaterialClick
+        TabOrder = 1
+      end
+      object lblMaterialDesc: TLabel
+        Left = 190
+        Height = 16
+        Top = 26
+        Width = 120
+        Caption = '(material)'
+      end
+      object lblQtd: TLabel
+        Left = 460
+        Height = 16
+        Top = 4
+        Width = 60
+        Caption = 'Qtd: *'
+      end
+      object edtQtd: TEdit
+        Left = 460
+        Height = 25
+        Top = 22
+        Width = 90
+        Alignment = taRightJustify
+        TabOrder = 2
+        Text = '1,0000'
+      end
+      object lblVlrUnit: TLabel
+        Left = 564
+        Height = 16
+        Top = 4
+        Width = 75
+        Caption = 'Vlr Unitário:'
+      end
+      object edtVlrUnit: TEdit
+        Left = 564
+        Height = 25
+        Top = 22
+        Width = 100
+        Alignment = taRightJustify
+        TabOrder = 3
+        Text = '0,0000'
+      end
+      object btnAddItem: TBitBtn
+        Left = 680
+        Height = 27
+        Top = 21
+        Width = 90
+        Caption = 'Adicionar'
+        OnClick = btnAddItemClick
+        TabOrder = 4
+      end
+      object btnRemoverItem: TBitBtn
+        Left = 780
+        Height = 27
+        Top = 21
+        Width = 90
+        Caption = 'Remover'
+        OnClick = btnRemoverItemClick
+        TabOrder = 5
+      end
+    end
+    object sgItens: TStringGrid
+      Left = 0
+      Height = 226
+      Top = 74
+      Width = 892
+      Align = alClient
+      ColCount = 5
+      FixedCols = 0
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSelect]
+      TabOrder = 1
+    end
+  end
+  object pnlTotais: TPanel
+    Left = 0
+    Height = 50
+    Top = 430
+    Width = 900
+    Align = alBottom
+    TabOrder = 3
+    object lblSubtotal: TLabel
+      Left = 400
+      Height = 16
+      Top = 8
+      Width = 55
+      Caption = 'Subtotal:'
+    end
+    object edtSubtotal: TEdit
+      Left = 400
+      Height = 25
+      Top = 24
+      Width = 110
+      ReadOnly = True
+      Alignment = taRightJustify
+      TabOrder = 0
+      Text = '0,00'
+    end
+    object lblTotal: TLabel
+      Left = 530
+      Height = 16
+      Top = 8
+      Width = 40
+      Caption = 'Total:'
+    end
+    object edtTotal: TEdit
+      Left = 530
+      Height = 25
+      Top = 24
+      Width = 110
+      ReadOnly = True
+      Alignment = taRightJustify
+      TabOrder = 1
+      Text = '0,00'
+    end
+    object lblObs: TLabel
+      Left = 16
+      Height = 16
+      Top = 8
+      Width = 85
+      Caption = 'Observações:'
+    end
+    object mmoObs: TMemo
+      Left = 16
+      Height = 28
+      Top = 24
+      Width = 360
+      TabOrder = 2
+    end
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 50
+    Top = 480
+    Width = 900
+    Align = alBottom
+    TabOrder = 4
+    object btnSalvar: TBitBtn
+      Left = 16
+      Height = 32
+      Top = 8
+      Width = 110
+      Caption = 'Salvar'
+      OnClick = btnSalvarClick
+      TabOrder = 0
+    end
+    object btnConfirmar: TBitBtn
+      Left = 136
+      Height = 32
+      Top = 8
+      Width = 130
+      Caption = 'Confirmar'
+      OnClick = btnConfirmarClick
+      TabOrder = 1
+    end
+    object btnCancelar: TBitBtn
+      Left = 276
+      Height = 32
+      Top = 8
+      Width = 110
+      Caption = 'Cancelar'
+      OnClick = btnCancelarClick
+      TabOrder = 2
+    end
+    object btnFechar: TBitBtn
+      Left = 770
+      Height = 32
+      Top = 8
+      Width = 110
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 3
+    end
+  end
+end

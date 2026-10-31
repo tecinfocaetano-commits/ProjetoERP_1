@@ -1,0 +1,126 @@
+inherited frmProdutoFinanceiro: TfrmProdutoFinanceiro
+  Height = 520
+  Width = 850
+  Caption = 'Produtos Financeiros'
+  inherited PageControl1: TPageControl
+    inherited tsCadastro: TTabSheet
+      object lblCodigo: TLabel
+        Left = 16
+        Height = 16
+        Top = 10
+        Width = 50
+        Caption = 'Código:'
+      end
+      object edtCodigo: TEdit
+        Left = 16
+        Height = 25
+        Top = 28
+        Width = 120
+        MaxLength = 30
+        TabOrder = 0
+      end
+      object lblDescricao: TLabel
+        Left = 150
+        Height = 16
+        Top = 10
+        Width = 80
+        Caption = 'Descrição: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtDescricao: TEdit
+        Left = 150
+        Height = 25
+        Top = 28
+        Width = 400
+        MaxLength = 100
+        TabOrder = 1
+      end
+      object lblTipo: TLabel
+        Left = 16
+        Height = 16
+        Top = 62
+        Width = 30
+        Caption = 'Tipo:'
+      end
+      object cmbTipo: TComboBox
+        Left = 16
+        Height = 25
+        Top = 80
+        Width = 140
+        Items.Strings = (
+          'Serviço'
+          'Outros'
+        )
+        ItemIndex = 0
+        Style = csDropDownList
+        TabOrder = 2
+      end
+      object lblValor: TLabel
+        Left = 170
+        Height = 16
+        Top = 62
+        Width = 40
+        Caption = 'Valor:'
+      end
+      object edtValor: TEdit
+        Left = 170
+        Height = 25
+        Top = 80
+        Width = 110
+        Alignment = taRightJustify
+        TabOrder = 3
+        Text = '0,00'
+      end
+      object lblProdutoFiscal: TLabel
+        Left = 300
+        Height = 16
+        Top = 62
+        Width = 85
+        Caption = 'Produto Fiscal:'
+      end
+      object cmbProdutoFiscal: TComboBox
+        Left = 300
+        Height = 25
+        Top = 80
+        Width = 300
+        Style = csDropDownList
+        TabOrder = 4
+      end
+      object lblStatus: TLabel
+        Left = 16
+        Height = 16
+        Top = 116
+        Width = 50
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox
+        Left = 16
+        Height = 25
+        Top = 134
+        Width = 100
+        Items.Strings = (
+          'Ativo'
+          'Inativo'
+        )
+        ItemIndex = 0
+        Style = csDropDownList
+        TabOrder = 5
+      end
+      object lblObservacoes: TLabel
+        Left = 16
+        Height = 16
+        Top = 170
+        Width = 80
+        Caption = 'Observações:'
+      end
+      object mmoObservacoes: TMemo
+        Left = 16
+        Height = 60
+        Top = 188
+        Width = 700
+        TabOrder = 6
+      end
+    end
+  end
+end

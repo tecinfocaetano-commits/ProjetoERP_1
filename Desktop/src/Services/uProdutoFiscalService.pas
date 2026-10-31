@@ -1,0 +1,205 @@
+unit uProdutoFiscalService;
+
+{$mode objfpc}{$H+}
+
+{ ============================================================
+  ERP 2026 - Service: Produto Fiscal
+  Descrição: Regras de negócio para classificação fiscal
+  ============================================================ }
+
+interface
+
+uses
+  Classes, SysUtils, SQLDB, uServiceBase, uRepositoryBase, uProdutoFiscal,
+  uSessao;
+
+type
+  { TProdutoFiscalService }
+  TProdutoFiscalService = class(TServiceBase)
+  private
+    FRepo: TRepositoryBase;
+    function CodigoExiste(const ACodigo: string; AExcluirId: Int64 = 0): Boolean;
+    procedure Validar(AObj: TProdutoFiscal);
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    function BuscarPorId(AId: Int64): TProdutoFiscal;
+    function BuscarTodos(const AFiltro: string = ''): TSQLQuery;
+    function Inserir(AObj: TProdutoFiscal): Int64;
+    function Atualizar(AObj: TProdutoFiscal): Boolean;
+    function Excluir(AId: Int64): Boolean;
+    function Pesquisar(const ATermo: string): TSQLQuery;
+  end;
+
+implementation
+
+{ TProdutoFiscalService }
+
+constructor TProdutoFiscalService.Create;
+begin
+  FRepo := TRepositoryBase.Create('PRODUTO_FISCAL');
+  inherited Create(FRepo);
+end;
+
+destructor TProdutoFiscalService.Destroy;
+begin
+  FRepo.Free;
+  inherited Destroy;
+end;
+
+procedure TProdutoFiscalService.Validar(AObj: TProdutoFiscal);
+begin
+  ValidarCampoObrigatorio(AObj.Descricao, 'Descrição');
+  if CodigoExiste(AObj.Codigo, AObj.Id) then
+    raise Exception.Create('Já existe um produto fiscal com este código.');
+end;
+
+function TProdutoFiscalService.CodigoExiste(const ACodigo: string;
+  AExcluirId: Int64): Boolean;
+var
+  LCond: string;
+  LNome: array of string;
+  LVal: array of string;
+begin
+  { código vazio não pode barrar (campo opcional) }
+  if Trim(ACodigo) = '' then
+  begin
+    Result := False;
+    Exit;
+  end;
+
+  if AExcluirId > 0 then
+  begin
+    LCond := 'CODIGO = :COD AND ID <> :EXC';
+    LNome := ['COD', 'EXC'];
+    LVal := [ACodigo, IntToStr(AExcluirId)];
+  end
+  else
+  begin
+    LCond := 'CODIGO = :COD';
+    LNome := ['COD'];
+    LVal := [ACodigo];
+  end;
+  Result := FRepo.ContarParam(LCond, LNome, LVal) > 0;
+end;
+
+function TProdutoFiscalService.BuscarPorId(AId: Int64): TProdutoFiscal;
+var
+  LQuery: TSQLQuery;
+begin
+  Result := nil;
+  LQuery := FRepo.BuscarPorId(AId);
+  try
+    if not LQuery.IsEmpty then
+    begin
+      Result := TProdutoFiscal.Create;
+      Result.Id := LQuery.FieldByName('ID').AsLargeInt;
+      Result.EmpresaId := LQuery.FieldByName('EMPRESA_ID').AsLargeInt;
+      Result.Codigo := LQuery.FieldByName('CODIGO').AsString;
+      Result.Descricao := LQuery.FieldByName('DESCRICAO').AsString;
+      Result.Ncm := LQuery.FieldByName('NCM').AsString;
+      Result.Cest := LQuery.FieldByName('CEST').AsString;
+      Result.Cfop := LQuery.FieldByName('CFOP').AsString;
+      Result.CfopVenda := LQuery.FieldByName('CFOP_VENDA').AsString;
+      Result.CfopCompra := LQuery.FieldByName('CFOP_COMPRA').AsString;
+      Result.CstIcms := LQuery.FieldByName('CST_ICMS').AsString;
+      Result.CstPis := LQuery.FieldByName('CST_PIS').AsString;
+      Result.CstCofins := LQuery.FieldByName('CST_COFINS').AsString;
+      Result.AliqIcms := LQuery.FieldByName('ALIQ_ICMS').AsFloat;
+      Result.AliqPis := LQuery.FieldByName('ALIQ_PIS').AsFloat;
+      Result.AliqCofins := LQuery.FieldByName('ALIQ_COFINS').AsFloat;
+      Result.PesoLiquido := LQuery.FieldByName('PESO_LIQUIDO').AsFloat;
+      Result.PesoBruto := LQuery.FieldByName('PESO_BRUTO').AsFloat;
+      Result.Ativo := LQuery.FieldByName('ATIVO').AsString[1];
+      Result.Observacoes := LQuery.FieldByName('OBSERVACOES').AsString;
+    end;
+  finally
+    if LQuery.Active then
+      LQuery.Close;
+  end;
+end;
+
+function TProdutoFiscalService.BuscarTodos(const AFiltro: string): TSQLQuery;
+begin
+  Result := FRepo.BuscarTodosParam(
+    'EMPRESA_ID = :EMP',
+    ['EMP'],
+    [IntToStr(TSessao.GetInstance.EmpresaId)],
+    'DESCRICAO');
+end;
+
+function TProdutoFiscalService.Inserir(AObj: TProdutoFiscal): Int64;
+const
+  CAMPOS = 'EMPRESA_ID, CODIGO, DESCRICAO, NCM, CEST, CFOP, CFOP_VENDA, ' +
+           'CFOP_COMPRA, CST_ICMS, CST_PIS, CST_COFINS, ALIQ_ICMS, ' +
+           'ALIQ_PIS, ALIQ_COFINS, PESO_LIQUIDO, PESO_BRUTO, ATIVO, ' +
+           'OBSERVACOES';
+  VALORES_PARAM = ':EMP, :COD, :DESC, :NCM, :CEST, :CFOP, :CFOPV, ' +
+                  ':CFOPC, :CSTI, :CSTP, :CSTC, :ALII, ' +
+                  ':ALIP, :ALIC, :PESOL, :PESOB, :ATIVO, ' +
+                  ':OBS';
+begin
+  Validar(AObj);
+  Result := FRepo.InserirParam(
+    CAMPOS, VALORES_PARAM,
+    ['EMP', 'COD', 'DESC', 'NCM', 'CEST', 'CFOP', 'CFOPV',
+     'CFOPC', 'CSTI', 'CSTP', 'CSTC', 'ALII',
+     'ALIP', 'ALIC', 'PESOL', 'PESOB', 'ATIVO',
+     'OBS'],
+    [IntToStr(AObj.EmpresaId), AObj.Codigo, AObj.Descricao, AObj.Ncm,
+     AObj.Cest, AObj.Cfop, AObj.CfopVenda, AObj.CfopCompra,
+     AObj.CstIcms, AObj.CstPis, AObj.CstCofins, FloatToStr(AObj.AliqIcms),
+     FloatToStr(AObj.AliqPis), FloatToStr(AObj.AliqCofins),
+     FloatToStr(AObj.PesoLiquido), FloatToStr(AObj.PesoBruto), AObj.Ativo,
+     AObj.Observacoes]);
+
+  LogOperacao('PRODUTO_FISCAL', 'I', Result);
+end;
+
+function TProdutoFiscalService.Atualizar(AObj: TProdutoFiscal): Boolean;
+const
+  CAMPOS_PARAM = 'CODIGO = :COD, DESCRICAO = :DESC, NCM = :NCM, ' +
+                 'CEST = :CEST, CFOP = :CFOP, CFOP_VENDA = :CFOPV, ' +
+                 'CFOP_COMPRA = :CFOPC, CST_ICMS = :CSTI, ' +
+                 'CST_PIS = :CSTP, CST_COFINS = :CSTC, ' +
+                 'ALIQ_ICMS = :ALII, ALIQ_PIS = :ALIP, ' +
+                 'ALIQ_COFINS = :ALIC, PESO_LIQUIDO = :PESOL, ' +
+                 'PESO_BRUTO = :PESOB, ATIVO = :ATIVO, ' +
+                 'OBSERVACOES = :OBS';
+begin
+  ValidarId(AObj.Id, 'Produto Fiscal');
+  Validar(AObj);
+
+  Result := FRepo.AtualizarParam(
+    AObj.Id, CAMPOS_PARAM,
+    ['COD', 'DESC', 'NCM', 'CEST', 'CFOP', 'CFOPV',
+     'CFOPC', 'CSTI', 'CSTP', 'CSTC', 'ALII',
+     'ALIP', 'ALIC', 'PESOL', 'PESOB', 'ATIVO',
+     'OBS'],
+    [AObj.Codigo, AObj.Descricao, AObj.Ncm, AObj.Cest, AObj.Cfop,
+     AObj.CfopVenda, AObj.CfopCompra, AObj.CstIcms, AObj.CstPis,
+     AObj.CstCofins, FloatToStr(AObj.AliqIcms), FloatToStr(AObj.AliqPis),
+     FloatToStr(AObj.AliqCofins), FloatToStr(AObj.PesoLiquido),
+     FloatToStr(AObj.PesoBruto), AObj.Ativo, AObj.Observacoes]);
+
+  LogOperacao('PRODUTO_FISCAL', 'U', AObj.Id);
+end;
+
+function TProdutoFiscalService.Excluir(AId: Int64): Boolean;
+begin
+  ValidarId(AId, 'Produto Fiscal');
+  Result := FRepo.Excluir(AId);
+  LogOperacao('PRODUTO_FISCAL', 'D', AId);
+end;
+
+function TProdutoFiscalService.Pesquisar(const ATermo: string): TSQLQuery;
+begin
+  Result := FRepo.BuscarTodosParam(
+    '(UPPER(DESCRICAO) CONTAINING UPPER(:T) OR ' +
+    'CODIGO CONTAINING :T OR NCM CONTAINING :T)',
+    ['T'], [ATermo],
+    'DESCRICAO');
+end;
+
+end.

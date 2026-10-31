@@ -1,0 +1,105 @@
+inherited frmMovimentoFinanceiro: TfrmMovimentoFinanceiro
+  Height = 500
+  Width = 850
+  Caption = 'Movimentação Financeira'
+  inherited PageControl1: TPageControl
+    inherited tsCadastro: TTabSheet
+      object lblData: TLabel
+        Left = 16
+        Height = 16
+        Top = 10
+        Width = 35
+        Caption = 'Data: *'
+      end
+      object edtData: TEdit
+        Left = 16
+        Height = 25
+        Top = 28
+        Width = 100
+        TabOrder = 0
+        Text = '00/00/0000'
+      end
+      object lblTipo: TLabel
+        Left = 130
+        Height = 16
+        Top = 10
+        Width = 30
+        Caption = 'Tipo: *'
+      end
+      object cmbTipo: TComboBox
+        Left = 130
+        Height = 25
+        Top = 28
+        Width = 110
+        Items.Strings = (
+          'Entrada'
+          'Saída'
+        )
+        ItemIndex = 0
+        Style = csDropDownList
+        TabOrder = 1
+      end
+      object lblCategoria: TLabel
+        Left = 254
+        Height = 16
+        Top = 10
+        Width = 60
+        Caption = 'Categoria:'
+      end
+      object cmbCategoria: TComboBox
+        Left = 254
+        Height = 25
+        Top = 28
+        Width = 180
+        TabOrder = 2
+      end
+      object lblDescricao: TLabel
+        Left = 16
+        Height = 16
+        Top = 62
+        Width = 75
+        Caption = 'Descrição: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtDescricao: TEdit
+        Left = 16
+        Height = 25
+        Top = 80
+        Width = 420
+        MaxLength = 120
+        TabOrder = 3
+      end
+      object lblValor: TLabel
+        Left = 450
+        Height = 16
+        Top = 62
+        Width = 40
+        Caption = 'Valor: *'
+      end
+      object edtValor: TEdit
+        Left = 450
+        Height = 25
+        Top = 80
+        Width = 120
+        Alignment = taRightJustify
+        TabOrder = 4
+        Text = '0,00'
+      end
+      object lblDocumento: TLabel
+        Left = 584
+        Height = 16
+        Top = 62
+        Width = 85
+        Caption = 'Documento ID:'
+      end
+      object edtDocumento: TEdit
+        Left = 584
+        Height = 25
+        Top = 80
+        Width = 100
+        TabOrder = 5
+      end
+    end
+  end
+end

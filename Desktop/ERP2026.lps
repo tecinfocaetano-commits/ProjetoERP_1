@@ -59,10 +59,9 @@
       <Unit>
         <Filename Value="src\Services\uACBrHelper.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
         <TopLine Value="63"/>
-        <CursorPos Y="80"/>
+        <CursorPos X="75" Y="91"/>
         <UsageCount Value="23"/>
         <Loaded Value="True"/>
       </Unit>
@@ -168,7 +167,7 @@
         <ComponentName Value="frmKardex"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="4"/>
         <TopLine Value="59"/>
         <CursorPos X="4" Y="82"/>
         <UsageCount Value="23"/>
@@ -240,7 +239,12 @@
         <ComponentName Value="frmNFe"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="61"/>
+        <CursorPos Y="78"/>
         <UsageCount Value="23"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmCopiloto.pas"/>
@@ -286,7 +290,7 @@
         <UsageCount Value="21"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="14">
+    <JumpHistory HistoryIndex="15">
       <Position>
         <Filename Value="src\Views\uFrmMovEstoque.pas"/>
         <Caret Line="80" Column="77" TopLine="78"/>
@@ -346,6 +350,10 @@
       <Position>
         <Filename Value="src\Views\uFrmPDV.pas"/>
         <Caret Line="346" Column="100" TopLine="325"/>
+      </Position>
+      <Position>
+        <Filename Value="src\Services\uACBrHelper.pas"/>
+        <Caret Line="91" Column="75" TopLine="63"/>
       </Position>
     </JumpHistory>
     <RunParams>

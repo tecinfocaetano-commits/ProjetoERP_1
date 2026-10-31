@@ -1,0 +1,275 @@
+inherited frmProdutoFiscal: TfrmProdutoFiscal
+  Height = 560
+  Width = 850
+  Caption = 'Produto Fiscal'
+  inherited PageControl1: TPageControl
+    inherited tsCadastro: TTabSheet
+      object lblCodigo: TLabel
+        Left = 16
+        Height = 16
+        Top = 10
+        Width = 50
+        Caption = 'Código:'
+      end
+      object edtCodigo: TEdit
+        Left = 16
+        Height = 25
+        Top = 28
+        Width = 120
+        MaxLength = 30
+        TabOrder = 0
+      end
+      object lblDescricao: TLabel
+        Left = 150
+        Height = 16
+        Top = 10
+        Width = 80
+        Caption = 'Descrição: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtDescricao: TEdit
+        Left = 150
+        Height = 25
+        Top = 28
+        Width = 400
+        MaxLength = 100
+        TabOrder = 1
+      end
+      object lblNcm: TLabel
+        Left = 16
+        Height = 16
+        Top = 62
+        Width = 30
+        Caption = 'NCM:'
+      end
+      object edtNcm: TEdit
+        Left = 16
+        Height = 25
+        Top = 80
+        Width = 100
+        MaxLength = 10
+        TabOrder = 2
+      end
+      object lblCest: TLabel
+        Left = 130
+        Height = 16
+        Top = 62
+        Width = 35
+        Caption = 'CEST:'
+      end
+      object edtCest: TEdit
+        Left = 130
+        Height = 25
+        Top = 80
+        Width = 100
+        MaxLength = 9
+        TabOrder = 3
+      end
+      object lblCfop: TLabel
+        Left = 244
+        Height = 16
+        Top = 62
+        Width = 40
+        Caption = 'CFOP:'
+      end
+      object edtCfop: TEdit
+        Left = 244
+        Height = 25
+        Top = 80
+        Width = 70
+        MaxLength = 4
+        TabOrder = 4
+      end
+      object lblCfopVenda: TLabel
+        Left = 328
+        Height = 16
+        Top = 62
+        Width = 75
+        Caption = 'CFOP Venda:'
+      end
+      object edtCfopVenda: TEdit
+        Left = 328
+        Height = 25
+        Top = 80
+        Width = 70
+        MaxLength = 5
+        TabOrder = 5
+      end
+      object lblCfopCompra: TLabel
+        Left = 412
+        Height = 16
+        Top = 62
+        Width = 85
+        Caption = 'CFOP Compra:'
+      end
+      object edtCfopCompra: TEdit
+        Left = 412
+        Height = 25
+        Top = 80
+        Width = 70
+        MaxLength = 5
+        TabOrder = 6
+      end
+      object lblCstIcms: TLabel
+        Left = 16
+        Height = 16
+        Top = 114
+        Width = 60
+        Caption = 'CST ICMS:'
+      end
+      object edtCstIcms: TEdit
+        Left = 16
+        Height = 25
+        Top = 132
+        Width = 70
+        MaxLength = 5
+        TabOrder = 7
+      end
+      object lblCstPis: TLabel
+        Left = 100
+        Height = 16
+        Top = 114
+        Width = 55
+        Caption = 'CST PIS:'
+      end
+      object edtCstPis: TEdit
+        Left = 100
+        Height = 25
+        Top = 132
+        Width = 70
+        MaxLength = 5
+        TabOrder = 8
+      end
+      object lblCstCofins: TLabel
+        Left = 184
+        Height = 16
+        Top = 114
+        Width = 75
+        Caption = 'CST COFINS:'
+      end
+      object edtCstCofins: TEdit
+        Left = 184
+        Height = 25
+        Top = 132
+        Width = 70
+        MaxLength = 5
+        TabOrder = 9
+      end
+      object lblAliqIcms: TLabel
+        Left = 16
+        Height = 16
+        Top = 166
+        Width = 75
+        Caption = 'Alíq ICMS %:'
+      end
+      object edtAliqIcms: TEdit
+        Left = 16
+        Height = 25
+        Top = 184
+        Width = 80
+        Alignment = taRightJustify
+        TabOrder = 10
+        Text = '0,00'
+      end
+      object lblAliqPis: TLabel
+        Left = 110
+        Height = 16
+        Top = 166
+        Width = 65
+        Caption = 'Alíq PIS %:'
+      end
+      object edtAliqPis: TEdit
+        Left = 110
+        Height = 25
+        Top = 184
+        Width = 80
+        Alignment = taRightJustify
+        TabOrder = 11
+        Text = '0,00'
+      end
+      object lblAliqCofins: TLabel
+        Left = 204
+        Height = 16
+        Top = 166
+        Width = 85
+        Caption = 'Alíq COFINS %:'
+      end
+      object edtAliqCofins: TEdit
+        Left = 204
+        Height = 25
+        Top = 184
+        Width = 80
+        Alignment = taRightJustify
+        TabOrder = 12
+        Text = '0,00'
+      end
+      object lblPesoLiquido: TLabel
+        Left = 310
+        Height = 16
+        Top = 166
+        Width = 95
+        Caption = 'Peso Líquido:'
+      end
+      object edtPesoLiquido: TEdit
+        Left = 310
+        Height = 25
+        Top = 184
+        Width = 90
+        Alignment = taRightJustify
+        TabOrder = 13
+        Text = '0,0000'
+      end
+      object lblPesoBruto: TLabel
+        Left = 414
+        Height = 16
+        Top = 166
+        Width = 80
+        Caption = 'Peso Bruto:'
+      end
+      object edtPesoBruto: TEdit
+        Left = 414
+        Height = 25
+        Top = 184
+        Width = 90
+        Alignment = taRightJustify
+        TabOrder = 14
+        Text = '0,0000'
+      end
+      object lblStatus: TLabel
+        Left = 16
+        Height = 16
+        Top = 220
+        Width = 50
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox
+        Left = 16
+        Height = 25
+        Top = 238
+        Width = 100
+        Items.Strings = (
+          'Ativo'
+          'Inativo'
+        )
+        ItemIndex = 0
+        Style = csDropDownList
+        TabOrder = 15
+      end
+      object lblObservacoes: TLabel
+        Left = 16
+        Height = 16
+        Top = 274
+        Width = 80
+        Caption = 'Observações:'
+      end
+      object mmoObservacoes: TMemo
+        Left = 16
+        Height = 60
+        Top = 292
+        Width = 700
+        TabOrder = 16
+      end
+    end
+  end
+end

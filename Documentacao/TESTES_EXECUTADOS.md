@@ -512,3 +512,46 @@ Nenhuma mudança de comportamento: mesmas Activities, mesmos IDs, mesma API —
 só a paleta e os widgets visuais. No Android 12+ o `App.java` aplica as cores
 dinâmicas em todas as Activities (`DynamicColors.applyToActivitiesIfAvailable`).
 
+## Redesenho em 4 abas + cadastros da fase 1 (31/10/2026)
+
+Redesenho de navegação do Desktop (menu em 4 abas de negócio) e cadastros
+novos. Desenho completo em `DESENHO_NOVAS_ABAS.md`; resumo em
+`CHECKPOINT.md` → seção "Redesenho em 4 abas + cadastros da fase 1".
+
+### Migração do banco
+
+- `Banco\014_suprimentos_fiscal.sql` (+ rollback) — **testada em cópia** (aplica
+  → rollback limpo, exit 0) e **aplicada no `DADOS.FDB` real**.
+- 9 tabelas novas, 4 colunas aditivas, permissões de SUPRIMENTOS/FINANCEIRO sem
+  duplicar (grupo 1). `PRODUTO` **não renomeada** (Firebird não tem
+  `ALTER TABLE ... RENAME`; `PRODUTO` já é o produto de produção).
+
+### Validação verde (31/10/2026)
+
+| Verificação | Resultado |
+| --- | --- |
+| `Scripts\build_desktop.bat` | compila, **0 warning / 0 erro** (só hints "Sender não usado") |
+| `Scripts\run_tests.bat` | **62/62** (nada quebrou; nenhum teste novo nesta fase) |
+| campos `.pas` × objetos `.lfm` (6 telas) | todos conferem (sem risco de "Field not found") |
+| `OnClick` do `.lfm` × métodos `.pas` | todos existem (sem risco de evento não resolvido) |
+
+- **Smoke visual em runtime não capturável** neste ambiente: a janela do app
+  fica em sessão/desktop isolado (`GetWindowRect` → 0×0, `PrintWindow` não
+  captura). A confiança vem do build + suíte + cruzamento estático acima.
+
+### Telas novas entregues
+
+| Tela | Tabela | Natureza |
+| --- | --- | --- |
+| `uFrmProdutoFiscal` | `PRODUTO_FISCAL` | cadastro (NCM/CEST/CFOP/CST/alíquotas) |
+| `uFrmMaterial` | `MATERIAL` | cadastro (→ Produto Fiscal, Unidade) |
+| `uFrmProdutoFinanceiro` | `PRODUTO_FINANCEIRO` | cadastro (→ Produto Fiscal) |
+| `uFrmMovimentoFinanceiro` | `MOVIMENTO_FINANCEIRO` | movimentação (separada do Caixa) |
+| `uFrmCompras` | `PEDIDO_COMPRA`(+item) | master-detail (cabeçalho + itens) |
+
+Menu reorganizado em **Suprimentos · Produção · Financeiro · Fiscal** (+ os
+utilitários Cadastros, Estoque, PDV, Relatórios, IA, Sistema). Ver CHECKPOINT
+para a lista de movimentos e as pendências da fase (consumo automático,
+`STATUS_PRODUCAO` por talão, re-layout do Consumo, Produto Produção com Cores,
+notas via `PRODUTO_FISCAL`, Compras → Nota de Entrada, Android).
+

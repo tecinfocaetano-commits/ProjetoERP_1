@@ -7,6 +7,11 @@
 
 ## Estado
 
+- **Redesenho em 4 abas + cadastros da fase 1 concluído (31/10)** — ver seção
+  própria abaixo: migração `014` (9 tabelas + 4 colunas), 4 models, 5 services,
+  5 telas novas e o menu reorganizado em **Suprimentos · Produção · Financeiro ·
+  Fiscal**. Verde: build **0/0**, suíte **62/62**. Pendências da fase listadas
+  na mesma seção.
 - **Módulo de Produção: 8 fases COMPLETAS e commitadas** — última: FASE 8 = `40bbd8b`.
 - **Modelos I/II dos relatórios concluídos e commitados (30/10)** — `74df45a`
   (Talão e Mapa com Modelo I e Modelo II, mesmos datasets; escolha na
@@ -310,6 +315,85 @@ emulador `Pixel_9`.
 APK instalado no emulador `Pixel_9` (login `admin`/`admin123` via API no ar);
 as 8 telas abrem e listam **dados reais** da API (8 clientes, 3 produtos);
 evidências em `Documentacao\evidencias\android_0*_*.png`.
+
+---
+
+## Redesenho em 4 abas + cadastros da fase 1 (concluído em 31/10)
+
+Redesenho de navegação do Desktop e cadastros novos (ver
+`Documentacao\DESENHO_NOVAS_ABAS.md`, a fonte do desenho).
+
+### Banco — migração `014`
+
+- `Banco\014_suprimentos_fiscal.sql` (+ `014_..._rollback.sql`), aplicada e
+  **testada em cópia** (aplica → rollback limpo) antes de ir para o
+  `DADOS.FDB` real.
+  - **9 tabelas novas:** `PRODUTO_FISCAL`, `MATERIAL`, `COR`,
+    `PRODUTO_FINANCEIRO`, `PEDIDO_COMPRA`(+`_ITEM`), `ESTOQUE_MATERIAL`,
+    `MOVIMENTO_MATERIAL`, `MOVIMENTO_FINANCEIRO`.
+  - **4 colunas aditivas:** `PRODUTO.PRODUTO_FISCAL_ID`,
+    `FICHA_TECNICA.TIPO_BASE`/`ID_BASE`, `CONSUMO_MATERIAL_ITEM.STATUS_PRODUCAO`.
+  - permissões de `SUPRIMENTOS`/`FINANCEIRO` (grupo 1) sem duplicar.
+- **`PRODUTO` NÃO foi renomeada** — o Firebird não suporta
+  `ALTER TABLE ... RENAME` (erro "Token unknown - RENAME", testado). Como
+  `PRODUTO` **já é** a tabela usada em pedido/venda (produto de produção),
+  mantivemos o nome físico e o `PRODUTO_PRODUCAO` ficou como nome **conceitual**
+  do modelo. Aditivo apenas `PRODUTO_FISCAL_ID` — os 524 pontos de código que
+  citam `PRODUTO` ficaram intactos. Registro no desenho §5.
+
+### Código (models, services, telas, menu)
+
+- **4 models:** `uProdutoFiscal`, `uMaterial`, `uProdutoFinanceiro`, `uCor`.
+- **5 services:** `uProdutoFiscalService`, `uMaterialService`,
+  `uProdutoFinanceiroService`, `uCorService` (padrão `TServiceBase`/
+  `TRepositoryBase`, SQL parametrizado, auditoria via `LogOperacao`).
+- **5 telas novas** (herdam `TfrmCadastroBase`, exceto Compras que é
+  master-detail no padrão da `uFrmPedidoVenda`): `uFrmProdutoFiscal`,
+  `uFrmMaterial`, `uFrmProdutoFinanceiro`, `uFrmMovimentoFinanceiro`,
+  `uFrmCompras` (cabeçalho + itens `sgItens`, gera `PEDIDO_COMPRA`).
+- **Menu reorganizado em 4 abas de negócio** (`uFrmPrincipal`): a barra começa
+  por **Suprimentos · Produção · Financeiro · Fiscal**; vêm depois os utilitários
+  (Cadastros, Estoque, PDV, Relatórios, IA, Sistema). Movimentos:
+  - `Consumo de Materiais` → **Suprimentos**;
+  - `Produto Produção` (era "Produtos" em Cadastros), `Novo Pedido`,
+    `Novo Orçamento`, `Lista de Pedidos` → **Produção**;
+  - `Nota de Saída` (de Vendas) e `Nota de Entrada` (de Compras) → **Fiscal**;
+  - seções de topo `Compras`/`Vendas` **removidas** (conteúdo redistribuído);
+  - itens novos: Materiais, Compras, Produtos Financeiros, Produto Fiscal,
+    Movimentação Financeira — todos com `OnClick`.
+
+### Verificação verde (31/10)
+
+- `Scripts\build_desktop.bat` → compila, **0 warning / 0 erro** (só hints
+  "Sender não usado" inofensivos).
+- `Scripts\run_tests.bat` → **62/62** (nenhum teste quebrou; nenhum novo ainda).
+- Cruzamento estático (evita crash em runtime que o compilador não pega):
+  campos `.pas` × objetos `.lfm` conferem nas 6 telas mexidas; todos os
+  `OnClick` do `.lfm` existem como método.
+- Smoke visual em runtime **não foi capturável** neste ambiente (a janela do
+  app fica em sessão/desktop isolado — `GetWindowRect` devolve 0×0); a
+  confiança vem da verificação estática + build + suíte acima.
+
+### Pendências desta fase (próximos passos)
+
+- **Consumo automático no mapa**: checkbox "Gerar consumo automaticamente" na
+  criação do Mapa; calcula pela qtd **planejada** (mesma fórmula), grava
+  `CONSUMO_MATERIAL_ITEM` com `QTD_PREVISTA`. O consumo pelo **produzido**
+  continua manual.
+- **`STATUS_PRODUCAO` por talão**: atualizar a cada talão concluído
+  (ABERTO/PARCIALMENTE_CONCLUIDO/CONCLUÍDO) — coluna já existe, falta a regra.
+- **Re-layout da tela de Consumo** (topo = lista de mapas + item; rodapé = grid
+  dos materiais com prevista/real/custo/status).
+- **Produto Produção com Cores**: expor `COR` + Ficha Técnica da Cor na tela de
+  produto (`uFrmProdutos`) — models/services já prontos.
+- **Notas lerem o `PRODUTO_FISCAL`** (NCM/CFOP/CST/alíquotas vêm do produto
+  fiscal, não mais campos soltos).
+- **Compras → Nota de Entrada**: o botão Confirmar hoje só grava o pedido;
+  falta gerar a `NOTA_ENTRADA` a partir dele.
+- **Corrigir nome da coluna** `MOVIMENTO_FINANCEIRO.CONTAPRODUCAO_ID` (nome
+  saiu estranho; é um vínculo de conta opcional).
+- **Android** (deferido): API `POST /api/orcamentos` + bottom nav Material +
+  telas.
 
 ---
 
