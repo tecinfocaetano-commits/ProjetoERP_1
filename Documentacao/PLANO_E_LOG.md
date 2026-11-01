@@ -228,6 +228,12 @@
   `MAT-TESTE8`, `PROD-TESTE8`, cor "Preto", saldos 15 e 98).
 - Depois da remoção do harness: build **0 erros / 0 warnings** e suíte
   **62/62**.
+- **Smoke das telas** (harness temporário, removido): `Create`/`Free` das 7
+  telas mexidas nos itens 5–9 — `TfrmProdutos` (56 componentes),
+  `TfrmCoresProduto` (15), `TfrmClientes` (59), `TfrmFornecedores` (59),
+  `TfrmCompras` (39), `TfrmNotaEntrada` (78) e `TfrmConsumoMaterial` (21) —
+  todas carregaram o `.lfm` sem erro. O build não valida `.lfm`; este smoke
+  foi a garantia de que nenhum componente novo ficou fora do arquivo.
 
 ---
 

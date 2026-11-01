@@ -44,6 +44,8 @@ suíte **62/62**.
   nenhuma migração pendente.
 - Teste de ponta a ponta (harness temporário, já removido): **38/38** — compra
   → nota de entrada → processamento e venda → nota de saída → faturamento.
+  Um smoke também instanciou as 7 telas alteradas e todas carregaram o `.lfm`
+  (o build não valida `.lfm`).
 - Banco deixado com **um exemplo completo de cada fluxo** e os cadastros de
   apoio (`FISC-TESTE`, `MAT-TESTE8`, `PROD-TESTE8`, `PC-TESTE-8`,
   `PV-TESTE-5`, saldos 15 e 98) — nada de lixo das rodadas do harness.
