@@ -35,6 +35,7 @@ uses
   uPais,
   uEstado,
   uCidade,
+  uGrade,
   // Models - fase 1 redesenho (suprimentos/fiscal/financeiro)
   uProdutoFiscal,
   uMaterial,
@@ -50,6 +51,7 @@ uses
   uPaisService,
   uEstadoService,
   uCidadeService,
+  uGradeService,
   uACBrHelper,
   // Utils
   uValidacoes,
@@ -71,6 +73,7 @@ uses
   uFrmPais,
   uFrmEstado,
   uFrmCidade,
+  uFrmGrade,
   // Views - Fase 3
   uFrmMovEstoque,
   uFrmKardex,

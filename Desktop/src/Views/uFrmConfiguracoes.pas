@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uConfiguracaoService;
+  uFrmCadastroBase, uConexao, uConfiguracaoService, uGradeService;
 
 type
   { TfrmConfiguracoes }
@@ -26,8 +26,10 @@ type
     edtValor: TEdit;
     lblDescricao: TLabel;
     edtDescricao: TEdit;
+    chkUsaGrade: TCheckBox;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure chkUsaGradeClick(Sender: TObject);
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -41,6 +43,7 @@ type
     FQuery: TSQLQuery;
     FService: TConfiguracaoService;
     procedure ConfigurarGrid;
+    procedure CarregarUsaGrade;
   end;
 
 var
@@ -105,6 +108,41 @@ procedure TfrmConfiguracoes.CarregarDados(const AFiltro: string);
 begin
   FService.Carregar(FQuery, AFiltro);
   DataSource1.DataSet := FQuery;
+  CarregarUsaGrade;
+end;
+
+procedure TfrmConfiguracoes.CarregarUsaGrade;
+var
+  LService: TGradeService;
+begin
+  LService := TGradeService.Create;
+  try
+    chkUsaGrade.Checked := LService.UsaGrade;
+  finally
+    LService.Free;
+  end;
+end;
+
+procedure TfrmConfiguracoes.chkUsaGradeClick(Sender: TObject);
+var
+  LService: TGradeService;
+begin
+  LService := TGradeService.Create;
+  try
+    try
+      LService.DefinirUsaGrade(chkUsaGrade.Checked);
+      CarregarDados;
+    except
+      on E: Exception do
+      begin
+        MessageDlg('Erro ao gravar a preferência USA_GRADE: ' + E.Message,
+          mtError, [mbOK], 0);
+        CarregarUsaGrade;
+      end;
+    end;
+  finally
+    LService.Free;
+  end;
 end;
 
 procedure TfrmConfiguracoes.HabilitarCampos(AHabilitar: Boolean);

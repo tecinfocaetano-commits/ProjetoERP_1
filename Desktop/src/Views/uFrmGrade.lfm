@@ -1,0 +1,120 @@
+inherited frmGrade: TfrmGrade
+  Height = 540
+  Width = 850
+  Caption = 'Grades'
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  inherited PageControl1: TPageControl
+    inherited tsCadastro: TTabSheet
+      object lblNome: TLabel
+        Left = 16
+        Height = 16
+        Top = 10
+        Width = 55
+        Caption = 'Nome: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtNome: TEdit
+        Left = 16
+        Height = 25
+        Top = 28
+        Width = 300
+        MaxLength = 60
+        TabOrder = 0
+      end
+      object lblTipo: TLabel
+        Left = 332
+        Height = 16
+        Top = 10
+        Width = 35
+        Caption = 'Tipo:'
+      end
+      object cmbTipo: TComboBox
+        Left = 332
+        Height = 25
+        Top = 28
+        Width = 130
+        Style = csDropDownList
+        TabOrder = 1
+      end
+      object lblStatus: TLabel
+        Left = 478
+        Height = 16
+        Top = 10
+        Width = 45
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox
+        Left = 478
+        Height = 25
+        Top = 28
+        Width = 100
+        Style = csDropDownList
+        TabOrder = 2
+      end
+      object lblObservacao: TLabel
+        Left = 16
+        Height = 16
+        Top = 62
+        Width = 75
+        Caption = 'Observação:'
+      end
+      object memObservacao: TMemo
+        Left = 16
+        Height = 70
+        Top = 80
+        Width = 562
+        MaxLength = 255
+        ScrollBars = ssVertical
+        TabOrder = 3
+      end
+      object lblTamanhos: TLabel
+        Left = 16
+        Height = 16
+        Top = 160
+        Width = 130
+        Caption = 'Tamanhos da grade: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object sgTamanhos: TStringGrid
+        Left = 16
+        Height = 170
+        Top = 178
+        Width = 230
+        ColCount = 2
+        FixedCols = 0
+        FixedRows = 1
+        RowCount = 2
+        TabOrder = 4
+      end
+      object btnAdicionarTamanho: TBitBtn
+        Left = 260
+        Height = 28
+        Top = 178
+        Width = 130
+        Caption = 'Adicionar tamanho'
+        OnClick = btnAdicionarTamanhoClick
+        TabOrder = 5
+      end
+      object btnRemoverTamanho: TBitBtn
+        Left = 260
+        Height = 28
+        Top = 214
+        Width = 130
+        Caption = 'Remover tamanho'
+        OnClick = btnRemoverTamanhoClick
+        TabOrder = 6
+      end
+      object lblDicaTamanhos: TLabel
+        Left = 260
+        Height = 32
+        Top = 252
+        Width = 230
+        Caption = 'Digite os tamanhos na ordem em que devem aparecer no pedido/mapa.'
+        WordWrap = True
+      end
+    end
+  end
+end

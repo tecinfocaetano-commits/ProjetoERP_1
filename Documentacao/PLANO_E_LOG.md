@@ -14,9 +14,9 @@
 | D2 | Criar cadastro de **País → Estado → Cidade** (globais, sem empresa) | 31/10 | ✅ banco (015) · 🔨 telas em andamento |
 | D3 | **Unificar CLIENTE + FORNECEDOR** com `TIPO` (C/F) | 31/10 | ⏸ adiado (alto risco, exige plano + aprovação) |
 | D4 | Regra de negócio sempre em **Service**; SQL parametrizado; transações com auditoria | — | ✅ padrão do projeto |
-| D5 | **GRADE**: tela própria com tabela principal + sub-tabela de tamanhos (nº de tamanhos variável por tipo: calçado/confecção/grupo) | 31/10 | 📋 planejado |
-| D6 | GRADE no **item do pedido** (inserível) e subgrid **editável no mapa** | 31/10 | 📋 planejado |
-| D7 | Preferência **`USA_GRADE`**: desmarcada → grade **não aparece nem no mapa nem no pedido** | 31/10 | 📋 planejado |
+| D5 | **GRADE**: tela própria com tabela principal + sub-tabela de tamanhos (nº de tamanhos variável por tipo: calçado/confecção/grupo) | 31/10 | ✅ concluído |
+| D6 | GRADE no **item do pedido** (inserível) e subgrid **editável no mapa** | 31/10 | 🔨 em andamento |
+| D7 | Preferência **`USA_GRADE`**: desmarcada → grade **não aparece nem no mapa nem no pedido** | 31/10 | 🔨 em andamento (service + tela de config prontos; falta o gate nas telas) |
 | D8 | LazReport apenas; testes de impressão só em PDF | — | ✅ padrão |
 
 ---
@@ -27,8 +27,8 @@
 |---|---|---|---|
 | 1 | **Consertar telas geográficas** (País/Estado/Cidade) e voltar build/suíte ao verde | 🔨 **em andamento** | build estava quebrado (assinaturas de `InserirParam`, falta `uFrmCidade`, `.lfm`, colunas `SIGLA`×`CODIGO`/`UF`) |
 | 2 | Migração `016` **GRADE**: `GRADE` + `GRADE_TAMANHO`, `PRODUTO.GRADE_ID`, `ITEM_PEDIDO_GRADE`, `MAPA_PRODUCAO_ITEM_GRADE`, config `USA_GRADE` | ✅ concluído (31/10) | aplicada no `DADOS.FDB` real (backup `DADOS_backup_antes_016.fdb`); testada em cópia (aplica→rollback) |
-| 3 | Tela de cadastro de GRADE (master + tamanhos) | 📋 planejado | D5 |
-| 4 | GRADE no item do pedido + subgrid editável no mapa, sob `USA_GRADE` | 📋 planejado | D6/D7 |
+| 3 | Tela de cadastro de GRADE (master + tamanhos) | ✅ concluído (31/10) | D5 |
+| 4 | GRADE no item do pedido + subgrid editável no mapa, sob `USA_GRADE` | 🔨 **em andamento** | D6/D7 |
 | 5 | Notas lerem `PRODUTO_FISCAL` (NCM/CFOP/CST/alíquotas no service) | 📋 pendente | colunas prontas (015) |
 | 6 | Re-layout da tela de Consumo | 📋 pendente | |
 | 7 | Produto Produção com Cores (expor `COR`) | 📋 pendente | services prontos |
@@ -93,6 +93,21 @@
   (gerador/trigger de `MAPA_PRODUCAO_ITEM_GRADE` encurtados) e **`DEFAULT`
   antes de `NOT NULL`** no `CREATE TABLE`.
 - Próximo: service da grade + tela de cadastro.
+
+### 3.5 GRADE — cadastro + preferência (concluído 31/10)
+
+- `uGrade` — model com `TGradeTamanho.Quantidade` (usado nas grades efetivas),
+  helpers de tipo e `SomarQuantidades`.
+- `uGradeService` — CRUD com transação/auditoria, `Carregar` por empresa,
+  `UsaGrade`/`DefinirUsaGrade` (fallback `EMPRESA_ID IS NULL`), grades
+  efetivas do pedido e do mapa (salvar/copiar) e grade padrão do produto.
+- `uFrmGrade` — master (nome/tipo/status/observação) + `TStringGrid` de
+  tamanhos editável (adicionar/remover, ordem, ativo, validação de repetidos).
+- Menu **Cadastros → Grades**; `.lpr`/`.lpi` atualizados.
+- `uFrmConfiguracoes` — checkbox da preferência `USA_GRADE`.
+- Build **0 erros / 0 warnings**; suíte **62/62**.
+- Falta (marco seguinte): gate `USA_GRADE` no pedido e no mapa + subgrid
+  editável no mapa + regra do total do item pela soma da grade.
 
 ---
 

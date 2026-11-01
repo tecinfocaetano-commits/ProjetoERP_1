@@ -117,6 +117,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src/Models/uGrade.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/Repositories/uRepositoryBase.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -150,6 +154,10 @@
       </Unit>
       <Unit>
         <Filename Value="src/Services/uCidadeService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uGradeService.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -252,6 +260,13 @@
         <Filename Value="src/Views/uFrmCidade.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmCidade"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmGrade.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmGrade"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>

@@ -1,17 +1,79 @@
 # CHECKPOINT — último ponto de parada (31/10/2026)
 
-> Documento de retomada. Árvore git **limpa** (módulo geográfico commitado).
+> Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
 > `Documentacao\PLANO_E_LOG.md`.
 
 ---
 
+## COMO RETOMAR (qualquer agente, qualquer sessão)
+
+0. Se você é um agente: leia também `Documentacao\INSTRUCOES_AGENTE.md`
+   (regras de condução: checkpoint por marco, comandos, o que não fazer).
+1. `cd C:\Users\Charles\Documents\ProjetoERP_1`
+2. `git log --oneline -3` e `git status --short` — **o disco é a verdade**,
+   este texto pode estar um passo atrás.
+3. Ler "Estado atual" abaixo e abrir os arquivos citados.
+4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
+   (deve dar **62/62**). Ruído conhecido: `InitializeFppkg failed`.
+5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
+
+Regras do projeto: português; regra de negócio em Services; SQL sempre
+parametrizado; transação + auditoria (`LogOperacao`); LazReport apenas;
+Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
+
+---
+
 ## Estado atual da sessão (31/10/2026)
 
-**Commit:** "Geográfico: telas de País/Estado/Cidade no menu Cadastros".
-Build **0 erros** · suíte **62/62**.
+**HEAD:** `17be6ff` (migração `016` GRADE) + commit da tela de grades.
+Árvore **limpa** após o commit. Build **0 erros / 0 warnings** · suíte **62/62**.
 
-### Módulo geográfico — CONCLUÍDO (decisão D2)
+### GRADE — cadastro CONCLUÍDO (commit desta sessão)
+
+- `Desktop\src\Models\uGrade.pas` — `TGrade`, `TGradeTamanho` (com
+  `Quantidade`), `GRADE_TIPOS`, `DescricaoTipoGrade`, `IndiceTipoGrade`,
+  `TipoGradePorIndice`, `SomarQuantidades`.
+- `Desktop\src\Services\uGradeService.pas` — **sem stubs**: cadastro
+  (`Inserir`/`Atualizar`/`Excluir` com transação + auditoria), `Carregar`
+  (listagem por empresa), `ListarTamanhos`, `UsaGrade`/`DefinirUsaGrade`
+  (lê `CONFIGURACAO` com fallback `EMPRESA_ID IS NULL`), grades efetivas do
+  pedido/mapa (`GradeDoItemPedido`, `SalvarGradeItemPedido`,
+  `CopiarGradeParaItemPedido`, `GradeDoMapaItem`, `SalvarGradeMapaItem`,
+  `CopiarGradeDoPedidoParaMapa`) e `GradeDoProduto`/`DefinirGradeDoProduto`.
+- `Desktop\src\Views\uFrmGrade.pas/.lfm` — `TfrmCadastroBase`: grid principal
+  (nome/tipo/status/observação) + `TStringGrid` de tamanhos editável,
+  com adicionar/remover, validação de repetidos e ordem.
+- Menu **Cadastros → Grades**; units no `.lpr`/`.lpi`.
+- `uFrmConfiguracoes`: checkbox **"Usar grade de tamanhos no pedido e no mapa"**
+  ligado a `USA_GRADE` (grava via `TGradeService.DefinirUsaGrade`).
+
+### Próximo passo (executável) — grade no pedido e no mapa
+
+1. `Desktop\src\Views\uFrmPedidoVenda.pas`: no item do pedido (`sgItens`),
+   quando `TGradeService.UsaGrade`, exibir a grade do item e permitir
+   preencher quantidade por tamanho; salvar com
+   `TGradeService.SalvarGradeItemPedido` (e `CopiarGradeParaItemPedido` ao
+   escolher a grade do produto/`PRODUTO.GRADE_ID`). Com `USA_GRADE='N'`, nada
+   aparece.
+2. `Desktop\src\Views\uFrmMapaProducao.pas/.lfm`: subgrid **editável**
+   (`dbGridItensMapa`) com os tamanhos do item do mapa; usar
+   `GradeDoMapaItem` / `SalvarGradeMapaItem` e o botão "copiar do pedido"
+   (`CopiarGradeDoPedidoParaMapa`). Também sob `UsaGrade`.
+3. Regra do total: total do item = `SomarQuantidades(grade)`. Definir com o
+   usuário se o total do pedido passa a ser calculado pela grade.
+4. Build 0/0 + suíte 62/62; atualizar este checkpoint + `PLANO_E_LOG.md`;
+   commit.
+
+### Último marco concluído — migração `016` GRADE (commit `17be6ff`)
+
+- `Banco\016_grade.sql` (+ `_rollback.sql`): `GRADE`, `GRADE_TAMANHO`,
+  `ITEM_PEDIDO_GRADE`, `MAPA_PRODUCAO_ITEM_GRADE`, `PRODUTO.GRADE_ID`,
+  `CONFIGURACAO.USA_GRADE='N'`; 4 generators, 5 triggers, 5 índices.
+- Testada em cópia (aplica → rollback limpo) e aplicada no `DADOS.FDB` real
+  (backup `DADOS_backup_antes_016.fdb`).
+
+### Módulo geográfico — CONCLUÍDO (decisão D2, commit `63782eb`)
 
 - Models `uPais` (`NOME`/`CODIGO`/`DDI`), `uEstado` (`PAIS_ID`/`NOME`/`UF`/`CODIGO_IBGE`),
   `uCidade` (`ESTADO_ID`/`NOME`/`CODIGO_IBGE`) — colunas reais do banco.
@@ -25,12 +87,12 @@ Build **0 erros** · suíte **62/62**.
 
 ### Próximo passo (backlog)
 
-Ver `Documentacao\PLANO_E_LOG.md` §2. **GRADE**: migração `016` **já aplicada**
-no banco real; falta o **service** (`uGradeService`) e a **tela de cadastro**
-(principal + tamanhos), depois grade no item do pedido + subgrid editável no
-mapa sob `USA_GRADE`. Demais itens: notas lendo `PRODUTO_FISCAL`; re-layout do
-Consumo; Produto com Cores; Compras → Nota de Entrada; vínculo geo em
-CLIENTE/FORNECEDOR; unificação CLIENTE+FORNECEDOR (adiada); Android (deferido).
+Ver `Documentacao\PLANO_E_LOG.md` §2. **GRADE** está em andamento: migração
+`016` aplicada, model + service escritos (com stubs). Depois: grade no item do
+pedido + subgrid editável no mapa sob `USA_GRADE`. Demais itens: notas lendo
+`PRODUTO_FISCAL`; re-layout do Consumo; Produto com Cores; Compras → Nota de
+Entrada; vínculo geo em CLIENTE/FORNECEDOR; unificação CLIENTE+FORNECEDOR
+(adiada); Android (deferido).
 
 ---
 

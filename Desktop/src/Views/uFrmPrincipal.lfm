@@ -165,6 +165,10 @@ object frmPrincipal: TfrmPrincipal
         Caption = 'Categorias'
         OnClick = mnuCadCategoriasClick
       end
+      object mnuCadGrades: TMenuItem
+        Caption = 'Grades'
+        OnClick = mnuCadGradesClick
+      end
       object mnuCadPaises: TMenuItem
         Caption = 'Países'
         OnClick = mnuCadPaisesClick
