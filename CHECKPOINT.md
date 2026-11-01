@@ -1,11 +1,40 @@
-# CHECKPOINT — último ponto de parada (19/10/2026)
+# CHECKPOINT — último ponto de parada (31/10/2026)
 
-> Documento de retomada. O PC foi desligado neste ponto; ao voltar, seguir
-> "Para continuar" abaixo. Árvore git **limpa** (nada pendente de commit).
+> Documento de retomada. Árvore git **limpa** (módulo geográfico commitado).
+> O log vivo (decisões + backlog + executado) fica em
+> `Documentacao\PLANO_E_LOG.md`.
 
 ---
 
-## Estado
+## Estado atual da sessão (31/10/2026)
+
+**Commit:** "Geográfico: telas de País/Estado/Cidade no menu Cadastros".
+Build **0 erros** · suíte **62/62**.
+
+### Módulo geográfico — CONCLUÍDO (decisão D2)
+
+- Models `uPais` (`NOME`/`CODIGO`/`DDI`), `uEstado` (`PAIS_ID`/`NOME`/`UF`/`CODIGO_IBGE`),
+  `uCidade` (`ESTADO_ID`/`NOME`/`CODIGO_IBGE`) — colunas reais do banco.
+- Services `uPaisService`/`uEstadoService`/`uCidadeService` com SQL parametrizado
+  (`InserirParam`/`AtualizarParam`/`BuscarTodosParam`), filtros por país/estado.
+- Telas `uFrmPais`, `uFrmEstado`, `uFrmCidade` (`.pas` + `.lfm`) no padrão
+  `TfrmCadastroBase`: CRUD, validação (UF 2 letras, país/estado obrigatórios),
+  status Ativo/Inativo e bloqueio de exclusão com vínculos (país→estado, estado→cidade).
+- Menu **Cadastros → Países / Estados / Cidades** (`uFrmPrincipal` + `.lfm`).
+- `Desktop\ERP2026.lpi` com as 9 units novas; `Desktop\ERP2026.lpr` atualizado.
+
+### Próximo passo (backlog)
+
+Ver `Documentacao\PLANO_E_LOG.md` §2. Prioridade: **migração `016` da GRADE**
+(`GRADE` + `GRADE_TAMANHO` + `PRODUTO.GRADE_ID` + `ITEM_PEDIDO_GRADE` +
+`MAPA_PRODUCAO_ITEM_GRADE` + `USA_GRADE`), depois tela de grade e grade no item
+do pedido + subgrid editável no mapa. Demais itens: notas lendo `PRODUTO_FISCAL`;
+re-layout do Consumo; Produto com Cores; Compras → Nota de Entrada; vínculo geo
+em CLIENTE/FORNECEDOR; unificação CLIENTE+FORNECEDOR (adiada); Android (deferido).
+
+---
+
+## Estado (histórico)
 
 - **Redesenho em 4 abas + cadastros da fase 1 concluído (31/10)** — ver seção
   própria abaixo: migração `014` (9 tabelas + 4 colunas), 4 models, 5 services,
@@ -480,6 +509,9 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 
 ## Para continuar (ao ligar o PC)
 
+0. **PRIORIDADE — terminar o geográfico** (ver "Estado atual da sessão"):
+   criar `uFrmEstado`(.pas/.lfm) e `uFrmCidade`(.pas/.lfm), ligar no menu
+   Cadastros, atualizar `.lpi`, build **0/0**, suíte **62/62**, commit.
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).

@@ -25,6 +25,9 @@ type
     mnuCadFornecedores: TMenuItem;
     mnuCadProdutos: TMenuItem;
     mnuCadCategorias: TMenuItem;
+    mnuCadPaises: TMenuItem;
+    mnuCadEstados: TMenuItem;
+    mnuCadCidades: TMenuItem;
     mnuSep1: TMenuItem;
     mnuCadUsuarios: TMenuItem;
     mnuEstoque: TMenuItem;
@@ -73,6 +76,9 @@ type
     procedure mnuCadFornecedoresClick(Sender: TObject);
     procedure mnuCadProdutosClick(Sender: TObject);
     procedure mnuCadCategoriasClick(Sender: TObject);
+    procedure mnuCadPaisesClick(Sender: TObject);
+    procedure mnuCadEstadosClick(Sender: TObject);
+    procedure mnuCadCidadesClick(Sender: TObject);
     procedure mnuCadUsuariosClick(Sender: TObject);
     procedure mnuEstMovimentacaoClick(Sender: TObject);
     procedure mnuEstInventarioClick(Sender: TObject);
@@ -121,6 +127,7 @@ uses
   uFrmNFe, uFrmCopiloto,
   uFrmProdutoFiscal, uFrmMaterial,
   uFrmMovimentoFinanceiro, uFrmCompras,
+  uFrmPais, uFrmEstado, uFrmCidade,
   uFrmCaixa, uFrmConfiguracoes, uFrmPermissoes, uFrmCentralRelatorios;
 
 {$R *.lfm}
@@ -196,6 +203,21 @@ end;
 procedure TfrmPrincipal.mnuCadCategoriasClick(Sender: TObject);
 begin
   AbrirFormulario(TfrmCategorias);
+end;
+
+procedure TfrmPrincipal.mnuCadPaisesClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmPais);
+end;
+
+procedure TfrmPrincipal.mnuCadEstadosClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmEstado);
+end;
+
+procedure TfrmPrincipal.mnuCadCidadesClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmCidade);
 end;
 
 procedure TfrmPrincipal.mnuCadUsuariosClick(Sender: TObject);

@@ -1,0 +1,89 @@
+inherited frmCidade: TfrmCidade
+  Height = 540
+  Width = 850
+  Caption = 'Cidades'
+  OnCreate = FormCreate
+  inherited PageControl1: TPageControl
+    inherited tsCadastro: TTabSheet
+      object lblEstado: TLabel
+        Left = 16
+        Height = 16
+        Top = 10
+        Width = 55
+        Caption = 'Estado: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object cmbEstado: TComboBox
+        Left = 16
+        Height = 25
+        Top = 28
+        Width = 300
+        Style = csDropDownList
+        TabOrder = 0
+      end
+      object lblNome: TLabel
+        Left = 16
+        Height = 16
+        Top = 62
+        Width = 70
+        Caption = 'Nome: *'
+        Font.Style = [fsBold]
+        ParentFont = False
+      end
+      object edtNome: TEdit
+        Left = 16
+        Height = 25
+        Top = 80
+        Width = 300
+        MaxLength = 80
+        TabOrder = 1
+      end
+      object lblIbge: TLabel
+        Left = 330
+        Height = 16
+        Top = 62
+        Width = 40
+        Caption = 'IBGE:'
+      end
+      object edtIbge: TEdit
+        Left = 330
+        Height = 25
+        Top = 80
+        Width = 100
+        MaxLength = 10
+        TabOrder = 2
+      end
+      object lblCep: TLabel
+        Left = 444
+        Height = 16
+        Top = 62
+        Width = 70
+        Caption = 'CEP Padrão:'
+      end
+      object edtCep: TEdit
+        Left = 444
+        Height = 25
+        Top = 80
+        Width = 100
+        MaxLength = 9
+        TabOrder = 3
+      end
+      object lblStatus: TLabel
+        Left = 16
+        Height = 16
+        Top = 114
+        Width = 45
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox
+        Left = 16
+        Height = 25
+        Top = 132
+        Width = 100
+        Style = csDropDownList
+        TabOrder = 4
+      end
+    end
+  end
+end

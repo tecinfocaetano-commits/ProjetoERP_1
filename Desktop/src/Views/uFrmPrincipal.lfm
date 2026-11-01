@@ -165,6 +165,18 @@ object frmPrincipal: TfrmPrincipal
         Caption = 'Categorias'
         OnClick = mnuCadCategoriasClick
       end
+      object mnuCadPaises: TMenuItem
+        Caption = 'Países'
+        OnClick = mnuCadPaisesClick
+      end
+      object mnuCadEstados: TMenuItem
+        Caption = 'Estados'
+        OnClick = mnuCadEstadosClick
+      end
+      object mnuCadCidades: TMenuItem
+        Caption = 'Cidades'
+        OnClick = mnuCadCidadesClick
+      end
       object mnuSep1: TMenuItem
         Caption = '-'
       end

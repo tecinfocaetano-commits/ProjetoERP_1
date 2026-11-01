@@ -32,6 +32,9 @@ uses
   uPedidoVenda,
   uPedidoStatus,
   uMapaProducaoStatus,
+  uPais,
+  uEstado,
+  uCidade,
   // Models - fase 1 redesenho (suprimentos/fiscal/financeiro)
   uProdutoFiscal,
   uMaterial,
@@ -44,6 +47,9 @@ uses
   uProdutoFiscalService,
   uMaterialService,
   uCorService,
+  uPaisService,
+  uEstadoService,
+  uCidadeService,
   uACBrHelper,
   // Utils
   uValidacoes,
@@ -62,6 +68,9 @@ uses
   uFrmMaterial,
   uFrmMovimentoFinanceiro,
   uFrmCompras,
+  uFrmPais,
+  uFrmEstado,
+  uFrmCidade,
   // Views - Fase 3
   uFrmMovEstoque,
   uFrmKardex,

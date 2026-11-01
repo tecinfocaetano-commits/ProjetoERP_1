@@ -105,6 +105,18 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src/Models/uPais.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Models/uEstado.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Models/uCidade.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/Repositories/uRepositoryBase.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -126,6 +138,18 @@
       </Unit>
       <Unit>
         <Filename Value="src/Services/uCorService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uPaisService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uEstadoService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uCidadeService.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -207,6 +231,27 @@
         <Filename Value="src/Views/uFrmMaterial.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmMaterial"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmPais.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmPais"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmEstado.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmEstado"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmCidade.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmCidade"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>
