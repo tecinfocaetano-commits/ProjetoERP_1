@@ -15,9 +15,10 @@
 | D3 | **Unificar CLIENTE + FORNECEDOR** com `TIPO` (C/F) | 31/10 | ⏸ adiado (alto risco, exige plano + aprovação) |
 | D4 | Regra de negócio sempre em **Service**; SQL parametrizado; transações com auditoria | — | ✅ padrão do projeto |
 | D5 | **GRADE**: tela própria com tabela principal + sub-tabela de tamanhos (nº de tamanhos variável por tipo: calçado/confecção/grupo) | 31/10 | ✅ concluído |
-| D6 | GRADE no **item do pedido** (inserível) e subgrid **editável no mapa** | 31/10 | 🔨 em andamento |
-| D7 | Preferência **`USA_GRADE`**: desmarcada → grade **não aparece nem no mapa nem no pedido** | 31/10 | 🔨 em andamento (service + tela de config prontos; falta o gate nas telas) |
+| D6 | GRADE no **item do pedido** (inserível) e subgrid **editável no mapa** | 31/10 | ✅ concluído |
+| D7 | Preferência **`USA_GRADE`**: desmarcada → grade **não aparece nem no mapa nem no pedido** | 31/10 | ✅ concluído (gate nas duas telas) |
 | D8 | LazReport apenas; testes de impressão só em PDF | — | ✅ padrão |
+| D9 | **Android: configuração por empresa** — tela onde o usuário define o **caminho do servidor** (URL da API) e o **código de usuário**; cada empresa usada guarda a sua própria configuração de servidor + usuário | 31/10 | 📋 pendente (executar após os itens do backlog atual) |
 
 ---
 
@@ -28,7 +29,7 @@
 | 1 | **Consertar telas geográficas** (País/Estado/Cidade) e voltar build/suíte ao verde | 🔨 **em andamento** | build estava quebrado (assinaturas de `InserirParam`, falta `uFrmCidade`, `.lfm`, colunas `SIGLA`×`CODIGO`/`UF`) |
 | 2 | Migração `016` **GRADE**: `GRADE` + `GRADE_TAMANHO`, `PRODUTO.GRADE_ID`, `ITEM_PEDIDO_GRADE`, `MAPA_PRODUCAO_ITEM_GRADE`, config `USA_GRADE` | ✅ concluído (31/10) | aplicada no `DADOS.FDB` real (backup `DADOS_backup_antes_016.fdb`); testada em cópia (aplica→rollback) |
 | 3 | Tela de cadastro de GRADE (master + tamanhos) | ✅ concluído (31/10) | D5 |
-| 4 | GRADE no item do pedido + subgrid editável no mapa, sob `USA_GRADE` | 🔨 **em andamento** | D6/D7 |
+| 4 | GRADE no item do pedido + subgrid editável no mapa, sob `USA_GRADE` | ✅ concluído (31/10) | D6/D7 |
 | 5 | Notas lerem `PRODUTO_FISCAL` (NCM/CFOP/CST/alíquotas no service) | 📋 pendente | colunas prontas (015) |
 | 6 | Re-layout da tela de Consumo | 📋 pendente | |
 | 7 | Produto Produção com Cores (expor `COR`) | 📋 pendente | services prontos |
@@ -36,6 +37,7 @@
 | 9 | Vínculo geo (país/estado/cidade) em CLIENTE/FORNECEDOR | 📋 pendente | depende do item 1 |
 | 10 | Unificação CLIENTE+FORNECEDOR | ⏸ adiado | D3 |
 | 11 | Android: orçamentos + telas | ⏸ deferido | |
+| 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | 📋 pendente | D9 — fazer depois dos itens acima |
 
 ---
 
@@ -106,8 +108,33 @@
 - Menu **Cadastros → Grades**; `.lpr`/`.lpi` atualizados.
 - `uFrmConfiguracoes` — checkbox da preferência `USA_GRADE`.
 - Build **0 erros / 0 warnings**; suíte **62/62**.
-- Falta (marco seguinte): gate `USA_GRADE` no pedido e no mapa + subgrid
-  editável no mapa + regra do total do item pela soma da grade.
+
+### 3.6 GRADE — pedido + mapa + produto (concluído 31/10)
+
+- `uFrmGradeQuantidades` (`.pas`/`.lfm`) — diálogo reutilizável de
+  quantidades: `TStringGrid` com `FixedCols=1` (tamanho não editável),
+  coluna de quantidade, total no rodapé e validação opcional de total > 0.
+- `uFrmPedidoVenda`:
+  - coluna **Grade** no `sgItens` (largura 0 e sem título com
+    `USA_GRADE='N'`) e botão **"Grade do item..."** (só visível com a
+    preferência ligada);
+  - ao adicionar produto com grade padrão, abre o diálogo já preenchido;
+  - quantidade do item = soma das quantidades da grade; total recalculado;
+  - no save, grava `ITEM_PEDIDO_GRADE` na **mesma transação** do pedido
+    (`GEN_ID(GEN_ITEM_PEDIDO_ID, 0)` para o ID do item).
+- `uFrmMapaProducao`:
+  - painel **Grade do item** (à direita da lista de itens) com resumo/total,
+    **Editar grade...** e **Copiar do pedido**; sem `USA_GRADE` o painel
+    fica oculto e a grade ocupa a largura cheia;
+  - `AtualizarInfoGrade` no `DataSourceItensMapa.OnDataChange`;
+  - grava via `SalvarGradeMapaItem` e recarrega com `CarregarMapas`.
+- `uFrmProdutos` — combo **Grade** gravando `PRODUTO.GRADE_ID` (grade padrão
+  usada para montar o item no pedido).
+- `uGradeService.GravarGradeEfetiva` — **transação composta**: só
+  inicia/commita/rollback se `not Conexao.EmTransacao`; auditoria sempre.
+- Build **0 erros / 0 warnings**; suíte **62/62**.
+- Próximo: itens 5–10 do backlog e, depois, D9 (configuração por empresa no
+  Android).
 
 ---
 

@@ -1,0 +1,76 @@
+object frmGradeQuantidades: TfrmGradeQuantidades
+  Left = 0
+  Height = 360
+  Top = 0
+  Width = 320
+  Caption = 'Quantidades por tamanho'
+  ClientHeight = 360
+  ClientWidth = 320
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 42
+    Top = 0
+    Width = 320
+    Align = alTop
+    Color = clNavy
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 12
+      Height = 20
+      Top = 11
+      Width = 290
+      AutoSize = False
+      Caption = 'Quantidades por tamanho'
+      Font.Color = clWhite
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object sgTamanhos: TStringGrid
+    Left = 12
+    Height = 230
+    Top = 54
+    Width = 296
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ColCount = 2
+    FixedCols = 1
+    FixedRows = 1
+    RowCount = 2
+    TabOrder = 1
+    OnEditingDone = sgTamanhosEditingDone
+  end
+  object lblTotal: TLabel
+    Left = 12
+    Height = 20
+    Top = 290
+    Width = 200
+    AutoSize = False
+    Caption = 'Total: 0'
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object btnOK: TBitBtn
+    Left = 128
+    Height = 30
+    Top = 322
+    Width = 84
+    Caption = 'OK'
+    Default = True
+    OnClick = btnOKClick
+    TabOrder = 2
+  end
+  object btnCancelar: TBitBtn
+    Left = 224
+    Height = 30
+    Top = 322
+    Width = 84
+    Caption = 'Cancelar'
+    Cancel = True
+    ModalResult = 2
+    TabOrder = 3
+  end
+end

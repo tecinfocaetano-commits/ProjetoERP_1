@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, Grids, DateUtils,
-  uConexao, uSessao;
+  uConexao, uSessao, uGrade, uGradeService, uFrmGradeQuantidades;
 
 type
   { TfrmPedidoVenda }
@@ -48,6 +48,7 @@ type
     btnAddItem: TBitBtn;
     sgItens: TStringGrid;
     btnRemoverItem: TBitBtn;
+    btnGradeItem: TBitBtn;
     pnlTotais: TPanel;
     lblSubtotal: TLabel;
     edtSubtotal: TEdit;
@@ -62,15 +63,20 @@ type
     lblObs: TLabel;
     mmoObs: TMemo;
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure btnBuscarProdClick(Sender: TObject);
     procedure btnAddItemClick(Sender: TObject);
     procedure btnRemoverItemClick(Sender: TObject);
+    procedure btnGradeItemClick(Sender: TObject);
     procedure btnSalvarClick(Sender: TObject);
     procedure btnCancelarClick(Sender: TObject);
     procedure btnFecharClick(Sender: TObject);
     procedure edtDescontoExit(Sender: TObject);
   private
     FConexao: TConexao;
+    FGradeService: TGradeService;
+    FUsaGrade: Boolean;
+    FGrades: array of TGradeTamanhos;
     FProdutoId: Int64;
     FPedidoId: Int64;
     procedure CarregarClientes;
@@ -80,6 +86,15 @@ type
     procedure RecalcularTotais;
     procedure LimparFormulario;
     function ProximoNumero: Integer;
+    procedure AjustarGrades;
+    procedure RemoverGradeDaLinha(ARow: Integer);
+    procedure AplicarGradeNaLinha(ARow: Integer;
+      const ATamanhos: TGradeTamanhos);
+    function GradeDaLinha(ARow: Integer): TGradeTamanhos;
+    function GradePadraoDoProduto(AProdutoId: Int64): TGradeTamanhos;
+    function EditarGrade(const ATitulo: string; const AEntrada: TGradeTamanhos;
+      out ASaida: TGradeTamanhos; AExigirQuantidade: Boolean = True): Boolean;
+    function AbrirGradeDaLinha(ARow: Integer): Boolean;
   public
     property PedidoId: Int64 read FPedidoId write FPedidoId;
   end;
@@ -100,6 +115,12 @@ begin
   FProdutoId := 0;
   FPedidoId := 0;
 
+  FGradeService := TGradeService.Create;
+  FUsaGrade := FGradeService.UsaGrade;
+  btnGradeItem.Visible := FUsaGrade;
+  SetLength(FGrades, 1);
+  FGrades[0] := nil;
+
   CarregarClientes;
   CarregarFormasPagamento;
   CarregarCondicoesPagamento;
@@ -112,7 +133,7 @@ end;
 
 procedure TfrmPedidoVenda.ConfigurarGridItens;
 begin
-  sgItens.ColCount := 7;
+  sgItens.ColCount := 8;
   sgItens.RowCount := 1;
   sgItens.FixedRows := 1;
   sgItens.Cells[0, 0] := 'Prod.ID';
@@ -122,13 +143,188 @@ begin
   sgItens.Cells[4, 0] := 'Desconto';
   sgItens.Cells[5, 0] := 'Total';
   sgItens.Cells[6, 0] := 'CFOP';
+  sgItens.Cells[7, 0] := 'Grade';
   sgItens.ColWidths[0] := 60;
-  sgItens.ColWidths[1] := 250;
+  sgItens.ColWidths[1] := 220;
   sgItens.ColWidths[2] := 70;
   sgItens.ColWidths[3] := 90;
   sgItens.ColWidths[4] := 70;
   sgItens.ColWidths[5] := 90;
   sgItens.ColWidths[6] := 60;
+  sgItens.ColWidths[7] := 180;
+
+  { USA_GRADE desmarcada: a coluna da grade não aparece }
+  if not FUsaGrade then
+  begin
+    sgItens.Cells[7, 0] := '';
+    sgItens.ColWidths[7] := 0;
+  end;
+end;
+
+procedure TfrmPedidoVenda.FormDestroy(Sender: TObject);
+begin
+  FreeAndNil(FGradeService);
+end;
+
+procedure TfrmPedidoVenda.AjustarGrades;
+var
+  I, LAntes: Integer;
+begin
+  LAntes := Length(FGrades);
+  if LAntes = sgItens.RowCount then
+    Exit;
+
+  SetLength(FGrades, sgItens.RowCount);
+  for I := LAntes to High(FGrades) do
+    FGrades[I] := nil;
+end;
+
+function TfrmPedidoVenda.GradeDaLinha(ARow: Integer): TGradeTamanhos;
+begin
+  if (ARow >= 0) and (ARow < Length(FGrades)) then
+    Result := FGrades[ARow]
+  else
+    Result := nil;
+end;
+
+procedure TfrmPedidoVenda.RemoverGradeDaLinha(ARow: Integer);
+var
+  I: Integer;
+begin
+  AjustarGrades;
+  if (ARow < 1) or (ARow > High(FGrades)) then
+    Exit;
+
+  { mantém FGrades alinhado às linhas do grid }
+  for I := ARow to High(FGrades) - 1 do
+    FGrades[I] := FGrades[I + 1];
+  if Length(FGrades) > 0 then
+    SetLength(FGrades, Length(FGrades) - 1);
+end;
+
+procedure TfrmPedidoVenda.AplicarGradeNaLinha(ARow: Integer;
+  const ATamanhos: TGradeTamanhos);
+var
+  LQtd, LVlr, LDesc, LTotal: Double;
+  LResumo: string;
+  I: Integer;
+begin
+  AjustarGrades;
+  if (ARow < 1) or (ARow > High(FGrades)) then
+    Exit;
+
+  FGrades[ARow] := Copy(ATamanhos, 0, Length(ATamanhos));
+
+  { regra do item: a quantidade é a soma das quantidades da grade }
+  LQtd := SomarQuantidades(ATamanhos);
+  LVlr := StrToFloatDef(sgItens.Cells[3, ARow], 0);
+  LDesc := StrToFloatDef(sgItens.Cells[4, ARow], 0);
+  LTotal := (LQtd * LVlr) - LDesc;
+  if LTotal < 0 then
+    LTotal := 0;
+
+  sgItens.Cells[2, ARow] := FormatFloat('#,##0.####', LQtd);
+  sgItens.Cells[5, ARow] := FormatFloat('#,##0.00', LTotal);
+
+  LResumo := '';
+  for I := 0 to High(ATamanhos) do
+    if ATamanhos[I].Quantidade > 0 then
+      LResumo := LResumo + Format('%s:%s  ', [ATamanhos[I].Tamanho,
+        FormatFloat('0.####', ATamanhos[I].Quantidade)]);
+  if LResumo = '' then
+    LResumo := Format('%d tamanho(s)', [Length(ATamanhos)]);
+  sgItens.Cells[7, ARow] := Trim(LResumo);
+
+  RecalcularTotais;
+end;
+
+function TfrmPedidoVenda.GradePadraoDoProduto(
+  AProdutoId: Int64): TGradeTamanhos;
+var
+  LGradeId: Int64;
+  LOrigem: TGradeTamanhos;
+  I: Integer;
+begin
+  Result := nil;
+  if (not FUsaGrade) or (AProdutoId <= 0) then
+    Exit;
+
+  LGradeId := FGradeService.GradeDoProduto(AProdutoId);
+  if LGradeId <= 0 then
+    Exit;
+
+  LOrigem := FGradeService.ListarTamanhos(LGradeId);
+  for I := 0 to High(LOrigem) do
+    if LOrigem[I].Ativo <> 'I' then
+    begin
+      SetLength(Result, Length(Result) + 1);
+      with Result[High(Result)] do
+      begin
+        Id := 0;
+        Tamanho := LOrigem[I].Tamanho;
+        Ordem := Length(Result) - 1;
+        Quantidade := 0;
+        Ativo := 'A';
+      end;
+    end;
+end;
+
+function TfrmPedidoVenda.EditarGrade(const ATitulo: string;
+  const AEntrada: TGradeTamanhos; out ASaida: TGradeTamanhos;
+  AExigirQuantidade: Boolean): Boolean;
+begin
+  ASaida := nil;
+  with TfrmGradeQuantidades.Create(nil) do
+  try
+    Carregar(AEntrada, ATitulo, AExigirQuantidade);
+    Result := ShowModal = mrOk;
+    if Result then
+      ASaida := Tamanhos;
+  finally
+    Free;
+  end;
+end;
+
+function TfrmPedidoVenda.AbrirGradeDaLinha(ARow: Integer): Boolean;
+var
+  LTamanhos: TGradeTamanhos;
+begin
+  Result := False;
+  if (ARow < 1) or (ARow > sgItens.RowCount - 1) then
+  begin
+    MessageDlg('Selecione um item na lista para editar a grade.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  LTamanhos := GradeDaLinha(ARow);
+  if Length(LTamanhos) = 0 then
+    LTamanhos := GradePadraoDoProduto(
+      StrToInt64Def(sgItens.Cells[0, ARow], 0));
+
+  if Length(LTamanhos) = 0 then
+  begin
+    MessageDlg('Este item não tem grade e o produto não possui grade padrão.' +
+      sLineBreak + sLineBreak +
+      'Defina a grade padrão em Cadastros > Produtos (campo Grade) ou ' +
+      'cadastre a grade em Cadastros > Grades.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  if EditarGrade('Grade do item - ' + sgItens.Cells[1, ARow],
+    LTamanhos, LTamanhos, True) then
+  begin
+    AplicarGradeNaLinha(ARow, LTamanhos);
+    Result := True;
+  end;
+end;
+
+procedure TfrmPedidoVenda.btnGradeItemClick(Sender: TObject);
+begin
+  if not FUsaGrade then
+    Exit;
+  AbrirGradeDaLinha(sgItens.Row);
 end;
 
 procedure TfrmPedidoVenda.CarregarClientes;
@@ -260,6 +456,7 @@ procedure TfrmPedidoVenda.btnAddItemClick(Sender: TObject);
 var
   LRow: Integer;
   LQtd, LVlr, LDesc, LTotal: Double;
+  LTamanhos, LTamPadrao: TGradeTamanhos;
 begin
   if FProdutoId <= 0 then
   begin
@@ -278,6 +475,24 @@ begin
     Exit;
   end;
 
+  { USA_GRADE: produto com grade padrão -> a quantidade do item passa a
+    ser a soma das quantidades por tamanho (regra do total pela grade) }
+  LTamanhos := nil;
+  if FUsaGrade then
+  begin
+    LTamPadrao := GradePadraoDoProduto(FProdutoId);
+    if Length(LTamPadrao) > 0 then
+    begin
+      if not EditarGrade('Grade do item - ' + lblProdutoDesc.Caption,
+        LTamPadrao, LTamanhos, True) then
+        Exit;
+      LQtd := SomarQuantidades(LTamanhos);
+      LTotal := (LQtd * LVlr) - LDesc;
+      if LTotal < 0 then
+        LTotal := 0;
+    end;
+  end;
+
   LRow := sgItens.RowCount;
   sgItens.RowCount := LRow + 1;
   sgItens.Cells[0, LRow] := IntToStr(FProdutoId);
@@ -287,6 +502,11 @@ begin
   sgItens.Cells[4, LRow] := FormatFloat('#,##0.00', LDesc);
   sgItens.Cells[5, LRow] := FormatFloat('#,##0.00', LTotal);
   sgItens.Cells[6, LRow] := '5102';
+  sgItens.Cells[7, LRow] := '';
+
+  AjustarGrades;
+  if Length(LTamanhos) > 0 then
+    AplicarGradeNaLinha(LRow, LTamanhos);
 
   // Limpar campos de item
   edtProduto.Clear;
@@ -307,6 +527,7 @@ begin
   if sgItens.Row < 1 then Exit;
   if sgItens.RowCount <= 1 then Exit;
 
+  RemoverGradeDaLinha(sgItens.Row);
   for I := sgItens.Row to sgItens.RowCount - 2 do
     sgItens.Rows[I].Assign(sgItens.Rows[I + 1]);
   sgItens.RowCount := sgItens.RowCount - 1;
@@ -336,6 +557,8 @@ var
   LQuery: TSQLQuery;
   I: Integer;
   LClienteId, LFormaPagId, LCondPagId: Int64;
+  LItemId: Int64;
+  LTamanhos: TGradeTamanhos;
 begin
   if cmbCliente.ItemIndex < 0 then
   begin
@@ -412,6 +635,22 @@ begin
       LQuery.ParamByName('TOT').AsFloat := StrToFloatDef(sgItens.Cells[5, I], 0);
       LQuery.ParamByName('CFOP').AsString := sgItens.Cells[6, I];
       LQuery.ExecSQL;
+
+      { grade efetiva do item: entra na MESMA transação do pedido }
+      if FUsaGrade then
+      begin
+        LTamanhos := GradeDaLinha(I);
+        if Length(LTamanhos) > 0 then
+        begin
+          LQuery.Close;
+          LQuery.SQL.Text :=
+            'SELECT GEN_ID(GEN_ITEM_PEDIDO_ID, 0) AS ID FROM RDB$DATABASE';
+          LQuery.Open;
+          LItemId := LQuery.FieldByName('ID').AsLargeInt;
+          LQuery.Close;
+          FGradeService.SalvarGradeItemPedido(LItemId, LTamanhos);
+        end;
+      end;
     end;
 
     FConexao.Confirmar;
@@ -442,6 +681,8 @@ begin
   mmoObs.Clear;
   FProdutoId := 0;
   FPedidoId := 0;
+  SetLength(FGrades, 1);
+  FGrades[0] := nil;
 end;
 
 procedure TfrmPedidoVenda.btnCancelarClick(Sender: TObject);

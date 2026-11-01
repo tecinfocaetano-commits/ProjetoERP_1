@@ -74,6 +74,7 @@ uses
   uFrmEstado,
   uFrmCidade,
   uFrmGrade,
+  uFrmGradeQuantidades,
   // Views - Fase 3
   uFrmMovEstoque,
   uFrmKardex,

@@ -26,44 +26,50 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (31/10/2026)
 
-**HEAD:** `17be6ff` (migração `016` GRADE) + commit da tela de grades.
-Árvore **limpa** após o commit. Build **0 erros / 0 warnings** · suíte **62/62**.
+**HEAD:** `879db53` + commit novo desta sessão (grade no pedido/mapa).
+Árvore limpa após o commit. Build **0 erros / 0 warnings** · suíte **62/62**.
 
-### GRADE — cadastro CONCLUÍDO (commit desta sessão)
+### GRADE — COMPLETA (D5/D6/D7)
 
-- `Desktop\src\Models\uGrade.pas` — `TGrade`, `TGradeTamanho` (com
-  `Quantidade`), `GRADE_TIPOS`, `DescricaoTipoGrade`, `IndiceTipoGrade`,
-  `TipoGradePorIndice`, `SomarQuantidades`.
-- `Desktop\src\Services\uGradeService.pas` — **sem stubs**: cadastro
-  (`Inserir`/`Atualizar`/`Excluir` com transação + auditoria), `Carregar`
-  (listagem por empresa), `ListarTamanhos`, `UsaGrade`/`DefinirUsaGrade`
-  (lê `CONFIGURACAO` com fallback `EMPRESA_ID IS NULL`), grades efetivas do
-  pedido/mapa (`GradeDoItemPedido`, `SalvarGradeItemPedido`,
-  `CopiarGradeParaItemPedido`, `GradeDoMapaItem`, `SalvarGradeMapaItem`,
-  `CopiarGradeDoPedidoParaMapa`) e `GradeDoProduto`/`DefinirGradeDoProduto`.
-- `Desktop\src\Views\uFrmGrade.pas/.lfm` — `TfrmCadastroBase`: grid principal
-  (nome/tipo/status/observação) + `TStringGrid` de tamanhos editável,
-  com adicionar/remover, validação de repetidos e ordem.
-- Menu **Cadastros → Grades**; units no `.lpr`/`.lpi`.
-- `uFrmConfiguracoes`: checkbox **"Usar grade de tamanhos no pedido e no mapa"**
-  ligado a `USA_GRADE` (grava via `TGradeService.DefinirUsaGrade`).
+- **Cadastro** (`uGrade`, `uGradeService`, `uFrmGrade`, menu
+  **Cadastros → Grades**, checkbox `USA_GRADE` em Configurações) — commit
+  `87b6246`.
+- **Grade no item do pedido** (`uFrmPedidoVenda`):
+  - coluna **Grade** no `sgItens` (oculta com `USA_GRADE='N'`);
+  - botão **"Grade do item..."** em `pnlItens` (visível só com `UsaGrade`);
+  - ao adicionar produto com `PRODUTO.GRADE_ID`, abre o diálogo de
+    quantidades já com os tamanhos da grade padrão;
+  - a quantidade do item passa a ser `SomarQuantidades(grade)` e o total é
+    recalculado;
+  - no save, cada `ITEM_PEDIDO` grava `ITEM_PEDIDO_GRADE` na **mesma
+    transação** (ID via `GEN_ID(GEN_ITEM_PEDIDO_ID, 0)`).
+- **Grade no mapa** (`uFrmMapaProducao`):
+  - painel **"Grade do item"** à direita de `dbGridItensMapa` (só com
+    `UsaGrade`; sem a preferência o grid volta à largura cheia);
+  - botões **"Editar grade..."** (diálogo editável) e **"Copiar do pedido"**
+    (`CopiarGradeDoPedidoParaMapa`);
+  - resumo/total atualizado ao selecionar o item (`OnDataChange` do
+    `DataSourceItensMapa`);
+  - gravação via `SalvarGradeMapaItem` + `CarregarMapas` após o commit.
+- **Diálogo reutilizável** `Desktop\src\Views\uFrmGradeQuantidades.pas/.lfm`
+  (`TStringGrid` com `FixedCols=1`: tamanho não editável, quantidade
+  editável, total no rodapé).
+- **Produto**: combo **Grade** em `uFrmProdutos` (`PRODUTO.GRADE_ID`), usado
+  como grade padrão na inserção do item.
+- **Transação composta**: `uGradeService.GravarGradeEfetiva` só
+  inicia/commita/rollback quando `not Conexao.EmTransacao`; com transação
+  aberta pelo chamador, a grade entra nela.
 
-### Próximo passo (executável) — grade no pedido e no mapa
+### Próximo passo (executável)
 
-1. `Desktop\src\Views\uFrmPedidoVenda.pas`: no item do pedido (`sgItens`),
-   quando `TGradeService.UsaGrade`, exibir a grade do item e permitir
-   preencher quantidade por tamanho; salvar com
-   `TGradeService.SalvarGradeItemPedido` (e `CopiarGradeParaItemPedido` ao
-   escolher a grade do produto/`PRODUTO.GRADE_ID`). Com `USA_GRADE='N'`, nada
-   aparece.
-2. `Desktop\src\Views\uFrmMapaProducao.pas/.lfm`: subgrid **editável**
-   (`dbGridItensMapa`) com os tamanhos do item do mapa; usar
-   `GradeDoMapaItem` / `SalvarGradeMapaItem` e o botão "copiar do pedido"
-   (`CopiarGradeDoPedidoParaMapa`). Também sob `UsaGrade`.
-3. Regra do total: total do item = `SomarQuantidades(grade)`. Definir com o
-   usuário se o total do pedido passa a ser calculado pela grade.
-4. Build 0/0 + suíte 62/62; atualizar este checkpoint + `PLANO_E_LOG.md`;
-   commit.
+1. Backlog do `PLANO_E_LOG.md` §2: itens **5 a 10** (notas lendo
+   `PRODUTO_FISCAL`, re-layout do Consumo, Produto com Cores, Compras → Nota
+   de Entrada, vínculo geo em CLIENTE/FORNECEDOR).
+2. **D9 (Android, depois do backlog):** tela de configuração com **caminho
+   do servidor + código de usuário, salvos por empresa** — cada empresa
+   usada tem a sua própria configuração.
+3. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint
+   e o `PLANO_E_LOG.md`; commitar.
 
 ### Último marco concluído — migração `016` GRADE (commit `17be6ff`)
 

@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uSessao;
+  uFrmCadastroBase, uConexao, uSessao, uGradeService;
 
 type
   { TfrmProdutos }
@@ -29,6 +29,8 @@ type
     cmbCategoria: TComboBox;
     lblUnidade: TLabel;
     cmbUnidade: TComboBox;
+    lblGrade: TLabel;
+    cmbGrade: TComboBox;
     lblNcm: TLabel;
     edtNcm: TEdit;
     lblCest: TLabel;
@@ -65,9 +67,11 @@ type
     function Excluir: Boolean; override;
   private
     FQuery: TSQLQuery;
+    FGradeService: TGradeService;
     procedure ConfigurarGrid;
     procedure CarregarCategorias;
     procedure CarregarUnidades;
+    procedure CarregarGrades;
     procedure CalcularPrecoVenda;
   end;
 
@@ -94,6 +98,8 @@ begin
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
 
+    FGradeService := TGradeService.Create;
+
     // Criar DataSource1 se não existir
     if DataSource1 = nil then
       DataSource1 := TDataSource.Create(Self);
@@ -103,6 +109,7 @@ begin
     ConfigurarGrid;
     CarregarCategorias;
     CarregarUnidades;
+    CarregarGrades;
 
     // Inicializar ComboBox de status
     cmbStatus.Items.Clear;
@@ -125,6 +132,7 @@ end;
 
 procedure TfrmProdutos.FormDestroy(Sender: TObject);
 begin
+  FreeAndNil(FGradeService);
   inherited;
 end;
 
@@ -185,8 +193,33 @@ begin
   end;
 end;
 
-procedure TfrmProdutos.CalcularPrecoVenda;
+procedure TfrmProdutos.CarregarGrades;
 var
+  LQuery: TSQLQuery;
+begin
+  cmbGrade.Items.Clear;
+  cmbGrade.Items.Add('');   { sem grade padrao }
+  if FGradeService = nil then
+    Exit;
+
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := FConexao.Connection;
+    LQuery.Transaction := FConexao.Transaction;
+    FGradeService.Carregar(LQuery);
+    while not LQuery.EOF do
+    begin
+      if LQuery.FieldByName('ATIVO').AsString = 'A' then
+        cmbGrade.Items.AddObject(LQuery.FieldByName('NOME').AsString,
+          TObject(PtrInt(LQuery.FieldByName('ID').AsLargeInt)));
+      LQuery.Next;
+    end;
+  finally
+    LQuery.Free;
+  end;
+end;
+
+procedure TfrmProdutos.CalcularPrecoVenda;var
   LCusto, LMargem: Double;
 begin
   LCusto := StrToFloatDef(edtPrecoCusto.Text, 0);
@@ -235,6 +268,7 @@ begin
   edtDescricaoPDV.Enabled := AHabilitar;
   cmbCategoria.Enabled := AHabilitar;
   cmbUnidade.Enabled := AHabilitar;
+  cmbGrade.Enabled := AHabilitar;
   edtNcm.Enabled := AHabilitar;
   edtCest.Enabled := AHabilitar;
   edtCfopVenda.Enabled := AHabilitar;
@@ -256,6 +290,7 @@ begin
   edtDescricaoPDV.Clear;
   cmbCategoria.ItemIndex := 0;
   cmbUnidade.ItemIndex := 0;
+  cmbGrade.ItemIndex := 0;
   edtNcm.Clear;
   edtCest.Clear;
   edtCfopVenda.Clear;
@@ -272,6 +307,8 @@ end;
 procedure TfrmProdutos.PreencherCampos;
 var
   LQuery: TSQLQuery;
+  I: Integer;
+  LGradeId: Int64;
 begin
   LQuery := TSQLQuery.Create(nil);
   try
@@ -301,6 +338,19 @@ begin
         cmbStatus.ItemIndex := 0
       else
         cmbStatus.ItemIndex := 1;
+
+      cmbGrade.ItemIndex := 0;
+      LGradeId := 0;
+      if not LQuery.FieldByName('GRADE_ID').IsNull then
+        LGradeId := LQuery.FieldByName('GRADE_ID').AsLargeInt;
+      if LGradeId > 0 then
+        for I := 1 to cmbGrade.Items.Count - 1 do
+          if (cmbGrade.Items.Objects[I] <> nil) and
+             (PtrInt(cmbGrade.Items.Objects[I]) = LGradeId) then
+          begin
+            cmbGrade.ItemIndex := I;
+            Break;
+          end;
 
       mmoObservacoes.Text := LQuery.FieldByName('OBSERVACOES').AsString;
     end;
@@ -354,9 +404,9 @@ begin
       LQuery.SQL.Text :=
         'INSERT INTO PRODUTO (EMPRESA_ID, CODIGO, CODIGO_BARRAS, DESCRICAO, DESCRICAO_PDV, ' +
         'NCM, CEST, CFOP_VENDA, PRECO_CUSTO, PRECO_VENDA, MARGEM_LUCRO, ' +
-        'ESTOQUE_MINIMO, ESTOQUE_MAXIMO, CONTROLA_ESTOQUE, ATIVO, OBSERVACOES) ' +
+        'ESTOQUE_MINIMO, ESTOQUE_MAXIMO, CONTROLA_ESTOQUE, ATIVO, OBSERVACOES, GRADE_ID) ' +
         'VALUES (:EMP, :COD, :BAR, :DESC, :PDV, :NCM, :CEST, :CFOP, ' +
-        ':CUSTO, :VENDA, :MARGEM, :MIN, :MAX, :CTRL, :ATIVO, :OBS)';
+        ':CUSTO, :VENDA, :MARGEM, :MIN, :MAX, :CTRL, :ATIVO, :OBS, :GRADE)';
       LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     end
     else
@@ -366,7 +416,7 @@ begin
         'DESCRICAO_PDV = :PDV, NCM = :NCM, CEST = :CEST, CFOP_VENDA = :CFOP, ' +
         'PRECO_CUSTO = :CUSTO, PRECO_VENDA = :VENDA, MARGEM_LUCRO = :MARGEM, ' +
         'ESTOQUE_MINIMO = :MIN, ESTOQUE_MAXIMO = :MAX, CONTROLA_ESTOQUE = :CTRL, ' +
-        'ATIVO = :ATIVO, OBSERVACOES = :OBS WHERE ID = :ID';
+        'ATIVO = :ATIVO, OBSERVACOES = :OBS, GRADE_ID = :GRADE WHERE ID = :ID';
       LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
     end;
 
@@ -389,6 +439,14 @@ begin
       LQuery.ParamByName('ATIVO').AsString := 'A'
     else
       LQuery.ParamByName('ATIVO').AsString := 'I';
+
+    { grade padrao do produto (usada para preencher a grade no pedido) }
+    if (cmbGrade.ItemIndex > 0) and
+       (cmbGrade.Items.Objects[cmbGrade.ItemIndex] <> nil) then
+      LQuery.ParamByName('GRADE').AsLargeInt :=
+        PtrInt(cmbGrade.Items.Objects[cmbGrade.ItemIndex])
+    else
+      LQuery.ParamByName('GRADE').Clear;
 
     LQuery.ExecSQL;
     FConexao.Confirmar;

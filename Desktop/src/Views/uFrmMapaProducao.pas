@@ -24,7 +24,8 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, Grids, DBGrids, DB, SQLDB, DateUtils, Menus,
   LR_Class, LR_DBSet, LR_Barc, lr_e_fclpdf,
-  uConexao, uSessao, uProducaoService, uPedidoStatus, uMapaProducaoStatus, uPermissao;
+  uConexao, uSessao, uProducaoService, uPedidoStatus, uMapaProducaoStatus, uPermissao,
+  uGrade, uGradeService, uFrmGradeQuantidades;
 
 type
   { TfrmMapaProducao }
@@ -94,12 +95,18 @@ type
     btnGerarMapa: TBitBtn;
     btnVoltar: TBitBtn;
     chkConsumoAutomatico: TCheckBox;
+    pnlGrade: TPanel;
+    lblGradeTitulo: TLabel;
+    lblGradeResumo: TLabel;
+    btnEditarGrade: TBitBtn;
+    btnCopiarGradePedido: TBitBtn;
     DataSourceMapas: TDataSource;
     DataSourceItensMapa: TDataSource;
     DataSourcePedidos: TDataSource;
     DataSourceItensPedido: TDataSource;
     DataSourceTaloes: TDataSource;
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure btnFiltrarClick(Sender: TObject);
     procedure btnNovoMapaClick(Sender: TObject);
@@ -130,8 +137,14 @@ type
     procedure DataSourceMapasDataChange(Sender: TObject; Field: TField);
     procedure DataSourcePedidosDataChange(Sender: TObject; Field: TField);
     procedure DataSourceItensPedidoDataChange(Sender: TObject; Field: TField);
+    procedure DataSourceItensMapaDataChange(Sender: TObject; Field: TField);
+    procedure btnEditarGradeClick(Sender: TObject);
+    procedure btnCopiarGradePedidoClick(Sender: TObject);
   private
     FConexao: TConexao;
+    FGradeService: TGradeService;
+    FUsaGrade: Boolean;
+    FAtualizandoGrade: Boolean;
     FMapas: TSQLQuery;
     FItensMapa: TSQLQuery;
     FPedidos: TSQLQuery;
@@ -178,6 +191,11 @@ type
     function  LerQuantidade(const ATexto: string): Double;
     function  NumeroDoMapa(AMapaId: Int64): Integer;
     function  VerificarPermissaoAcao(const AAcao, AMensagem: string): Boolean;
+    procedure AtualizarInfoGrade;
+    function  GradePadraoDoProduto(AProdutoId: Int64): TGradeTamanhos;
+    function  EditarGrade(const ATitulo: string;
+      const AEntrada: TGradeTamanhos; AExigirQuantidade: Boolean;
+      out ASaida: TGradeTamanhos): Boolean;
   end;
 
 var
@@ -269,10 +287,22 @@ begin
   FFrDBMapa.DataSet := FRelMapa;
 
   FService := TProducaoService.Create;
+  FGradeService := TGradeService.Create;
+  FUsaGrade := FGradeService.UsaGrade;
+  FAtualizandoGrade := False;
+  pnlGrade.Visible := FUsaGrade;
+  { sem grade a lista de itens usa a largura inteira }
+  if not FUsaGrade then
+    dbGridItensMapa.Width := dbGridItensMapa.Width + pnlGrade.Width + 8;
   FMapaId := 0;
   FPedidoId := 0;
   FCarregando := False;
   LimparItensNovos;
+end;
+
+procedure TfrmMapaProducao.FormDestroy(Sender: TObject);
+begin
+  FreeAndNil(FGradeService);
 end;
 
 procedure TfrmMapaProducao.FormShow(Sender: TObject);
@@ -407,11 +437,12 @@ begin
   begin
     lblDetalheTitulo.Caption := 'Selecione um mapa na lista para ver os itens.';
     lblProgresso.Caption := '';
+    AtualizarInfoGrade;
     Exit;
   end;
 
   FItensMapa.SQL.Text :=
-    'SELECT MI.ID, MI.STATUS, MI.QUANTIDADE, PR.CODIGO, PR.DESCRICAO, ' +
+    'SELECT MI.ID, MI.PRODUTO_ID, MI.STATUS, MI.QUANTIDADE, PR.CODIGO, PR.DESCRICAO, ' +
     '  CASE MI.STATUS WHEN ''PENDENTE'' THEN ''Pendente'' ' +
     '       WHEN ''EM_PRODUCAO'' THEN ''Em produção'' ' +
     '       WHEN ''CONCLUIDO'' THEN ''Concluído'' ' +
@@ -468,6 +499,8 @@ begin
   end
   else
     lblProgresso.Caption := '';
+
+  AtualizarInfoGrade;
 end;
 
 procedure TfrmMapaProducao.DataSourceMapasDataChange(Sender: TObject;
@@ -556,6 +589,196 @@ begin
   if (not FItensPedido.Active) or FItensPedido.IsEmpty then
     Exit;
   edtQuantidade.Text := FormatFloat('0.####', FItensPedido.FieldByName('PENDENTE').AsFloat);
+end;
+
+{ ---------------- GRADE do item do mapa (sob USA_GRADE) ---------------- }
+
+procedure TfrmMapaProducao.AtualizarInfoGrade;
+var
+  LTamanhos: TGradeTamanhos;
+  LResumo: string;
+  I: Integer;
+begin
+  if not FUsaGrade then
+    Exit;
+  if FAtualizandoGrade then
+    Exit;
+
+  FAtualizandoGrade := True;
+  try
+    btnEditarGrade.Enabled := FItensMapa.Active and (not FItensMapa.IsEmpty);
+    btnCopiarGradePedido.Enabled := btnEditarGrade.Enabled;
+
+    if not btnEditarGrade.Enabled then
+    begin
+      lblGradeResumo.Caption := 'Selecione um item do mapa.';
+      Exit;
+    end;
+
+    LTamanhos := FGradeService.GradeDoMapaItem(ItemSelecionadoDoMapa);
+    if Length(LTamanhos) = 0 then
+    begin
+      lblGradeResumo.Caption :=
+        'Sem grade informada para este item.' + sLineBreak +
+        'Use "Editar grade..." ou "Copiar do pedido".';
+      Exit;
+    end;
+
+    LResumo := '';
+    for I := 0 to High(LTamanhos) do
+      if LTamanhos[I].Quantidade > 0 then
+        LResumo := LResumo + Format('%s:%s   ', [LTamanhos[I].Tamanho,
+          FormatFloat('0.####', LTamanhos[I].Quantidade)]);
+    if LResumo = '' then
+      LResumo := 'Grade com ' + IntToStr(Length(LTamanhos)) +
+        ' tamanho(s), ainda sem quantidades.';
+
+    lblGradeResumo.Caption := LResumo + sLineBreak + 'Total da grade: ' +
+      FormatFloat('#,##0.####', SomarQuantidades(LTamanhos));
+  finally
+    FAtualizandoGrade := False;
+  end;
+end;
+
+procedure TfrmMapaProducao.DataSourceItensMapaDataChange(Sender: TObject;
+  Field: TField);
+begin
+  AtualizarInfoGrade;
+end;
+
+function TfrmMapaProducao.GradePadraoDoProduto(
+  AProdutoId: Int64): TGradeTamanhos;
+var
+  LGradeId: Int64;
+  LOrigem: TGradeTamanhos;
+  I: Integer;
+begin
+  Result := nil;
+  if AProdutoId <= 0 then
+    Exit;
+  LGradeId := FGradeService.GradeDoProduto(AProdutoId);
+  if LGradeId <= 0 then
+    Exit;
+
+  LOrigem := FGradeService.ListarTamanhos(LGradeId);
+  for I := 0 to High(LOrigem) do
+    if LOrigem[I].Ativo <> 'I' then
+    begin
+      SetLength(Result, Length(Result) + 1);
+      with Result[High(Result)] do
+      begin
+        Id := 0;
+        Tamanho := LOrigem[I].Tamanho;
+        Ordem := Length(Result) - 1;
+        Quantidade := 0;
+        Ativo := 'A';
+      end;
+    end;
+end;
+
+function TfrmMapaProducao.EditarGrade(const ATitulo: string;
+  const AEntrada: TGradeTamanhos; AExigirQuantidade: Boolean;
+  out ASaida: TGradeTamanhos): Boolean;
+begin
+  ASaida := nil;
+  with TfrmGradeQuantidades.Create(nil) do
+  try
+    Carregar(AEntrada, ATitulo, AExigirQuantidade);
+    Result := ShowModal = mrOk;
+    if Result then
+      ASaida := Tamanhos;
+  finally
+    Free;
+  end;
+end;
+
+procedure TfrmMapaProducao.btnEditarGradeClick(Sender: TObject);
+var
+  LItemId, LProdutoId: Int64;
+  LTamanhos, LEntrada, LNova: TGradeTamanhos;
+begin
+  if not FUsaGrade then
+    Exit;
+
+  LItemId := ItemSelecionadoDoMapa;
+  if LItemId <= 0 then
+  begin
+    MessageDlg('Selecione um item do mapa.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  LTamanhos := FGradeService.GradeDoMapaItem(LItemId);
+  if Length(LTamanhos) = 0 then
+  begin
+    LProdutoId := 0;
+    if not FItensMapa.FieldByName('PRODUTO_ID').IsNull then
+      LProdutoId := FItensMapa.FieldByName('PRODUTO_ID').AsLargeInt;
+    LEntrada := GradePadraoDoProduto(LProdutoId);
+    if Length(LEntrada) = 0 then
+    begin
+      MessageDlg('Este item não tem grade e o produto não possui grade ' +
+        'padrão definida.' + sLineBreak + sLineBreak +
+        'Defina a grade padrão em Cadastros > Produtos.',
+        mtInformation, [mbOK], 0);
+      Exit;
+    end;
+  end
+  else
+    LEntrada := LTamanhos;
+
+  if not EditarGrade('Grade do item - ' +
+    FItensMapa.FieldByName('DESCRICAO').AsString,
+    LEntrada, False, LNova) then
+    Exit;
+
+  try
+    FGradeService.SalvarGradeMapaItem(LItemId, LNova);
+    CarregarMapas;
+  except
+    on E: Exception do
+      MessageDlg('Erro ao gravar a grade do item: ' + E.Message,
+        mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmMapaProducao.btnCopiarGradePedidoClick(Sender: TObject);
+var
+  LItemId, LItemPedidoId: Int64;
+  LCopiados: Integer;
+begin
+  if not FUsaGrade then
+    Exit;
+
+  LItemId := ItemSelecionadoDoMapa;
+  if LItemId <= 0 then
+  begin
+    MessageDlg('Selecione um item do mapa.', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  try
+    LItemPedidoId := FGradeService.ItemPedidoDoMapaItem(LItemId);
+    if LItemPedidoId <= 0 then
+    begin
+      MessageDlg('Este item do mapa não está ligado a um item do pedido.',
+        mtInformation, [mbOK], 0);
+      Exit;
+    end;
+
+    LCopiados := FGradeService.CopiarGradeDoPedidoParaMapa(LItemId);
+    if LCopiados <= 0 then
+    begin
+      MessageDlg('O item do pedido não tem grade para copiar.',
+        mtInformation, [mbOK], 0);
+      Exit;
+    end;
+
+    CarregarMapas;
+  except
+    on E: Exception do
+      MessageDlg('Erro ao copiar a grade do pedido: ' + E.Message,
+        mtError, [mbOK], 0);
+  end;
 end;
 
 procedure TfrmMapaProducao.LimparItensNovos;

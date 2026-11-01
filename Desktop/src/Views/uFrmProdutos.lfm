@@ -96,6 +96,21 @@ inherited frmProdutos: TfrmProdutos
         Style = csDropDownList
         TabOrder = 5
       end
+      object lblGrade: TLabel
+        Left = 590
+        Height = 16
+        Top = 62
+        Width = 40
+        Caption = 'Grade:'
+      end
+      object cmbGrade: TComboBox
+        Left = 590
+        Height = 25
+        Top = 80
+        Width = 240
+        Style = csDropDownList
+        TabOrder = 17
+      end
       object lblNcm: TLabel
         Left = 16
         Height = 16

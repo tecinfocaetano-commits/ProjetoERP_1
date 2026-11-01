@@ -6,6 +6,7 @@ object frmPedidoVenda: TfrmPedidoVenda
   Caption = 'Pedido de Venda'
   Position = poScreenCenter
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   LCLVersion = '3.0.0.0'
   object pnlTopo: TPanel
     Left = 0
@@ -149,6 +150,15 @@ object frmPedidoVenda: TfrmPedidoVenda
       Caption = 'Itens do Pedido'
       Font.Style = [fsBold]
       ParentFont = False
+    end
+    object btnGradeItem: TBitBtn
+      Left = 748
+      Height = 26
+      Top = 2
+      Width = 144
+      Caption = 'Grade do item...'
+      OnClick = btnGradeItemClick
+      TabOrder = 0
     end
   end
   object pnlAddItem: TPanel

@@ -7,6 +7,7 @@ object frmMapaProducao: TfrmMapaProducao
   ClientHeight = 720
   ClientWidth = 1150
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   OnShow = FormShow
   Position = poScreenCenter
   LCLVersion = '3.2.0.0'
@@ -264,7 +265,7 @@ object frmMapaProducao: TfrmMapaProducao
         Left = 8
         Height = 118
         Top = 80
-        Width = 1132
+        Width = 830
         Anchors = [akTop, akLeft, akRight]
         Columns = <
           item
@@ -278,7 +279,7 @@ object frmMapaProducao: TfrmMapaProducao
             Expanded = False
             FieldName = 'DESCRICAO'
             Title.Caption = 'Produto'
-            Width = 320
+            Width = 240
             Visible = True
           end
           item
@@ -320,6 +321,55 @@ object frmMapaProducao: TfrmMapaProducao
         Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
         ReadOnly = True
         TabOrder = 0
+      end
+      object pnlGrade: TPanel
+        Left = 846
+        Height = 118
+        Top = 80
+        Width = 294
+        Anchors = [akTop, akRight]
+        BevelOuter = bvNone
+        ClientHeight = 118
+        ClientWidth = 294
+        TabOrder = 2
+        Visible = False
+        object lblGradeTitulo: TLabel
+          Left = 0
+          Height = 20
+          Top = 0
+          Width = 294
+          AutoSize = False
+          Caption = 'Grade do item'
+          Font.Style = [fsBold]
+          ParentFont = False
+        end
+        object lblGradeResumo: TLabel
+          Left = 0
+          Height = 44
+          Top = 22
+          Width = 294
+          AutoSize = False
+          Caption = ''
+          WordWrap = True
+        end
+        object btnEditarGrade: TBitBtn
+          Left = 0
+          Height = 28
+          Top = 72
+          Width = 140
+          Caption = 'Editar grade...'
+          OnClick = btnEditarGradeClick
+          TabOrder = 0
+        end
+        object btnCopiarGradePedido: TBitBtn
+          Left = 148
+          Height = 28
+          Top = 72
+          Width = 146
+          Caption = 'Copiar do pedido'
+          OnClick = btnCopiarGradePedidoClick
+          TabOrder = 1
+        end
       end
       object pnlTaloesBarra: TPanel
         Left = 8
@@ -748,6 +798,7 @@ object frmMapaProducao: TfrmMapaProducao
     Top = 160
   end
   object DataSourceItensMapa: TDataSource
+    OnDataChange = DataSourceItensMapaDataChange
     Left = 860
     Top = 160
   end

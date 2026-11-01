@@ -41,7 +41,6 @@ type
       ADonoId: Int64; const ATamanhos: TGradeTamanhos);
     function LerGradeEfetiva(const ATabela, ACampoDono: string;
       ADonoId: Int64): TGradeTamanhos;
-    function ItemPedidoDoMapaItem(AMapaItemId: Int64): Int64;
     function ValorConfiguracao(const AChave: string; out AValor: string): Boolean;
   public
     constructor Create;
@@ -70,6 +69,8 @@ type
     function GradeDoMapaItem(AMapaItemId: Int64): TGradeTamanhos;
     procedure SalvarGradeMapaItem(AMapaItemId: Int64;
       const ATamanhos: TGradeTamanhos);
+    { item do pedido ligado ao item do mapa (0 quando não houver) }
+    function ItemPedidoDoMapaItem(AMapaItemId: Int64): Int64;
     { copia a grade (com quantidades) do item do pedido para o item do mapa }
     function CopiarGradeDoPedidoParaMapa(AMapaItemId: Int64): Integer;
 
@@ -509,10 +510,17 @@ var
   LSQL: string;
   I, LOrdem: Integer;
   LQtd: Double;
+  LPropria: Boolean;
 begin
   ValidarTamanhos(ATamanhos, False);
 
-  Conexao.IniciarTransacao;
+  { transação composta: se o chamador (ex.: save do pedido) já abriu
+    transação, a grade entra nela e NÃO commita no meio; só quem abriu
+    a transação confirma/cancela. A auditoria é sempre gravada. }
+  LPropria := not Conexao.EmTransacao;
+  if LPropria then
+    Conexao.IniciarTransacao;
+
   LQuery := NovaConsulta;
   try
     try
@@ -544,11 +552,13 @@ begin
         Inc(LOrdem);
       end;
 
-      Conexao.Confirmar;
+      if LPropria then
+        Conexao.Confirmar;
       LogOperacao(ATabela, 'GRAVAR', ADonoId, '',
         Format('%d tamanho(s), total %.4f', [LOrdem, SomarQuantidades(ATamanhos)]));
     except
-      Conexao.Cancelar;
+      if LPropria then
+        Conexao.Cancelar;
       raise;
     end;
   finally
@@ -582,7 +592,7 @@ begin
     Exit;
 
   LOrigem := LerTamanhos(AGradeId);
-  SetLength(LDestino, 0);
+  LDestino := nil;
   for I := 0 to High(LOrigem) do
     if LOrigem[I].Ativo <> 'I' then
     begin
