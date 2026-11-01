@@ -2,7 +2,7 @@
 
 > Documento **vivo**: registra o planejamento, as decisões do usuário e o que já
 > foi executado. Atualizar a cada etapa concluída.
-> Última atualização: 31/10/2026
+> Última atualização: 01/11/2026
 
 ---
 
@@ -11,7 +11,7 @@
 | # | Decisão | Data | Situação |
 |---|---|---|---|
 | D1 | Produto **fiscal e financeiro é o mesmo** → uma tabela só (`PRODUTO_FISCAL` absorve `TIPO`/`VALOR`; `PRODUTO_FINANCEIRO` removida) | 31/10 | ✅ executado (015) |
-| D2 | Criar cadastro de **País → Estado → Cidade** (globais, sem empresa) | 31/10 | ✅ banco (015) · 🔨 telas em andamento |
+| D2 | Criar cadastro de **País → Estado → Cidade** (globais, sem empresa) | 31/10 | ✅ concluído (015 + telas + combos) |
 | D3 | **Unificar CLIENTE + FORNECEDOR** com `TIPO` (C/F) | 31/10 | ⏸ adiado (alto risco, exige plano + aprovação) |
 | D4 | Regra de negócio sempre em **Service**; SQL parametrizado; transações com auditoria | — | ✅ padrão do projeto |
 | D5 | **GRADE**: tela própria com tabela principal + sub-tabela de tamanhos (nº de tamanhos variável por tipo: calçado/confecção/grupo) | 31/10 | ✅ concluído |
@@ -26,18 +26,20 @@
 
 | # | Item | Status | Observação |
 |---|---|---|---|
-| 1 | **Consertar telas geográficas** (País/Estado/Cidade) e voltar build/suíte ao verde | 🔨 **em andamento** | build estava quebrado (assinaturas de `InserirParam`, falta `uFrmCidade`, `.lfm`, colunas `SIGLA`×`CODIGO`/`UF`) |
+| 1 | **Consertar telas geográficas** (País/Estado/Cidade) e voltar build/suíte ao verde | ✅ concluído | build 0/0 e suíte 62/62 |
 | 2 | Migração `016` **GRADE**: `GRADE` + `GRADE_TAMANHO`, `PRODUTO.GRADE_ID`, `ITEM_PEDIDO_GRADE`, `MAPA_PRODUCAO_ITEM_GRADE`, config `USA_GRADE` | ✅ concluído (31/10) | aplicada no `DADOS.FDB` real (backup `DADOS_backup_antes_016.fdb`); testada em cópia (aplica→rollback) |
 | 3 | Tela de cadastro de GRADE (master + tamanhos) | ✅ concluído (31/10) | D5 |
 | 4 | GRADE no item do pedido + subgrid editável no mapa, sob `USA_GRADE` | ✅ concluído (31/10) | D6/D7 |
-| 5 | Notas lerem `PRODUTO_FISCAL` (NCM/CFOP/CST/alíquotas no service) | 📋 pendente | colunas prontas (015) |
-| 6 | Re-layout da tela de Consumo | 📋 pendente | |
-| 7 | Produto Produção com Cores (expor `COR`) | 📋 pendente | services prontos |
-| 8 | Compras → gerar Nota de Entrada na confirmação | 📋 pendente | |
-| 9 | Vínculo geo (país/estado/cidade) em CLIENTE/FORNECEDOR | 📋 pendente | depende do item 1 |
+| 5 | Notas lerem `PRODUTO_FISCAL` (NCM/CFOP/CST/alíquotas no service) | ✅ concluído (01/11) | saída e entrada; ver §3.11 |
+| 6 | Re-layout da tela de Consumo | ✅ concluído (01/11) | itens do mapa no topo + materiais no rodapé; §3.10 |
+| 7 | Produto Produção com Cores (expor `COR`) | ✅ concluído (01/11) | diálogo `uFrmCoresProduto`; §3.8 |
+| 8 | Compras → gerar Nota de Entrada na confirmação | ✅ concluído (01/11) | `CriarDoPedidoCompra`; §3.9 |
+| 9 | Vínculo geo (país/estado/cidade) em CLIENTE/FORNECEDOR | ✅ concluído (01/11) | migração `017` (`CIDADE_ID`); §3.7 |
 | 10 | Unificação CLIENTE+FORNECEDOR | ⏸ adiado | D3 |
 | 11 | Android: orçamentos + telas | ⏸ deferido | |
-| 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | 📋 pendente | D9 — fazer depois dos itens acima |
+| 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | 📋 pendente | D9 — prompt pronto em `Documentacao\BACKLOG_ANDROID.md` |
+| 13 | Regenerar `Banco\schema_canonico.sql` (está anterior à `015`: sem `PAIS`, `CIDADE_ID`, `GRADE`, `ESTOQUE_MATERIAL`) | 📋 pendente | usar `Desktop\src\Tools\DumpSchema.lpr` para conferir o round-trip |
+| 14 | **Encoding dos literais acentuados** — o fonte é UTF-8, mas o projeto compila sem `-FcUTF8`: o FPC etiqueta o literal como CP1252 e o SQLDB reconverte os bytes (grava `NF de saÃ­da`). Contornado na descrição da conta a receber (`AsUTF8String` + `SetCodePage`); os demais literais ainda dependem disso | 📋 pendente (precisa decisão) | corrigir de vez com `-FcUTF8` gera **213 warnings** 4104/4105 (mistura de AnsiString/UnicodeString) — decidir entre suprimir por unit ou manter o contorno local |
 
 ---
 
@@ -135,6 +137,97 @@
 - Build **0 erros / 0 warnings**; suíte **62/62**.
 - Próximo: itens 5–10 do backlog e, depois, D9 (configuração por empresa no
   Android).
+
+### 3.7 Item 9 — vínculo geográfico em CLIENTE/FORNECEDOR (concluído 01/11)
+
+- `Banco\017_geo_cliente.sql` (+ `_rollback.sql`): coluna **`CIDADE_ID BIGINT`
+  anulável** em `CLIENTE` e `FORNECEDOR` — sem `ESTADO_ID`, porque o estado já
+  é derivado da cidade. As colunas texto `CIDADE`/`UF` **continuam existindo**
+  (compatibilidade com telas, relatórios e legado); `0`/`NULL` = sem vínculo.
+- Testada em cópia e aplicada no `DADOS.FDB` real (backup
+  `Banco\DADOS_backup_antes_017.fdb`); 27 capitais gravadas com acentuação
+  correta (`SET NAMES UTF8`).
+- `Desktop\src\Views\uGeoCombos.pas` — unidade reutilizável com
+  `CarregarPaises`, `CarregarEstados`, `CarregarCidades`, `SelecionarCidade`
+  e `IdDoCombo`:
+  - `cmbPais`/`cmbEstado` são `csDropDownList`; estado aparece como
+    `"UF - Nome"`;
+  - `cmbCidade` é editável: cidade antiga (sem `CIDADE_ID`) entra como item
+    sem objeto, e o texto continua indo para `CIDADE`/`UF`.
+- `uFrmClientes` grava `CIDADE_ID` via `uCliente`/`uClienteService`;
+  `uFrmFornecedores` grava direto no `INSERT/UPDATE` do formulário (mesmo
+  padrão anterior da tela).
+
+### 3.8 Item 7 — Cores do produto (concluído 01/11)
+
+- `uFrmCoresProduto` (`.pas`/`.lfm`) — diálogo aberto a partir de
+  **Produtos → Cores...**, com CRUD de `COR` do produto (nome, `HEX`,
+  ativo) e uma coluna **somente leitura** com a ficha técnica da cor
+  (`FICHA_TECNICA.TIPO_BASE = 'COR'`).
+- `uFrmProdutos` ganhou o botão e abre o diálogo para o produto selecionado;
+  a exclusão de cor com ficha técnica é bloqueada com mensagem.
+
+### 3.9 Item 8 — Compras → Nota de Entrada (concluído 01/11)
+
+- `TNotaEntradaService.CriarDoPedidoCompra(APedidoCompraId)`:
+  - cria `NOTA_ENTRADA` com `STATUS='A'` (aberta), `SERIE='1'`,
+    `MODELO='55'`, `NATUREZA='Compra para comercialização'`, `CFOP='1102'`,
+    `NUMERO` = número do pedido e
+    `OBSERVACOES='Gerada do pedido de compra Nº <numero>'`;
+  - copia os itens do pedido; item de **material** leva `MATERIAL_ID` e herda
+    do `PRODUTO_FISCAL` do material `PRODUTO_FISCAL_ID`, NCM, CFOP, CST e
+    alíquotas;
+  - grava `PEDIDO_COMPRA.NOTA_ENTRADA_ID` e `STATUS='CONFIRMADO'`;
+  - rejeita pedido cancelado ou que já tenha nota.
+- `TNotaEntradaService.Processar` passou a aceitar item de material: dá
+  entrada no estoque **sem trigger de saldo** — grava `MOVIMENTO_MATERIAL`
+  (`TIPO='E'`, saldo anterior/posterior, `ORIGEM='NOTA_ENTRADA'`,
+  `DOCUMENTO_ID` = nota), atualiza/insere `ESTOQUE_MATERIAL` e leva o último
+  custo para `MATERIAL.PRECO_CUSTO`; gera as contas a pagar como antes.
+- `uFrmCompras.btnConfirmarClick` salva o pedido, chama o service e mostra o
+  número da nota gerada; `uFrmNotaEntrada.CarregarItens` exibe código e
+  descrição do material (join com `MATERIAL`) e sinaliza item sem produto.
+
+### 3.10 Item 6 — Consumo de materiais (concluído 01/11)
+
+- `uFrmConsumoMaterial`: o topo agora tem o **combo de mapas + lista dos itens
+  do mapa** (`sgMapaItens`: código, produto, quantidade, status —
+  `CarregarItensMapa`/`MontarCabecalhoMapaItens`) e o rodapé mantém o **grid
+  de materiais do consumo** (`sgItens`, `alClient` dentro de `pnlItens`).
+- `.lfm` re-layout: formulário 700 px, `pnlMapaItens` (170 px) abaixo da
+  seleção, `pnlAcoes` e `pnlItens` (cliente) e `pnlRodape` fixo.
+
+### 3.11 Item 5 — Notas leem `PRODUTO_FISCAL` (concluído 01/11)
+
+- `TNotaSaidaService.CriarDoPedido` passa a ler `PRODUTO_FISCAL` do produto e
+  grava no item: `PRODUTO_FISCAL_ID`, `NCM`, `CFOP` (usa `CFOP_VENDA`),
+  `CST_ICMS`, `CST_PIS`, `CST_COFINS`, `ALIQ_ICMS`, `ALIQ_PIS`, `ALIQ_COFINS`.
+- `uFrmNotaEntrada.CarregarFiscalDoProduto` faz o mesmo para entrada
+  (`CFOP_COMPRA`), reaproveitado pelo item de material.
+- **Correção de encoding:** o fonte é UTF-8 mas o projeto compila sem
+  `-FcUTF8`; o FPC etiqueta o literal como CP1252 e o SQLDB reconvertia os
+  bytes, gravando `NF de saÃ­da` em `CONTA_RECEBER`. A descrição passou a ser
+  montada em `RawByteString` com `SetCodePage(..., CP_UTF8, False)` e enviada
+  por `AsUTF8String` (sem warnings). O problema geral está no backlog (item 14).
+
+### 3.12 Teste de ponta a ponta dos fluxos (01/11)
+
+- Harness **temporário** (`Desktop\Popular.lpr` + `.lpi`, removido depois)
+  exercitando os services reais, com `TSessao.Logar(1,1,1,...)`, sem GUI:
+  - **item 8:** `PEDIDO_COMPRA` → `CriarDoPedidoCompra` → `Processar`;
+  - **item 5:** `PEDIDO_VENDA` → `CriarDoPedido` → `Faturar`.
+- 38 verificações, todas OK: nota nasce `'A'` e vira `'P'`; item aponta para o
+  material e herda NCM/CFOP do fiscal; pedido vira `CONFIRMADO` e fica ligado à
+  nota; saldo do material `5 + 10 = 15` com `MOVIMENTO_MATERIAL`
+  (5 → 15, `ORIGEM='NOTA_ENTRADA'`); `PRECO_CUSTO` atualizado; contas a pagar
+  geradas; nota de saída herda CFOP de venda/CST/alíquota; estoque do produto
+  `100 - 2 = 98`; contas a receber geradas; pedido de venda vira `'F'`.
+- Banco deixado com **um exemplo completo de cada fluxo** (pedido de compra
+  `PC-TESTE-8` → nota `8` processada; pedido de venda `PV-TESTE-5` → nota `4`
+  faturada) e os cadastros de apoio (`FISC-TESTE`, fornecedor/cliente de teste,
+  `MAT-TESTE8`, `PROD-TESTE8`, cor "Preto", saldos 15 e 98).
+- Depois da remoção do harness: build **0 erros / 0 warnings** e suíte
+  **62/62**.
 
 ---
 

@@ -1,4 +1,4 @@
-# CHECKPOINT — último ponto de parada (31/10/2026)
+# CHECKPOINT — último ponto de parada (01/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -24,10 +24,53 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ---
 
-## Estado atual da sessão (31/10/2026)
+## Estado atual da sessão (01/11/2026)
 
-**HEAD:** `879db53` + commit novo desta sessão (grade no pedido/mapa).
-Árvore limpa após o commit. Build **0 erros / 0 warnings** · suíte **62/62**.
+**Backlog desktop CONCLUÍDO (itens 5–9).** Build **0 erros / 0 warnings** ·
+suíte **62/62**.
+
+### O que fechou nesta sessão
+
+| Item | Entrega |
+|---|---|
+| 5 | Notas de saída e de entrada leem `PRODUTO_FISCAL` (NCM/CFOP/CST/alíquotas) e gravam `PRODUTO_FISCAL_ID` no item |
+| 6 | Consumo de materiais: itens do mapa no topo (`sgMapaItens`), materiais do consumo no rodapé (`sgItens` em `alClient`) |
+| 7 | Diálogo **Cores do produto** (`uFrmCoresProduto`) com a ficha técnica da cor |
+| 8 | **Compras → Nota de Entrada**: `CriarDoPedidoCompra` + `Processar` com material (estoque, movimento, custo, contas a pagar) |
+| 9 | Vínculo geográfico em CLIENTE/FORNECEDOR (`CIDADE_ID`, migração `017`, `uGeoCombos`) |
+
+- Detalhes técnicos: `Documentacao\PLANO_E_LOG.md` §3.7 a §3.12.
+- Migração `017` aplicada no real (backup `Banco\DADOS_backup_antes_017.fdb`);
+  nenhuma migração pendente.
+- Teste de ponta a ponta (harness temporário, já removido): **38/38** — compra
+  → nota de entrada → processamento e venda → nota de saída → faturamento.
+- Banco deixado com **um exemplo completo de cada fluxo** e os cadastros de
+  apoio (`FISC-TESTE`, `MAT-TESTE8`, `PROD-TESTE8`, `PC-TESTE-8`,
+  `PV-TESTE-5`, saldos 15 e 98) — nada de lixo das rodadas do harness.
+
+### Próximo passo (executável)
+
+1. **D9 (Android)** — prompt pronto em `Documentacao\BACKLOG_ANDROID.md`
+   (tela de configuração por empresa: URL do servidor + código de usuário).
+   Antes de codar, confirmar o significado de "código de usuário" (§4 do
+   documento).
+2. Pendências novas do backlog (`PLANO_E_LOG.md` §2):
+   - **item 13**: regenerar `Banco\schema_canonico.sql` (está anterior à `015`);
+   - **item 14**: encoding dos literais acentuados — decisão pendente entre
+     `-FcUTF8` (213 warnings 4104/4105) ou manter o contorno local
+     (`SetCodePage` + `AsUTF8String`, já aplicado na conta a receber).
+3. **D3** (unificação CLIENTE+FORNECEDOR) continua **adiada** — só com plano
+   aprovado.
+4. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
+   o `PLANO_E_LOG.md`; commitar.
+
+---
+
+## Estado anterior (31/10/2026) — GRADE concluída
+
+**HEAD na época:** `879db53` + commit da grade no pedido/mapa.
+Build **0 erros / 0 warnings** · suíte **62/62**.
+
 
 ### GRADE — COMPLETA (D5/D6/D7)
 
@@ -60,7 +103,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
   inicia/commita/rollback quando `not Conexao.EmTransacao`; com transação
   aberta pelo chamador, a grade entra nela.
 
-### Próximo passo (executável)
+### Próximo passo na época (já executado em 01/11)
 
 1. Backlog do `PLANO_E_LOG.md` §2: itens **5 a 10** (notas lendo
    `PRODUTO_FISCAL`, re-layout do Consumo, Produto com Cores, Compras → Nota
@@ -91,7 +134,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 - Menu **Cadastros → Países / Estados / Cidades** (`uFrmPrincipal` + `.lfm`).
 - `Desktop\ERP2026.lpi` com as 9 units novas; `Desktop\ERP2026.lpr` atualizado.
 
-### Próximo passo (backlog)
+### Próximo passo na época (backlog — superado em 01/11)
 
 Ver `Documentacao\PLANO_E_LOG.md` §2. **GRADE** está em andamento: migração
 `016` aplicada, model + service escritos (com stubs). Depois: grade no item do
