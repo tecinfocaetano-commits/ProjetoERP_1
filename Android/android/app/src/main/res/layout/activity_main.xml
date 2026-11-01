@@ -41,7 +41,17 @@
             android:text="Sistema de Gestão Empresarial"
             android:textSize="15sp"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:layout_marginBottom="40dp"/>
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:id="@+id/textViewEmpresa"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Nenhuma empresa configurada"
+            android:textSize="13sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginBottom="28dp"/>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/layoutLogin"
@@ -90,7 +100,18 @@
             android:layout_height="56dp"
             android:text="Entrar"
             android:textSize="16sp"
-            app:cornerRadius="16dp"/>
+            app:cornerRadius="16dp"
+            android:layout_marginBottom="16dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonConfiguracao"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="⚙  Servidor e empresa"
+            android:textSize="14sp"
+            app:cornerRadius="16dp"
+            app:strokeWidth="1dp"/>
 
     </LinearLayout>
 

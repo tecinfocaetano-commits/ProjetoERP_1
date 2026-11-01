@@ -17,5 +17,8 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
         DynamicColors.applyToActivitiesIfAvailable(this);
+        // Empresa configurada (D9): deixa o ApiClient apontado para o
+        // servidor certo antes de qualquer tela chamar a API.
+        Configuracao.aplicarNoApi(this);
     }
 }

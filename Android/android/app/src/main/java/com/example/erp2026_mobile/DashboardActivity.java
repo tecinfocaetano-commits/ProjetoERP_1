@@ -16,6 +16,7 @@ public class DashboardActivity extends AppCompatActivity {
     private Button buttonEstoque;
     private Button buttonVendas;
     private Button buttonFinanceiro;
+    private Button buttonConfiguracao;
     private Button buttonSair;
 
     @Override
@@ -37,6 +38,7 @@ public class DashboardActivity extends AppCompatActivity {
         buttonEstoque = findViewById(R.id.buttonEstoque);
         buttonVendas = findViewById(R.id.buttonVendas);
         buttonFinanceiro = findViewById(R.id.buttonFinanceiro);
+        buttonConfiguracao = findViewById(R.id.buttonConfiguracao);
         buttonSair = findViewById(R.id.buttonSair);
 
         buttonClientes.setOnClickListener(v -> abrir(ClientesActivity.class));
@@ -45,6 +47,7 @@ public class DashboardActivity extends AppCompatActivity {
         buttonEstoque.setOnClickListener(v -> abrir(EstoqueActivity.class));
         buttonVendas.setOnClickListener(v -> abrir(VendasActivity.class));
         buttonFinanceiro.setOnClickListener(v -> abrir(FinanceiroActivity.class));
+        buttonConfiguracao.setOnClickListener(v -> abrir(ConfiguracaoActivity.class));
 
         buttonSair.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -58,6 +61,13 @@ public class DashboardActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         textViewWelcome.setText("Bem-vindo, " + Sessao.nome(this) + "!");
+
+        Configuracao atual = Configuracao.carregarAtual(this);
+        if (atual == null) {
+            setTitle("ERP 2026 - Menu");
+        } else {
+            setTitle("ERP 2026 - " + atual.getEmpresa());
+        }
     }
 
     private void abrir(Class<?> tela) {

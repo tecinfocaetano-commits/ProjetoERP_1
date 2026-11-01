@@ -25,6 +25,7 @@
         <activity android:name=".FinanceiroActivity"/>
         <activity android:name=".InserirClienteActivity"/>
         <activity android:name=".ConsultarClientesActivity"/>
+        <activity android:name=".ConfiguracaoActivity"/>
 
     </application>
 </manifest>

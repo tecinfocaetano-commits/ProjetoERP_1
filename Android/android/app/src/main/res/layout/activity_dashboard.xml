@@ -91,6 +91,16 @@
             android:layout_marginBottom="28dp"/>
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonConfiguracao"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Configuração (servidor e empresa)"
+            android:textSize="15sp"
+            app:cornerRadius="20dp"
+            android:layout_marginBottom="12dp"/>
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/buttonSair"
             style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
