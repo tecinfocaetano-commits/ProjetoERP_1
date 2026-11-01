@@ -77,17 +77,9 @@ begin
 end;
 
 function TCidadeService.BuscarTodos(AEstadoId: Int64 = 0): TSQLQuery;
-var
-  LCondicao: string;
-  LNome, LVal: array of string;
 begin
   if AEstadoId > 0 then
-  begin
-    LCondicao := 'ESTADO_ID = :ESTADO';
-    LNome := ['ESTADO'];
-    LVal := [IntToStr(AEstadoId)];
-    Result := FRepo.BuscarTodosParam(LCondicao, LNome, LVal, 'NOME');
-  end
+    Result := FRepo.BuscarTodos('WHERE ESTADO_ID = ' + IntToStr(AEstadoId) + ' ORDER BY NOME')
   else
     Result := FRepo.BuscarTodos('ORDER BY NOME');
 end;
