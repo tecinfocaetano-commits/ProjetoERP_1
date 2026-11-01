@@ -37,6 +37,9 @@ type
     btnAtualizar: TButton;
     lblConsumoTit: TLabel;
     lblConsumo: TLabel;
+    pnlMapaItens: TPanel;
+    lblMapaItensTitulo: TLabel;
+    sgMapaItens: TStringGrid;
     pnlAcoes: TPanel;
     btnGerar: TButton;
     btnConfirmar: TButton;
@@ -69,8 +72,10 @@ type
     FPodeEstornar: Boolean;
     procedure CarregarMapas;
     procedure CarregarConsumo;
+    procedure CarregarItensMapa;
     procedure CarregarItens;
     procedure MontarCabecalhoGrid;
+    procedure MontarCabecalhoMapaItens;
     procedure AtualizarBotoes;
   end;
 
@@ -97,6 +102,23 @@ begin
   FConsumoId := 0;
   FConsumoStatus := '';
   MontarCabecalhoGrid;
+  MontarCabecalhoMapaItens;
+end;
+
+procedure TfrmConsumoMaterial.MontarCabecalhoMapaItens;
+begin
+  sgMapaItens.ColCount := 4;
+  sgMapaItens.RowCount := 2;
+  sgMapaItens.FixedRows := 1;
+  sgMapaItens.Cells[0, 0] := 'Código';
+  sgMapaItens.Cells[1, 0] := 'Produto';
+  sgMapaItens.Cells[2, 0] := 'Quantidade';
+  sgMapaItens.Cells[3, 0] := 'Status';
+  sgMapaItens.ColWidths[0] := 110;
+  sgMapaItens.ColWidths[1] := 520;
+  sgMapaItens.ColWidths[2] := 105;
+  sgMapaItens.ColWidths[3] := 105;
+  sgMapaItens.Options := sgMapaItens.Options + [goRowSelect];
 end;
 
 procedure TfrmConsumoMaterial.MontarCabecalhoGrid;
@@ -245,8 +267,65 @@ begin
   else
     lblConsumo.Caption := 'Selecione um mapa de produção.';
 
+  CarregarItensMapa;
   CarregarItens;
   AtualizarBotoes;
+end;
+
+procedure TfrmConsumoMaterial.CarregarItensMapa;
+var
+  LQry: TSQLQuery;
+  LLinha: Integer;
+begin
+  sgMapaItens.BeginUpdate;
+  try
+    sgMapaItens.RowCount := 2;
+    for LLinha := 0 to sgMapaItens.ColCount - 1 do
+      sgMapaItens.Cells[LLinha, 1] := '';
+
+    if FMapaId <= 0 then
+    begin
+      sgMapaItens.Cells[0, 1] := 'Selecione um mapa de produção.';
+      Exit;
+    end;
+
+    LQry := TSQLQuery.Create(Self);
+    try
+      LQry.DataBase := FConexao.Connection;
+      LQry.Transaction := FConexao.Transaction;
+      LQry.SQL.Text :=
+        'SELECT I.ID, I.PRODUTO_ID, COALESCE(P.CODIGO, '''') AS CODIGO, ' +
+        '  COALESCE(P.DESCRICAO, ''Produto '' || I.PRODUTO_ID) AS DESCRICAO, ' +
+        '  I.QUANTIDADE, I.STATUS ' +
+        'FROM MAPA_PRODUCAO_ITEM I ' +
+        '  LEFT JOIN PRODUTO P ON P.ID = I.PRODUTO_ID ' +
+        'WHERE I.MAPA_PRODUCAO_ID = :MAPA ORDER BY I.ID';
+      LQry.ParamByName('MAPA').AsLargeInt := FMapaId;
+      LQry.Open;
+
+      LLinha := 0;
+      while not LQry.EOF do
+      begin
+        Inc(LLinha);
+        if LLinha >= sgMapaItens.RowCount then
+          sgMapaItens.RowCount := LLinha + 1;
+
+        sgMapaItens.Cells[0, LLinha] := Trim(LQry.FieldByName('CODIGO').AsString);
+        sgMapaItens.Cells[1, LLinha] := Trim(LQry.FieldByName('DESCRICAO').AsString);
+        sgMapaItens.Cells[2, LLinha] :=
+          FormatFloat('0.####', LQry.FieldByName('QUANTIDADE').AsFloat);
+        sgMapaItens.Cells[3, LLinha] := Trim(LQry.FieldByName('STATUS').AsString);
+        LQry.Next;
+      end;
+
+      if LLinha = 0 then
+        sgMapaItens.Cells[0, 1] := 'Mapa sem itens.';
+    finally
+      LQry.Free;
+    end;
+  finally
+    sgMapaItens.EndUpdate;
+  end;
 end;
 
 procedure TfrmConsumoMaterial.CarregarItens;

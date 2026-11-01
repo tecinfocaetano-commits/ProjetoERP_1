@@ -13,7 +13,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, Grids, DateUtils,
-  uConexao, uSessao;
+  uConexao, uSessao, uNotaEntradaService;
 
 type
   { TfrmCompras }
@@ -359,10 +359,36 @@ begin
 end;
 
 procedure TfrmCompras.btnConfirmarClick(Sender: TObject);
+var
+  LService: TNotaEntradaService;
+  LNotaId: Int64;
 begin
   if not SalvarPedido then Exit;
-  MessageDlg('Pedido de compra confirmado. A geração da Nota de Entrada ' +
-    'corresponderá ao recebimento deste pedido.', mtInformation, [mbOK], 0);
+  if FPedidoId <= 0 then
+  begin
+    MessageDlg('Não foi possível identificar o pedido salvo para gerar a nota.',
+      mtError, [mbOK], 0);
+    Exit;
+  end;
+
+  LService := TNotaEntradaService.Create;
+  try
+    try
+      LNotaId := LService.CriarDoPedidoCompra(FPedidoId);
+      MessageDlg('Pedido de compra confirmado. Nota de entrada nº ' +
+        IntToStr(LNotaId) + ' gerada em aberto — processe-a na tela ' +
+        '"Nota de Entrada" para dar entrada no estoque e gerar as contas a pagar.',
+        mtInformation, [mbOK], 0);
+    except
+      on E: Exception do
+        MessageDlg('O pedido foi salvo, mas a nota de entrada não foi gerada: ' +
+          E.Message + sLineBreak + sLineBreak +
+          'Ajuste o pedido e confirme novamente.', mtWarning, [mbOK], 0);
+    end;
+  finally
+    LService.Free;
+  end;
+
   LimparFormulario;
 end;
 

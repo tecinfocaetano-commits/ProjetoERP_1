@@ -172,139 +172,174 @@ inherited frmClientes: TfrmClientes
         MaxLength = 100
         TabOrder = 7
       end
-      object lblBairro: TLabel[16]
+      object lblPais: TLabel[16]
         Left = 16
         Height = 15
         Top = 166
-        Width = 34
-        Caption = 'Bairro:'
+        Width = 30
+        Caption = 'País:'
       end
-      object edtBairro: TEdit[17]
+      object cmbPais: TComboBox[17]
         Left = 16
         Height = 23
         Top = 184
-        Width = 200
-        MaxLength = 100
-        TabOrder = 8
+        Width = 130
+        ItemHeight = 15
+        Style = csDropDownList
+        TabOrder = 9
+        OnChange = cmbPaisChange
       end
-      object lblCidade: TLabel[18]
-        Left = 230
+      object lblEstado: TLabel[18]
+        Left = 156
+        Height = 15
+        Top = 166
+        Width = 44
+        Caption = 'Estado:'
+      end
+      object cmbEstado: TComboBox[19]
+        Left = 156
+        Height = 23
+        Top = 184
+        Width = 170
+        ItemHeight = 15
+        Style = csDropDownList
+        TabOrder = 10
+        OnChange = cmbEstadoChange
+      end
+      object lblCidade: TLabel[20]
+        Left = 336
         Height = 15
         Top = 166
         Width = 40
         Caption = 'Cidade:'
       end
-      object edtCidade: TEdit[19]
-        Left = 230
+      object cmbCidade: TComboBox[21]
+        Left = 336
         Height = 23
         Top = 184
-        Width = 200
-        MaxLength = 100
-        TabOrder = 9
+        Width = 230
+        ItemHeight = 15
+        Style = csDropDownList
+        TabOrder = 11
       end
-      object lblUf: TLabel[20]
-        Left = 444
+      object lblUf: TLabel[22]
+        Left = 576
         Height = 15
         Top = 166
         Width = 17
         Caption = 'UF:'
       end
-      object cmbUf: TComboBox[21]
-        Left = 444
+      object cmbUf: TComboBox[23]
+        Left = 576
         Height = 23
         Top = 184
         Width = 60
         ItemHeight = 15
         Style = csDropDownList
-        TabOrder = 10
+        TabOrder = 12
       end
-      object lblCep: TLabel[22]
-        Left = 520
+      object lblBairro: TLabel[24]
+        Left = 16
         Height = 15
-        Top = 166
+        Top = 218
+        Width = 34
+        Caption = 'Bairro:'
+      end
+      object edtBairro: TEdit[25]
+        Left = 16
+        Height = 23
+        Top = 236
+        Width = 200
+        MaxLength = 100
+        TabOrder = 13
+      end
+      object lblCep: TLabel[26]
+        Left = 230
+        Height = 15
+        Top = 218
         Width = 24
         Caption = 'CEP:'
       end
-      object edtCep: TEdit[23]
-        Left = 520
+      object edtCep: TEdit[27]
+        Left = 230
         Height = 23
-        Top = 184
+        Top = 236
         Width = 100
         MaxLength = 10
-        TabOrder = 11
-      end
-      object lblTelefone: TLabel[24]
-        Left = 16
-        Height = 15
-        Top = 218
-        Width = 48
-        Caption = 'Telefone:'
-      end
-      object edtTelefone: TEdit[25]
-        Left = 16
-        Height = 23
-        Top = 236
-        Width = 140
-        MaxLength = 20
-        TabOrder = 12
-      end
-      object lblCelular: TLabel[26]
-        Left = 170
-        Height = 15
-        Top = 218
-        Width = 40
-        Caption = 'Celular:'
-      end
-      object edtCelular: TEdit[27]
-        Left = 170
-        Height = 23
-        Top = 236
-        Width = 140
-        MaxLength = 20
-        TabOrder = 13
-      end
-      object lblEmail: TLabel[28]
-        Left = 324
-        Height = 15
-        Top = 218
-        Width = 37
-        Caption = 'E-mail:'
-      end
-      object edtEmail: TEdit[29]
-        Left = 324
-        Height = 23
-        Top = 236
-        Width = 250
-        MaxLength = 150
         TabOrder = 14
       end
-      object lblLimiteCredito: TLabel[30]
-        Left = 588
-        Height = 15
-        Top = 218
-        Width = 78
-        Caption = 'Limite Crédito:'
-      end
-      object edtLimiteCredito: TEdit[31]
-        Left = 588
-        Height = 23
-        Top = 236
-        Width = 120
-        Alignment = taRightJustify
-        TabOrder = 15
-        Text = '0,00'
-      end
-      object lblStatus: TLabel[32]
+      object lblTelefone: TLabel[28]
         Left = 16
         Height = 15
         Top = 270
-        Width = 35
-        Caption = 'Status:'
+        Width = 48
+        Caption = 'Telefone:'
       end
-      object cmbStatus: TComboBox[33]
+      object edtTelefone: TEdit[29]
         Left = 16
         Height = 23
         Top = 288
+        Width = 140
+        MaxLength = 20
+        TabOrder = 15
+      end
+      object lblCelular: TLabel[30]
+        Left = 170
+        Height = 15
+        Top = 270
+        Width = 40
+        Caption = 'Celular:'
+      end
+      object edtCelular: TEdit[31]
+        Left = 170
+        Height = 23
+        Top = 288
+        Width = 140
+        MaxLength = 20
+        TabOrder = 16
+      end
+      object lblEmail: TLabel[32]
+        Left = 324
+        Height = 15
+        Top = 270
+        Width = 37
+        Caption = 'E-mail:'
+      end
+      object edtEmail: TEdit[33]
+        Left = 324
+        Height = 23
+        Top = 288
+        Width = 250
+        MaxLength = 150
+        TabOrder = 17
+      end
+      object lblLimiteCredito: TLabel[34]
+        Left = 588
+        Height = 15
+        Top = 270
+        Width = 78
+        Caption = 'Limite Crédito:'
+      end
+      object edtLimiteCredito: TEdit[35]
+        Left = 588
+        Height = 23
+        Top = 288
+        Width = 120
+        Alignment = taRightJustify
+        TabOrder = 18
+        Text = '0,00'
+      end
+      object lblStatus: TLabel[36]
+        Left = 16
+        Height = 15
+        Top = 322
+        Width = 35
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox[37]
+        Left = 16
+        Height = 23
+        Top = 340
         Width = 100
         ItemHeight = 15
         ItemIndex = 0
@@ -313,22 +348,22 @@ inherited frmClientes: TfrmClientes
           'Inativo'
         )
         Style = csDropDownList
-        TabOrder = 16
+        TabOrder = 19
         Text = 'Ativo'
       end
-      object lblObservacoes: TLabel[34]
+      object lblObservacoes: TLabel[38]
         Left = 16
         Height = 15
-        Top = 322
+        Top = 374
         Width = 70
         Caption = 'Observações:'
       end
-      object mmoObservacoes: TMemo[35]
+      object mmoObservacoes: TMemo[39]
         Left = 16
-        Height = 60
-        Top = 340
+        Height = 44
+        Top = 392
         Width = 700
-        TabOrder = 17
+        TabOrder = 20
       end
     end
   end

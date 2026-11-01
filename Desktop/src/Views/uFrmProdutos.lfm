@@ -250,6 +250,22 @@ inherited frmProdutos: TfrmProdutos
         State = cbChecked
         TabOrder = 14
       end
+      object lblCoresInfo: TLabel
+        Left = 324
+        Height = 16
+        Top = 224
+        Width = 100
+        Caption = 'Cores ativas: -'
+      end
+      object btnCores: TButton
+        Left = 324
+        Height = 27
+        Top = 242
+        Width = 160
+        Caption = 'Cores do produto...'
+        TabOrder = 18
+        OnClick = btnCoresClick
+      end
       object lblStatus: TLabel
         Left = 16
         Height = 16

@@ -148,122 +148,154 @@ inherited frmFornecedores: TfrmFornecedores
         MaxLength = 100
         TabOrder = 8
       end
-      object lblBairro: TLabel
+      object lblPais: TLabel
         Left = 16
         Height = 16
         Top = 166
-        Width = 40
-        Caption = 'Bairro:'
+        Width = 35
+        Caption = 'País:'
       end
-      object edtBairro: TEdit
+      object cmbPais: TComboBox
         Left = 16
         Height = 25
         Top = 184
-        Width = 200
-        MaxLength = 100
+        Width = 130
+        Style = csDropDownList
         TabOrder = 9
+        OnChange = cmbPaisChange
+      end
+      object lblEstado: TLabel
+        Left = 156
+        Height = 16
+        Top = 166
+        Width = 50
+        Caption = 'Estado:'
+      end
+      object cmbEstado: TComboBox
+        Left = 156
+        Height = 25
+        Top = 184
+        Width = 170
+        Style = csDropDownList
+        TabOrder = 10
+        OnChange = cmbEstadoChange
       end
       object lblCidade: TLabel
-        Left = 230
+        Left = 336
         Height = 16
         Top = 166
         Width = 50
         Caption = 'Cidade:'
       end
-      object edtCidade: TEdit
-        Left = 230
+      object cmbCidade: TComboBox
+        Left = 336
         Height = 25
         Top = 184
-        Width = 200
-        MaxLength = 100
-        TabOrder = 10
+        Width = 230
+        Style = csDropDownList
+        TabOrder = 11
       end
       object lblUf: TLabel
-        Left = 444
+        Left = 576
         Height = 16
         Top = 166
         Width = 20
         Caption = 'UF:'
       end
       object cmbUf: TComboBox
-        Left = 444
+        Left = 576
         Height = 25
         Top = 184
         Width = 60
         Style = csDropDownList
-        TabOrder = 11
+        TabOrder = 12
+      end
+      object lblBairro: TLabel
+        Left = 16
+        Height = 16
+        Top = 218
+        Width = 40
+        Caption = 'Bairro:'
+      end
+      object edtBairro: TEdit
+        Left = 16
+        Height = 25
+        Top = 236
+        Width = 200
+        MaxLength = 100
+        TabOrder = 13
       end
       object lblCep: TLabel
-        Left = 520
+        Left = 230
         Height = 16
-        Top = 166
+        Top = 218
         Width = 30
         Caption = 'CEP:'
       end
       object edtCep: TEdit
-        Left = 520
+        Left = 230
         Height = 25
-        Top = 184
+        Top = 236
         Width = 100
         MaxLength = 10
-        TabOrder = 12
+        TabOrder = 14
       end
       object lblTelefone: TLabel
         Left = 16
         Height = 16
-        Top = 218
+        Top = 270
         Width = 60
         Caption = 'Telefone:'
       end
       object edtTelefone: TEdit
         Left = 16
         Height = 25
-        Top = 236
+        Top = 288
         Width = 140
         MaxLength = 20
-        TabOrder = 13
+        TabOrder = 15
       end
       object lblCelular: TLabel
         Left = 170
         Height = 16
-        Top = 218
+        Top = 270
         Width = 50
         Caption = 'Celular:'
       end
       object edtCelular: TEdit
         Left = 170
         Height = 25
-        Top = 236
+        Top = 288
         Width = 140
         MaxLength = 20
-        TabOrder = 14
+        TabOrder = 16
       end
       object lblEmail: TLabel
         Left = 324
         Height = 16
-        Top = 218
+        Top = 270
         Width = 40
         Caption = 'E-mail:'
       end
       object edtEmail: TEdit
         Left = 324
         Height = 25
-        Top = 236
+        Top = 288
         Width = 250
         MaxLength = 150
-        TabOrder = 15
+        TabOrder = 17
       end
       object lblStatus: TLabel
         Left = 16
         Height = 16
-        Top = 270
+        Top = 322
         Width = 50
         Caption = 'Status:'
       end
       object cmbStatus: TComboBox
         Left = 16
         Height = 25
-        Top = 288
+        Top = 340
         Width = 100
         Items.Strings = (
           'Ativo'
@@ -271,21 +303,21 @@ inherited frmFornecedores: TfrmFornecedores
         )
         ItemIndex = 0
         Style = csDropDownList
-        TabOrder = 16
+        TabOrder = 18
       end
       object lblObservacoes: TLabel
         Left = 16
         Height = 16
-        Top = 322
+        Top = 374
         Width = 80
         Caption = 'Observações:'
       end
       object mmoObservacoes: TMemo
         Left = 16
         Height = 60
-        Top = 340
+        Top = 392
         Width = 700
-        TabOrder = 17
+        TabOrder = 19
       end
     end
   end

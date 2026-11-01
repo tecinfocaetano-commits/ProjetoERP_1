@@ -1,0 +1,147 @@
+object frmCoresProduto: TfrmCoresProduto
+  Left = 0
+  Height = 430
+  Top = 0
+  Width = 650
+  BorderStyle = bsDialog
+  Caption = 'Cores do produto'
+  ClientHeight = 430
+  ClientWidth = 650
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnShow = FormShow
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 60
+    Top = 0
+    Width = 650
+    Align = alTop
+    BevelOuter = bvNone
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 12
+      Height = 24
+      Top = 8
+      Width = 180
+      Caption = 'Cores do produto'
+      Font.Height = -19
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblSubtitulo: TLabel
+      Left = 12
+      Height = 16
+      Top = 34
+      Width = 120
+      Caption = 'Produto'
+    end
+  end
+  object sgCores: TStringGrid
+    Left = 12
+    Height = 230
+    Top = 64
+    Width = 626
+    ColCount = 4
+    FixedCols = 0
+    FixedRows = 1
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSelect, goColSizing]
+    RowCount = 1
+    TabOrder = 1
+    OnSelectCell = sgCoresSelectCell
+  end
+  object pnlEdicao: TPanel
+    Left = 12
+    Height = 64
+    Top = 300
+    Width = 626
+    BevelOuter = bvNone
+    TabOrder = 2
+    object lblNome: TLabel
+      Left = 0
+      Height = 16
+      Top = 4
+      Width = 90
+      Caption = 'Nome da cor: *'
+    end
+    object edtNome: TEdit
+      Left = 0
+      Height = 25
+      Top = 22
+      Width = 180
+      MaxLength = 40
+      TabOrder = 0
+    end
+    object lblHex: TLabel
+      Left = 190
+      Height = 16
+      Top = 4
+      Width = 66
+      Caption = 'Cor (HEX):'
+    end
+    object edtHex: TEdit
+      Left = 190
+      Height = 25
+      Top = 22
+      Width = 100
+      MaxLength = 9
+      TabOrder = 1
+      Text = '#FFFFFF'
+    end
+    object chkAtivo: TCheckBox
+      Left = 306
+      Height = 20
+      Top = 26
+      Width = 90
+      Caption = 'Ativa'
+      Checked = True
+      State = cbChecked
+      TabOrder = 2
+    end
+    object btnAdicionar: TButton
+      Left = 404
+      Height = 27
+      Top = 20
+      Width = 100
+      Caption = 'Adicionar'
+      TabOrder = 3
+      OnClick = btnAdicionarClick
+    end
+    object btnAtualizar: TButton
+      Left = 510
+      Height = 27
+      Top = 20
+      Width = 100
+      Caption = 'Atualizar'
+      TabOrder = 4
+      OnClick = btnAtualizarClick
+    end
+  end
+  object btnExcluir: TButton
+    Left = 12
+    Height = 27
+    Top = 380
+    Width = 100
+    Caption = 'Excluir'
+    TabOrder = 3
+    OnClick = btnExcluirClick
+  end
+  object btnLimpar: TButton
+    Left = 118
+    Height = 27
+    Top = 380
+    Width = 100
+    Caption = 'Limpar'
+    TabOrder = 4
+    OnClick = btnLimparClick
+  end
+  object btnFechar: TButton
+    Left = 538
+    Height = 27
+    Top = 380
+    Width = 100
+    Caption = 'Fechar'
+    TabOrder = 5
+    OnClick = btnFecharClick
+  end
+end

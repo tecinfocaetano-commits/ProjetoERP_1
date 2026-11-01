@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uValidacoes, uSessao;
+  uFrmCadastroBase, uConexao, uValidacoes, uSessao, uGeoCombos;
 
 type
   { TfrmFornecedores }
@@ -35,8 +35,12 @@ type
     edtComplemento: TEdit;
     lblBairro: TLabel;
     edtBairro: TEdit;
+    lblPais: TLabel;
+    cmbPais: TComboBox;
+    lblEstado: TLabel;
+    cmbEstado: TComboBox;
     lblCidade: TLabel;
-    edtCidade: TEdit;
+    cmbCidade: TComboBox;
     lblUf: TLabel;
     cmbUf: TComboBox;
     lblCep: TLabel;
@@ -55,6 +59,8 @@ type
     mmoObservacoes: TMemo;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure cmbPaisChange(Sender: TObject);
+    procedure cmbEstadoChange(Sender: TObject);
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -66,7 +72,10 @@ type
     function Excluir: Boolean; override;
   private
     FQuery: TSQLQuery;
+    FAtualizandoGeo: Boolean;
     procedure ConfigurarGrid;
+    procedure CarregarUFs;
+    procedure CarregarGeoInicial;
   end;
 
 var
@@ -98,6 +107,8 @@ begin
 
     lblTitulo.Caption := 'Cadastro de Fornecedores';
     Caption := 'Fornecedores';
+    CarregarUFs;
+    CarregarGeoInicial;
     ConfigurarGrid;
 
     // Inicializar ComboBox de tipo de pessoa
@@ -128,6 +139,55 @@ end;
 procedure TfrmFornecedores.FormDestroy(Sender: TObject);
 begin
   inherited;
+end;
+
+procedure TfrmFornecedores.CarregarUFs;
+begin
+  cmbUf.Items.Clear;
+  cmbUf.Items.AddStrings([
+    'AC', 'AL', 'AM', 'AP', 'BA', 'CE', 'DF', 'ES', 'GO',
+    'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR',
+    'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'
+  ]);
+end;
+
+procedure TfrmFornecedores.CarregarGeoInicial;
+begin
+  FAtualizandoGeo := True;
+  try
+    CarregarComboPaises(cmbPais);
+    CarregarComboEstados(cmbEstado, IdDoCombo(cmbPais));
+    CarregarComboCidades(cmbCidade, IdDoCombo(cmbEstado));
+  finally
+    FAtualizandoGeo := False;
+  end;
+end;
+
+procedure TfrmFornecedores.cmbPaisChange(Sender: TObject);
+begin
+  if FAtualizandoGeo then
+    Exit;
+  FAtualizandoGeo := True;
+  try
+    CarregarComboEstados(cmbEstado, IdDoCombo(cmbPais));
+    CarregarComboCidades(cmbCidade, 0);
+  finally
+    FAtualizandoGeo := False;
+  end;
+  cmbUf.ItemIndex := -1;
+end;
+
+procedure TfrmFornecedores.cmbEstadoChange(Sender: TObject);
+begin
+  if FAtualizandoGeo then
+    Exit;
+  FAtualizandoGeo := True;
+  try
+    CarregarComboCidades(cmbCidade, IdDoCombo(cmbEstado));
+  finally
+    FAtualizandoGeo := False;
+  end;
+  cmbUf.Text := UfDoComboEstado(cmbEstado);
 end;
 
 procedure TfrmFornecedores.ConfigurarGrid;
@@ -174,7 +234,9 @@ begin
   edtNumero.Enabled := AHabilitar;
   edtComplemento.Enabled := AHabilitar;
   edtBairro.Enabled := AHabilitar;
-  edtCidade.Enabled := AHabilitar;
+  cmbPais.Enabled := AHabilitar;
+  cmbEstado.Enabled := AHabilitar;
+  cmbCidade.Enabled := AHabilitar;
   cmbUf.Enabled := AHabilitar;
   edtCep.Enabled := AHabilitar;
   edtTelefone.Enabled := AHabilitar;
@@ -196,7 +258,7 @@ begin
   edtNumero.Clear;
   edtComplemento.Clear;
   edtBairro.Clear;
-  edtCidade.Clear;
+  CarregarGeoInicial;
   cmbUf.ItemIndex := -1;
   edtCep.Clear;
   edtTelefone.Clear;
@@ -234,7 +296,21 @@ begin
       edtNumero.Text := LQuery.FieldByName('NUMERO').AsString;
       edtComplemento.Text := LQuery.FieldByName('COMPLEMENTO').AsString;
       edtBairro.Text := LQuery.FieldByName('BAIRRO').AsString;
-      edtCidade.Text := LQuery.FieldByName('CIDADE').AsString;
+      FAtualizandoGeo := True;
+      try
+        CarregarComboPaises(cmbPais);
+        if LQuery.FieldByName('CIDADE_ID').AsLargeInt > 0 then
+          SelecionarCidade(cmbPais, cmbEstado, cmbCidade,
+            LQuery.FieldByName('CIDADE_ID').AsLargeInt)
+        else
+        begin
+          CarregarComboEstados(cmbEstado, IdDoCombo(cmbPais));
+          CarregarComboCidades(cmbCidade, 0);
+          MostrarCidadeLivre(cmbCidade, LQuery.FieldByName('CIDADE').AsString);
+        end;
+      finally
+        FAtualizandoGeo := False;
+      end;
       cmbUf.Text := LQuery.FieldByName('UF').AsString;
       edtCep.Text := LQuery.FieldByName('CEP').AsString;
       edtTelefone.Text := LQuery.FieldByName('TELEFONE').AsString;
@@ -298,10 +374,10 @@ begin
     begin
       LQuery.SQL.Text :=
         'INSERT INTO FORNECEDOR (EMPRESA_ID, TIPO_PESSOA, RAZAO_SOCIAL, NOME_FANTASIA, ' +
-        'CPF_CNPJ, IE, ENDERECO, NUMERO, COMPLEMENTO, BAIRRO, CIDADE, UF, CEP, ' +
+        'CPF_CNPJ, IE, ENDERECO, NUMERO, COMPLEMENTO, BAIRRO, CIDADE, CIDADE_ID, UF, CEP, ' +
         'TELEFONE, CELULAR, EMAIL, CONTATO, ATIVO, OBSERVACOES) ' +
         'VALUES (:EMPRESA_ID, :TIPO, :RAZAO, :FANTASIA, :CPF, :IE, :END, :NUM, :COMP, ' +
-        ':BAIRRO, :CIDADE, :UF, :CEP, :TEL, :CEL, :EMAIL, :CONTATO, :ATIVO, :OBS)';
+        ':BAIRRO, :CIDADE, :CIDADE_ID, :UF, :CEP, :TEL, :CEL, :EMAIL, :CONTATO, :ATIVO, :OBS)';
     end
     else
     begin
@@ -309,7 +385,8 @@ begin
         'UPDATE FORNECEDOR SET TIPO_PESSOA = :TIPO, RAZAO_SOCIAL = :RAZAO, ' +
         'NOME_FANTASIA = :FANTASIA, CPF_CNPJ = :CPF, IE = :IE, ENDERECO = :END, ' +
         'NUMERO = :NUM, COMPLEMENTO = :COMP, BAIRRO = :BAIRRO, CIDADE = :CIDADE, ' +
-        'UF = :UF, CEP = :CEP, TELEFONE = :TEL, CELULAR = :CEL, EMAIL = :EMAIL, ' +
+        'CIDADE_ID = :CIDADE_ID, UF = :UF, CEP = :CEP, TELEFONE = :TEL, ' +
+        'CELULAR = :CEL, EMAIL = :EMAIL, ' +
         'CONTATO = :CONTATO, ATIVO = :ATIVO, OBSERVACOES = :OBS WHERE ID = :ID';
       LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
     end;
@@ -326,7 +403,8 @@ begin
     LQuery.ParamByName('NUM').AsString := edtNumero.Text;
     LQuery.ParamByName('COMP').AsString := edtComplemento.Text;
     LQuery.ParamByName('BAIRRO').AsString := edtBairro.Text;
-    LQuery.ParamByName('CIDADE').AsString := edtCidade.Text;
+    LQuery.ParamByName('CIDADE').AsString := cmbCidade.Text;
+    LQuery.ParamByName('CIDADE_ID').AsLargeInt := IdDoCombo(cmbCidade);
     LQuery.ParamByName('UF').AsString := cmbUf.Text;
     LQuery.ParamByName('CEP').AsString := edtCep.Text;
     LQuery.ParamByName('TEL').AsString := edtTelefone.Text;

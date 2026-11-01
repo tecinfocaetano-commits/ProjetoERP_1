@@ -33,6 +33,18 @@ type
 
 implementation
 
+{ Formata número para parâmetro textual sempre com ponto decimal
+  (independente do separador regional do Windows). }
+function NumSQL(const AValor: Double): string;
+var
+  LFmt: TFormatSettings;
+begin
+  LFmt := DefaultFormatSettings;
+  LFmt.DecimalSeparator := '.';
+  LFmt.ThousandSeparator := #0;
+  Result := FloatToStr(AValor, LFmt);
+end;
+
 { TClienteService }
 
 constructor TClienteService.Create;
@@ -86,8 +98,10 @@ begin
       Result := TCliente.Create;
       Result.Id := LQuery.FieldByName('ID').AsLargeInt;
       Result.EmpresaId := LQuery.FieldByName('EMPRESA_ID').AsLargeInt;
-      // TIPO_PESSOA não existe no banco, usar valor padrão
-      Result.TipoPessoa := 'F';
+      if Trim(LQuery.FieldByName('TIPO_PESSOA').AsString) <> '' then
+        Result.TipoPessoa := LQuery.FieldByName('TIPO_PESSOA').AsString[1]
+      else
+        Result.TipoPessoa := 'F';
       Result.Nome := LQuery.FieldByName('NOME').AsString;
       Result.NomeFantasia := LQuery.FieldByName('NOME_FANTASIA').AsString;
       Result.CpfCnpj := LQuery.FieldByName('CPF_CNPJ').AsString;
@@ -97,15 +111,18 @@ begin
       Result.Complemento := LQuery.FieldByName('COMPLEMENTO').AsString;
       Result.Bairro := LQuery.FieldByName('BAIRRO').AsString;
       Result.Cidade := LQuery.FieldByName('CIDADE').AsString;
+      Result.CidadeId := LQuery.FieldByName('CIDADE_ID').AsLargeInt;
       Result.Uf := LQuery.FieldByName('UF').AsString;
       Result.Cep := LQuery.FieldByName('CEP').AsString;
       Result.Telefone := LQuery.FieldByName('TELEFONE').AsString;
-      // CELULAR não existe no banco
-      Result.Celular := '';
+      Result.Celular := LQuery.FieldByName('CELULAR').AsString;
       Result.Email := LQuery.FieldByName('EMAIL').AsString;
-      // LIMITE_CREDITO não existe no banco
-      Result.LimiteCredito := 0;
-      Result.Ativo := LQuery.FieldByName('ATIVO').AsString[1];
+      Result.LimiteCredito := LQuery.FieldByName('LIMITE_CREDITO').AsCurrency;
+      if Trim(LQuery.FieldByName('ATIVO').AsString) <> '' then
+        Result.Ativo := LQuery.FieldByName('ATIVO').AsString[1]
+      else
+        Result.Ativo := 'A';
+      Result.Observacoes := LQuery.FieldByName('OBSERVACOES').AsString;
     end;
   finally
     if LQuery.Active then
@@ -127,50 +144,65 @@ end;
 
 function TClienteService.Inserir(ACliente: TCliente): Int64;
 const
-  CAMPOS = 'EMPRESA_ID, NOME, NOME_FANTASIA, CPF_CNPJ, RG_IE, ' +
-           'ENDERECO, NUMERO, COMPLEMENTO, BAIRRO, CIDADE, UF, CEP, ' +
-           'TELEFONE, EMAIL, ATIVO';
-  VALORES_PARAM = ':EMP, :NOME, :FANTASIA, :CPFCNPJ, :RGIE, ' +
-                  ':END, :NUM, :COMPL, :BAIRRO, :CID, :UF, :CEP, ' +
-                  ':TEL, :EMAIL, :ATIVO';
+  CAMPOS = 'EMPRESA_ID, TIPO_PESSOA, NOME, NOME_FANTASIA, CPF_CNPJ, RG_IE, ' +
+           'ENDERECO, NUMERO, COMPLEMENTO, BAIRRO, CIDADE, CIDADE_ID, UF, CEP, ' +
+           'TELEFONE, CELULAR, EMAIL, LIMITE_CREDITO, OBSERVACOES, ATIVO';
+  VALORES_PARAM = ':EMP, :TIPO, :NOME, :FANTASIA, :CPFCNPJ, :RGIE, ' +
+                  ':END, :NUM, :COMPL, :BAIRRO, :CID, :CIDID, :UF, :CEP, ' +
+                  ':TEL, :CEL, :EMAIL, :LIMITE, :OBS, :ATIVO';
+var
+  LTipo: string;
 begin
   Validar(ACliente);
 
+  LTipo := UpperCase(Trim(ACliente.TipoPessoa));
+  if LTipo = '' then
+    LTipo := 'F';
+
   Result := FClienteRepo.InserirParam(
     CAMPOS, VALORES_PARAM,
-    ['EMP', 'NOME', 'FANTASIA', 'CPFCNPJ', 'RGIE',
-     'END', 'NUM', 'COMPL', 'BAIRRO', 'CID', 'UF', 'CEP',
-     'TEL', 'EMAIL', 'ATIVO'],
-    [IntToStr(ACliente.EmpresaId), ACliente.Nome,
+    ['EMP', 'TIPO', 'NOME', 'FANTASIA', 'CPFCNPJ', 'RGIE',
+     'END', 'NUM', 'COMPL', 'BAIRRO', 'CID', 'CIDID', 'UF', 'CEP',
+     'TEL', 'CEL', 'EMAIL', 'LIMITE', 'OBS', 'ATIVO'],
+    [IntToStr(ACliente.EmpresaId), LTipo, ACliente.Nome,
      ACliente.NomeFantasia, ACliente.CpfCnpj, ACliente.RgIe,
      ACliente.Endereco, ACliente.Numero, ACliente.Complemento,
-     ACliente.Bairro, ACliente.Cidade, ACliente.Uf, ACliente.Cep,
-     ACliente.Telefone, ACliente.Email, ACliente.Ativo]);
+     ACliente.Bairro, ACliente.Cidade, IntToStr(ACliente.CidadeId), ACliente.Uf,
+     ACliente.Cep, ACliente.Telefone, ACliente.Celular, ACliente.Email,
+     NumSQL(ACliente.LimiteCredito), ACliente.Observacoes, ACliente.Ativo]);
 
   LogOperacao('CLIENTE', 'I', Result);
 end;
 
 function TClienteService.Atualizar(ACliente: TCliente): Boolean;
 const
-  CAMPOS_PARAM = 'NOME = :NOME, NOME_FANTASIA = :FANTASIA, ' +
+  CAMPOS_PARAM = 'TIPO_PESSOA = :TIPO, NOME = :NOME, NOME_FANTASIA = :FANTASIA, ' +
                  'CPF_CNPJ = :CPFCNPJ, RG_IE = :RGIE, ENDERECO = :END, ' +
                  'NUMERO = :NUM, COMPLEMENTO = :COMPL, BAIRRO = :BAIRRO, ' +
-                 'CIDADE = :CID, UF = :UF, CEP = :CEP, ' +
-                 'TELEFONE = :TEL, EMAIL = :EMAIL, ATIVO = :ATIVO';
+                 'CIDADE = :CID, CIDADE_ID = :CIDID, UF = :UF, CEP = :CEP, ' +
+                 'TELEFONE = :TEL, CELULAR = :CEL, EMAIL = :EMAIL, ' +
+                 'LIMITE_CREDITO = :LIMITE, OBSERVACOES = :OBS, ATIVO = :ATIVO';
+var
+  LTipo: string;
 begin
   ValidarId(ACliente.Id, 'Cliente');
   Validar(ACliente);
 
+  LTipo := UpperCase(Trim(ACliente.TipoPessoa));
+  if LTipo = '' then
+    LTipo := 'F';
+
   Result := FClienteRepo.AtualizarParam(
     ACliente.Id, CAMPOS_PARAM,
-    ['NOME', 'FANTASIA', 'CPFCNPJ', 'RGIE', 'END',
-     'NUM', 'COMPL', 'BAIRRO', 'CID', 'UF', 'CEP',
-     'TEL', 'EMAIL', 'ATIVO'],
-    [ACliente.Nome, ACliente.NomeFantasia,
+    ['TIPO', 'NOME', 'FANTASIA', 'CPFCNPJ', 'RGIE', 'END',
+     'NUM', 'COMPL', 'BAIRRO', 'CID', 'CIDID', 'UF', 'CEP',
+     'TEL', 'CEL', 'EMAIL', 'LIMITE', 'OBS', 'ATIVO'],
+    [LTipo, ACliente.Nome, ACliente.NomeFantasia,
      ACliente.CpfCnpj, ACliente.RgIe, ACliente.Endereco,
      ACliente.Numero, ACliente.Complemento, ACliente.Bairro,
-     ACliente.Cidade, ACliente.Uf, ACliente.Cep,
-     ACliente.Telefone, ACliente.Email, ACliente.Ativo]);
+     ACliente.Cidade, IntToStr(ACliente.CidadeId), ACliente.Uf,
+     ACliente.Cep, ACliente.Telefone, ACliente.Celular, ACliente.Email,
+     NumSQL(ACliente.LimiteCredito), ACliente.Observacoes, ACliente.Ativo]);
 
   LogOperacao('CLIENTE', 'U', ACliente.Id);
 end;

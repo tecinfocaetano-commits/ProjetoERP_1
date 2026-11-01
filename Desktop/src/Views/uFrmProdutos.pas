@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uSessao, uGradeService;
+  uFrmCadastroBase, uConexao, uSessao, uGradeService, uFrmCoresProduto;
 
 type
   { TfrmProdutos }
@@ -50,12 +50,15 @@ type
     lblStatus: TLabel;
     cmbStatus: TComboBox;
     chkControlaEstoque: TCheckBox;
+    lblCoresInfo: TLabel;
+    btnCores: TButton;
     lblObservacoes: TLabel;
     mmoObservacoes: TMemo;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure edtPrecoCustoExit(Sender: TObject);
     procedure edtMargemLucroExit(Sender: TObject);
+    procedure btnCoresClick(Sender: TObject);
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -73,6 +76,7 @@ type
     procedure CarregarUnidades;
     procedure CarregarGrades;
     procedure CalcularPrecoVenda;
+    procedure AtualizarInfoCores;
   end;
 
 var
@@ -238,6 +242,55 @@ begin
   CalcularPrecoVenda;
 end;
 
+procedure TfrmProdutos.AtualizarInfoCores;
+var
+  LQuery: TSQLQuery;
+begin
+  if lblCoresInfo = nil then
+    Exit;
+  lblCoresInfo.Caption := 'Cores ativas: -';
+  if FIdSelecionado <= 0 then
+    Exit;
+
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := FConexao.Connection;
+    LQuery.Transaction := FConexao.Transaction;
+    LQuery.SQL.Text :=
+      'SELECT COUNT(*) AS TOTAL FROM COR ' +
+      'WHERE PRODUTO_ID = :ID AND ATIVO = ''A''';
+    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
+    LQuery.Open;
+    lblCoresInfo.Caption := 'Cores ativas: ' +
+      IntToStr(LQuery.FieldByName('TOTAL').AsInteger);
+  finally
+    LQuery.Free;
+  end;
+end;
+
+procedure TfrmProdutos.btnCoresClick(Sender: TObject);
+var
+  LForm: TfrmCoresProduto;
+begin
+  if FIdSelecionado <= 0 then
+  begin
+    MessageDlg('Selecione um produto já gravado para cadastrar as cores.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  LForm := TfrmCoresProduto.Create(Self);
+  try
+    LForm.ProdutoId := FIdSelecionado;
+    LForm.ProdutoDescricao := Trim(edtDescricao.Text);
+    LForm.ShowModal;
+  finally
+    LForm.Free;
+  end;
+
+  AtualizarInfoCores;
+end;
+
 procedure TfrmProdutos.CarregarDados(const AFiltro: string);
 var
   LSQL: string;
@@ -302,6 +355,7 @@ begin
   cmbStatus.ItemIndex := 0;
   chkControlaEstoque.Checked := True;
   mmoObservacoes.Clear;
+  AtualizarInfoCores;
 end;
 
 procedure TfrmProdutos.PreencherCampos;
@@ -357,6 +411,7 @@ begin
   finally
     LQuery.Free;
   end;
+  AtualizarInfoCores;
 end;
 
 procedure TfrmProdutos.PreencherObjeto;

@@ -12,7 +12,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls, MaskEdit,
-  uFrmCadastroBase, uClienteService, uCliente, uValidacoes, uSessao, uConexao;
+  uFrmCadastroBase, uClienteService, uCliente, uValidacoes, uSessao, uConexao,
+  uGeoCombos;
 
 type
   { TfrmClientes }
@@ -35,8 +36,12 @@ type
     edtComplemento: TEdit;
     lblBairro: TLabel;
     edtBairro: TEdit;
+    lblPais: TLabel;
+    cmbPais: TComboBox;
+    lblEstado: TLabel;
+    cmbEstado: TComboBox;
     lblCidade: TLabel;
-    edtCidade: TEdit;
+    cmbCidade: TComboBox;
     lblUf: TLabel;
     cmbUf: TComboBox;
     lblCep: TLabel;
@@ -55,6 +60,8 @@ type
     mmoObservacoes: TMemo;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure cmbPaisChange(Sender: TObject);
+    procedure cmbEstadoChange(Sender: TObject);
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -68,8 +75,10 @@ type
     FService: TClienteService;
     FCliente: TCliente;
     FQuery: TSQLQuery;
+    FAtualizandoGeo: Boolean;
     procedure ConfigurarGrid;
     procedure CarregarUFs;
+    procedure CarregarGeoInicial;
   end;
 
 var
@@ -105,6 +114,7 @@ begin
     Caption := 'Clientes';
 
     CarregarUFs;
+    CarregarGeoInicial;
     ConfigurarGrid;
 
     // Inicializar ComboBox de tipo de pessoa
@@ -147,6 +157,45 @@ begin
     'MA', 'MG', 'MS', 'MT', 'PA', 'PB', 'PE', 'PI', 'PR',
     'RJ', 'RN', 'RO', 'RR', 'RS', 'SC', 'SE', 'SP', 'TO'
   ]);
+end;
+
+procedure TfrmClientes.CarregarGeoInicial;
+begin
+  FAtualizandoGeo := True;
+  try
+    CarregarComboPaises(cmbPais);
+    CarregarComboEstados(cmbEstado, IdDoCombo(cmbPais));
+    CarregarComboCidades(cmbCidade, IdDoCombo(cmbEstado));
+  finally
+    FAtualizandoGeo := False;
+  end;
+end;
+
+procedure TfrmClientes.cmbPaisChange(Sender: TObject);
+begin
+  if FAtualizandoGeo then
+    Exit;
+  FAtualizandoGeo := True;
+  try
+    CarregarComboEstados(cmbEstado, IdDoCombo(cmbPais));
+    CarregarComboCidades(cmbCidade, 0);
+  finally
+    FAtualizandoGeo := False;
+  end;
+  cmbUf.ItemIndex := -1;
+end;
+
+procedure TfrmClientes.cmbEstadoChange(Sender: TObject);
+begin
+  if FAtualizandoGeo then
+    Exit;
+  FAtualizandoGeo := True;
+  try
+    CarregarComboCidades(cmbCidade, IdDoCombo(cmbEstado));
+  finally
+    FAtualizandoGeo := False;
+  end;
+  cmbUf.Text := UfDoComboEstado(cmbEstado);
 end;
 
 procedure TfrmClientes.ConfigurarGrid;
@@ -194,7 +243,9 @@ begin
   edtNumero.Enabled := AHabilitar;
   edtComplemento.Enabled := AHabilitar;
   edtBairro.Enabled := AHabilitar;
-  edtCidade.Enabled := AHabilitar;
+  cmbPais.Enabled := AHabilitar;
+  cmbEstado.Enabled := AHabilitar;
+  cmbCidade.Enabled := AHabilitar;
   cmbUf.Enabled := AHabilitar;
   edtCep.Enabled := AHabilitar;
   edtTelefone.Enabled := AHabilitar;
@@ -216,7 +267,7 @@ begin
   edtNumero.Clear;
   edtComplemento.Clear;
   edtBairro.Clear;
-  edtCidade.Clear;
+  CarregarGeoInicial;
   cmbUf.ItemIndex := -1;
   edtCep.Clear;
   edtTelefone.Clear;
@@ -252,7 +303,20 @@ begin
     edtNumero.Text := LCliente.Numero;
     edtComplemento.Text := LCliente.Complemento;
     edtBairro.Text := LCliente.Bairro;
-    edtCidade.Text := LCliente.Cidade;
+    FAtualizandoGeo := True;
+    try
+      CarregarComboPaises(cmbPais);
+      if LCliente.CidadeId > 0 then
+        SelecionarCidade(cmbPais, cmbEstado, cmbCidade, LCliente.CidadeId)
+      else
+      begin
+        CarregarComboEstados(cmbEstado, IdDoCombo(cmbPais));
+        CarregarComboCidades(cmbCidade, 0);
+        MostrarCidadeLivre(cmbCidade, LCliente.Cidade);
+      end;
+    finally
+      FAtualizandoGeo := False;
+    end;
     cmbUf.Text := LCliente.Uf;
     edtCep.Text := LCliente.Cep;
     edtTelefone.Text := LCliente.Telefone;
@@ -289,7 +353,8 @@ begin
   FCliente.Numero := Trim(edtNumero.Text);
   FCliente.Complemento := Trim(edtComplemento.Text);
   FCliente.Bairro := Trim(edtBairro.Text);
-  FCliente.Cidade := Trim(edtCidade.Text);
+  FCliente.Cidade := Trim(cmbCidade.Text);
+  FCliente.CidadeId := IdDoCombo(cmbCidade);
   FCliente.Uf := cmbUf.Text;
   FCliente.Cep := Trim(edtCep.Text);
   FCliente.Telefone := Trim(edtTelefone.Text);

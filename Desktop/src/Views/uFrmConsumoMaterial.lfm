@@ -1,10 +1,10 @@
 object frmConsumoMaterial: TfrmConsumoMaterial
   Left = 0
-  Height = 620
+  Height = 700
   Top = 0
   Width = 860
   Caption = 'Produção - Consumo de Materiais'
-  ClientHeight = 620
+  ClientHeight = 700
   ClientWidth = 860
   OnCreate = FormCreate
   OnShow = FormShow
@@ -95,10 +95,44 @@ object frmConsumoMaterial: TfrmConsumoMaterial
       WordWrap = True
     end
   end
+  object pnlMapaItens: TPanel
+    Left = 0
+    Height = 170
+    Top = 116
+    Width = 860
+    Align = alTop
+    ClientHeight = 170
+    ClientWidth = 860
+    TabOrder = 2
+    object lblMapaItensTitulo: TLabel
+      Left = 8
+      Height = 15
+      Top = 6
+      Width = 400
+      Caption = 'Itens do mapa de produção (produtos e quantidades)'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object sgMapaItens: TStringGrid
+      Left = 8
+      Height = 138
+      Top = 24
+      Width = 844
+      ColCount = 4
+      DefaultRowHeight = 21
+      FixedColor = clMenu
+      FixedCols = 0
+      FixedRows = 1
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goRowSelect, goThumbTracking]
+      RowCount = 2
+      TabOrder = 0
+      TabStop = False
+    end
+  end
   object pnlAcoes: TPanel
     Left = 0
     Height = 56
-    Top = 116
+    Top = 286
     Width = 860
     Align = alTop
     ClientHeight = 56
@@ -106,7 +140,7 @@ object frmConsumoMaterial: TfrmConsumoMaterial
     Color = clSilver
     ParentBackground = False
     ParentColor = False
-    TabOrder = 2
+    TabOrder = 3
     object btnGerar: TButton
       Left = 12
       Height = 33
@@ -146,26 +180,32 @@ object frmConsumoMaterial: TfrmConsumoMaterial
   end
   object pnlItens: TPanel
     Left = 0
-    Height = 348
-    Top = 172
+    Height = 312
+    Top = 342
     Width = 860
     Align = alClient
-    ClientHeight = 348
+    ClientHeight = 312
     ClientWidth = 860
-    TabOrder = 3
+    TabOrder = 4
     object lblItensTitulo: TLabel
       Left = 8
-      Height = 15
-      Top = 4
-      Width = 340
+      Height = 20
+      Top = 0
+      Width = 400
+      Align = alTop
+      BorderSpacing.Left = 8
       Caption = 'Materiais do consumo (ajuste a "Qtd real" antes de confirmar)'
+      Layout = tlCenter
     end
     object sgItens: TStringGrid
       Left = 8
-      Height = 320
+      Height = 284
       Top = 20
       Width = 844
-      Align = alBottom
+      Align = alClient
+      BorderSpacing.Left = 8
+      BorderSpacing.Right = 8
+      BorderSpacing.Bottom = 8
       ColCount = 6
       DefaultRowHeight = 21
       FixedColor = clMenu
@@ -178,12 +218,12 @@ object frmConsumoMaterial: TfrmConsumoMaterial
   object pnlRodape: TPanel
     Left = 0
     Height = 40
-    Top = 580
+    Top = 654
     Width = 860
     Align = alBottom
     ClientHeight = 40
     ClientWidth = 860
-    TabOrder = 4
+    TabOrder = 5
     object lblPermissao: TLabel
       Left = 12
       Height = 15

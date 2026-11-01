@@ -307,14 +307,21 @@ begin
     Result := LNota.FieldByName('ID').AsLargeInt;
     LNota.Close;
 
-    // Itens do pedido -> itens da nota (com os dados fiscais do produto)
+    // Itens do pedido -> itens da nota. A classificação fiscal vem do
+    // PRODUTO_FISCAL vinculado ao produto (quando houver); os campos do
+    // cadastro do produto ficam como fallback (COALESCE), mantendo o
+    // comportamento antigo para produtos sem vínculo.
     LItens.SQL.Text :=
       'SELECT I.PRODUTO_ID, I.QUANTIDADE, I.DESCONTO, I.CFOP, ' +
       '       COALESCE(I.VALOR_UNITARIO, I.PRECO_UNITARIO, 0) AS VALOR_UNITARIO, ' +
-      '       COALESCE(I.ALIQ_ICMS, P.ALIQ_ICMS, 0) AS ALIQ_ICMS, ' +
+      '       COALESCE(I.ALIQ_ICMS, F.ALIQ_ICMS, P.ALIQ_ICMS, 0) AS ALIQ_ICMS, ' +
+      '       COALESCE(I.CST_ICMS, F.CST_ICMS, P.CST_ICMS, '''') AS CST_ICMS, ' +
       '       P.CODIGO, P.DESCRICAO, COALESCE(U.SIGLA, U.ABREVIATURA, ''UN'') AS UNIDADE, ' +
-      '       P.NCM, P.CST_ICMS, P.CFOP_VENDA ' +
+      '       COALESCE(F.NCM, P.NCM, '''') AS NCM, ' +
+      '       COALESCE(F.CFOP_VENDA, F.CFOP, P.CFOP_VENDA, P.CFOP, '''') AS CFOP_PRODUTO, ' +
+      '       P.PRODUTO_FISCAL_ID ' +
       'FROM ITEM_PEDIDO I LEFT JOIN PRODUTO P ON P.ID = I.PRODUTO_ID ' +
+      '  LEFT JOIN PRODUTO_FISCAL F ON F.ID = P.PRODUTO_FISCAL_ID ' +
       '  LEFT JOIN UNIDADE U ON U.ID = P.UNIDADE_ID ' +
       'WHERE I.PEDIDO_VENDA_ID = :PED ORDER BY I.ID';
     LItens.ParamByName('PED').AsLargeInt := APedidoId;
@@ -330,24 +337,29 @@ begin
       LVTotal := LQtd * LVun;
 
       LProd.SQL.Text :=
-        'INSERT INTO NOTA_SAIDA_ITEM (NOTA_SAIDA_ID, PRODUTO_ID, CODIGO, DESCRICAO, UNIDADE, ' +
-        '  NCM, CFOP, CST_ICMS, ALIQ_ICMS, VALOR_ICMS, QUANTIDADE, VALOR_UNITARIO, ' +
-        '  VALOR_TOTAL, DESCONTO, ATUALIZA_ESTOQUE) ' +
-        'VALUES (:NOTA, :PROD, :COD, :DESC, :UN, :NCM, :CFOP, :CST, :ALIQ, :VICMS, ' +
+        'INSERT INTO NOTA_SAIDA_ITEM (NOTA_SAIDA_ID, PRODUTO_ID, PRODUTO_FISCAL_ID, CODIGO, ' +
+        '  DESCRICAO, UNIDADE, NCM, CFOP, CST_ICMS, ALIQ_ICMS, VALOR_ICMS, QUANTIDADE, ' +
+        '  VALOR_UNITARIO, VALOR_TOTAL, DESCONTO, ATUALIZA_ESTOQUE) ' +
+        'VALUES (:NOTA, :PROD, :PFISCAL, :COD, :DESC, :UN, :NCM, :CFOP, :CST, :ALIQ, :VICMS, ' +
         '  :QTD, :VUN, :VTOT, :DSC, ''S'')';
       LProd.ParamByName('NOTA').AsLargeInt := Result;
       if LItens.FieldByName('PRODUTO_ID').AsLargeInt > 0 then
         LProd.ParamByName('PROD').AsLargeInt := LItens.FieldByName('PRODUTO_ID').AsLargeInt
       else
         LProd.ParamByName('PROD').Clear;
+      if LItens.FieldByName('PRODUTO_FISCAL_ID').AsLargeInt > 0 then
+        LProd.ParamByName('PFISCAL').AsLargeInt :=
+          LItens.FieldByName('PRODUTO_FISCAL_ID').AsLargeInt
+      else
+        LProd.ParamByName('PFISCAL').Clear;
       LProd.ParamByName('COD').AsString := Trim(LItens.FieldByName('CODIGO').AsString);
       LProd.ParamByName('DESC').AsString := Trim(LItens.FieldByName('DESCRICAO').AsString);
       LProd.ParamByName('UN').AsString := Trim(LItens.FieldByName('UNIDADE').AsString);
       LProd.ParamByName('NCM').AsString := Trim(LItens.FieldByName('NCM').AsString);
       if Trim(LItens.FieldByName('CFOP').AsString) <> '' then
         LProd.ParamByName('CFOP').AsString := Trim(LItens.FieldByName('CFOP').AsString)
-      else if Trim(LItens.FieldByName('CFOP_VENDA').AsString) <> '' then
-        LProd.ParamByName('CFOP').AsString := Trim(LItens.FieldByName('CFOP_VENDA').AsString)
+      else if Trim(LItens.FieldByName('CFOP_PRODUTO').AsString) <> '' then
+        LProd.ParamByName('CFOP').AsString := Trim(LItens.FieldByName('CFOP_PRODUTO').AsString)
       else
         LProd.ParamByName('CFOP').AsString := '5102';
       LProd.ParamByName('CST').AsString := Trim(LItens.FieldByName('CST_ICMS').AsString);
@@ -694,6 +706,9 @@ var
   LVencimento: TDate;
   LEmpresaId, LClienteId, LCondicaoId, LFinanceiroId: Int64;
   LNumero: string;
+  // Bytes já em UTF-8 (o fonte é UTF-8), etiquetados explicitamente para o
+  // driver não reconverter. Ver comentário na montagem da descrição.
+  LDescricao: RawByteString;
 begin
   LCab := NovaConsulta;
   LTot := NovaConsulta;
@@ -759,8 +774,15 @@ begin
       LTot.ParamByName('FIN').AsLargeInt := LFinanceiroId;
       LTot.ParamByName('CLI').AsLargeInt := LClienteId;
       LTot.ParamByName('NOTA').AsLargeInt := ANotaId;
-      LTot.ParamByName('DESC').AsString :=
-        'NF de saída ' + LNumero + ' (' + IntToStr(LIndice) + '/' + IntToStr(LParcelas) + ')';
+      // O fonte é UTF-8, mas o projeto não compila com -FcUTF8: o FPC etiqueta
+      // o literal como CP_ACP. Sem reetiquetar, o SQLDB converte os bytes
+      // (já UTF-8) como se fossem CP1252 e grava "NF de saÃ­da".
+      // SetCodePage(..., CP_UTF8, False) só troca a etiqueta (não converte) e
+      // AsUTF8String envia os bytes como UTF-8 para o Firebird.
+      LDescricao := 'NF de saída ' + LNumero + ' (' + IntToStr(LIndice) +
+        '/' + IntToStr(LParcelas) + ')';
+      SetCodePage(LDescricao, CP_UTF8, False);
+      LTot.ParamByName('DESC').AsUTF8String := LDescricao;
       LTot.ParamByName('VALOR').AsFloat := LValorParcela;
       LTot.ParamByName('VENC').AsDate := IncDay(LVencimento, LIndice * LDias);
       LTot.ParamByName('PARC').AsInteger := LIndice;

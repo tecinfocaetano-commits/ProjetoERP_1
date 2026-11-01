@@ -26,6 +26,7 @@ type
     FComplemento: string;
     FBairro: string;
     FCidade: string;
+    FCidadeId: Int64;
     FUf: string;
     FCep: string;
     FTelefone: string;
@@ -48,6 +49,7 @@ type
     property Complemento: string read FComplemento write FComplemento;
     property Bairro: string read FBairro write FBairro;
     property Cidade: string read FCidade write FCidade;
+    property CidadeId: Int64 read FCidadeId write FCidadeId;
     property Uf: string read FUf write FUf;
     property Cep: string read FCep write FCep;
     property Telefone: string read FTelefone write FTelefone;

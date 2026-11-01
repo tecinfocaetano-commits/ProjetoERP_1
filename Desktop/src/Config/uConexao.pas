@@ -8,6 +8,8 @@ uses
   Classes, SysUtils, SQLDB, IBConnection;
 
 type
+  { Construtor privado é intencional (singleton via GetInstance). }
+  {$push}{$warn 3018 off}
   TConexao = class
   private
     class var FInstance: TConexao;
@@ -35,6 +37,7 @@ type
 
     destructor Destroy; override;
   end;
+  {$pop}
 
 implementation
 

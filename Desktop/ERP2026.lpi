@@ -201,6 +201,10 @@
         <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
+        <Filename Value="src/Views/uGeoCombos.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/Views/uFrmFornecedores.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmFornecedores"/>
@@ -211,6 +215,13 @@
         <Filename Value="src/Views/uFrmProdutos.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmProdutos"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Views/uFrmCoresProduto.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmCoresProduto"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>

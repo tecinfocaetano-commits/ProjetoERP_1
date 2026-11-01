@@ -379,15 +379,18 @@ begin
   if FItens.Active then
     FItens.Close;
   FItens.SQL.Text :=
-    'SELECT I.ID, I.PRODUTO_ID, COALESCE(P.CODIGO, '''') AS CODIGO, I.DESCRICAO, I.QUANTIDADE, ' +
+    'SELECT I.ID, I.PRODUTO_ID, COALESCE(P.CODIGO, M.CODIGO, '''') AS CODIGO, I.DESCRICAO, I.QUANTIDADE, ' +
     '  I.VALOR_UNITARIO, I.DESCONTO, ' +
     // CAST necessário: sem ele a multiplicação vira NUMERIC(18,8), que o SQLDB
     // devolve como NULL (ver comentário em uNotaEntradaService.RecalcularTotais)
     '  CAST((I.QUANTIDADE * I.VALOR_UNITARIO - COALESCE(I.DESCONTO, 0)) AS NUMERIC(18,4)) AS TOTAL, ' +
     '  I.CFOP, COALESCE(I.NCM, '''') AS NCM, ' +
-    '  CASE WHEN (I.PRODUTO_ID IS NULL OR I.PRODUTO_ID = 0) THEN ''sem produto'' ' +
+    '  CASE WHEN (I.PRODUTO_ID IS NULL OR I.PRODUTO_ID = 0) ' +
+    '        AND (I.MATERIAL_ID IS NULL OR I.MATERIAL_ID = 0) THEN ''sem produto'' ' +
     '       ELSE '''' END AS AVISO ' +
-    'FROM NOTA_ENTRADA_ITEM I LEFT JOIN PRODUTO P ON P.ID = I.PRODUTO_ID ' +
+    'FROM NOTA_ENTRADA_ITEM I ' +
+    '  LEFT JOIN PRODUTO P ON P.ID = I.PRODUTO_ID ' +
+    '  LEFT JOIN MATERIAL M ON M.ID = I.MATERIAL_ID ' +
     'WHERE I.NOTA_ENTRADA_ID = :ID ORDER BY I.ID';
   FItens.ParamByName('ID').AsLargeInt := FNotaId;
   FItens.Open;
@@ -787,6 +790,7 @@ var
   LQuery: TSQLQuery;
   LNcm, LCfop, LCst: string;
   LAliq, LValorIcms: Double;
+  LProdutoFiscalId: Int64;
 begin
   Result := False;
   LQuery := TSQLQuery.Create(nil);
@@ -794,28 +798,19 @@ begin
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
 
-    // Dados fiscais herdados do produto (preparado para NF-e)
+    // Classificação fiscal herdada do PRODUTO_FISCAL (com fallback para os
+    // campos do próprio produto) - regra no service.
+    LProdutoFiscalId := 0;
     LNcm := '';
     LCfop := Trim(edtCfop.Text);
     LCst := '';
     LAliq := 0;
     if AProdutoId > 0 then
     begin
-      LQuery.SQL.Text :=
-        'SELECT COALESCE(NCM, '''') AS NCM, COALESCE(CFOP_COMPRA, CFOP, '''') AS CFOP, ' +
-        '       COALESCE(CST_ICMS, '''') AS CST, COALESCE(ALIQ_ICMS, 0) AS ALIQ ' +
-        'FROM PRODUTO WHERE ID = :ID';
-      LQuery.ParamByName('ID').AsLargeInt := AProdutoId;
-      LQuery.Open;
-      if not LQuery.IsEmpty then
-      begin
-        LNcm := Trim(LQuery.FieldByName('NCM').AsString);
-        if Trim(LQuery.FieldByName('CFOP').AsString) <> '' then
-          LCfop := Trim(LQuery.FieldByName('CFOP').AsString);
-        LCst := Trim(LQuery.FieldByName('CST').AsString);
-        LAliq := LQuery.FieldByName('ALIQ').AsFloat;
-      end;
-      LQuery.Close;
+      FService.CarregarFiscalDoProduto(AProdutoId, LProdutoFiscalId,
+        LNcm, LCfop, LCst, LAliq);
+      if LCfop = '' then
+        LCfop := Trim(edtCfop.Text);
     end;
 
     LValorIcms := (AQuantidade * AValorUnitario) * LAliq / 100;
@@ -825,16 +820,17 @@ begin
     if FItemId = 0 then
     begin
       LQuery.SQL.Text :=
-        'INSERT INTO NOTA_ENTRADA_ITEM (NOTA_ENTRADA_ID, PRODUTO_ID, DESCRICAO, NCM, CFOP, ' +
-        '  CST_ICMS, ALIQ_ICMS, VALOR_ICMS, QUANTIDADE, VALOR_UNITARIO, VALOR_TOTAL, ' +
-        '  DESCONTO, ATUALIZA_ESTOQUE, ATUALIZA_CUSTO) ' +
-        'VALUES (:NOTA, :PROD, :DESC, :NCM, :CFOP, :CST, :ALIQ, :VICMS, :QTD, :VUN, :VTOT, ' +
-        '  :DESC2, ''S'', ''S'')';
+        'INSERT INTO NOTA_ENTRADA_ITEM (NOTA_ENTRADA_ID, PRODUTO_ID, PRODUTO_FISCAL_ID, ' +
+        '  DESCRICAO, NCM, CFOP, CST_ICMS, ALIQ_ICMS, VALOR_ICMS, QUANTIDADE, VALOR_UNITARIO, ' +
+        '  VALOR_TOTAL, DESCONTO, ATUALIZA_ESTOQUE, ATUALIZA_CUSTO) ' +
+        'VALUES (:NOTA, :PROD, :PFISCAL, :DESC, :NCM, :CFOP, :CST, :ALIQ, :VICMS, :QTD, :VUN, ' +
+        '  :VTOT, :DESC2, ''S'', ''S'')';
     end
     else
     begin
       LQuery.SQL.Text :=
-        'UPDATE NOTA_ENTRADA_ITEM SET PRODUTO_ID = :PROD, DESCRICAO = :DESC, NCM = :NCM, ' +
+        'UPDATE NOTA_ENTRADA_ITEM SET PRODUTO_ID = :PROD, PRODUTO_FISCAL_ID = :PFISCAL, ' +
+        '  DESCRICAO = :DESC, NCM = :NCM, ' +
         '  CFOP = :CFOP, CST_ICMS = :CST, ALIQ_ICMS = :ALIQ, VALOR_ICMS = :VICMS, ' +
         '  QUANTIDADE = :QTD, VALOR_UNITARIO = :VUN, VALOR_TOTAL = :VTOT, DESCONTO = :DESC2 ' +
         'WHERE ID = :ID';
@@ -847,6 +843,10 @@ begin
       LQuery.ParamByName('PROD').AsLargeInt := AProdutoId
     else
       LQuery.ParamByName('PROD').Clear;
+    if LProdutoFiscalId > 0 then
+      LQuery.ParamByName('PFISCAL').AsLargeInt := LProdutoFiscalId
+    else
+      LQuery.ParamByName('PFISCAL').Clear;
     LQuery.ParamByName('DESC').AsString := ADescricao;
     LQuery.ParamByName('NCM').AsString := LNcm;
     LQuery.ParamByName('CFOP').AsString := LCfop;
