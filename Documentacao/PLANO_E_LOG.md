@@ -26,7 +26,7 @@
 | # | Item | Status | Observação |
 |---|---|---|---|
 | 1 | **Consertar telas geográficas** (País/Estado/Cidade) e voltar build/suíte ao verde | 🔨 **em andamento** | build estava quebrado (assinaturas de `InserirParam`, falta `uFrmCidade`, `.lfm`, colunas `SIGLA`×`CODIGO`/`UF`) |
-| 2 | Migração `016` **GRADE**: `GRADE` + `GRADE_TAMANHO`, `PRODUTO.GRADE_ID`, `ITEM_PEDIDO_GRADE`, `MAPA_PRODUCAO_ITEM_GRADE`, config `USA_GRADE` | 📋 planejado | |
+| 2 | Migração `016` **GRADE**: `GRADE` + `GRADE_TAMANHO`, `PRODUTO.GRADE_ID`, `ITEM_PEDIDO_GRADE`, `MAPA_PRODUCAO_ITEM_GRADE`, config `USA_GRADE` | ✅ concluído (31/10) | aplicada no `DADOS.FDB` real (backup `DADOS_backup_antes_016.fdb`); testada em cópia (aplica→rollback) |
 | 3 | Tela de cadastro de GRADE (master + tamanhos) | 📋 planejado | D5 |
 | 4 | GRADE no item do pedido + subgrid editável no mapa, sob `USA_GRADE` | 📋 planejado | D6/D7 |
 | 5 | Notas lerem `PRODUTO_FISCAL` (NCM/CFOP/CST/alíquotas no service) | 📋 pendente | colunas prontas (015) |
@@ -79,6 +79,20 @@
 
 **Parada de sessão:** o checkpoint detalhado está em `CHECKPOINT.md` →
 "Estado atual da sessão".
+
+### 3.4 Banco — migração `016` GRADE (concluído 31/10)
+
+- `Banco\016_grade.sql` (+ `_rollback.sql`), testada em cópia (aplica →
+  rollback limpo) e aplicada no `DADOS.FDB` real (backup
+  `DADOS_backup_antes_016.fdb`).
+- Tabelas: `GRADE` (nome + `TIPO` CALCADO/CONFECCAO/GRUPO/OUTRO),
+  `GRADE_TAMANHO` (tamanhos variáveis + `ORDEM`), `ITEM_PEDIDO_GRADE`,
+  `MAPA_PRODUCAO_ITEM_GRADE`; coluna `PRODUTO.GRADE_ID`; config
+  `USA_GRADE='N'` por empresa; 4 generators, 5 triggers, 5 índices.
+- Aprendizados do Firebird registrados: identificador máx. **31 caracteres**
+  (gerador/trigger de `MAPA_PRODUCAO_ITEM_GRADE` encurtados) e **`DEFAULT`
+  antes de `NOT NULL`** no `CREATE TABLE`.
+- Próximo: service da grade + tela de cadastro.
 
 ---
 

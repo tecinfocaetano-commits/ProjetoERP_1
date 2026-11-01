@@ -25,12 +25,12 @@ Build **0 erros** · suíte **62/62**.
 
 ### Próximo passo (backlog)
 
-Ver `Documentacao\PLANO_E_LOG.md` §2. Prioridade: **migração `016` da GRADE**
-(`GRADE` + `GRADE_TAMANHO` + `PRODUTO.GRADE_ID` + `ITEM_PEDIDO_GRADE` +
-`MAPA_PRODUCAO_ITEM_GRADE` + `USA_GRADE`), depois tela de grade e grade no item
-do pedido + subgrid editável no mapa. Demais itens: notas lendo `PRODUTO_FISCAL`;
-re-layout do Consumo; Produto com Cores; Compras → Nota de Entrada; vínculo geo
-em CLIENTE/FORNECEDOR; unificação CLIENTE+FORNECEDOR (adiada); Android (deferido).
+Ver `Documentacao\PLANO_E_LOG.md` §2. **GRADE**: migração `016` **já aplicada**
+no banco real; falta o **service** (`uGradeService`) e a **tela de cadastro**
+(principal + tamanhos), depois grade no item do pedido + subgrid editável no
+mapa sob `USA_GRADE`. Demais itens: notas lendo `PRODUTO_FISCAL`; re-layout do
+Consumo; Produto com Cores; Compras → Nota de Entrada; vínculo geo em
+CLIENTE/FORNECEDOR; unificação CLIENTE+FORNECEDOR (adiada); Android (deferido).
 
 ---
 
