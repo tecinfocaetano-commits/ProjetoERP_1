@@ -93,6 +93,8 @@ biblioteca/pacote, ou qualquer refactor que toque mais de ~5 telas.
 ## Backlog atual
 
 Sempre consulte `Documentacao\PLANO_E_LOG.md` §2 (tabela de itens com status).
-No momento: **GRADE** (cadastro pronto; falta grade no item do pedido e no
-mapa), depois notas lendo `PRODUTO_FISCAL`, re-layout do Consumo, Produto com
-Cores, Compras → Nota de Entrada, vínculo geográfico em CLIENTE/FORNECEDOR.
+No momento: **GRADE concluída** (cadastro, item do pedido, mapa e produto),
+depois notas lendo `PRODUTO_FISCAL`, re-layout do Consumo, Produto com Cores,
+Compras → Nota de Entrada, vínculo geográfico em CLIENTE/FORNECEDOR. Depois
+do backlog: **D9 — Android com configuração de servidor + código de usuário
+por empresa** (cada empresa tem a sua).
