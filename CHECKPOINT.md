@@ -26,15 +26,19 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (02/11/2026)
 
-**HEAD:** item 11 (Android — orçamentos + menu inferior) sobre os itens 13 e
-14 — confira `git log --oneline -3` · build **0 erros / 0 warnings** · suíte
-**62/62** · APK **BUILD SUCCESSFUL** · árvore limpa.
+**HEAD:** dashboard de vendas no Android (sobre a seta de voltar + busca, o
+item 11 e os itens 13/14) — confira `git log --oneline -3` · build
+**0 erros / 0 warnings** · suíte **62/62** · APK **BUILD SUCCESSFUL** ·
+árvore limpa.
 
 ### O que fechou nesta sessão
 
 | Item | Entrega |
 |---|---|
-| **Orçamentos (item 11)** | API `GET/POST /api/orcamentos`, `GET /api/orcamentos/:id` e `POST /api/orcamentos/:id/converter`; telas `OrcamentosActivity` e `InserirOrcamentoActivity`; botão **Orçamentos** no Dashboard e em Vendas. Validado no emulador (criar e converter). Detalhes em `PLANO_E_LOG.md` §3.17 |
+| **Dashboard de vendas (Android)** | `activity_dashboard.xml` sem botões: faturamento do mês + vendas, A receber / A pagar, orçamentos abertos, clientes e as 3 últimas vendas; cards abrem `OrcamentosActivity`, `ClientesActivity` e `VendasActivity`. Configuração e saída foram para o menu **⋮** (Atualizar resumo / Configuração / Sair). Validado no emulador — §3.18 |
+| **Seta de voltar + busca** | `BaseActivity` centraliza a seta em todas as telas; `BaseListaActivity` coloca a barra de pesquisa ao lado dela (Clientes e Vendas), filtrando sem diferenciar caixa/acentos. Commit `1a1c719` |
+| **Resumo financeiro da API** | `SUM(CASE ...)` vinha como BCD nulo no driver e zerava `a_receber`/`a_pagar`/`faturamento_mes`; somas agora com `CAST(... AS DOUBLE PRECISION)`. `ApiClient.get` repete GET até 3× em queda de conexão. Detalhes em §3.18 |
+| **Orçamentos (item 11)** | API `GET/POST /api/orcamentos`, `GET /api/orcamentos/:id` e `POST /api/orcamentos/:id/converter`; telas `OrcamentosActivity` e `InserirOrcamentoActivity`; card **Orçamentos abertos** no Dashboard e botão em Vendas. Validado no emulador (criar e converter). Detalhes em `PLANO_E_LOG.md` §3.17 |
 | **Menu inferior (item 11)** | `include_bottom_nav.xml` + `menu_bottom_nav.xml` com Início/Clientes/Estoque/Vendas/Financeiro; `Navegacao.java` reaproveita as Activities; ícones vetoriais próprios (`ic_nav_*`), sem dependências novas |
 | **D9 (Android)** | Configuração **por empresa**: URL do servidor + código de usuário em `SharedPreferences`; tela com **Testar conexão / Salvar / Usar esta empresa / Excluir**. Commit `67d26f4` — §3.13 |
 | **Geo (correção)** | `uEstadoService`/`uCidadeService` com `BuscarTodos` simples. Commit `5075a06` — §3.14 |
@@ -42,21 +46,27 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 | **Encoding (item 14)** | `SetMultiByteConversionCodePage(CP_UTF8)` no início do app e dos testes; **sem `-FcUTF8`** (a flag gerava 213 warnings e corrompia concatenações). Contorno local removido; banco sem mojibake — §3.16 |
 | **Backlog 5–9** | fechado em 01/11 (ver "Estado anterior" abaixo) |
 
+- **Dashboard validado no emulador `Pixel_9` (Android 16)** com a API local no
+  ar: faturamento **R$ 70,00** (1 venda no mês), **A receber R$ 170,00**,
+  **A pagar R$ 1.595,00**, **0 orçamentos**, **9 clientes** e as 3 últimas
+  vendas; menu ⋮ com os 3 itens; **Atualizar resumo** recarregou 4× sem erro;
+  os cards e a configuração abrem as telas certas e a seta volta; **Sair**
+  pede confirmação.
 - **Item 11 validado no emulador `Pixel_9` (Android 16)** com a API local no
   ar: criar orçamento com 2 × R$ 35 e desconto R$ 5 → lista mostra
   **Orçamento 3 / R$ 65,00 / 1 item(ns)**; converter pela confirmação → some
   da lista e o banco fica `STATUS = 'P'`. Repetir a conversão pela API dá
   **HTTP 409**; criação via `curl` deu **201** (id 1004). Dados de teste
   removidos do banco ao final.
-- Uso do Android documentado em `Android\README.md` (orçamentos) e
-  `Android\CONFIGURACAO_POR_EMPRESA.md` (D9).
+- Uso do Android documentado em `Android\README.md` (dashboard, busca e
+  orçamentos) e `Android\CONFIGURACAO_POR_EMPRESA.md` (D9).
 - Banco **sem migração nova** nesta sessão (orçamento reusa `PEDIDO_VENDA`).
 
 ### Próximo passo (executável)
 
-1. O backlog de `PLANO_E_LOG.md` §2 está **fechado**, exceto **D3**
-   (unificar CLIENTE+FORNECEDOR), que continua **adiada** — só com plano
-   aprovado.
+1. O backlog de `PLANO_E_LOG.md` §2 está **fechado**: não há item 11 pendente
+   (concluído em §3.17); o único restante é **D3** (unificar
+   CLIENTE+FORNECEDOR), que continua **adiada** — só com plano aprovado.
 2. Aguardar a próxima demanda do usuário (ou autorização para planejar D3).
 3. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
    o `PLANO_E_LOG.md`; commitar.
@@ -641,9 +651,9 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 
 ## Para continuar (ao ligar o PC)
 
-0. **Próximo marco:** item 11 (Android — orçamentos + telas), único item aberto
-   do backlog. Itens 13 (schema) e 14 (encoding) **já estão concluídos** — ver
-   "Estado atual da sessão".
+0. **Próximo marco:** nenhum item aberto no backlog — o item 11 (Android —
+   orçamentos) e o dashboard de vendas estão concluídos. Resta só **D3**
+   (unificar CLIENTE+FORNECEDOR), **adiada** até plano aprovado.
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
@@ -658,8 +668,8 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 7. APK Android: `Scripts\build_android.bat` → esperado **BUILD SUCCESSFUL**
    (visual Material You — conferir no emulador `Pixel_9`; o app consome a API
    em `10.0.2.2:9000`, então a API precisa estar no ar). Para apontar para
-   outro servidor/empresa, use o botão **Servidor e empresa** dentro do app
-   (ver `Android\CONFIGURACAO_POR_EMPRESA.md`).
+   outro servidor/empresa, use o menu **⋮ ▸ Configuração (servidor e empresa)**
+   dentro do app (ver `Android\CONFIGURACAO_POR_EMPRESA.md`).
 
 ---
 

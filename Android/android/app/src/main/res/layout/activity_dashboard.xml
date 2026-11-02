@@ -32,105 +32,274 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Módulos do Sistema"
+                android:text="Resumo de vendas"
                 android:textSize="14sp"
                 android:layout_marginTop="4dp"
-                android:layout_marginBottom="20dp"
                 android:textColor="?attr/colorOnSurfaceVariant"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonClientes"
-                style="@style/Widget.Material3.Button.TonalButton"
+            <!-- Faturamento do mês -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardFaturamento"
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:text="Clientes"
-                android:textSize="17sp"
-                app:cornerRadius="20dp"
-                android:layout_marginBottom="12dp"/>
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="?attr/colorPrimaryContainer">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonInserirCliente"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:text="Inserir Cliente"
-                android:textSize="17sp"
-                app:cornerRadius="20dp"
-                android:layout_marginBottom="12dp"/>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonConsultarClientes"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:text="Consultar Clientes"
-                android:textSize="17sp"
-                app:cornerRadius="20dp"
-                android:layout_marginBottom="12dp"/>
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Faturamento do mês"
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnPrimaryContainer"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonEstoque"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:text="Estoque"
-                android:textSize="17sp"
-                app:cornerRadius="20dp"
-                android:layout_marginBottom="12dp"/>
+                    <TextView
+                        android:id="@+id/textViewFaturamento"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="R$ 0,00"
+                        android:textSize="34sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnPrimaryContainer"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonVendas"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:text="Vendas"
-                android:textSize="17sp"
-                app:cornerRadius="20dp"
-                android:layout_marginBottom="12dp"/>
+                    <TextView
+                        android:id="@+id/textViewVendasMes"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="0 vendas no mês"
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnPrimaryContainer"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonOrcamentos"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:text="Orçamentos"
-                android:textSize="17sp"
-                app:cornerRadius="20dp"
-                android:layout_marginBottom="12dp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonFinanceiro"
-                style="@style/Widget.Material3.Button.TonalButton"
+            <!-- A receber / a pagar -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:text="Financeiro"
-                android:textSize="17sp"
-                app:cornerRadius="20dp"
-                android:layout_marginBottom="28dp"/>
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonConfiguracao"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:text="Configuração (servidor e empresa)"
-                android:textSize="15sp"
-                app:cornerRadius="20dp"
-                android:layout_marginBottom="12dp"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/buttonSair"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="A receber"
+                            android:textSize="13sp"
+                            android:textColor="?attr/colorOnSurfaceVariant"/>
+
+                        <TextView
+                            android:id="@+id/textViewAReceber"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="R$ 0,00"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/erp_receber"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="A pagar"
+                            android:textSize="13sp"
+                            android:textColor="?attr/colorOnSurfaceVariant"/>
+
+                        <TextView
+                            android:id="@+id/textViewAPagar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="R$ 0,00"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/erp_pagar"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <!-- Orçamentos abertos / clientes -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:text="Sair"
-                android:textSize="15sp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardOrcamentos"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:rippleColor="?attr/colorOnSurface">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Orçamentos abertos"
+                            android:textSize="13sp"
+                            android:textColor="?attr/colorOnSurfaceVariant"/>
+
+                        <TextView
+                            android:id="@+id/textViewOrcamentosAbertos"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="0"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurface"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardClientes"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                    app:rippleColor="?attr/colorOnSurface">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Clientes"
+                            android:textSize="13sp"
+                            android:textColor="?attr/colorOnSurfaceVariant"/>
+
+                        <TextView
+                            android:id="@+id/textViewClientes"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="0"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurface"/>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <!-- Últimas vendas -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="Últimas vendas"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"/>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardUltimasVendas"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="?attr/colorSurfaceVariant"
+                app:rippleColor="?attr/colorOnSurface">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:id="@+id/textViewUltimasVendas"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:lineSpacingExtra="4dp"
+                        android:text="Carregando..."
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurface"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Ver todas as vendas"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorPrimary"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:id="@+id/textViewStatusResumo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
                 android:textColor="?attr/colorError"
-                app:strokeColor="?attr/colorError"
-                app:cornerRadius="20dp"
-                app:strokeWidth="1.5dp"/>
+                android:textSize="13sp"
+                android:visibility="gone"/>
 
         </LinearLayout>
-
     </ScrollView>
 
     <include

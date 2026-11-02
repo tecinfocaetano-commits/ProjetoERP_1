@@ -271,6 +271,62 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 `activity_inserir_orcamento`, `include_bottom_nav`, `res/menu/menu_bottom_nav`,
 5 drawables `ic_nav_*` e `Android/README.md`.
 
+### 3.18 Android — dashboard de vendas + menu de configurações (concluído 02/11)
+
+**Tela inicial**
+
+- `activity_dashboard.xml` foi reescrito: saíram os botões (`buttonClientes`,
+  `buttonInserirCliente`, `buttonConsultarClientes`, `buttonEstoque`,
+  `buttonVendas`, `buttonOrcamentos`, `buttonFinanceiro`,
+  `buttonConfiguracao`, `buttonSair`) e entrou um dashboard com:
+  faturamento do mês + vendas do mês, **A receber** / **A pagar**,
+  **Orçamentos abertos**, **Clientes** e as **3 últimas vendas**.
+- Cards clicáveis: orçamentos → `OrcamentosActivity`; clientes →
+  `ClientesActivity`; últimas vendas → `VendasActivity`. O menu inferior
+  (Início/Clientes/Estoque/Vendas/Financeiro) foi mantido.
+- `DashboardActivity` carrega `/api/financeiro`, `/api/orcamentos`,
+  `/api/clientes` e `/api/vendas` em segundo plano, cada chamada isolada
+  (uma falha não apaga os outros números) e recarrega ao voltar para a tela.
+- Menu **⋮** (`res/menu/menu_dashboard.xml`): **Atualizar resumo**,
+  **Configuração (servidor e empresa)** e **Sair** (com confirmação). A
+  configuração e a saída deixaram de ocupar botões na tela.
+
+**Robustez do cliente HTTP**
+
+- `ApiClient.get` repete a requisição até 3 vezes (120 ms/240 ms de espera)
+  quando a conexão cai no meio da resposta. O servidor eventualmente fecha o
+  corpo um byte antes do `Content-Length` (perde o último `}`), o que gerava
+  `ProtocolException: unexpected end of stream` esporádico. Só GET é
+  repetido, porque é idempotente; POST/PUT continuam com uma tentativa.
+- Cada requisição envia `Connection: close`, evitando reutilizar sockets que
+  o servidor já encerrou.
+
+**Correção no resumo financeiro da API**
+
+- `GET /api/financeiro` devolvia `a_receber`, `a_pagar` e `faturamento_mes`
+  sempre **0**: o driver entrega `SUM(CASE ...)` (`NUMERIC(18,4)`) como BCD
+  nulo, e `AsFloat` virava 0. As somas passaram a ser convertidas com
+  `CAST(... AS DOUBLE PRECISION)` em `uRotasFinanceiro.pas`; o resumo do
+  Android e a tela Financeiro passaram a mostrar os valores reais
+  (A receber R$ 170,00 / A pagar R$ 1.595,00 / faturamento R$ 70,00 no banco
+  de teste).
+
+**Validação (02/11, emulador `Pixel_9`)**
+
+| Teste | Resultado |
+|---|---|
+| Build Android (`build_android.bat`) | **BUILD SUCCESSFUL** |
+| Dashboard com a API no ar | faturamento, contas, 0 orçamentos, 9 clientes e 3 últimas vendas |
+| Menu ⋮ | 3 itens; **Atualizar resumo** recarregou 4× sem erro |
+| Card Orçamentos / Clientes / Últimas vendas | abrem as telas certas; seta volta ao Dashboard |
+| Configuração pelo menu | abre `ConfiguracaoActivity`; seta volta ao Dashboard |
+| Sair | diálogo "Deseja encerrar a sessão?" (Cancelar mantém a sessão) |
+| Financeiro (após o `CAST`) | A Receber R$ 170,00 / A Pagar R$ 1.595,00 |
+
+**Arquivos:** `Android/.../DashboardActivity.java`, `ApiClient.java`,
+`res/layout/activity_dashboard.xml`, `res/menu/menu_dashboard.xml`,
+`API/src/Rotas/uRotasFinanceiro.pas`, `Android/README.md`.
+
 ### 3.4 Banco — migração `016` GRADE (concluído 31/10)
 
 - `Banco\016_grade.sql` (+ `_rollback.sql`), testada em cópia (aplica →

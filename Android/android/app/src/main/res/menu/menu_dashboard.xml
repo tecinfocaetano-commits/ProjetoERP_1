@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Menu de configurações do Dashboard (três pontinhos da barra superior). -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_atualizar"
+        android:title="Atualizar resumo"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_configuracao"
+        android:title="Configuração (servidor e empresa)"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_sair"
+        android:title="Sair"
+        app:showAsAction="never" />
+
+</menu>

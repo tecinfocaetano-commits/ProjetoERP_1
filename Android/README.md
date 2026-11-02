@@ -58,18 +58,44 @@ android/
 ## Funcionalidades
 
 - ✅ Login com autenticação (admin/admin123)
-- ✅ Dashboard com botões de navegação
+- ✅ Dashboard com resumo de vendas (sem botões de navegação)
 - ✅ Menu inferior com Início, Clientes, Estoque, Vendas e Financeiro
+- ✅ Configuração do servidor/empresa e saída no menu de três pontinhos
 - ✅ Lista de clientes
 - ✅ Lista de produtos em estoque
 - ✅ Lista de vendas
 - ✅ Orçamentos: lista os abertos (`STATUS = 'O'`), cria novo e converte em pedido
 - ✅ Dashboard financeiro com totais
 
+## Dashboard
+
+A tela inicial (`DashboardActivity`) deixou de ser uma lista de botões e virou
+um resumo do movimento da empresa. Os números vêm da API ao abrir a tela e ao
+escolher **Atualizar resumo** no menu de três pontinhos.
+
+| Bloco | Conteúdo | Toque abre |
+| --- | --- | --- |
+| Faturamento do mês | total faturado e quantidade de vendas do mês | — |
+| A receber / A pagar | contas em aberto | — |
+| Orçamentos abertos | quantidade de orçamentos em aberto | `OrcamentosActivity` |
+| Clientes | total de clientes cadastrados | `ClientesActivity` |
+| Últimas vendas | 3 pedidos mais recentes (cliente, valor, emissão, status) | `VendasActivity` |
+
+O menu **⋮** da barra superior tem:
+
+- **Atualizar resumo** — recarrega os números;
+- **Configuração (servidor e empresa)** — abre a tela de configuração;
+- **Sair** — encerra a sessão (com confirmação).
+
+O menu inferior (Início/Clientes/Estoque/Vendas/Financeiro) continua sendo a
+navegação principal. A seta de voltar aparece em todas as telas, e Clientes e
+Vendas têm a barra de pesquisa ao lado dela.
+
 ## Orçamentos
 
 Telas: `OrcamentosActivity` (lista) e `InserirOrcamentoActivity` (formulário).
-Acessíveis pelo botão **Orçamentos** no Dashboard e na tela de Vendas.
+Acessíveis pelo card **Orçamentos abertos** no Dashboard e pelo botão
+**Orçamentos** na tela de Vendas.
 
 - A lista mostra os orçamentos em aberto (`PEDIDO_VENDA.STATUS = 'O'`)
   com número, cliente, total, emissão e quantidade de itens.

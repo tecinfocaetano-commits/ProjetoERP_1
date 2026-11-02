@@ -59,7 +59,24 @@ public final class ApiClient {
     }
 
     public static Result get(String path) throws Exception {
-        return request("GET", path, null);
+        // O servidor eventualmente encerra a resposta um byte antes do
+        // Content-Length (perda do último fechamento de chave). Como GET é
+        // idempotente, tenta de novo antes de entregar o erro para a tela.
+        Exception ultimo = null;
+        for (int tentativa = 1; tentativa <= 3; tentativa++) {
+            try {
+                return request("GET", path, null);
+            } catch (java.io.IOException e) {
+                ultimo = e;
+                if (tentativa < 3) {
+                    Thread.sleep(120L * tentativa);
+                }
+            }
+        }
+        if (ultimo != null) {
+            throw ultimo;
+        }
+        throw new IllegalStateException("Falha ao consultar a API.");
     }
 
     public static Result post(String path, String json) throws Exception {
@@ -93,6 +110,9 @@ public final class ApiClient {
             conn.setConnectTimeout(8000);
             conn.setReadTimeout(8000);
             conn.setRequestProperty("Accept", "application/json");
+            // Cada chamada abre e fecha a conexão: evita reaproveitar sockets que o
+            // servidor já encerrou (respostas truncadas com "unexpected end of stream").
+            conn.setRequestProperty("Connection", "close");
 
             if (comToken && token != null && !token.isEmpty()) {
                 conn.setRequestProperty("Authorization", "Bearer " + token);
