@@ -26,8 +26,9 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (02/11/2026)
 
-**HEAD:** `bf2186c` · build **0 erros / 0 warnings** (403 hints) · suíte
-**62/62** · APK **BUILD SUCCESSFUL** · árvore limpa.
+**HEAD:** commits de docs do D9 + `GerarSchema.lpi` (confira `git log --oneline -3`)
+· build **0 erros / 0 warnings** (403 hints) · suíte **62/62** · APK
+**BUILD SUCCESSFUL** · árvore limpa.
 
 ### O que fechou nesta sessão
 
