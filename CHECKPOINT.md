@@ -26,10 +26,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (02/11/2026)
 
-**HEAD:** dashboard de vendas no Android (sobre a seta de voltar + busca, o
-item 11 e os itens 13/14) — confira `git log --oneline -3` · build
-**0 erros / 0 warnings** · suíte **62/62** · APK **BUILD SUCCESSFUL** ·
-árvore limpa.
+**HEAD:** `f13068a` (Android: dashboard de vendas e configuracoes no menu de tres pontinhos). Árvore: suja (3 arquivos não commitados: D3).
+Build: 0 erros · suíte 62/62 (última verificação: 01/11).
 
 ### O que fechou nesta sessão
 
@@ -62,12 +60,18 @@ item 11 e os itens 13/14) — confira `git log --oneline -3` · build
   orçamentos) e `Android\CONFIGURACAO_POR_EMPRESA.md` (D9).
 - Banco **sem migração nova** nesta sessão (orçamento reusa `PEDIDO_VENDA`).
 
-### Próximo passo (executável)
+### Em andamento (não commitado)
+- **D3 (Unificação CLIENTE+FORNECEDOR)**: scripts de migração criados mas não aplicados
+  - Banco/018_unificar_pessoa.sql
+  - Banco/018_unificar_pessoa_rollback.sql
+  - Documentacao/PLANO_D3_UNIFICACAO_CLIENTE_FORNECEDOR.md (plano detalhado)
+  - Aguardando aprovação do usuário antes de aplicar
 
-1. O backlog de `PLANO_E_LOG.md` §2 está **fechado**: não há item 11 pendente
-   (concluído em §3.17); o único restante é **D3** (unificar
-   CLIENTE+FORNECEDOR), que continua **adiada** — só com plano aprovado.
-2. Aguardar a próxima demanda do usuário (ou autorização para planejar D3).
+### Próximo passo (executável)
+1. Aguardar aprovação do plano D3 (PLANO_D3_UNIFICACAO_CLIENTE_FORNECEDOR.md)
+2. Se aprovado: aplicar migração 018 em cópia, validar, aplicar no real, adaptar código, testar
+3. Se não aprovado: decidir próxima demanda do usuário
+4. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e o `PLANO_E_LOG.md`; commitar.
 3. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
    o `PLANO_E_LOG.md`; commitar.
 

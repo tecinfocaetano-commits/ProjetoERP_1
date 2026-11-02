@@ -489,3 +489,12 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - `PRODUTO` é o produto de produção (nome físico mantido; `PRODUTO_PRODUCAO` é conceitual).
 - `PRODUTO_FINANCEIRO` não existe mais.
 - Android: preservar todos os `android:id`.
+
+### 3.16 D3 - Unificação CLIENTE+FORNECEDOR (plano criado 02/11, aguardando aprovação)
+
+- Criados scripts de migração (não aplicados):
+  - Banco/018_unificar_pessoa.sql
+  - Banco/018_unificar_pessoa_rollback.sql
+- Criado plano detalhado: Documentacao/PLANO_D3_UNIFICACAO_CLIENTE_FORNECEDOR.md
+- Arquivos não commitados - aguardando aprovação do usuário antes de aplicar
+- Árvore suja: 3 arquivos untracked
