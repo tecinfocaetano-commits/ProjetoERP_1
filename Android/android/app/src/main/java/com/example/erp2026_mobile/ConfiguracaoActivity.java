@@ -10,7 +10,6 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +22,7 @@ import java.util.List;
  * {@link Configuracao#aplicarNoApi(android.content.Context)}). Trocar de empresa
  * encerra a sessao, porque o token pertence ao servidor anterior.
  */
-public class ConfiguracaoActivity extends AppCompatActivity {
+public class ConfiguracaoActivity extends BaseActivity {
 
     private static final String NOVA_EMPRESA = "Nova empresa...";
 

@@ -2,18 +2,25 @@ package com.example.erp2026_mobile;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import androidx.appcompat.app.AppCompatActivity;
+
+import androidx.appcompat.app.ActionBar;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Base das telas de lista do app.
@@ -23,15 +30,19 @@ import java.util.List;
  *  - estado vazio com mensagem própria;
  *  - erro com mensagem amigável e botão "Tentar novamente";
  *  - recarrega sempre que a tela volta ao primeiro plano;
- *  - devolve ao login quando a sessão expira (HTTP 401).
+ *  - devolve ao login quando a sessão expira (HTTP 401);
+ *  - barra de pesquisa opcional na barra superior (filtrando a lista).
  */
-public abstract class BaseListaActivity extends AppCompatActivity {
+public abstract class BaseListaActivity extends BaseActivity {
 
     private ProgressBar progressBar;
     private TextView textViewMensagem;
     private Button buttonTentarNovamente;
     private ListView listView;
+    private EditText editTextBusca;
     private final List<String> itens = new ArrayList<>();
+    private final List<String> todos = new ArrayList<>();
+    private String filtro = "";
     private ArrayAdapter<String> adapter;
     private boolean carregando;
 
@@ -63,6 +74,16 @@ public abstract class BaseListaActivity extends AppCompatActivity {
         mostrarDetalhe(texto);
     }
 
+    /** Liga a barra de pesquisa na barra superior (ao lado da seta de voltar). */
+    protected boolean temBusca() {
+        return false;
+    }
+
+    /** Texto de dica da barra de pesquisa. */
+    protected String dicaBusca() {
+        return "Pesquisar";
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,6 +95,7 @@ public abstract class BaseListaActivity extends AppCompatActivity {
 
         setContentView(layoutId());
         setTitle(titulo());
+        configurarBusca();
 
         progressBar = findViewById(R.id.progressBar);
         textViewMensagem = findViewById(R.id.textViewMensagem);
@@ -130,21 +152,92 @@ public abstract class BaseListaActivity extends AppCompatActivity {
         }).start();
     }
 
+    /** Coloca a barra de pesquisa no espaço da barra superior, à direita da seta. */
+    private void configurarBusca() {
+        if (!temBusca()) {
+            return;
+        }
+        ActionBar barra = getSupportActionBar();
+        if (barra == null) {
+            return;
+        }
+
+        barra.setDisplayShowTitleEnabled(false);
+        barra.setDisplayShowCustomEnabled(true);
+
+        View campo = getLayoutInflater().inflate(R.layout.include_barra_busca, null);
+        editTextBusca = campo.findViewById(R.id.editTextBusca);
+        editTextBusca.setHint(dicaBusca());
+        editTextBusca.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) { }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                filtro = s.toString();
+                aplicarFiltro();
+            }
+        });
+
+        ActionBar.LayoutParams params = new ActionBar.LayoutParams(
+                ActionBar.LayoutParams.MATCH_PARENT,
+                ActionBar.LayoutParams.WRAP_CONTENT);
+        params.gravity = Gravity.CENTER_VERTICAL;
+        barra.setCustomView(campo, params);
+    }
+
     private void publicar(List<String> novos) {
         carregando = false;
         progressBar.setVisibility(View.GONE);
         aoPublicar();
 
+        todos.clear();
+        if (novos != null) {
+            todos.addAll(novos);
+        }
+        aplicarFiltro();
+    }
+
+    /** Aplica o texto digitado na pesquisa sobre a lista carregada. */
+    private void aplicarFiltro() {
+        if (adapter == null || textViewMensagem == null) {
+            return;
+        }
+
+        String procurado = normalizar(filtro);
         itens.clear();
-        if (novos == null || novos.isEmpty()) {
+        for (String linha : todos) {
+            if (procurado.isEmpty() || normalizar(linha).contains(procurado)) {
+                itens.add(linha);
+            }
+        }
+        adapter.notifyDataSetChanged();
+
+        if (todos.isEmpty()) {
             textViewMensagem.setText(textoVazio());
             textViewMensagem.setVisibility(View.VISIBLE);
             listView.setVisibility(View.GONE);
-            return;
+        } else if (itens.isEmpty()) {
+            textViewMensagem.setText("Nenhum item encontrado para \"" + filtro.trim() + "\".");
+            textViewMensagem.setVisibility(View.VISIBLE);
+            listView.setVisibility(View.GONE);
+        } else {
+            textViewMensagem.setVisibility(View.GONE);
+            listView.setVisibility(View.VISIBLE);
         }
-        itens.addAll(novos);
-        adapter.notifyDataSetChanged();
-        listView.setVisibility(View.VISIBLE);
+    }
+
+    /** Minúsculas e sem acentos: a pesquisa ignora caixa e acentuação. */
+    private static String normalizar(String texto) {
+        if (texto == null) {
+            return "";
+        }
+        String semAcento = Normalizer.normalize(texto, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "");
+        return semAcento.toLowerCase(Locale.ROOT).trim();
     }
 
     private void falhar(Exception e) {

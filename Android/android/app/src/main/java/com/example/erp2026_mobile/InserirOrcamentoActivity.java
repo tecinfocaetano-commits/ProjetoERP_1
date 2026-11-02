@@ -11,7 +11,6 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -27,7 +26,7 @@ import java.util.Locale;
  * para {@code POST /api/orcamentos}; o servidor recalcula os totais e grava
  * como PEDIDO_VENDA com STATUS 'O'.
  */
-public class InserirOrcamentoActivity extends AppCompatActivity {
+public class InserirOrcamentoActivity extends BaseActivity {
 
     private static final Locale BR = new Locale("pt", "BR");
 

@@ -2,13 +2,12 @@ package com.example.erp2026_mobile;
 
 import android.os.Bundle;
 import android.widget.TextView;
-import androidx.appcompat.app.AppCompatActivity;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 /** Relação detalhada dos clientes (nome, documento, contato). */
-public class ConsultarClientesActivity extends AppCompatActivity {
+public class ConsultarClientesActivity extends BaseActivity {
 
     private TextView textViewResult;
 

@@ -30,6 +30,16 @@ public class ClientesActivity extends BaseListaActivity {
     }
 
     @Override
+    protected boolean temBusca() {
+        return true;
+    }
+
+    @Override
+    protected String dicaBusca() {
+        return "Pesquisar clientes";
+    }
+
+    @Override
     protected List<String> buscar() throws Exception {
         ApiClient.Result r = ApiClient.get("/api/clientes");
         if (!r.ok()) {

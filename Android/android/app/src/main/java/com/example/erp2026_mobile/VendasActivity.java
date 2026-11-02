@@ -30,6 +30,16 @@ public class VendasActivity extends BaseListaActivity {
     }
 
     @Override
+    protected boolean temBusca() {
+        return true;
+    }
+
+    @Override
+    protected String dicaBusca() {
+        return "Pesquisar vendas";
+    }
+
+    @Override
     protected void aoCriar() {
         findViewById(R.id.buttonOrcamentos).setOnClickListener(v -> Navegacao.abrirOrcamentos(this));
     }
