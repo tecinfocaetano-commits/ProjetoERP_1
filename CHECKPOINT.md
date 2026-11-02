@@ -26,9 +26,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (02/11/2026)
 
-**HEAD:** `5075a06` · build **0 erros / 0 warnings** (403 hints) · suíte
-**62/62** · APK **BUILD SUCCESSFUL**. Árvore: apenas docs para commitar
-(`CHECKPOINT.md`, `PLANO_E_LOG.md`, `Android\CONFIGURACAO_POR_EMPRESA.md`).
+**HEAD:** `bf2186c` · build **0 erros / 0 warnings** (403 hints) · suíte
+**62/62** · APK **BUILD SUCCESSFUL** · árvore limpa.
 
 ### O que fechou nesta sessão
 
