@@ -36,7 +36,7 @@
 | 8 | Compras → gerar Nota de Entrada na confirmação | ✅ concluído (01/11) | `CriarDoPedidoCompra`; §3.9 |
 | 9 | Vínculo geo (país/estado/cidade) em CLIENTE/FORNECEDOR | ✅ concluído (01/11) | migração `017` (`CIDADE_ID`); §3.7 |
 | 10 | Unificação CLIENTE+FORNECEDOR | ⏸ adiado | D3 |
-| 11 | Android: orçamentos + telas | ⏸ deferido | |
+| 11 | Android: orçamentos + telas | ✅ concluído (02/11) | API `/api/orcamentos` (listar/detalhar/criar/converter) + telas Android + menu inferior Material; validado no emulador (§3.17) |
 | 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | ✅ concluído (02/11) | D9 — commit `67d26f4`; validado no emulador (§3.13) |
 | 13 | Regenerar `Banco\schema_canonico.sql` (está anterior à `015`: sem `PAIS`, `CIDADE_ID`, `GRADE`, `ESTOQUE_MATERIAL`) | ✅ concluído (02/11) | regenerado do banco real: **49 tabelas / 602 campos**; round-trip e banco novo verdes (§3.15) |
 | 14 | **Encoding dos literais acentuados** — o fonte é UTF-8, mas o processo não declarava a codepage padrão: o SQLDB tratava os bytes como CP1252 e gravava `NF de saÃ­da` | ✅ concluído (02/11) | adotado `SetMultiByteConversionCodePage(CP_UTF8)` no início do app/testes, **sem** `-FcUTF8` (que gerava 213 warnings e corrompia concatenações); ver §3.16 |
@@ -209,6 +209,67 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 **Parada de sessão:** o checkpoint detalhado está em `CHECKPOINT.md` →
 "Estado atual da sessão".
+
+### 3.17 Android — orçamentos + menu inferior (item 11, concluído 02/11)
+
+**API (`API/src/Rotas/uRotasOrcamentos.pas`)**
+
+- Orçamento é um `PEDIDO_VENDA` com `STATUS = 'O'`; a conversão muda para
+  `'P'` (pedido), a mesma regra do desktop.
+- `GET /api/orcamentos` — abertos, com número, cliente, total, emissão e
+  contagem de itens (`ITEM_PEDIDO`).
+- `GET /api/orcamentos/:id` — cabeçalho + itens (404 se não existe).
+- `POST /api/orcamentos` — valida cliente e produtos ativos, **recalcula**
+  subtotal/desconto/total no servidor e grava cabeçalho + itens na mesma
+  transação; responde **201** com o id e o número.
+- `POST /api/orcamentos/:id/converter` — 404 se não existe, **409** se já
+  não está em aberto, 200 ao converter.
+- Empresa/usuário saem das claims `empresa_id`/`sub` do JWT (nunca do
+  corpo). Listagem, detalhe e conversão filtram pela empresa do token
+  (orçamento de outra empresa responde 404); cliente/produto precisam ser
+  da mesma empresa. A conversão usa `UPDATE ... WHERE STATUS = 'O'` e
+  confere `RowsAffected` (duas conversões simultâneas: uma vence, a outra
+  recebe 409). Numeração segue `ProximoNumero` do desktop: maior `NUMERO`
+  numérico + 1, ignorando os não numéricos. O ID é obtido do generator
+  **antes** do `INSERT`, sem depender do valor corrente do generator.
+- Rotas registradas em `ERP2026API.lpr` (log de endpoints).
+
+**Android**
+
+- Menu inferior reutilizável (`include_bottom_nav.xml` +
+  `menu_bottom_nav.xml`) com **Início, Clientes, Estoque, Vendas,
+  Financeiro**; `Navegacao.java` reaproveita as Activities já abertas
+  (`FLAG_ACTIVITY_REORDER_TO_FRONT`). Ícones vetoriais próprios em
+  `res/drawable` (sem dependências novas).
+- `BaseListaActivity` ganhou `itemMenuAtual()`, `aoSelecionarItem()` e
+  `recarregar()`; as telas de lista passaram a marcar o item atual.
+- `OrcamentosActivity`: lista os abertos, estado vazio explícito e
+  conversão em pedido com confirmação (Toast + recarga).
+- `InserirOrcamentoActivity`: spinners de cliente/produto carregados da
+  API, quantidade/valor unitário/desconto por item, desconto geral,
+  observações, totais recalculados a cada mudança e POST no servidor.
+- Botão **Orçamentos** no Dashboard e na tela de Vendas; Activities
+  registradas no Manifest.
+- Corrigido de passagem: comentário mojibake em `Fmt.java` e z-order dos
+  overlays de estado (cards com elevação cobriam mensagem/progresso).
+
+**Validação (02/11, emulador `Pixel_9`)**
+
+| Teste | Resultado |
+|---|---|
+| Build Android (`build_android.bat`) | **BUILD SUCCESSFUL** |
+| API (`build_api.bat`) | 0 erros |
+| Criar orçamento pela UI (2 × R$ 35, desconto R$ 5) | lista mostra **Orçamento 3**, total **R$ 65,00** |
+| Converter pela UI | some da lista; banco fica `STATUS = 'P'` |
+| Repetir conversão (API, `curl`) | **HTTP 409** |
+| Criação via API (`curl`) | **HTTP 201**, id 1004, total 55 |
+| Dados de teste | removidos do banco ao final |
+
+**Arquivos:** `API/src/Rotas/uRotasOrcamentos.pas`, `API/ERP2026API.lpr`,
+`Android/.../OrcamentosActivity.java`, `InserirOrcamentoActivity.java`,
+`Navegacao.java`, `BaseListaActivity.java`, layouts `activity_orcamentos`,
+`activity_inserir_orcamento`, `include_bottom_nav`, `res/menu/menu_bottom_nav`,
+5 drawables `ic_nav_*` e `Android/README.md`.
 
 ### 3.4 Banco — migração `016` GRADE (concluído 31/10)
 

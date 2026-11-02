@@ -1,117 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
+    android:orientation="vertical"
     android:background="?android:attr/colorBackground">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:background="?android:attr/colorBackground">
 
-        <TextView
-            android:id="@+id/textViewWelcome"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Bem-vindo"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            android:textColor="?attr/colorOnSurface"
-            android:fontFamily="sans-serif"/>
+            android:orientation="vertical"
+            android:padding="16dp">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Módulos do Sistema"
-            android:textSize="14sp"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="20dp"
-            android:textColor="?attr/colorOnSurfaceVariant"/>
+            <TextView
+                android:id="@+id/textViewWelcome"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Bem-vindo"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnSurface"
+                android:fontFamily="sans-serif"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonClientes"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="Clientes"
-            android:textSize="17sp"
-            app:cornerRadius="20dp"
-            android:layout_marginBottom="12dp"/>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Módulos do Sistema"
+                android:textSize="14sp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="20dp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonInserirCliente"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="Inserir Cliente"
-            android:textSize="17sp"
-            app:cornerRadius="20dp"
-            android:layout_marginBottom="12dp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonClientes"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:text="Clientes"
+                android:textSize="17sp"
+                app:cornerRadius="20dp"
+                android:layout_marginBottom="12dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonConsultarClientes"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="Consultar Clientes"
-            android:textSize="17sp"
-            app:cornerRadius="20dp"
-            android:layout_marginBottom="12dp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonInserirCliente"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:text="Inserir Cliente"
+                android:textSize="17sp"
+                app:cornerRadius="20dp"
+                android:layout_marginBottom="12dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonEstoque"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="Estoque"
-            android:textSize="17sp"
-            app:cornerRadius="20dp"
-            android:layout_marginBottom="12dp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonConsultarClientes"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:text="Consultar Clientes"
+                android:textSize="17sp"
+                app:cornerRadius="20dp"
+                android:layout_marginBottom="12dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonVendas"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="Vendas"
-            android:textSize="17sp"
-            app:cornerRadius="20dp"
-            android:layout_marginBottom="12dp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonEstoque"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:text="Estoque"
+                android:textSize="17sp"
+                app:cornerRadius="20dp"
+                android:layout_marginBottom="12dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonFinanceiro"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="Financeiro"
-            android:textSize="17sp"
-            app:cornerRadius="20dp"
-            android:layout_marginBottom="28dp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonVendas"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:text="Vendas"
+                android:textSize="17sp"
+                app:cornerRadius="20dp"
+                android:layout_marginBottom="12dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonConfiguracao"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="Configuração (servidor e empresa)"
-            android:textSize="15sp"
-            app:cornerRadius="20dp"
-            android:layout_marginBottom="12dp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonOrcamentos"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:text="Orçamentos"
+                android:textSize="17sp"
+                app:cornerRadius="20dp"
+                android:layout_marginBottom="12dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/buttonSair"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="Sair"
-            android:textSize="15sp"
-            android:textColor="?attr/colorError"
-            app:strokeColor="?attr/colorError"
-            app:cornerRadius="20dp"
-            app:strokeWidth="1.5dp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonFinanceiro"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:text="Financeiro"
+                android:textSize="17sp"
+                app:cornerRadius="20dp"
+                android:layout_marginBottom="28dp"/>
 
-    </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonConfiguracao"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Configuração (servidor e empresa)"
+                android:textSize="15sp"
+                app:cornerRadius="20dp"
+                android:layout_marginBottom="12dp"/>
 
-</ScrollView>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonSair"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Sair"
+                android:textSize="15sp"
+                android:textColor="?attr/colorError"
+                app:strokeColor="?attr/colorError"
+                app:cornerRadius="20dp"
+                app:strokeWidth="1.5dp"/>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+    <include
+        layout="@layout/include_bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+</LinearLayout>

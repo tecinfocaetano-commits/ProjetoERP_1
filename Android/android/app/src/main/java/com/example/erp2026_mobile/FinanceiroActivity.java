@@ -33,6 +33,11 @@ public class FinanceiroActivity extends BaseListaActivity {
     }
 
     @Override
+    protected int itemMenuAtual() {
+        return R.id.navFinanceiro;
+    }
+
+    @Override
     protected void aoCriar() {
         textViewTotalReceber = findViewById(R.id.textViewTotalReceber);
         textViewTotalPagar = findViewById(R.id.textViewTotalPagar);

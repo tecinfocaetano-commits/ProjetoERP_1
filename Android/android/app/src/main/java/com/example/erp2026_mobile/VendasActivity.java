@@ -25,6 +25,16 @@ public class VendasActivity extends BaseListaActivity {
     }
 
     @Override
+    protected int itemMenuAtual() {
+        return R.id.navVendas;
+    }
+
+    @Override
+    protected void aoCriar() {
+        findViewById(R.id.buttonOrcamentos).setOnClickListener(v -> Navegacao.abrirOrcamentos(this));
+    }
+
+    @Override
     protected List<String> buscar() throws Exception {
         ApiClient.Result r = ApiClient.get("/api/vendas");
         if (!r.ok()) {

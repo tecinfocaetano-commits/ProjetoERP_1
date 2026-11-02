@@ -19,6 +19,7 @@ uses
   uRotasProdutos,
   uRotasEstoque,
   uRotasVendas,
+  uRotasOrcamentos,
   uRotasFinanceiro;
 
 begin
@@ -36,6 +37,7 @@ begin
   RegistrarRotasProdutos;
   RegistrarRotasEstoque;
   RegistrarRotasVendas;
+  RegistrarRotasOrcamentos;
   RegistrarRotasFinanceiro;
 
   WriteLn('=== ERP 2026 API REST ===');
@@ -46,6 +48,8 @@ begin
   WriteLn('  GET/POST /api/produtos');
   WriteLn('  GET/POST /api/estoque');
   WriteLn('  GET/POST /api/vendas');
+  WriteLn('  GET/POST /api/orcamentos');
+  WriteLn('  POST /api/orcamentos/:id/converter');
   WriteLn('  GET/POST /api/financeiro');
 
   // Primeira conexao (do thread principal) sinaliza que o banco esta no ar;

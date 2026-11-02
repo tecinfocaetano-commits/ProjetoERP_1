@@ -22,6 +22,8 @@
         <activity android:name=".ClientesActivity"/>
         <activity android:name=".EstoqueActivity"/>
         <activity android:name=".VendasActivity"/>
+        <activity android:name=".OrcamentosActivity"/>
+        <activity android:name=".InserirOrcamentoActivity"/>
         <activity android:name=".FinanceiroActivity"/>
         <activity android:name=".InserirClienteActivity"/>
         <activity android:name=".ConsultarClientesActivity"/>

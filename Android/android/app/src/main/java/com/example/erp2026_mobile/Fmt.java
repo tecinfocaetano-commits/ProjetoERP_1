@@ -26,7 +26,7 @@ public final class Fmt {
         return String.format(BR, "%.2f", valor);
     }
 
-    /** Remove espaÃ§os de preenchimento vindos do banco (CHAR(n)). */
+    /** Remove espaços de preenchimento vindos do banco (CHAR(n)). */
     public static String limpar(String texto) {
         return texto == null ? "" : texto.trim();
     }

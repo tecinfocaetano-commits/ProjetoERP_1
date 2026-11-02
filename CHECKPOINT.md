@@ -26,35 +26,39 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (02/11/2026)
 
-**HEAD:** item 13 (schema canônico) + **item 14 (encoding)** — confira
-`git log --oneline -3` · build **0 erros / 0 warnings** · suíte **62/62** · APK
-**BUILD SUCCESSFUL** · árvore limpa.
+**HEAD:** item 11 (Android — orçamentos + menu inferior) sobre os itens 13 e
+14 — confira `git log --oneline -3` · build **0 erros / 0 warnings** · suíte
+**62/62** · APK **BUILD SUCCESSFUL** · árvore limpa.
 
 ### O que fechou nesta sessão
 
 | Item | Entrega |
 |---|---|
-| **D9 (Android)** | Configuração **por empresa**: URL do servidor + código de usuário em `SharedPreferences`; tela com **Testar conexão / Salvar / Usar esta empresa / Excluir**. Commit `67d26f4` — detalhes e validação em `PLANO_E_LOG.md` §3.13 |
+| **Orçamentos (item 11)** | API `GET/POST /api/orcamentos`, `GET /api/orcamentos/:id` e `POST /api/orcamentos/:id/converter`; telas `OrcamentosActivity` e `InserirOrcamentoActivity`; botão **Orçamentos** no Dashboard e em Vendas. Validado no emulador (criar e converter). Detalhes em `PLANO_E_LOG.md` §3.17 |
+| **Menu inferior (item 11)** | `include_bottom_nav.xml` + `menu_bottom_nav.xml` com Início/Clientes/Estoque/Vendas/Financeiro; `Navegacao.java` reaproveita as Activities; ícones vetoriais próprios (`ic_nav_*`), sem dependências novas |
+| **D9 (Android)** | Configuração **por empresa**: URL do servidor + código de usuário em `SharedPreferences`; tela com **Testar conexão / Salvar / Usar esta empresa / Excluir**. Commit `67d26f4` — §3.13 |
 | **Geo (correção)** | `uEstadoService`/`uCidadeService` com `BuscarTodos` simples. Commit `5075a06` — §3.14 |
 | **Schema canônico (item 13)** | `Banco\schema_canonico.sql` regenerado do banco real (**49 tabelas / 602 campos**) + sementes (Brasil + 27 UFs, `USA_GRADE`) no `007_initial_data.sql`. Round-trip e banco novo verdes — §3.15 |
 | **Encoding (item 14)** | `SetMultiByteConversionCodePage(CP_UTF8)` no início do app e dos testes; **sem `-FcUTF8`** (a flag gerava 213 warnings e corrompia concatenações). Contorno local removido; banco sem mojibake — §3.16 |
 | **Backlog 5–9** | fechado em 01/11 (ver "Estado anterior" abaixo) |
 
-- **D9 validado no emulador `Pixel_9` (Android 16)** com a API local no ar:
-  testar conexão (HTTP 404 = alcançável), salvar, URL digitada sem esquema é
-  normalizada, empresa com caixa diferente não duplica, trocar de empresa
-  encerra a sessão, login entra e o título do menu mostra a empresa, exclusão
-  de empresa ativa/não-ativa e persistência após `force-stop`.
-- Uso do Android documentado em `Android\CONFIGURACAO_POR_EMPRESA.md`.
-- Banco **sem migração nova** nesta sessão.
+- **Item 11 validado no emulador `Pixel_9` (Android 16)** com a API local no
+  ar: criar orçamento com 2 × R$ 35 e desconto R$ 5 → lista mostra
+  **Orçamento 3 / R$ 65,00 / 1 item(ns)**; converter pela confirmação → some
+  da lista e o banco fica `STATUS = 'P'`. Repetir a conversão pela API dá
+  **HTTP 409**; criação via `curl` deu **201** (id 1004). Dados de teste
+  removidos do banco ao final.
+- Uso do Android documentado em `Android\README.md` (orçamentos) e
+  `Android\CONFIGURACAO_POR_EMPRESA.md` (D9).
+- Banco **sem migração nova** nesta sessão (orçamento reusa `PEDIDO_VENDA`).
 
 ### Próximo passo (executável)
 
-1. Escolher a próxima pendência do backlog (`PLANO_E_LOG.md` §2):
-   - **item 11**: Android — orçamentos + telas (único item aberto, deferido);
-   - **D3** (unificar CLIENTE+FORNECEDOR) continua **adiada** — só com plano
-     aprovado.
-2. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
+1. O backlog de `PLANO_E_LOG.md` §2 está **fechado**, exceto **D3**
+   (unificar CLIENTE+FORNECEDOR), que continua **adiada** — só com plano
+   aprovado.
+2. Aguardar a próxima demanda do usuário (ou autorização para planejar D3).
+3. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
    o `PLANO_E_LOG.md`; commitar.
 
 ---

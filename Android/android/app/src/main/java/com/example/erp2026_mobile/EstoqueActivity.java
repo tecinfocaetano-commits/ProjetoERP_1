@@ -25,6 +25,11 @@ public class EstoqueActivity extends BaseListaActivity {
     }
 
     @Override
+    protected int itemMenuAtual() {
+        return R.id.navEstoque;
+    }
+
+    @Override
     protected List<String> buscar() throws Exception {
         ApiClient.Result r = ApiClient.get("/api/estoque");
         if (!r.ok()) {

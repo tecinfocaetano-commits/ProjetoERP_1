@@ -8,6 +8,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+
 public class DashboardActivity extends AppCompatActivity {
     private TextView textViewWelcome;
     private Button buttonClientes;
@@ -15,6 +17,7 @@ public class DashboardActivity extends AppCompatActivity {
     private Button buttonConsultarClientes;
     private Button buttonEstoque;
     private Button buttonVendas;
+    private Button buttonOrcamentos;
     private Button buttonFinanceiro;
     private Button buttonConfiguracao;
     private Button buttonSair;
@@ -37,6 +40,7 @@ public class DashboardActivity extends AppCompatActivity {
         buttonConsultarClientes = findViewById(R.id.buttonConsultarClientes);
         buttonEstoque = findViewById(R.id.buttonEstoque);
         buttonVendas = findViewById(R.id.buttonVendas);
+        buttonOrcamentos = findViewById(R.id.buttonOrcamentos);
         buttonFinanceiro = findViewById(R.id.buttonFinanceiro);
         buttonConfiguracao = findViewById(R.id.buttonConfiguracao);
         buttonSair = findViewById(R.id.buttonSair);
@@ -46,8 +50,14 @@ public class DashboardActivity extends AppCompatActivity {
         buttonConsultarClientes.setOnClickListener(v -> abrir(ConsultarClientesActivity.class));
         buttonEstoque.setOnClickListener(v -> abrir(EstoqueActivity.class));
         buttonVendas.setOnClickListener(v -> abrir(VendasActivity.class));
+        buttonOrcamentos.setOnClickListener(v -> abrir(OrcamentosActivity.class));
         buttonFinanceiro.setOnClickListener(v -> abrir(FinanceiroActivity.class));
         buttonConfiguracao.setOnClickListener(v -> abrir(ConfiguracaoActivity.class));
+
+        BottomNavigationView menuInferior = findViewById(R.id.bottomNavigation);
+        if (menuInferior != null) {
+            Navegacao.configurar(menuInferior, this, R.id.navInicio);
+        }
 
         buttonSair.setOnClickListener(new View.OnClickListener() {
             @Override

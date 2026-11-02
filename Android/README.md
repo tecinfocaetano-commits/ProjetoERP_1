@@ -31,17 +31,26 @@ android/
 │   │   ├── java/com/example/erp2026_mobile/
 │   │   │   ├── MainActivity.java        # Tela de login
 │   │   │   ├── DashboardActivity.java   # Dashboard principal
+│   │   │   ├── BaseListaActivity.java   # Base das telas de lista
+│   │   │   ├── Navegacao.java           # Menu inferior (5 itens)
 │   │   │   ├── ClientesActivity.java    # Gestão de clientes
 │   │   │   ├── EstoqueActivity.java     # Gestão de estoque
 │   │   │   ├── VendasActivity.java      # Gestão de vendas
+│   │   │   ├── OrcamentosActivity.java  # Orçamentos em aberto
+│   │   │   ├── InserirOrcamentoActivity.java # Novo orçamento
 │   │   │   └── FinanceiroActivity.java  # Gestão financeira
-│   │   └── res/layout/
-│   │       ├── activity_main.xml       # Layout login
-│   │       ├── activity_dashboard.xml  # Layout dashboard
-│   │       ├── activity_clientes.xml   # Layout clientes
-│   │       ├── activity_estoque.xml    # Layout estoque
-│   │       ├── activity_vendas.xml     # Layout vendas
-│   │       └── activity_financeiro.xml # Layout financeiro
+│   │   ├── res/layout/
+│   │   │   ├── activity_main.xml       # Layout login
+│   │   │   ├── activity_dashboard.xml  # Layout dashboard
+│   │   │   ├── include_bottom_nav.xml  # Menu inferior reutilizável
+│   │   │   ├── activity_clientes.xml   # Layout clientes
+│   │   │   ├── activity_estoque.xml    # Layout estoque
+│   │   │   ├── activity_vendas.xml     # Layout vendas
+│   │   │   ├── activity_orcamentos.xml # Layout orçamentos
+│   │   │   ├── activity_inserir_orcamento.xml # Layout novo orçamento
+│   │   │   └── activity_financeiro.xml # Layout financeiro
+│   │   └── res/menu/
+│   │       └── menu_bottom_nav.xml     # Itens do menu inferior
 │   └── build.gradle
 └── settings.gradle
 ```
@@ -50,10 +59,35 @@ android/
 
 - ✅ Login com autenticação (admin/admin123)
 - ✅ Dashboard com botões de navegação
+- ✅ Menu inferior com Início, Clientes, Estoque, Vendas e Financeiro
 - ✅ Lista de clientes
 - ✅ Lista de produtos em estoque
 - ✅ Lista de vendas
+- ✅ Orçamentos: lista os abertos (`STATUS = 'O'`), cria novo e converte em pedido
 - ✅ Dashboard financeiro com totais
+
+## Orçamentos
+
+Telas: `OrcamentosActivity` (lista) e `InserirOrcamentoActivity` (formulário).
+Acessíveis pelo botão **Orçamentos** no Dashboard e na tela de Vendas.
+
+- A lista mostra os orçamentos em aberto (`PEDIDO_VENDA.STATUS = 'O'`)
+  com número, cliente, total, emissão e quantidade de itens.
+- O formulário carrega clientes e produtos ativos da API; o valor unitário
+  é preenchido ao escolher o produto e pode ser ajustado.
+- Subtotais, desconto e total são recalculados **no servidor**; o app só
+  envia quantidade, valor unitário e desconto.
+- Tocar em um orçamento abre a confirmação para convertê-lo em pedido
+  (`STATUS = 'P'`). A API recusa (HTTP 409) se ele já não estiver aberto.
+
+Endpoints usados:
+
+| Método | Rota | Uso |
+| --- | --- | --- |
+| GET | `/api/orcamentos` | Lista os orçamentos abertos |
+| GET | `/api/orcamentos/:id` | Cabeçalho + itens |
+| POST | `/api/orcamentos` | Cria o orçamento (201) |
+| POST | `/api/orcamentos/:id/converter` | Converte em pedido |
 
 ## Login Padrão
 

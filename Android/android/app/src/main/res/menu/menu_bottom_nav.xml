@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Menu inferior fixo (Material 3). Usado por inclusão nas telas principais. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navInicio"
+        android:icon="@drawable/ic_nav_inicio"
+        android:title="Início"/>
+
+    <item
+        android:id="@+id/navClientes"
+        android:icon="@drawable/ic_nav_clientes"
+        android:title="Clientes"/>
+
+    <item
+        android:id="@+id/navEstoque"
+        android:icon="@drawable/ic_nav_estoque"
+        android:title="Estoque"/>
+
+    <item
+        android:id="@+id/navVendas"
+        android:icon="@drawable/ic_nav_vendas"
+        android:title="Vendas"/>
+
+    <item
+        android:id="@+id/navFinanceiro"
+        android:icon="@drawable/ic_nav_financeiro"
+        android:title="Financeiro"/>
+
+</menu>

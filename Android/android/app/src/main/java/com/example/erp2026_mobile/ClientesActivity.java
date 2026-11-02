@@ -25,6 +25,11 @@ public class ClientesActivity extends BaseListaActivity {
     }
 
     @Override
+    protected int itemMenuAtual() {
+        return R.id.navClientes;
+    }
+
+    @Override
     protected List<String> buscar() throws Exception {
         ApiClient.Result r = ApiClient.get("/api/clientes");
         if (!r.ok()) {

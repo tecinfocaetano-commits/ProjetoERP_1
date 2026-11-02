@@ -10,6 +10,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,6 +53,16 @@ public abstract class BaseListaActivity extends AppCompatActivity {
     /** Gancho opcional para as telas que têm conteúdo próprio (ex.: totais). */
     protected void aoCriar() { }
 
+    /** Item do menu inferior que representa esta tela (0 = tela sem menu inferior). */
+    protected int itemMenuAtual() {
+        return 0;
+    }
+
+    /** Clique em uma linha da lista; o padrão abre o detalhe em um diálogo. */
+    protected void aoSelecionarItem(int posicao, String texto) {
+        mostrarDetalhe(texto);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,9 +82,14 @@ public abstract class BaseListaActivity extends AppCompatActivity {
 
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, itens);
         listView.setAdapter(adapter);
-        listView.setOnItemClickListener((parent, view, position, id) -> mostrarDetalhe(itens.get(position)));
+        listView.setOnItemClickListener((parent, view, position, id) -> aoSelecionarItem(position, itens.get(position)));
 
         buttonTentarNovamente.setOnClickListener(v -> carregar());
+
+        BottomNavigationView menuInferior = findViewById(R.id.bottomNavigation);
+        if (menuInferior != null && itemMenuAtual() != 0) {
+            Navegacao.configurar(menuInferior, this, itemMenuAtual());
+        }
 
         aoCriar();
     }
@@ -81,6 +98,13 @@ public abstract class BaseListaActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // Mantém os dados atualizados ao voltar de outra tela
+        if (progressBar != null) {
+            carregar();
+        }
+    }
+
+    /** Recarrega a lista após uma ação feita na própria tela (ex.: conversão). */
+    protected void recarregar() {
         if (progressBar != null) {
             carregar();
         }

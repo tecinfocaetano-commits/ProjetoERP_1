@@ -82,6 +82,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:elevation="4dp"
             android:orientation="vertical"
             android:gravity="center"
             android:padding="24dp">
@@ -116,5 +117,10 @@
         </LinearLayout>
 
     </FrameLayout>
+
+    <include
+        layout="@layout/include_bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
 
 </LinearLayout>
