@@ -78,3 +78,56 @@ INSERT INTO PERMISSAO (GRUPO_ID, MODULO, TELA, PODE_VISUALIZAR, PODE_INSERIR, PO
   VALUES (1, 'PRODUCAO', 'BIPAGEM', 'S', 'S', 'S', 'S', 'S');
 INSERT INTO PERMISSAO (GRUPO_ID, MODULO, TELA, PODE_VISUALIZAR, PODE_INSERIR, PODE_EDITAR, PODE_EXCLUIR, PODE_IMPRIMIR)
   VALUES (1, 'PRODUCAO', 'CONSUMO', 'S', 'S', 'S', 'S', 'S');
+
+/* ============================================================
+   Sementes das fases seguintes (014..017)
+   Mantidas aqui para que um banco novo criado a partir de
+   schema_canonico.sql + este arquivo fique igual ao banco real.
+   As migrações 015/016 já estão refletidas no schema canônico,
+   então só os DADOS precisam vir para cá.
+   ============================================================ */
+
+/* === Geográfico: Brasil + 27 UFs (migração 015, decisão D2) === */
+INSERT INTO PAIS (NOME, CODIGO, DDI, ATIVO) VALUES ('Brasil', 'BRA', '55', 'A');
+COMMIT;
+
+INSERT INTO ESTADO (PAIS_ID, NOME, UF, CODIGO_IBGE, ATIVO)
+SELECT (SELECT ID FROM PAIS WHERE CODIGO = 'BRA'), v.NOME, v.UF, v.IBGE, 'A'
+FROM (SELECT 'Rondônia' AS NOME, 'RO' AS UF, '11' AS IBGE FROM RDB$DATABASE
+      UNION ALL SELECT 'Acre', 'AC', '12' FROM RDB$DATABASE
+      UNION ALL SELECT 'Amazonas', 'AM', '13' FROM RDB$DATABASE
+      UNION ALL SELECT 'Roraima', 'RR', '14' FROM RDB$DATABASE
+      UNION ALL SELECT 'Pará', 'PA', '15' FROM RDB$DATABASE
+      UNION ALL SELECT 'Amapá', 'AP', '16' FROM RDB$DATABASE
+      UNION ALL SELECT 'Tocantins', 'TO', '17' FROM RDB$DATABASE
+      UNION ALL SELECT 'Maranhão', 'MA', '21' FROM RDB$DATABASE
+      UNION ALL SELECT 'Piauí', 'PI', '22' FROM RDB$DATABASE
+      UNION ALL SELECT 'Ceará', 'CE', '23' FROM RDB$DATABASE
+      UNION ALL SELECT 'Rio Grande do Norte', 'RN', '24' FROM RDB$DATABASE
+      UNION ALL SELECT 'Paraíba', 'PB', '25' FROM RDB$DATABASE
+      UNION ALL SELECT 'Pernambuco', 'PE', '26' FROM RDB$DATABASE
+      UNION ALL SELECT 'Alagoas', 'AL', '27' FROM RDB$DATABASE
+      UNION ALL SELECT 'Sergipe', 'SE', '28' FROM RDB$DATABASE
+      UNION ALL SELECT 'Bahia', 'BA', '29' FROM RDB$DATABASE
+      UNION ALL SELECT 'Minas Gerais', 'MG', '31' FROM RDB$DATABASE
+      UNION ALL SELECT 'Espírito Santo', 'ES', '32' FROM RDB$DATABASE
+      UNION ALL SELECT 'Rio de Janeiro', 'RJ', '33' FROM RDB$DATABASE
+      UNION ALL SELECT 'São Paulo', 'SP', '35' FROM RDB$DATABASE
+      UNION ALL SELECT 'Paraná', 'PR', '41' FROM RDB$DATABASE
+      UNION ALL SELECT 'Santa Catarina', 'SC', '42' FROM RDB$DATABASE
+      UNION ALL SELECT 'Rio Grande do Sul', 'RS', '43' FROM RDB$DATABASE
+      UNION ALL SELECT 'Mato Grosso do Sul', 'MS', '50' FROM RDB$DATABASE
+      UNION ALL SELECT 'Mato Grosso', 'MT', '51' FROM RDB$DATABASE
+      UNION ALL SELECT 'Goiás', 'GO', '52' FROM RDB$DATABASE
+      UNION ALL SELECT 'Distrito Federal', 'DF', '53' FROM RDB$DATABASE
+     ) v;
+COMMIT;
+
+/* === Preferência USA_GRADE desmarcada (migração 016, decisão D7) === */
+INSERT INTO CONFIGURACAO (EMPRESA_ID, CHAVE, VALOR, DESCRICAO)
+SELECT E.ID, 'USA_GRADE', 'N', 'Usa grade de tamanhos no pedido e no mapa'
+FROM EMPRESA E
+WHERE NOT EXISTS (
+  SELECT 1 FROM CONFIGURACAO C
+  WHERE C.EMPRESA_ID = E.ID AND C.CHAVE = 'USA_GRADE');
+COMMIT;

@@ -38,7 +38,7 @@
 | 10 | Unificação CLIENTE+FORNECEDOR | ⏸ adiado | D3 |
 | 11 | Android: orçamentos + telas | ⏸ deferido | |
 | 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | ✅ concluído (02/11) | D9 — commit `67d26f4`; validado no emulador (§3.13) |
-| 13 | Regenerar `Banco\schema_canonico.sql` (está anterior à `015`: sem `PAIS`, `CIDADE_ID`, `GRADE`, `ESTOQUE_MATERIAL`) | 📋 pendente | usar `Desktop\src\Tools\DumpSchema.lpr` para conferir o round-trip |
+| 13 | Regenerar `Banco\schema_canonico.sql` (está anterior à `015`: sem `PAIS`, `CIDADE_ID`, `GRADE`, `ESTOQUE_MATERIAL`) | ✅ concluído (02/11) | regenerado do banco real: **49 tabelas / 602 campos**; round-trip e banco novo verdes (§3.15) |
 | 14 | **Encoding dos literais acentuados** — o fonte é UTF-8, mas o projeto compila sem `-FcUTF8`: o FPC etiqueta o literal como CP1252 e o SQLDB reconverte os bytes (grava `NF de saÃ­da`). Contornado na descrição da conta a receber (`AsUTF8String` + `SetCodePage`); os demais literais ainda dependem disso | 📋 pendente (precisa decisão) | corrigir de vez com `-FcUTF8` gera **213 warnings** 4104/4105 (mistura de AnsiString/UnicodeString) — decidir entre suprimir por unit ou manter o contorno local |
 
 ---
@@ -130,6 +130,37 @@
 - Telas `uFrmPais`/`uFrmEstado`/`uFrmCidade` já estavam prontas e ligadas em
   **Cadastros**.
 - Verificação final: build **0 erros / 0 warnings**, suíte **62/62**.
+
+### 3.15 Schema canônico regenerado — item 13 (concluído 02/11)
+
+- `Banco\schema_canonico.sql` regenerado por `Scripts\gerar_schema.bat`
+  (lê `RDB$*` do `DADOS.FDB` real): **49 tabelas, 49 generators, 201
+  constraints, 64 índices, 58 triggers, 6 domains** (antes: 34/34/111/…).
+- Entraram no script as 15 tabelas criadas depois da geração anterior:
+  `PAIS`, `ESTADO`, `CIDADE`, `PRODUTO_FISCAL`, `MATERIAL`, `COR`,
+  `ESTOQUE_MATERIAL`, `MOVIMENTO_MATERIAL`, `MOVIMENTO_FINANCEIRO`,
+  `PEDIDO_COMPRA`, `PEDIDO_COMPRA_ITEM`, `GRADE`, `GRADE_TAMANHO`,
+  `ITEM_PEDIDO_GRADE`, `MAPA_PRODUCAO_ITEM_GRADE` — além das colunas
+  `CLIENTE.CIDADE_ID`/`FORNECEDOR.CIDADE_ID`, `PRODUTO.PRODUTO_FISCAL_ID`,
+  `PRODUTO.GRADE_ID` etc.
+- **Sementes consolidadas em `007_initial_data.sql`** (antes só existiam nas
+  migrações, que não rodam num banco novo porque o schema canônico já traz as
+  colunas):
+  - `PAIS` Brasil (`BRA`/`55`) + **27 UFs** com código IBGE (migração `015`);
+  - `CONFIGURACAO.USA_GRADE='N'` por empresa, idempotente (migração `016`).
+- `Scripts\executar_banco.bat`: comentário atualizado (49 tabelas / 49
+  generators / 201 constraints / 64 índices / 58 triggers).
+- `Scripts\testes\banco_fresco.ps1`: contagens novas (49/49) e conferência das
+  sementes novas (Brasil, 27 UFs, `USA_GRADE`).
+
+**Validação (02/11):**
+
+| Teste | Resultado |
+|---|---|
+| `Scripts\testes\schema_roundtrip.ps1` | **OK** — banco novo × real: 602 campos, diff vazio |
+| `Scripts\testes\banco_fresco.ps1` | **OK** — 602 campos, diff vazio, 49 tabelas/49 generators, admin/permissoes, Brasil + 27 UFs e `USA_GRADE` |
+| Build desktop | **0 erros / 0 warnings** |
+| Suíte | **62/62** |
 
 **Parada de sessão:** o checkpoint detalhado está em `CHECKPOINT.md` →
 "Estado atual da sessão".

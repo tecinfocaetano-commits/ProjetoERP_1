@@ -79,10 +79,10 @@ try {
   $falhas = @()
 
   $qtdTabelas = Query-One $scratch 'SELECT COUNT(*) FROM RDB$RELATIONS WHERE COALESCE(RDB$SYSTEM_FLAG,0)=0 AND RDB$VIEW_BLR IS NULL ;'
-  if ($qtdTabelas -ne '34') { $falhas += "tabelas esperado 34, veio '$qtdTabelas'" }
+  if ($qtdTabelas -ne '49') { $falhas += "tabelas esperado 49, veio '$qtdTabelas'" }
 
   $qtdGen = Query-One $scratch 'SELECT COUNT(*) FROM RDB$GENERATORS WHERE COALESCE(RDB$SYSTEM_FLAG,0)=0 ;'
-  if ($qtdGen -ne '34') { $falhas += "generators esperado 34, veio '$qtdGen'" }
+  if ($qtdGen -ne '49') { $falhas += "generators esperado 49, veio '$qtdGen'" }
 
   $admin = Query-One $scratch "SELECT LOGIN FROM USUARIO WHERE LOGIN = 'admin' ;"
   if ($admin -ne 'admin') { $falhas += "usuario admin ausente (veio '$admin')" }
@@ -93,6 +93,15 @@ try {
   $perm = Query-One $scratch 'SELECT COUNT(*) FROM PERMISSAO ;'
   if ([int]$perm -lt 1) { $falhas += "permissoes seed ausentes" }
 
+  $pais = Query-One $scratch "SELECT COUNT(*) FROM PAIS WHERE CODIGO = 'BRA' ;"
+  if ([int]$pais -ne 1) { $falhas += "seed do Brasil ausente (PAIS=$pais)" }
+
+  $ufs = Query-One $scratch 'SELECT COUNT(*) FROM ESTADO ;'
+  if ([int]$ufs -ne 27) { $falhas += "27 UFs esperadas, vieram '$ufs'" }
+
+  $grade = Query-One $scratch "SELECT COUNT(*) FROM CONFIGURACAO WHERE CHAVE = 'USA_GRADE' ;"
+  if ([int]$grade -lt 1) { $falhas += "preferencia USA_GRADE ausente" }
+
   if ($falhas.Count) {
     Write-Host "!!! SEMENTES INCOMPLETAS !!!" -ForegroundColor Red
     $falhas | ForEach-Object { Write-Host ("  - " + $_) }
@@ -101,7 +110,8 @@ try {
 
   Write-Host ""
   Write-Host ("OK: banco novo pelo fluxo consolidado = " + $real.Count +
-              " campos (diff vazio), 34 tabelas, 34 generators, admin/permissoes presentes.") -ForegroundColor Green
+              " campos (diff vazio), 49 tabelas, 49 generators, admin/permissoes," +
+              " Brasil + 27 UFs e USA_GRADE presentes.") -ForegroundColor Green
   exit 0
 }
 finally {

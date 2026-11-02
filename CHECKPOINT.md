@@ -36,6 +36,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 |---|---|
 | **D9 (Android)** | Configuração **por empresa**: URL do servidor + código de usuário em `SharedPreferences`; tela com **Testar conexão / Salvar / Usar esta empresa / Excluir**. Commit `67d26f4` — detalhes e validação em `PLANO_E_LOG.md` §3.13 |
 | **Geo (correção)** | `uEstadoService`/`uCidadeService` com `BuscarTodos` simples. Commit `5075a06` — §3.14 |
+| **Schema canônico (item 13)** | `Banco\schema_canonico.sql` regenerado do banco real (**49 tabelas / 602 campos**) + sementes (Brasil + 27 UFs, `USA_GRADE`) no `007_initial_data.sql`. Round-trip e banco novo verdes — §3.15 |
 | **Backlog 5–9** | fechado em 01/11 (ver "Estado anterior" abaixo) |
 
 - **D9 validado no emulador `Pixel_9` (Android 16)** com a API local no ar:
@@ -49,7 +50,6 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 ### Próximo passo (executável)
 
 1. Escolher a próxima pendência do backlog (`PLANO_E_LOG.md` §2):
-   - **item 13**: regenerar `Banco\schema_canonico.sql` (está anterior à `015`);
    - **item 14**: encoding dos literais acentuados (decisão pendente:
      `-FcUTF8` gera 213 warnings 4104/4105, ou manter o contorno local);
    - **item 11**: Android — orçamentos + telas (deferido).

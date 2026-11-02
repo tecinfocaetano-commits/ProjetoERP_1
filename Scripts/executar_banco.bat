@@ -4,7 +4,9 @@ REM ERP 2026 - Script de Criacao do Banco
 REM
 REM CONSOLIDADO: a estrutura vem toda de Banco\schema_canonico.sql
 REM (gerado do banco real por Scripts\gerar_schema.bat), que recria
-REM as 34 tabelas + 34 generators + 111 constraints + 36 triggers.
+REM as 49 tabelas + 49 generators + 201 constraints + 64 indices +
+REM 58 triggers do banco real; as sementes das fases seguintes
+REM (geografico, USA_GRADE) estao em 007_initial_data.sql.
 REM
 REM O caminho antigo (002 -> 003 -> 004 -> 005 -> 006) ficava com
 REM 22 das 34 tabelas e precisava dos remendos 008..012; ele nao e
