@@ -26,8 +26,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (02/11/2026)
 
-**HEAD:** commits de docs do D9 + `GerarSchema.lpi` (confira `git log --oneline -3`)
-· build **0 erros / 0 warnings** (403 hints) · suíte **62/62** · APK
+**HEAD:** item 13 (schema canônico) + **item 14 (encoding)** — confira
+`git log --oneline -3` · build **0 erros / 0 warnings** · suíte **62/62** · APK
 **BUILD SUCCESSFUL** · árvore limpa.
 
 ### O que fechou nesta sessão
@@ -37,6 +37,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 | **D9 (Android)** | Configuração **por empresa**: URL do servidor + código de usuário em `SharedPreferences`; tela com **Testar conexão / Salvar / Usar esta empresa / Excluir**. Commit `67d26f4` — detalhes e validação em `PLANO_E_LOG.md` §3.13 |
 | **Geo (correção)** | `uEstadoService`/`uCidadeService` com `BuscarTodos` simples. Commit `5075a06` — §3.14 |
 | **Schema canônico (item 13)** | `Banco\schema_canonico.sql` regenerado do banco real (**49 tabelas / 602 campos**) + sementes (Brasil + 27 UFs, `USA_GRADE`) no `007_initial_data.sql`. Round-trip e banco novo verdes — §3.15 |
+| **Encoding (item 14)** | `SetMultiByteConversionCodePage(CP_UTF8)` no início do app e dos testes; **sem `-FcUTF8`** (a flag gerava 213 warnings e corrompia concatenações). Contorno local removido; banco sem mojibake — §3.16 |
 | **Backlog 5–9** | fechado em 01/11 (ver "Estado anterior" abaixo) |
 
 - **D9 validado no emulador `Pixel_9` (Android 16)** com a API local no ar:
@@ -50,12 +51,10 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 ### Próximo passo (executável)
 
 1. Escolher a próxima pendência do backlog (`PLANO_E_LOG.md` §2):
-   - **item 14**: encoding dos literais acentuados (decisão pendente:
-     `-FcUTF8` gera 213 warnings 4104/4105, ou manter o contorno local);
-   - **item 11**: Android — orçamentos + telas (deferido).
-2. **D3** (unificar CLIENTE+FORNECEDOR) continua **adiada** — só com plano
-   aprovado.
-3. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
+   - **item 11**: Android — orçamentos + telas (único item aberto, deferido);
+   - **D3** (unificar CLIENTE+FORNECEDOR) continua **adiada** — só com plano
+     aprovado.
+2. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
    o `PLANO_E_LOG.md`; commitar.
 
 ---
@@ -638,9 +637,9 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 
 ## Para continuar (ao ligar o PC)
 
-0. **Próximo marco:** escolher entre item 13 (regenerar `schema_canonico.sql`),
-   item 14 (encoding) ou item 11 (Android: orçamentos) — ver "Estado atual da
-   sessão". O geográfico e o D9 **já estão concluídos**.
+0. **Próximo marco:** item 11 (Android — orçamentos + telas), único item aberto
+   do backlog. Itens 13 (schema) e 14 (encoding) **já estão concluídos** — ver
+   "Estado atual da sessão".
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
@@ -688,6 +687,9 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
   **concluído (02/11)**: commit `67d26f4`, tela `ConfiguracaoActivity`, dados em
   `SharedPreferences`, validado no emulador `Pixel_9` (ver "Estado atual da
   sessão"); uso em `Android\CONFIGURACAO_POR_EMPRESA.md`.
+- ~~Encoding dos literais acentuados (`NF de saÃ­da` no `CONTA_RECEBER`).~~ —
+  **concluído (02/11)**: `SetMultiByteConversionCodePage(CP_UTF8)` no app/testes,
+  sem `-FcUTF8`; contorno local removido e banco sem mojibake (§3.16).
 
 ---
 

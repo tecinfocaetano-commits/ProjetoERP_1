@@ -39,7 +39,7 @@
 | 11 | Android: orçamentos + telas | ⏸ deferido | |
 | 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | ✅ concluído (02/11) | D9 — commit `67d26f4`; validado no emulador (§3.13) |
 | 13 | Regenerar `Banco\schema_canonico.sql` (está anterior à `015`: sem `PAIS`, `CIDADE_ID`, `GRADE`, `ESTOQUE_MATERIAL`) | ✅ concluído (02/11) | regenerado do banco real: **49 tabelas / 602 campos**; round-trip e banco novo verdes (§3.15) |
-| 14 | **Encoding dos literais acentuados** — o fonte é UTF-8, mas o projeto compila sem `-FcUTF8`: o FPC etiqueta o literal como CP1252 e o SQLDB reconverte os bytes (grava `NF de saÃ­da`). Contornado na descrição da conta a receber (`AsUTF8String` + `SetCodePage`); os demais literais ainda dependem disso | 📋 pendente (precisa decisão) | corrigir de vez com `-FcUTF8` gera **213 warnings** 4104/4105 (mistura de AnsiString/UnicodeString) — decidir entre suprimir por unit ou manter o contorno local |
+| 14 | **Encoding dos literais acentuados** — o fonte é UTF-8, mas o processo não declarava a codepage padrão: o SQLDB tratava os bytes como CP1252 e gravava `NF de saÃ­da` | ✅ concluído (02/11) | adotado `SetMultiByteConversionCodePage(CP_UTF8)` no início do app/testes, **sem** `-FcUTF8` (que gerava 213 warnings e corrompia concatenações); ver §3.16 |
 
 ---
 
@@ -161,6 +161,51 @@
 | `Scripts\testes\banco_fresco.ps1` | **OK** — 602 campos, diff vazio, 49 tabelas/49 generators, admin/permissoes, Brasil + 27 UFs e `USA_GRADE` |
 | Build desktop | **0 erros / 0 warnings** |
 | Suíte | **62/62** |
+
+### 3.16 Encoding dos literais acentuados — item 14 (concluído 02/11)
+
+**Problema:** o fonte é UTF-8, mas o processo nascia com
+`DefaultSystemCodePage=1252`. O SQLDB então convertia os bytes UTF-8 dos
+literais como se fossem CP1252, gravando `NF de saÃ­da` (20 bytes em vez de
+12). O único contorno era local, na descrição do `CONTA_RECEBER`.
+
+**Por que não adotar `-FcUTF8`:** a sonda mostrou que a flag resolve o caso
+isolado, mas o projeto inteiro tem **213 avisos 4104/4105** — e eles são
+reais: `'literal' + AnsiString` passa a ser convertido para CP1252 em tempo
+de execução (ex.: `'pre ' + 'Ação'` virava 8 bytes CP1252), corrompendo
+tanto textos de UI quanto valores gravados.
+
+**Solução adotada:** manter a compilação sem `-FcUTF8` (convenção do LCL,
+que trafega UTF-8 em `AnsiString`) e declarar a codepage do processo no
+início de `ERP2026.lpr` e de `uTestRunner.pas`:
+
+```pascal
+SetMultiByteConversionCodePage(CP_UTF8);
+```
+
+Com isso o SQLDB enxerga os literais como UTF-8 e não reconverte. A sonda
+empírica (gravação em `CONFIGURACAO`) passou de `octet_len=20` (duplo
+encoding) para **12** — o UTF-8 correto — e o build continuou com
+**0 warnings**.
+
+- `Desktop\src\Services\uNotaSaidaService.pas`: removido o contorno
+  (`RawByteString` + `SetCodePage` + `AsUTF8String`); a descrição voltou a
+  ser `string` + `AsString`, igual aos demais textos.
+- Nenhuma mudança em `ERP2026.lpi`/`Tests.lpi` (a flag `-FcUTF8` foi
+  descartada).
+- Varredura no banco real: **243 colunas de texto** (`CHAR`/`VARCHAR`)
+  consultadas por `LIKE '%Ã%'` → **0 linhas** com mojibake.
+
+**Validação (02/11):**
+
+| Teste | Resultado |
+|---|---|
+| Build desktop (`--build-all`) | **0 erros / 0 warnings** |
+| Build testes (`--build-all`) | **0 erros / 0 warnings** |
+| Suíte | **62/62** |
+| Sonda SQLDB (gravação acentuada) | **12 bytes** (UTF-8 correto) |
+| Varredura de mojibake no banco | **0 linhas** em 243 colunas |
+| Smoke do app | inicia e fica estável (login) |
 
 **Parada de sessão:** o checkpoint detalhado está em `CHECKPOINT.md` →
 "Estado atual da sessão".

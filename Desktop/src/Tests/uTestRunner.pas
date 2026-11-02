@@ -28,6 +28,9 @@ var
   LConexao: TConexao;
 
 begin
+  // Mesma codepage do app: sem isto, textos acentuados gravados pelos testes
+  // iriam como CP1252 e voltariam corrompidos (ver ERP2026.lpr).
+  SetMultiByteConversionCodePage(CP_UTF8);
   WriteLn('');
   WriteLn('╔════════════════════════════════════════════════════════════╗');
   WriteLn('║     ERP 2026 - SUITE DE TESTES UNITÁRIOS                   ║');

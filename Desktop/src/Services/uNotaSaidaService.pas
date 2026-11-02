@@ -706,9 +706,9 @@ var
   LVencimento: TDate;
   LEmpresaId, LClienteId, LCondicaoId, LFinanceiroId: Int64;
   LNumero: string;
-  // Bytes já em UTF-8 (o fonte é UTF-8), etiquetados explicitamente para o
-  // driver não reconverter. Ver comentário na montagem da descrição.
-  LDescricao: RawByteString;
+  // A descrição é montada em UTF-8 (codepage padrão do processo, ver
+  // ERP2026.lpr) e enviada por AsString, como os demais textos do sistema.
+  LDescricao: string;
 begin
   LCab := NovaConsulta;
   LTot := NovaConsulta;
@@ -774,15 +774,11 @@ begin
       LTot.ParamByName('FIN').AsLargeInt := LFinanceiroId;
       LTot.ParamByName('CLI').AsLargeInt := LClienteId;
       LTot.ParamByName('NOTA').AsLargeInt := ANotaId;
-      // O fonte é UTF-8, mas o projeto não compila com -FcUTF8: o FPC etiqueta
-      // o literal como CP_ACP. Sem reetiquetar, o SQLDB converte os bytes
-      // (já UTF-8) como se fossem CP1252 e grava "NF de saÃ­da".
-      // SetCodePage(..., CP_UTF8, False) só troca a etiqueta (não converte) e
-      // AsUTF8String envia os bytes como UTF-8 para o Firebird.
+      // O processo roda com codepage padrão UTF-8 (ver ERP2026.lpr), então o
+      // literal já sai como UTF-8 e AsString entrega esses bytes ao Firebird.
       LDescricao := 'NF de saída ' + LNumero + ' (' + IntToStr(LIndice) +
         '/' + IntToStr(LParcelas) + ')';
-      SetCodePage(LDescricao, CP_UTF8, False);
-      LTot.ParamByName('DESC').AsUTF8String := LDescricao;
+      LTot.ParamByName('DESC').AsString := LDescricao;
       LTot.ParamByName('VALOR').AsFloat := LValorParcela;
       LTot.ParamByName('VENC').AsDate := IncDay(LVencimento, LIndice * LDias);
       LTot.ParamByName('PARC').AsInteger := LIndice;

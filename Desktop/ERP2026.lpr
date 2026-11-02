@@ -105,6 +105,10 @@ uses
 {$R *.res}
 
 begin
+  // Todo o sistema trata AnsiString como UTF-8 (fonte, LCL e Firebird com
+  // CharSet=UTF8). Sem isto, o SQLDB converte os literais acentuados de
+  // CP1252 para UTF-8 e grava "NF de saÃ­da".
+  SetMultiByteConversionCodePage(CP_UTF8);
   RequireDerivedFormResource := True;
   Application.Scaled := True;
   Application.Initialize;
