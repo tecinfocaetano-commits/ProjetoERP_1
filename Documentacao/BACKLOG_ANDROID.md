@@ -1,5 +1,10 @@
 # BACKLOG ANDROID — prompt pronto para retomada (D9)
 
+> **EXECUTADO em 02/11/2026 — commit `67d26f4`.**
+> Este documento fica como registro do pedido original. O resultado está em
+> `Documentacao\PLANO_E_LOG.md` §3.13 e o uso em
+> `Android\CONFIGURACAO_POR_EMPRESA.md`. Nada pendente aqui.
+>
 > Documento de transferência. Serve para retomar a **parte Android** depois de
 > concluído o backlog desktop (itens 5–9). Não é para executar agora.
 >

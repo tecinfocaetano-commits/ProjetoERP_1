@@ -80,3 +80,8 @@ No Android Studio:
 - **Ícone**: Substitua os arquivos em `mipmap-*` folders
 - **Cores**: Modifique no arquivo `colors.xml` (se criar)
 - **Dados**: Modifique as listas nas Activities Java
+
+## Configuração por empresa (servidor e código de usuário)
+
+Cada empresa guarda a sua URL da API e o seu código de usuário: veja
+`CONFIGURACAO_POR_EMPRESA.md`.

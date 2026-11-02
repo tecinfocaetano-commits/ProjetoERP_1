@@ -2,7 +2,7 @@
 
 > Documento **vivo**: registra o planejamento, as decisões do usuário e o que já
 > foi executado. Atualizar a cada etapa concluída.
-> Última atualização: 01/11/2026
+> Última atualização: 02/11/2026
 
 ---
 
@@ -18,7 +18,7 @@
 | D6 | GRADE no **item do pedido** (inserível) e subgrid **editável no mapa** | 31/10 | ✅ concluído |
 | D7 | Preferência **`USA_GRADE`**: desmarcada → grade **não aparece nem no mapa nem no pedido** | 31/10 | ✅ concluído (gate nas duas telas) |
 | D8 | LazReport apenas; testes de impressão só em PDF | — | ✅ padrão |
-| D9 | **Android: configuração por empresa** — tela onde o usuário define o **caminho do servidor** (URL da API) e o **código de usuário**; cada empresa usada guarda a sua própria configuração de servidor + usuário | 31/10 | 📋 pendente (executar após os itens do backlog atual) |
+| D9 | **Android: configuração por empresa** — tela onde o usuário define o **caminho do servidor** (URL da API) e o **código de usuário**; cada empresa usada guarda a sua própria configuração de servidor + usuário | 02/11 | ✅ concluído (commit `67d26f4`) |
 
 ---
 
@@ -37,7 +37,7 @@
 | 9 | Vínculo geo (país/estado/cidade) em CLIENTE/FORNECEDOR | ✅ concluído (01/11) | migração `017` (`CIDADE_ID`); §3.7 |
 | 10 | Unificação CLIENTE+FORNECEDOR | ⏸ adiado | D3 |
 | 11 | Android: orçamentos + telas | ⏸ deferido | |
-| 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | 📋 pendente | D9 — prompt pronto em `Documentacao\BACKLOG_ANDROID.md` |
+| 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | ✅ concluído (02/11) | D9 — commit `67d26f4`; validado no emulador (§3.13) |
 | 13 | Regenerar `Banco\schema_canonico.sql` (está anterior à `015`: sem `PAIS`, `CIDADE_ID`, `GRADE`, `ESTOQUE_MATERIAL`) | 📋 pendente | usar `Desktop\src\Tools\DumpSchema.lpr` para conferir o round-trip |
 | 14 | **Encoding dos literais acentuados** — o fonte é UTF-8, mas o projeto compila sem `-FcUTF8`: o FPC etiqueta o literal como CP1252 e o SQLDB reconverte os bytes (grava `NF de saÃ­da`). Contornado na descrição da conta a receber (`AsUTF8String` + `SetCodePage`); os demais literais ainda dependem disso | 📋 pendente (precisa decisão) | corrigir de vez com `-FcUTF8` gera **213 warnings** 4104/4105 (mistura de AnsiString/UnicodeString) — decidir entre suprimir por unit ou manter o contorno local |
 
@@ -80,6 +80,56 @@
 - [x] `.lpi`/`.lpr` com as units novas.
 - [x] Build **0 erros** e suíte **62/62**.
 - [x] Commit.
+
+### 3.13 D9 — Android: configuração por empresa (concluído 02/11)
+
+- Commit `67d26f4`.
+- Arquivos novos (em `Android\android\app\src\main\`):
+  - `java\...\Configuracao.java` — persistência em `SharedPreferences`
+    (`erp2026_config`): `empresaAtual`, `empresas`, `url_<empresa>`,
+    `codigo_<empresa>`; `normalizarUrl`/`urlValida`; identidade da empresa sem
+    diferenciar maiúsculas; `aplicarNoApi`.
+  - `java\...\ConfiguracaoActivity.java` + `res\layout\activity_configuracao.xml`
+    — spinner de empresas, campos empresa/URL/código, **Testar conexão**,
+    **Salvar**, **Usar esta empresa** e **Excluir**.
+- Alterados: `ApiClient` (`setBaseUrl`/`getBaseUrl`/`ping`), `App` (aplica a
+  configuração no `onCreate`), `MainActivity` (empresa em uso no login +
+  `codigoUsuario` no corpo do `POST /api/login`), `DashboardActivity` (botão de
+  configuração e empresa no título) e `AndroidManifest.xml`.
+- Regras:
+  - cada empresa tem a **sua** URL e o **seu** código; trocar de empresa
+    **encerra a sessão** (o token pertence ao servidor anterior);
+  - sem configuração vale a URL padrão `http://10.0.2.2:9000` (emulador);
+  - **Testar conexão** faz `GET <url>/` e considera **qualquer** resposta HTTP
+    como servidor alcançável (a API não tem rota de health);
+  - a API ignora campos extras, então `codigoUsuario` não quebra o login atual.
+
+**Validação no emulador `Pixel_9` (Android 16), 02/11** — API local no ar:
+
+| Verificação | Resultado |
+|---|---|
+| Abrir a tela pelo Dashboard e pela tela de login | OK |
+| Testar conexão com `http://10.0.2.2:9000` | "Servidor alcançável (HTTP 404)" |
+| Salvar `MATRIZ` / código `001` | `SharedPreferences` com as 4 chaves |
+| URL digitada sem esquema (`10.0.2.2:9000`) | gravada normalizada com `http://` |
+| Salvar `filial` com `FILIAL` já existente | não duplica; mantém `FILIAL` |
+| "Usar esta empresa" | encerra a sessão; login mostra a empresa |
+| Login após configurar | entra; título do menu vira `ERP 2026 - FILIAL` |
+| Excluir empresa não-ativa | remove só ela; sessão continua |
+| Excluir a empresa ativa | volta ao login ("Nenhuma empresa configurada") |
+| Reiniciar o app (`force-stop` + abrir) | configuração persistida e aplicada |
+
+- Verificação final: build desktop **0 erros / 0 warnings** (403 hints),
+  suíte **62/62**; `gradlew :app:assembleDebug` → **BUILD SUCCESSFUL**.
+- Uso documentado em `Android\CONFIGURACAO_POR_EMPRESA.md`.
+
+### 3.14 CRUD geográfico — correção de services (concluído 02/11)
+
+- Commit `5075a06`: `uEstadoService` e `uCidadeService` passaram a usar
+  `BuscarTodos` simples (filtro por string), sem `BuscarTodosParam`.
+- Telas `uFrmPais`/`uFrmEstado`/`uFrmCidade` já estavam prontas e ligadas em
+  **Cadastros**.
+- Verificação final: build **0 erros / 0 warnings**, suíte **62/62**.
 
 **Parada de sessão:** o checkpoint detalhado está em `CHECKPOINT.md` →
 "Estado atual da sessão".

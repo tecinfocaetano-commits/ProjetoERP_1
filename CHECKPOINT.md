@@ -1,4 +1,4 @@
-# CHECKPOINT — último ponto de parada (01/11/2026)
+# CHECKPOINT — último ponto de parada (02/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -24,12 +24,43 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ---
 
-## Estado atual da sessão (01/11/2026)
+## Estado atual da sessão (02/11/2026)
 
-**Backlog desktop CONCLUÍDO (itens 5–9).** Build **0 erros / 0 warnings** ·
-suíte **62/62**.
+**HEAD:** `5075a06` · build **0 erros / 0 warnings** (403 hints) · suíte
+**62/62** · APK **BUILD SUCCESSFUL**. Árvore: apenas docs para commitar
+(`CHECKPOINT.md`, `PLANO_E_LOG.md`, `Android\CONFIGURACAO_POR_EMPRESA.md`).
 
 ### O que fechou nesta sessão
+
+| Item | Entrega |
+|---|---|
+| **D9 (Android)** | Configuração **por empresa**: URL do servidor + código de usuário em `SharedPreferences`; tela com **Testar conexão / Salvar / Usar esta empresa / Excluir**. Commit `67d26f4` — detalhes e validação em `PLANO_E_LOG.md` §3.13 |
+| **Geo (correção)** | `uEstadoService`/`uCidadeService` com `BuscarTodos` simples. Commit `5075a06` — §3.14 |
+| **Backlog 5–9** | fechado em 01/11 (ver "Estado anterior" abaixo) |
+
+- **D9 validado no emulador `Pixel_9` (Android 16)** com a API local no ar:
+  testar conexão (HTTP 404 = alcançável), salvar, URL digitada sem esquema é
+  normalizada, empresa com caixa diferente não duplica, trocar de empresa
+  encerra a sessão, login entra e o título do menu mostra a empresa, exclusão
+  de empresa ativa/não-ativa e persistência após `force-stop`.
+- Uso do Android documentado em `Android\CONFIGURACAO_POR_EMPRESA.md`.
+- Banco **sem migração nova** nesta sessão.
+
+### Próximo passo (executável)
+
+1. Escolher a próxima pendência do backlog (`PLANO_E_LOG.md` §2):
+   - **item 13**: regenerar `Banco\schema_canonico.sql` (está anterior à `015`);
+   - **item 14**: encoding dos literais acentuados (decisão pendente:
+     `-FcUTF8` gera 213 warnings 4104/4105, ou manter o contorno local);
+   - **item 11**: Android — orçamentos + telas (deferido).
+2. **D3** (unificar CLIENTE+FORNECEDOR) continua **adiada** — só com plano
+   aprovado.
+3. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
+   o `PLANO_E_LOG.md`; commitar.
+
+---
+
+## Estado anterior (01/11/2026) — itens 5–9 do backlog desktop
 
 | Item | Entrega |
 |---|---|
@@ -49,22 +80,6 @@ suíte **62/62**.
 - Banco deixado com **um exemplo completo de cada fluxo** e os cadastros de
   apoio (`FISC-TESTE`, `MAT-TESTE8`, `PROD-TESTE8`, `PC-TESTE-8`,
   `PV-TESTE-5`, saldos 15 e 98) — nada de lixo das rodadas do harness.
-
-### Próximo passo (executável)
-
-1. **D9 (Android)** — prompt pronto em `Documentacao\BACKLOG_ANDROID.md`
-   (tela de configuração por empresa: URL do servidor + código de usuário).
-   Antes de codar, confirmar o significado de "código de usuário" (§4 do
-   documento).
-2. Pendências novas do backlog (`PLANO_E_LOG.md` §2):
-   - **item 13**: regenerar `Banco\schema_canonico.sql` (está anterior à `015`);
-   - **item 14**: encoding dos literais acentuados — decisão pendente entre
-     `-FcUTF8` (213 warnings 4104/4105) ou manter o contorno local
-     (`SetCodePage` + `AsUTF8String`, já aplicado na conta a receber).
-3. **D3** (unificação CLIENTE+FORNECEDOR) continua **adiada** — só com plano
-   aprovado.
-4. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
-   o `PLANO_E_LOG.md`; commitar.
 
 ---
 
@@ -614,6 +629,7 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 | Testes das telas de administração | `Desktop\src\Tests\uTelasAdmTest.pas` (+ `uTestRunner.pas`, `Tests.lpi`) |
 | Suíte de UI das telas novas | `Scripts\testes\telas_adm_ui.ps1` (abre as 4 telas pelo menu) |
 | App Android (tema Material You) | `Android\android\app\src\main\res\{values,values-night}\` + `java\...\App.java` (cores dinâmicas 12+) |
+| App Android (configuração por empresa) | `Android\CONFIGURACAO_POR_EMPRESA.md` + `java\...\Configuracao.java` / `ConfiguracaoActivity.java` |
 | IDs de menu | `Documentacao\MAPA_IDS_MENU.md` (+ gerador `Scripts\dump_menu_ids.ps1`) |
 | Evidências PNG (gitignored) | `Documentacao\evidencias\fase6_01..06_*.png`, `telas_adm_0*.png`, `android_0*_*.png` |
 | PDFs gerados | `Desktop\bin\relatorios\taloes_mapa_1.pdf`, `mapa_1.pdf` |
@@ -622,9 +638,9 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 
 ## Para continuar (ao ligar o PC)
 
-0. **PRIORIDADE — terminar o geográfico** (ver "Estado atual da sessão"):
-   criar `uFrmEstado`(.pas/.lfm) e `uFrmCidade`(.pas/.lfm), ligar no menu
-   Cadastros, atualizar `.lpi`, build **0/0**, suíte **62/62**, commit.
+0. **Próximo marco:** escolher entre item 13 (regenerar `schema_canonico.sql`),
+   item 14 (encoding) ou item 11 (Android: orçamentos) — ver "Estado atual da
+   sessão". O geográfico e o D9 **já estão concluídos**.
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
@@ -638,7 +654,9 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
    9000 estiver ocupada, mate `ERP2026API.exe` antes).
 7. APK Android: `Scripts\build_android.bat` → esperado **BUILD SUCCESSFUL**
    (visual Material You — conferir no emulador `Pixel_9`; o app consome a API
-   em `10.0.2.2:9000`, então a API precisa estar no ar).
+   em `10.0.2.2:9000`, então a API precisa estar no ar). Para apontar para
+   outro servidor/empresa, use o botão **Servidor e empresa** dentro do app
+   (ver `Android\CONFIGURACAO_POR_EMPRESA.md`).
 
 ---
 
@@ -666,6 +684,10 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
   (30/10)**: Material You (cores dinâmicas no 12+) + Material 3 claro/escuro,
   8 layouts redesenhados com IDs intactos (seção própria acima). Sem pendências
   abertas do usuário — o próximo passo é o que for pedido.
+- ~~Android: configuração por empresa (URL do servidor + código de usuário).~~ —
+  **concluído (02/11)**: commit `67d26f4`, tela `ConfiguracaoActivity`, dados em
+  `SharedPreferences`, validado no emulador `Pixel_9` (ver "Estado atual da
+  sessão"); uso em `Android\CONFIGURACAO_POR_EMPRESA.md`.
 
 ---
 
