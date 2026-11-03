@@ -535,9 +535,11 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 ### 3.21 Checkpoint por marco: HEAD + estado do git (03/11, concluído)
 
 - **`CHECKPOINT.md`:** o bloco "Estado atual" passou a trazer **HEAD com hash
-  e mensagem** (`e4f4804`), o estado do git (árvore limpa/suja + arquivos não
-  commitados), build/suíte e uma seção **Próximo passo (executável)**. Título
-  e data da sessão em 03/11; "Em andamento" vazio porque a árvore está limpa.
+  e mensagem** (`ba439bd`, commit de docs; código em `e4f4804`), o estado do
+  git (árvore limpa/suja + arquivos não commitados), build/suíte e uma seção
+  **Próximo passo (executável)**. Título e data da sessão em 03/11; "Em
+  andamento" vazio porque a árvore está limpa. O bloco cita o commit de docs
+  que o gravou; se `git log -1` divergir, vale o disco.
 - **Números defasados:** o piso da suíte subiu de **62/62** para **65/65** no
   checkpoint, nas instruções e no "Para continuar". As menções a 62/62 em
   seções **históricas** (§3.2–§3.18, "Estado anterior", execuções antigas)

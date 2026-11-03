@@ -26,12 +26,16 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (03/11/2026)
 
-**HEAD:** `e4f4804` (Filtros em Estoque/Financeiro e inclusão de cliente no app Android). Árvore: **limpa** (nada não commitado; nenhum untracked).
+**HEAD:** `ba439bd` (Docs: checkpoint 03/11 com HEAD e estado do git) — commit só de documentação; o último commit de código segue em `e4f4804` (Filtros em Estoque/Financeiro e inclusão de cliente no app Android). Árvore: **limpa** (nada não commitado; nenhum untracked).
 Build: **0 erros / 0 warnings** · suíte **65/65** (última verificação: 02/11).
+
+> Se `git log -1` mostrar um hash diferente de `ba439bd`, é porque o commit
+> que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — árvore limpa. Último marco fechado e commitado em `e4f4804`.
+- Nada — árvore limpa. Último marco de código fechado em `e4f4804`; este
+  checkpoint foi gravado no commit de docs `ba439bd`.
 
 ### Próximo passo (executável)
 
