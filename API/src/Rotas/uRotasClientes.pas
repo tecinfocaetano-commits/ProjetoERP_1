@@ -31,7 +31,7 @@ begin
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT ID, NOME, CPF_CNPJ, EMAIL, TELEFONE, CIDADE, UF, ATIVO FROM CLIENTE ORDER BY NOME';
+    LQuery.SQL.Text := 'SELECT ID, NOME, CPF_CNPJ, EMAIL, TELEFONE, CIDADE, UF, ATIVO FROM PESSOA WHERE TIPO = ''C'' ORDER BY NOME';
     LQuery.Open;
 
     LArray := TJSONArray.Create;
@@ -75,7 +75,7 @@ begin
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT * FROM CLIENTE WHERE ID = :ID';
+    LQuery.SQL.Text := 'SELECT * FROM PESSOA WHERE ID = :ID AND TIPO = ''C''';
     LQuery.ParamByName('ID').AsLargeInt := LId;
     LQuery.Open;
 
@@ -132,8 +132,8 @@ begin
         LQuery.DataBase := LConexao.Connection;
         LQuery.Transaction := LConexao.Transaction;
         LQuery.SQL.Text :=
-          'INSERT INTO CLIENTE (ID, EMPRESA_ID, NOME, CPF_CNPJ, EMAIL, TELEFONE, ENDERECO, CIDADE, UF, CEP, ATIVO) ' +
-          'VALUES (GEN_ID(GEN_CLIENTE_ID, 1), 1, :NOME, :CPF, :EMAIL, :TEL, :END, :CID, :UF, :CEP, ''A'')';
+          'INSERT INTO PESSOA (ID, EMPRESA_ID, TIPO, TIPO_PESSOA, NOME, CPF_CNPJ, EMAIL, TELEFONE, ENDERECO, CIDADE, UF, CEP, ATIVO) ' +
+          'VALUES (GEN_ID(GEN_PESSOA_ID, 1), 1, ''C'', ''F'', :NOME, :CPF, :EMAIL, :TEL, :END, :CID, :UF, :CEP, ''A'')';
         LQuery.ParamByName('NOME').AsString := LBody.Get('nome', '');
         LQuery.ParamByName('CPF').AsString := LBody.Get('cpf_cnpj', '');
         LQuery.ParamByName('EMAIL').AsString := LBody.Get('email', '');
@@ -174,7 +174,7 @@ begin
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text := 'DELETE FROM CLIENTE WHERE ID = :ID';
+    LQuery.SQL.Text := 'DELETE FROM PESSOA WHERE ID = :ID AND TIPO = ''C''';
     LQuery.ParamByName('ID').AsLargeInt := LId;
     LQuery.ExecSQL;
     LConexao.Confirmar;

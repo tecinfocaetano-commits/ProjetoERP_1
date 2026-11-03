@@ -142,7 +142,7 @@ begin
 
     tpInadimplentes:
       Result := 'SELECT C.NOME, CR.VALOR, CR.DATA_VENCIMENTO ' +
-                'FROM CONTA_RECEBER CR JOIN CLIENTE C ON C.ID = CR.CLIENTE_ID ' +
+                'FROM CONTA_RECEBER CR JOIN PESSOA C ON C.ID = CR.CLIENTE_ID AND C.TIPO = ''C'' ' +
                 'WHERE CR.STATUS = ''A'' AND CR.DATA_VENCIMENTO < CURRENT_DATE ' +
                 'ORDER BY CR.DATA_VENCIMENTO';
 
@@ -167,7 +167,7 @@ begin
 
     tpTopClientes:
       Result := 'SELECT FIRST 10 C.NOME, SUM(PV.TOTAL) AS TOTAL_COMPRAS, COUNT(*) AS QTD ' +
-                'FROM PEDIDO_VENDA PV JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
+                'FROM PEDIDO_VENDA PV JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
                 'WHERE PV.STATUS IN (''F'', ''A'') ' +
                 'GROUP BY C.NOME ORDER BY TOTAL_COMPRAS DESC';
 
@@ -181,18 +181,18 @@ begin
 
     tpContasVencidas:
       Result := 'SELECT ''A Receber'' AS TIPO, C.NOME AS ENTIDADE, CR.VALOR, CR.DATA_VENCIMENTO ' +
-                'FROM CONTA_RECEBER CR LEFT JOIN CLIENTE C ON C.ID = CR.CLIENTE_ID ' +
+                'FROM CONTA_RECEBER CR LEFT JOIN PESSOA C ON C.ID = CR.CLIENTE_ID AND C.TIPO = ''C'' ' +
                 'WHERE CR.STATUS = ''A'' AND CR.DATA_VENCIMENTO <= CURRENT_DATE ' +
                 'UNION ALL ' +
-                'SELECT ''A Pagar'', F.NOME_FANTASIA, CP.VALOR, CP.DATA_VENCIMENTO ' +
-                'FROM CONTA_PAGAR CP LEFT JOIN FORNECEDOR F ON F.ID = CP.FORNECEDOR_ID ' +
+                'SELECT ''A Pagar'', F.NOME, CP.VALOR, CP.DATA_VENCIMENTO ' +
+                'FROM CONTA_PAGAR CP LEFT JOIN PESSOA F ON F.ID = CP.FORNECEDOR_ID AND F.TIPO = ''F'' ' +
                 'WHERE CP.STATUS = ''A'' AND CP.DATA_VENCIMENTO <= CURRENT_DATE ' +
                 'ORDER BY 4';
 
     tpFornecedorCredito:
-      Result := 'SELECT FIRST 10 F.NOME_FANTASIA, SUM(CP.VALOR) AS TOTAL_COMPRAS ' +
-                'FROM CONTA_PAGAR CP JOIN FORNECEDOR F ON F.ID = CP.FORNECEDOR_ID ' +
-                'GROUP BY F.NOME_FANTASIA ORDER BY TOTAL_COMPRAS DESC';
+      Result := 'SELECT FIRST 10 F.NOME, SUM(CP.VALOR) AS TOTAL_COMPRAS ' +
+                'FROM CONTA_PAGAR CP JOIN PESSOA F ON F.ID = CP.FORNECEDOR_ID AND F.TIPO = ''F'' ' +
+                'GROUP BY F.NOME ORDER BY TOTAL_COMPRAS DESC';
 
     tpFluxoCaixa:
       { CAST obrigatório: o SQLDB lê COALESCE((subquery),0) sem tipo como 0 }

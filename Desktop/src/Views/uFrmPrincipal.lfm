@@ -153,13 +153,9 @@ object frmPrincipal: TfrmPrincipal
     end
     object mnuCadastros: TMenuItem
       Caption = 'Cadastros'
-      object mnuCadClientes: TMenuItem
-        Caption = 'Clientes'
-        OnClick = mnuCadClientesClick
-      end
-      object mnuCadFornecedores: TMenuItem
-        Caption = 'Fornecedores'
-        OnClick = mnuCadFornecedoresClick
+      object mnuCadPessoas: TMenuItem
+        Caption = 'Pessoas'
+        OnClick = mnuCadPessoasClick
       end
       object mnuCadCategorias: TMenuItem
         Caption = 'Categorias'

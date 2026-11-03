@@ -36,7 +36,7 @@ begin
       // rótulos de status centralizados em uPedidoStatus; 'O' (orçamento) à parte
       'CASE WHEN PV.STATUS = ''O'' THEN ''Orçamento'' ELSE ' +
         SqlCaseStatusPedido('PV.STATUS') + ' END AS STATUS ' +
-      'FROM PEDIDO_VENDA PV LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
+      'FROM PEDIDO_VENDA PV LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
       'ORDER BY PV.DATA_EMISSAO DESC ROWS 100';
     LQuery.Open;
 
@@ -79,7 +79,7 @@ begin
     // Cabeçalho
     LQuery.SQL.Text :=
       'SELECT PV.*, C.NOME AS CLIENTE_NOME FROM PEDIDO_VENDA PV ' +
-      'LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID WHERE PV.ID = :ID';
+      'LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' WHERE PV.ID = :ID';
     LQuery.ParamByName('ID').AsLargeInt := LId;
     LQuery.Open;
 

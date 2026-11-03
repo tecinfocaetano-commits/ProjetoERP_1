@@ -113,7 +113,7 @@ begin
     'PV.TOTAL, ' +
     SqlCaseStatusPedido('PV.STATUS') + ' AS STATUS_DESC ' +
     'FROM PEDIDO_VENDA PV ' +
-    'JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
+    'JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
     'WHERE PV.DATA_EMISSAO BETWEEN :DI AND :DF';
 
   if cmbStatusFiltro.ItemIndex > 0 then

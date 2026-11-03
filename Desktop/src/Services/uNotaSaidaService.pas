@@ -1099,7 +1099,7 @@ begin
       '       E.NUMERO AS EMP_NUMERO, E.BAIRRO AS EMP_BAIRRO, E.CIDADE AS EMP_CIDADE, ' +
       '       E.UF AS EMP_UF, E.CEP AS EMP_CEP ' +
       'FROM NOTA_SAIDA NS ' +
-      'LEFT JOIN CLIENTE C ON C.ID = NS.CLIENTE_ID ' +
+      'LEFT JOIN PESSOA C ON C.ID = NS.CLIENTE_ID AND C.TIPO = ''C'' ' +
       'LEFT JOIN EMPRESA E ON E.ID = NS.EMPRESA_ID ' +
       'WHERE NS.ID = :ID';
     LCab.ParamByName('ID').AsLargeInt := ANotaId;

@@ -114,7 +114,7 @@ begin
     'CASE CR.STATUS WHEN ''A'' THEN ''Aberta'' WHEN ''P'' THEN ''Paga'' ' +
     'WHEN ''C'' THEN ''Cancelada'' END AS STATUS_DESC ' +
     'FROM CONTA_RECEBER CR ' +
-    'LEFT JOIN CLIENTE C ON C.ID = CR.CLIENTE_ID ' +
+    'LEFT JOIN PESSOA C ON C.ID = CR.CLIENTE_ID AND C.TIPO = ''C'' ' +
     'WHERE CR.DATA_VENCIMENTO BETWEEN :DI AND :DF';
 
   if cmbStatusFiltro.ItemIndex > 0 then

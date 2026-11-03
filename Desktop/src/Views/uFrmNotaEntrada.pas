@@ -349,10 +349,10 @@ begin
 
   FNotas.SQL.Text :=
     'SELECT N.ID, N.NUMERO, N.SERIE, N.MODELO, N.DATA_ENTRADA, N.VALOR_TOTAL, ' +
-    '  N.STATUS, COALESCE(F.NOME_FANTASIA, F.RAZAO_SOCIAL, ''(sem fornecedor)'') AS FORNECEDOR, ' +
+    '  N.STATUS, COALESCE(F.NOME_FANTASIA, F.NOME, ''(sem fornecedor)'') AS FORNECEDOR, ' +
     '  CASE N.STATUS WHEN ''A'' THEN ''Aberta'' WHEN ''P'' THEN ''Processada'' ' +
     '       WHEN ''C'' THEN ''Cancelada'' ELSE N.STATUS END AS STATUS_DESC ' +
-    'FROM NOTA_ENTRADA N LEFT JOIN FORNECEDOR F ON F.ID = N.FORNECEDOR_ID ' +
+    'FROM NOTA_ENTRADA N LEFT JOIN PESSOA F ON F.ID = N.FORNECEDOR_ID AND F.TIPO = ''F'' ' +
     'WHERE N.DATA_ENTRADA BETWEEN :DI AND :DF';
 
   case cmbFiltroStatus.ItemIndex of
@@ -562,8 +562,8 @@ begin
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
     LQuery.SQL.Text :=
-      'SELECT N.*, COALESCE(F.NOME_FANTASIA, F.RAZAO_SOCIAL, '''') AS FORNECEDOR_NOME ' +
-      'FROM NOTA_ENTRADA N LEFT JOIN FORNECEDOR F ON F.ID = N.FORNECEDOR_ID ' +
+      'SELECT N.*, COALESCE(F.NOME_FANTASIA, F.NOME, '''') AS FORNECEDOR_NOME ' +
+      'FROM NOTA_ENTRADA N LEFT JOIN PESSOA F ON F.ID = N.FORNECEDOR_ID AND F.TIPO = ''F'' ' +
       'WHERE N.ID = :ID';
     LQuery.ParamByName('ID').AsLargeInt := ANotaId;
     LQuery.Open;
@@ -633,13 +633,13 @@ begin
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
     LQuery.SQL.Text :=
-      'SELECT FIRST 1 ID, COALESCE(NOME_FANTASIA, RAZAO_SOCIAL) AS NOME FROM FORNECEDOR ' +
-      'WHERE CAST(ID AS VARCHAR(20)) = :T ' +
-      '   OR REPLACE(REPLACE(REPLACE(COALESCE(CPF_CNPJ, CNPJ), ''.'', ''''), ''/'', ''''), ''-'', '''') = ' +
+      'SELECT FIRST 1 ID, COALESCE(NOME_FANTASIA, NOME) AS NOME FROM PESSOA ' +
+      'WHERE TIPO = ''F'' AND (CAST(ID AS VARCHAR(20)) = :T ' +
+      '   OR REPLACE(REPLACE(REPLACE(COALESCE(CPF_CNPJ, ''''), ''.'', ''''), ''/'', ''''), ''-'', '''') = ' +
       // CAST obrigatório: sem ele o Firebird infere o parâmetro como CHAR(1)
       // (ver comentário em ImportarXML)
       '      REPLACE(REPLACE(REPLACE(CAST(:T AS VARCHAR(40)), ''.'', ''''), ''/'', ''''), ''-'', '''') ' +
-      '   OR UPPER(COALESCE(NOME_FANTASIA, RAZAO_SOCIAL)) STARTING WITH UPPER(:T) ' +
+      '   OR UPPER(COALESCE(NOME_FANTASIA, NOME)) STARTING WITH UPPER(:T)) ' +
       'ORDER BY ID';
     LQuery.ParamByName('T').AsString := LTexto;
     LQuery.Open;
@@ -1178,8 +1178,8 @@ begin
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
     LQuery.SQL.Text :=
-      'SELECT FIRST 1 ID FROM FORNECEDOR WHERE ' +
-      'REPLACE(REPLACE(REPLACE(COALESCE(CPF_CNPJ, CNPJ, ''''), ''.'', ''''), ''/'', ''''), ''-'', '''') = ' +
+      'SELECT FIRST 1 ID FROM PESSOA WHERE TIPO = ''F'' AND ' +
+      'REPLACE(REPLACE(REPLACE(COALESCE(CPF_CNPJ, ''''), ''.'', ''''), ''/'', ''''), ''-'', '''') = ' +
       // CAST obrigatório: sem ele o Firebird infere o parâmetro como CHAR(1)
       // dentro do REPLACE aninhado e o Execute falha com "string right truncation"
       'REPLACE(REPLACE(REPLACE(CAST(:DOC AS VARCHAR(40)), ''.'', ''''), ''/'', ''''), ''-'', '''') ' +
@@ -1194,8 +1194,9 @@ begin
     begin
       // Tenta pelo nome (razão social / fantasia)
       LQuery.SQL.Text :=
-        'SELECT FIRST 1 ID FROM FORNECEDOR WHERE UPPER(COALESCE(RAZAO_SOCIAL, NOME_FANTASIA)) = UPPER(:NOME) ' +
-        'OR UPPER(COALESCE(NOME_FANTASIA, RAZAO_SOCIAL)) = UPPER(:NOME) ORDER BY ID';
+        'SELECT FIRST 1 ID FROM PESSOA WHERE TIPO = ''F'' AND ' +
+        '(UPPER(COALESCE(NOME, NOME_FANTASIA)) = UPPER(:NOME) ' +
+        'OR UPPER(COALESCE(NOME_FANTASIA, NOME)) = UPPER(:NOME)) ORDER BY ID';
       LQuery.ParamByName('NOME').AsString := Trim(LNome);
       LQuery.Open;
       if not LQuery.IsEmpty then

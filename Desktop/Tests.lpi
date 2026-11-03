@@ -43,7 +43,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src\Tests\uFrmClientesTest.pas"/>
+        <Filename Value="src\Tests\uPessoaTest.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -79,7 +79,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src\Models\uCliente.pas"/>
+        <Filename Value="src\Models\uPessoa.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -99,7 +99,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src\Services\uClienteService.pas"/>
+        <Filename Value="src\Services\uPessoaService.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
     </Units>

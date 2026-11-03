@@ -1,0 +1,371 @@
+inherited frmPessoas: TfrmPessoas
+  Height = 650
+  Width = 850
+  Caption = 'Cadastro de Pessoas'
+  ClientHeight = 650
+  ClientWidth = 850
+  inherited pnlTopo: TPanel
+    Width = 850
+    ClientWidth = 850
+    inherited lblTitulo: TLabel
+      Height = 28
+      Width = 83
+    end
+  end
+  inherited pnlBotoes: TPanel
+    Width = 850
+    ClientWidth = 850
+  end
+  inherited pnlPesquisa: TPanel
+    Width = 850
+    ClientWidth = 850
+    inherited lblPesquisa: TLabel
+      Height = 15
+      Width = 53
+    end
+    inherited edtPesquisa: TEdit
+      Height = 23
+    end
+    object lblFiltroTipo: TLabel
+      Left = 200
+      Height = 15
+      Top = 8
+      Width = 23
+      Caption = 'Tipo:'
+    end
+    object cmbFiltroTipo: TComboBox
+      Left = 230
+      Height = 23
+      Top = 4
+      Width = 120
+      Style = csDropDownList
+      OnChange = cmbFiltroTipoChange
+    end
+  end
+  inherited PageControl1: TPageControl
+    Height = 520
+    Width = 850
+    inherited tsListagem: TTabSheet
+      ClientHeight = 442
+      ClientWidth = 842
+      inherited dbGrid: TDBGrid
+        Height = 442
+        Width = 842
+      end
+    end
+    inherited tsCadastro: TTabSheet
+      ClientHeight = 492
+      ClientWidth = 842
+      object lblTipo: TLabel
+        Left = 16
+        Height = 15
+        Top = 10
+        Width = 24
+        Caption = 'Tipo:'
+      end
+      object cmbTipo: TComboBox
+        Left = 16
+        Height = 23
+        Top = 28
+        Width = 120
+        Style = csDropDownList
+        OnChange = cmbTipoChange
+      end
+      object lblTipoPessoa: TLabel
+        Left = 150
+        Height = 15
+        Top = 10
+        Width = 66
+        Caption = 'Tipo Pessoa:'
+      end
+      object cmbTipoPessoa: TComboBox
+        Left = 150
+        Height = 23
+        Top = 28
+        Width = 120
+        Style = csDropDownList
+      end
+      object lblNome: TLabel
+        Left = 16
+        Height = 15
+        Top = 60
+        Width = 31
+        Caption = 'Nome:'
+      end
+      object edtNome: TEdit
+        Left = 16
+        Height = 23
+        Top = 78
+        Width = 400
+      end
+      object lblNomeFantasia: TLabel
+        Left = 430
+        Height = 15
+        Top = 60
+        Width = 83
+        Caption = 'Nome Fantasia:'
+      end
+      object edtNomeFantasia: TEdit
+        Left = 430
+        Height = 23
+        Top = 78
+        Width = 400
+      end
+      object lblCpfCnpj: TLabel
+        Left = 16
+        Height = 15
+        Top = 110
+        Width = 62
+        Caption = 'CPF/CNPJ:'
+      end
+      object edtCpfCnpj: TEdit
+        Left = 16
+        Height = 23
+        Top = 128
+        Width = 200
+      end
+      object lblRgIe: TLabel
+        Left = 230
+        Height = 15
+        Top = 110
+        Width = 43
+        Caption = 'RG/IE:'
+      end
+      object edtRgIe: TEdit
+        Left = 230
+        Height = 23
+        Top = 128
+        Width = 200
+      end
+      object lblDataNascimento: TLabel
+        Left = 450
+        Height = 15
+        Top = 110
+        Width = 108
+        Caption = 'Data Nascimento:'
+      end
+      object edtDataNascimento: TEdit
+        Left = 450
+        Height = 23
+        Top = 128
+        Width = 120
+      end
+      object lblEndereco: TLabel
+        Left = 16
+        Height = 15
+        Top = 160
+        Width = 50
+        Caption = 'Endereço:'
+      end
+      object edtEndereco: TEdit
+        Left = 16
+        Height = 23
+        Top = 178
+        Width = 400
+      end
+      object lblNumero: TLabel
+        Left = 430
+        Height = 15
+        Top = 160
+        Width = 47
+        Caption = 'Número:'
+      end
+      object edtNumero: TEdit
+        Left = 430
+        Height = 23
+        Top = 178
+        Width = 100
+      end
+      object lblComplemento: TLabel
+        Left = 540
+        Height = 15
+        Top = 160
+        Width = 77
+        Caption = 'Complemento:'
+      end
+      object edtComplemento: TEdit
+        Left = 540
+        Height = 23
+        Top = 178
+        Width = 290
+      end
+      object lblBairro: TLabel
+        Left = 16
+        Height = 15
+        Top = 210
+        Width = 38
+        Caption = 'Bairro:'
+      end
+      object edtBairro: TEdit
+        Left = 16
+        Height = 23
+        Top = 228
+        Width = 200
+      end
+      object lblPais: TLabel
+        Left = 230
+        Height = 15
+        Top = 210
+        Width = 29
+        Caption = 'País:'
+      end
+      object cmbPais: TComboBox
+        Left = 230
+        Height = 23
+        Top = 228
+        Width = 200
+        Style = csDropDownList
+        OnChange = cmbPaisChange
+      end
+      object lblEstado: TLabel
+        Left = 450
+        Height = 15
+        Top = 210
+        Width = 39
+        Caption = 'Estado:'
+      end
+      object cmbEstado: TComboBox
+        Left = 450
+        Height = 23
+        Top = 228
+        Width = 200
+        Style = csDropDownList
+        OnChange = cmbEstadoChange
+      end
+      object lblCidade: TLabel
+        Left = 16
+        Height = 15
+        Top = 260
+        Width = 38
+        Caption = 'Cidade:'
+      end
+      object cmbCidade: TComboBox
+        Left = 16
+        Height = 23
+        Top = 278
+        Width = 400
+        Style = csDropDownList
+      end
+      object lblUf: TLabel
+        Left = 430
+        Height = 15
+        Top = 260
+        Width = 20
+        Caption = 'UF:'
+      end
+      object cmbUf: TComboBox
+        Left = 430
+        Height = 23
+        Top = 278
+        Width = 50
+        Style = csDropDownList
+      end
+      object lblCep: TLabel
+        Left = 500
+        Height = 15
+        Top = 260
+        Width = 23
+        Caption = 'CEP:'
+      end
+      object edtCep: TEdit
+        Left = 500
+        Height = 23
+        Top = 278
+        Width = 100
+      end
+      object lblTelefone: TLabel
+        Left = 16
+        Height = 15
+        Top = 310
+        Width = 45
+        Caption = 'Telefone:'
+      end
+      object edtTelefone: TEdit
+        Left = 16
+        Height = 23
+        Top = 328
+        Width = 150
+      end
+      object lblCelular: TLabel
+        Left = 180
+        Height = 15
+        Top = 310
+        Width = 39
+        Caption = 'Celular:'
+      end
+      object edtCelular: TEdit
+        Left = 180
+        Height = 23
+        Top = 328
+        Width = 150
+      end
+      object lblEmail: TLabel
+        Left = 350
+        Height = 15
+        Top = 310
+        Width = 30
+        Caption = 'Email:'
+      end
+      object edtEmail: TEdit
+        Left = 350
+        Height = 23
+        Top = 328
+        Width = 240
+      end
+      object lblContato: TLabel
+        Left = 16
+        Height = 15
+        Top = 360
+        Width = 47
+        Caption = 'Contato:'
+      end
+      object edtContato: TEdit
+        Left = 16
+        Height = 23
+        Top = 378
+        Width = 300
+      end
+      object lblLimiteCredito: TLabel
+        Left = 330
+        Height = 15
+        Top = 360
+        Width = 87
+        Caption = 'Limite Crédito:'
+      end
+      object edtLimiteCredito: TEdit
+        Left = 330
+        Height = 23
+        Top = 378
+        Width = 120
+      end
+      object lblStatus: TLabel
+        Left = 470
+        Height = 15
+        Top = 360
+        Width = 37
+        Caption = 'Status:'
+      end
+      object cmbStatus: TComboBox
+        Left = 470
+        Height = 23
+        Top = 378
+        Width = 100
+        Style = csDropDownList
+      end
+      object lblObservacoes: TLabel
+        Left = 16
+        Height = 15
+        Top = 410
+        Width = 78
+        Caption = 'Observações:'
+      end
+      object mmoObservacoes: TMemo
+        Left = 16
+        Height = 52
+        Top = 428
+        Width = 810
+        TabOrder = 0
+      end
+    end
+  end
+end

@@ -123,7 +123,7 @@ begin
     LQuery.SQL.Text :=
       'SELECT PV.ID, PV.NUMERO, C.NOME AS CLIENTE, PV.TOTAL, PV.DATA_EMISSAO, ' +
       '(SELECT COUNT(*) FROM ITEM_PEDIDO I WHERE I.PEDIDO_VENDA_ID = PV.ID) AS ITENS ' +
-      'FROM PEDIDO_VENDA PV LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
+      'FROM PEDIDO_VENDA PV LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
       'WHERE PV.STATUS = ''O'' AND PV.EMPRESA_ID = :EMP ' +
       'ORDER BY PV.DATA_EMISSAO DESC, PV.ID DESC';
     LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
@@ -189,7 +189,7 @@ begin
       'SELECT PV.ID, PV.NUMERO, PV.CLIENTE_ID, PV.STATUS, PV.SUBTOTAL, ' +
       'PV.DESCONTO, PV.TOTAL, PV.DATA_EMISSAO, PV.OBSERVACOES, ' +
       'C.NOME AS CLIENTE_NOME ' +
-      'FROM PEDIDO_VENDA PV LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
+      'FROM PEDIDO_VENDA PV LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
       'WHERE PV.ID = :ID AND PV.STATUS = ''O'' AND PV.EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := LId;
     LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
@@ -337,7 +337,7 @@ begin
 
         { Cliente precisa existir, estar ativo e ser da empresa do token }
         LQuery.SQL.Text :=
-          'SELECT ID FROM CLIENTE WHERE ID = :ID AND ATIVO = ''A'' AND EMPRESA_ID = :EMP';
+          'SELECT ID FROM PESSOA WHERE ID = :ID AND TIPO = ''C'' AND ATIVO = ''A'' AND EMPRESA_ID = :EMP';
         LQuery.ParamByName('ID').AsLargeInt := LClienteId;
         LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
         LQuery.Open;

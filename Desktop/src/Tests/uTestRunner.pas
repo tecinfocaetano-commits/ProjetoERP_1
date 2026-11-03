@@ -14,7 +14,7 @@ uses
   Classes, SysUtils,
   uAssert,
   uFrmLoginTest,
-  uFrmClientesTest,
+  uPessoaTest,
   uFrmProdutosTest,
   uFrmCategoriasTest,
   uFrmUsuariosTest,
@@ -58,8 +58,8 @@ begin
     TLoginTest.RunAllTests(LSuite);
     WriteLn('');
 
-    // Executar testes de Clientes
-    TClientesTest.RunAllTests(LSuite);
+    // Executar testes de Pessoas (D3)
+    TPessoaTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Executar testes de Produtos

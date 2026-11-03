@@ -336,7 +336,7 @@ begin
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT ID, NOME FROM CLIENTE WHERE ATIVO = ''A'' ORDER BY NOME';
+    LQuery.SQL.Text := 'SELECT ID, NOME FROM PESSOA WHERE TIPO = ''C'' AND ATIVO = ''A'' ORDER BY NOME';
     LQuery.Open;
     while not LQuery.EOF do
     begin

@@ -35,11 +35,14 @@
 | 7 | Produto Produção com Cores (expor `COR`) | ✅ concluído (01/11) | diálogo `uFrmCoresProduto`; §3.8 |
 | 8 | Compras → gerar Nota de Entrada na confirmação | ✅ concluído (01/11) | `CriarDoPedidoCompra`; §3.9 |
 | 9 | Vínculo geo (país/estado/cidade) em CLIENTE/FORNECEDOR | ✅ concluído (01/11) | migração `017` (`CIDADE_ID`); §3.7 |
-| 10 | Unificação CLIENTE+FORNECEDOR | ⏸ adiado | D3 |
+| 10 | Unificação CLIENTE+FORNECEDOR | ✅ concluído (02/11) | D3 — `PESSOA` (`TIPO` C/F), tela única **Pessoas**, API/consultas migradas; suíte 65/65 (§3.19) |
 | 11 | Android: orçamentos + telas | ✅ concluído (02/11) | API `/api/orcamentos` (listar/detalhar/criar/converter) + telas Android + menu inferior Material; validado no emulador (§3.17) |
 | 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | ✅ concluído (02/11) | D9 — commit `67d26f4`; validado no emulador (§3.13) |
-| 13 | Regenerar `Banco\schema_canonico.sql` (está anterior à `015`: sem `PAIS`, `CIDADE_ID`, `GRADE`, `ESTOQUE_MATERIAL`) | ✅ concluído (02/11) | regenerado do banco real: **49 tabelas / 602 campos**; round-trip e banco novo verdes (§3.15) |
+| 13 | Regenerar `Banco\schema_canonico.sql` (está anterior à `015`: sem `PAIS`, `CIDADE_ID`, `GRADE`, `ESTOQUE_MATERIAL`) | ✅ concluído (02/11) | regenerado do banco real: **49 tabelas / 584 campos**; round-trip e banco novo verdes (§3.15 e §3.19) |
 | 14 | **Encoding dos literais acentuados** — o fonte é UTF-8, mas o processo não declarava a codepage padrão: o SQLDB tratava os bytes como CP1252 e gravava `NF de saÃ­da` | ✅ concluído (02/11) | adotado `SetMultiByteConversionCodePage(CP_UTF8)` no início do app/testes, **sem** `-FcUTF8` (que gerava 213 warnings e corrompia concatenações); ver §3.16 |
+| 15 | **Estoque: filtro de pesquisa** nas telas do módulo (movimentação/inventário/kardex) | ⏳ pendente | pedido do usuário em 02/11 |
+| 16 | **Financeiro: filtro de pesquisa** nas telas (contas a pagar/receber e movimento) | ⏳ pendente | pedido do usuário em 02/11 |
+| 17 | **Clientes: opção de incluir cliente** dentro da tela de clientes | ⏳ pendente | confirmar se é a tela **Pessoas** (desktop) ou a lista de **Clientes** do Android |
 
 ---
 
@@ -478,6 +481,35 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   todas carregaram o `.lfm` sem erro. O build não valida `.lfm`; este smoke
   foi a garantia de que nenhum componente novo ficou fora do arquivo.
 
+### 3.19 D3 — Unificação CLIENTE+FORNECEDOR em PESSOA (02/11, concluído)
+
+- **Banco:** `Banco/018_unificar_pessoa.sql` aplicado no `DADOS.FDB` (backup
+  `DADOS_backup_antes_018.fdb`). Tabela única `PESSOA` com `TIPO` `C`/`F`
+  (`TIPO_PESSOA` F/J preservado); IDs de cliente mantidos e fornecedores
+  remapeados para 1341/1342; `GEN_PESSOA_ID` acima do maior ID; zero órfãos;
+  `CLIENTE` e `FORNECEDOR` removidas. Rollback em
+  `018_unificar_pessoa_rollback.sql`.
+- **Desktop:** `uPessoa`, `uPessoaService` e `uFrmPessoas` (menu Cadastros >
+  **Pessoas**), com filtro Todos/Clientes/Fornecedores, tipo imutável após
+  salvo e exclusão bloqueada quando referenciada em conta a receber/pagar,
+  nota de entrada/saída, pedido de compra/venda, produto ou financeiro.
+  Telas antigas de Clientes/Fornecedores removidas; consultas migradas para
+  `PESSOA` em 18 units.
+- **API:** `/api/clientes` continua com o mesmo contrato e filtra
+  `TIPO = 'C'`; joins de financeiro, vendas e orçamentos apontam para
+  `PESSOA`. Nenhuma dependência nova no Android.
+- **Testes:** `uPessoaTest` substitui `uFrmClientesTest` (12 testes do D3);
+  suíte **65/65**. Causa do `Invalid variant type cast`: o repositório
+  genérico só aceita valores string e o SQLDB não converte `yyyy-mm-dd`
+  para `ftDate`; o `TPessoaService` passou a montar o INSERT/UPDATE com
+  `AsDateTime` (ou `NULL`) em `DATA_NASCIMENTO`.
+- **Validação:** build desktop 0 erros/0 warnings; build API OK; Android
+  `BUILD SUCCESSFUL`; `schema_canonico.sql` regenerado (49 tabelas /
+  584 campos) com round-trip vazio; emulador `Pixel_9` com **9 clientes**,
+  faturamento **R$ 70,00**, a receber **R$ 170,00** e a pagar
+  **R$ 1.595,00**; smoke de runtime instanciou as 11 telas alteradas
+  (0 falhas).
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)
@@ -489,12 +521,3 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - `PRODUTO` é o produto de produção (nome físico mantido; `PRODUTO_PRODUCAO` é conceitual).
 - `PRODUTO_FINANCEIRO` não existe mais.
 - Android: preservar todos os `android:id`.
-
-### 3.16 D3 - Unificação CLIENTE+FORNECEDOR (plano criado 02/11, aguardando aprovação)
-
-- Criados scripts de migração (não aplicados):
-  - Banco/018_unificar_pessoa.sql
-  - Banco/018_unificar_pessoa_rollback.sql
-- Criado plano detalhado: Documentacao/PLANO_D3_UNIFICACAO_CLIENTE_FORNECEDOR.md
-- Arquivos não commitados - aguardando aprovação do usuário antes de aplicar
-- Árvore suja: 3 arquivos untracked

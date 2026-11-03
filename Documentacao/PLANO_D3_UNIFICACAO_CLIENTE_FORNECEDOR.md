@@ -464,22 +464,22 @@ teste antigo for mantido).
 
 ## 11. Ordem de execução (checklist)
 
-1. [ ] Aprovar este plano.
-2. [ ] Criar cópia de teste do `DADOS.FDB`.
-3. [ ] Escrever `018_unificar_pessoa.sql` e o rollback.
-4. [ ] Aplicar 018 na cópia; rodar validações 4.3; aplicar rollback e comparar.
-5. [ ] Fazer o backup real `DADOS_backup_antes_018.fdb`.
-6. [ ] Aplicar 018 no `DADOS.FDB` real (API/desktop fechados).
-7. [ ] Rodar validações 4.3 no banco real.
-8. [ ] Criar `uPessoa`, `uPessoaService`, `uFrmPessoas`; ajustar menu e projeto.
-9. [ ] Migrar as consultas/joints para `PESSOA` (seção 6.3).
-10. [ ] Ajustar API (`uRotasClientes`, `uRotasFinanceiro`, `uRotasVendas`,
+1. [x] Aprovar este plano.
+2. [x] Criar cópia de teste do `DADOS.FDB`.
+3. [x] Escrever `018_unificar_pessoa.sql` e o rollback.
+4. [x] Aplicar 018 na cópia; rodar validações 4.3; aplicar rollback e comparar.
+5. [x] Fazer o backup real `DADOS_backup_antes_018.fdb`.
+6. [x] Aplicar 018 no `DADOS.FDB` real (API/desktop fechados).
+7. [x] Rodar validações 4.3 no banco real.
+8. [x] Criar `uPessoa`, `uPessoaService`, `uFrmPessoas`; ajustar menu e projeto.
+9. [x] Migrar as consultas/joints para `PESSOA` (seção 6.3).
+10. [x] Ajustar API (`uRotasClientes`, `uRotasFinanceiro`, `uRotasVendas`,
     `uRotasOrcamentos`).
-11. [ ] Substituir os testes; rodar build desktop 0/0 e suíte.
-12. [ ] Build API; build Android; smoke no emulador.
-13. [ ] Regenerar `schema_canonico.sql`; rodar round-trip.
-14. [ ] Atualizar docs e checkpoint.
-15. [ ] Commit único do marco D3.
+11. [x] Substituir os testes; rodar build desktop 0/0 e suíte.
+12. [x] Build API; build Android; smoke no emulador.
+13. [x] Regenerar `schema_canonico.sql`; rodar round-trip.
+14. [x] Atualizar docs e checkpoint.
+15. [x] Commit único do marco D3.
 
 ---
 

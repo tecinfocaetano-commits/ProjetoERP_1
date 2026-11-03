@@ -247,7 +247,7 @@ begin
     '  N.STATUS, N.CHAVE_ACESSO, COALESCE(C.NOME, ''(sem cliente)'') AS CLIENTE, ' +
     '  CASE N.STATUS WHEN ''A'' THEN ''Aberta'' WHEN ''P'' THEN ''Faturada'' ' +
     '       WHEN ''C'' THEN ''Cancelada'' ELSE N.STATUS END AS STATUS_DESC ' +
-    'FROM NOTA_SAIDA N LEFT JOIN CLIENTE C ON C.ID = N.CLIENTE_ID ' +
+    'FROM NOTA_SAIDA N LEFT JOIN PESSOA C ON C.ID = N.CLIENTE_ID AND C.TIPO = ''C'' ' +
     'WHERE N.DATA_SAIDA BETWEEN :DI AND :DF';
 
   case cmbFiltroStatus.ItemIndex of
@@ -281,7 +281,7 @@ begin
     '  (SELECT COUNT(*) FROM ITEM_PEDIDO I WHERE I.PEDIDO_VENDA_ID = PV.ID) AS ITENS, ' +
     '  ' + SqlCaseStatusPedido('PV.STATUS') + ' AS SITUACAO ' +
     'FROM PEDIDO_VENDA PV ' +
-    '  LEFT JOIN CLIENTE C ON C.ID = PV.CLIENTE_ID ' +
+    '  LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
     '  LEFT JOIN CONDICAO_PAGAMENTO CP ON CP.ID = PV.CONDICAO_PAGAMENTO_ID ' +
     'WHERE PV.STATUS IN (''P'', ''A'') ' +
     '  AND NOT EXISTS (SELECT 1 FROM NOTA_SAIDA NS ' +
@@ -469,7 +469,7 @@ begin
     LQuery.SQL.Text :=
       'SELECT N.*, COALESCE(C.NOME, '''') AS CLIENTE_NOME, PV.NUMERO AS PEDIDO_NUMERO ' +
       'FROM NOTA_SAIDA N ' +
-      '  LEFT JOIN CLIENTE C ON C.ID = N.CLIENTE_ID ' +
+      '  LEFT JOIN PESSOA C ON C.ID = N.CLIENTE_ID AND C.TIPO = ''C'' ' +
       '  LEFT JOIN PEDIDO_VENDA PV ON PV.ID = N.PEDIDO_VENDA_ID ' +
       'WHERE N.ID = :ID';
     LQuery.ParamByName('ID').AsLargeInt := ANotaId;
@@ -622,12 +622,12 @@ begin
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
     LQuery.SQL.Text :=
-      'SELECT FIRST 1 ID, NOME FROM CLIENTE ' +
-      'WHERE CAST(ID AS VARCHAR(20)) = :T ' +
+      'SELECT FIRST 1 ID, NOME FROM PESSOA ' +
+      'WHERE TIPO = ''C'' AND (CAST(ID AS VARCHAR(20)) = :T ' +
       '   OR REPLACE(REPLACE(REPLACE(COALESCE(CPF_CNPJ, ''''), ''.'', ''''), ''/'', ''''), ''-'', '''') = ' +
       // CAST obrigatório: sem ele o Firebird infere o parâmetro como CHAR(1)
       '      REPLACE(REPLACE(REPLACE(CAST(:T AS VARCHAR(40)), ''.'', ''''), ''/'', ''''), ''-'', '''') ' +
-      '   OR UPPER(NOME) STARTING WITH UPPER(:T) ' +
+      '   OR UPPER(NOME) STARTING WITH UPPER(:T)) ' +
       'ORDER BY ID';
     LQuery.ParamByName('T').AsString := LTexto;
     LQuery.Open;

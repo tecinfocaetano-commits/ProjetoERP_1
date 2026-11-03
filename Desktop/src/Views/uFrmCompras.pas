@@ -115,7 +115,7 @@ begin
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT ID, NOME FROM FORNECEDOR ORDER BY NOME';
+    LQuery.SQL.Text := 'SELECT ID, NOME FROM PESSOA WHERE TIPO = ''F'' ORDER BY NOME';
     LQuery.Open;
     while not LQuery.EOF do
     begin

@@ -81,15 +81,11 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src/Models/uCliente.pas"/>
+        <Filename Value="src/Models/uPessoa.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src/Models/uProduto.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src/Models/uFornecedor.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -129,7 +125,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src/Services/uClienteService.pas"/>
+        <Filename Value="src/Services/uPessoaService.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -194,22 +190,15 @@
         <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
-        <Filename Value="src/Views/uFrmClientes.pas"/>
+        <Filename Value="src/Views/uFrmPessoas.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frmClientes"/>
+        <ComponentName Value="frmPessoas"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
         <Filename Value="src/Views/uGeoCombos.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="src/Views/uFrmFornecedores.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="frmFornecedores"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
         <Filename Value="src/Views/uFrmProdutos.pas"/>
@@ -388,7 +377,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="src/Tests/uFrmClientesTest.pas"/>
+        <Filename Value="src/Tests/uPessoaTest.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

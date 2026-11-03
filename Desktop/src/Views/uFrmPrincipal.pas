@@ -21,8 +21,7 @@ type
     mnuSupMateriais: TMenuItem;
     mnuSupCompras: TMenuItem;
     mnuCadastros: TMenuItem;
-    mnuCadClientes: TMenuItem;
-    mnuCadFornecedores: TMenuItem;
+    mnuCadPessoas: TMenuItem;
     mnuCadProdutos: TMenuItem;
     mnuCadCategorias: TMenuItem;
     mnuCadGrades: TMenuItem;
@@ -73,8 +72,7 @@ type
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
-    procedure mnuCadClientesClick(Sender: TObject);
-    procedure mnuCadFornecedoresClick(Sender: TObject);
+    procedure mnuCadPessoasClick(Sender: TObject);
     procedure mnuCadProdutosClick(Sender: TObject);
     procedure mnuCadCategoriasClick(Sender: TObject);
     procedure mnuCadGradesClick(Sender: TObject);
@@ -120,7 +118,7 @@ var
 implementation
 
 uses
-  uFrmClientes, uFrmFornecedores, uFrmProdutos, uFrmCategorias, uFrmUsuarios,
+  uFrmPessoas, uFrmProdutos, uFrmCategorias, uFrmUsuarios,
   uFrmMovEstoque, uFrmKardex, uFrmInventario,
   uFrmNotaEntrada, uFrmNotaSaida, uFrmMapaProducao, uFrmBipagem,
   uFrmFichaTecnica, uFrmConsumoMaterial,
@@ -187,14 +185,9 @@ begin
 end;
 
 // === CADASTROS ===
-procedure TfrmPrincipal.mnuCadClientesClick(Sender: TObject);
+procedure TfrmPrincipal.mnuCadPessoasClick(Sender: TObject);
 begin
-  AbrirFormulario(TfrmClientes);
-end;
-
-procedure TfrmPrincipal.mnuCadFornecedoresClick(Sender: TObject);
-begin
-  AbrirFormulario(TfrmFornecedores);
+  AbrirFormulario(TfrmPessoas);
 end;
 
 procedure TfrmPrincipal.mnuCadProdutosClick(Sender: TObject);

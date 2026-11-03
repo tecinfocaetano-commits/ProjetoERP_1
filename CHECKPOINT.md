@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **62/62**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **65/65**). Ruído conhecido: `InitializeFppkg failed`.
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
 Regras do projeto: português; regra de negócio em Services; SQL sempre
@@ -26,13 +26,14 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (02/11/2026)
 
-**HEAD:** `f13068a` (Android: dashboard de vendas e configuracoes no menu de tres pontinhos). Árvore: suja (3 arquivos não commitados: D3).
-Build: 0 erros · suíte 62/62 (última verificação: 01/11).
+**HEAD:** `1fa8c52` + commit do **D3** desta sessão (ver `git log --oneline -1`).
+Build: **0 erros / 0 warnings** · suíte **65/65** (02/11).
 
 ### O que fechou nesta sessão
 
 | Item | Entrega |
 |---|---|
+| **D3 — PESSOA unificada** | `CLIENTE` + `FORNECEDOR` → `PESSOA` (`TIPO` C/F). Tela única **Cadastros > Pessoas** (`uFrmPessoas`) com filtro Todos/Clientes/Fornecedores; tipo imutável após salvo; exclusão bloqueada quando referenciada. API `/api/clientes` mantém o contrato e filtra `TIPO='C'`. Suíte **65/65** (§3.19) |
 | **Dashboard de vendas (Android)** | `activity_dashboard.xml` sem botões: faturamento do mês + vendas, A receber / A pagar, orçamentos abertos, clientes e as 3 últimas vendas; cards abrem `OrcamentosActivity`, `ClientesActivity` e `VendasActivity`. Configuração e saída foram para o menu **⋮** (Atualizar resumo / Configuração / Sair). Validado no emulador — §3.18 |
 | **Seta de voltar + busca** | `BaseActivity` centraliza a seta em todas as telas; `BaseListaActivity` coloca a barra de pesquisa ao lado dela (Clientes e Vendas), filtrando sem diferenciar caixa/acentos. Commit `1a1c719` |
 | **Resumo financeiro da API** | `SUM(CASE ...)` vinha como BCD nulo no driver e zerava `a_receber`/`a_pagar`/`faturamento_mes`; somas agora com `CAST(... AS DOUBLE PRECISION)`. `ApiClient.get` repete GET até 3× em queda de conexão. Detalhes em §3.18 |
@@ -60,20 +61,27 @@ Build: 0 erros · suíte 62/62 (última verificação: 01/11).
   orçamentos) e `Android\CONFIGURACAO_POR_EMPRESA.md` (D9).
 - Banco **sem migração nova** nesta sessão (orçamento reusa `PEDIDO_VENDA`).
 
-### Em andamento (não commitado)
-- **D3 (Unificação CLIENTE+FORNECEDOR)**: scripts de migração criados mas não aplicados
-  - Banco/018_unificar_pessoa.sql
-  - Banco/018_unificar_pessoa_rollback.sql
-  - Documentacao/PLANO_D3_UNIFICACAO_CLIENTE_FORNECEDOR.md (plano detalhado)
-  - Aguardando aprovação do usuário antes de aplicar
+- **D3 validado (02/11):** migração `018` aplicada no banco real (backup
+  `Banco\DADOS_backup_antes_018.fdb`); **9 clientes / 2 fornecedores** em
+  `PESSOA`, zero órfãos, tabelas antigas removidas. Build desktop **0/0**,
+  suíte **65/65**, build API OK, Android `BUILD SUCCESSFUL`, schema canônico
+  regenerado (49 tabelas / 584 campos) com round-trip vazio. Emulador
+  `Pixel_9`: 9 clientes, faturamento R$ 70,00, a receber R$ 170,00, a pagar
+  R$ 1.595,00. Smoke de runtime instanciou as 11 telas alteradas (0 falhas).
 
 ### Próximo passo (executável)
-1. Aguardar aprovação do plano D3 (PLANO_D3_UNIFICACAO_CLIENTE_FORNECEDOR.md)
-2. Se aprovado: aplicar migração 018 em cópia, validar, aplicar no real, adaptar código, testar
-3. Se não aprovado: decidir próxima demanda do usuário
-4. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e o `PLANO_E_LOG.md`; commitar.
-3. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint e
-   o `PLANO_E_LOG.md`; commitar.
+
+Pedidos do usuário após o D3 (02/11):
+
+1. **Estoque:** adicionar filtro de pesquisa nas telas do módulo
+   (movimentação/inventário/kardex).
+2. **Financeiro:** adicionar filtro de pesquisa nas telas
+   (contas a pagar/receber e movimento).
+3. **Clientes:** opção de **incluir cliente** dentro da tela de clientes —
+   confirmar se é a tela **Pessoas** (desktop) ou a lista de **Clientes**
+   do Android antes de implementar.
+
+Fechar cada item com build 0/0, suíte verde, docs e commit.
 
 ---
 
