@@ -26,7 +26,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (02/11/2026)
 
-**HEAD:** `1fa8c52` + commit do **D3** desta sessão (ver `git log --oneline -1`).
+**HEAD:** `3b78fc0` (D3) + este commit de docs do checkpoint.
 Build: **0 erros / 0 warnings** · suíte **65/65** (02/11).
 
 ### O que fechou nesta sessão
