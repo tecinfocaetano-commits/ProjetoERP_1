@@ -25,6 +25,8 @@ type
     lblStatusFiltro: TLabel;
     cmbStatusFiltro: TComboBox;
     btnFiltrar: TBitBtn;
+    lblPesquisa: TLabel;
+    edtPesquisa: TEdit;
     pnlBotoes: TPanel;
     btnNovo: TBitBtn;
     btnBaixar: TBitBtn;
@@ -40,6 +42,7 @@ type
     procedure btnNovoClick(Sender: TObject);
     procedure btnBaixarClick(Sender: TObject);
     procedure btnFecharClick(Sender: TObject);
+    procedure edtPesquisaKeyPress(Sender: TObject; var Key: char);
   private
     FConexao: TConexao;
     FQuery: TSQLQuery;
@@ -127,6 +130,10 @@ begin
     LSQL := LSQL + ' AND CR.STATUS = :STATUS';
   end;
 
+  if Trim(edtPesquisa.Text) <> '' then
+    LSQL := LSQL + ' AND (UPPER(COALESCE(C.NOME, '''')) CONTAINING UPPER(:PESQ)' +
+                   ' OR UPPER(COALESCE(CR.DESCRICAO, '''')) CONTAINING UPPER(:PESQ2))';
+
   LSQL := LSQL + ' ORDER BY CR.DATA_VENCIMENTO';
 
   if FQuery.Active then
@@ -136,6 +143,11 @@ begin
   FQuery.ParamByName('DF').AsDate := StrToDateDef(edtDataFim.Text, Now);
   if cmbStatusFiltro.ItemIndex > 0 then
     FQuery.ParamByName('STATUS').AsString := LStatus;
+  if Trim(edtPesquisa.Text) <> '' then
+  begin
+    FQuery.ParamByName('PESQ').AsString := Trim(edtPesquisa.Text);
+    FQuery.ParamByName('PESQ2').AsString := Trim(edtPesquisa.Text);
+  end;
   FQuery.Open;
   DataSource1.DataSet := FQuery;
 
@@ -228,6 +240,15 @@ end;
 procedure TfrmContasReceber.btnFiltrarClick(Sender: TObject);
 begin
   CarregarContas;
+end;
+
+procedure TfrmContasReceber.edtPesquisaKeyPress(Sender: TObject; var Key: char);
+begin
+  if Key = #13 then
+  begin
+    Key := #0;
+    CarregarContas;
+  end;
 end;
 
 procedure TfrmContasReceber.btnFecharClick(Sender: TObject);

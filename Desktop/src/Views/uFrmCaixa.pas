@@ -22,6 +22,9 @@ type
   TfrmCaixa = class(TForm)
     pnlTopo: TPanel;
     lblTitulo: TLabel;
+    lblPesquisa: TLabel;
+    edtPesquisa: TEdit;
+    btnPesquisar: TBitBtn;
     btnAtualizar: TBitBtn;
     btnFechar: TBitBtn;
     dbGridCaixas: TDBGrid;
@@ -34,8 +37,10 @@ type
     DataSource2: TDataSource;
     procedure FormCreate(Sender: TObject);
     procedure btnAtualizarClick(Sender: TObject);
+    procedure btnPesquisarClick(Sender: TObject);
     procedure btnFecharClick(Sender: TObject);
     procedure dbGridCaixasCellClick(Column: TColumn);
+    procedure edtPesquisaKeyPress(Sender: TObject; var Key: char);
   private
     FConexao: TConexao;
     FService: TCaixaService;
@@ -137,7 +142,7 @@ end;
 
 procedure TfrmCaixa.CarregarCaixas;
 begin
-  FService.CarregarCaixas(FQueryCaixas);
+  FService.CarregarCaixas(FQueryCaixas, Trim(edtPesquisa.Text));
   DataSource1.DataSet := FQueryCaixas;
 end;
 
@@ -172,7 +177,7 @@ begin
     Exit;
   end;
 
-  FService.CarregarMovimentos(FQueryMovimentos, LCaixa);
+  FService.CarregarMovimentos(FQueryMovimentos, LCaixa, Trim(edtPesquisa.Text));
   DataSource2.DataSet := FQueryMovimentos;
   AtualizarResumo(LCaixa);
 end;
@@ -201,6 +206,26 @@ end;
 procedure TfrmCaixa.btnFecharClick(Sender: TObject);
 begin
   Close;
+end;
+
+procedure TfrmCaixa.btnPesquisarClick(Sender: TObject);
+begin
+  try
+    CarregarCaixas;
+    CarregarMovimentosDoSelecionado;
+  except
+    on E: Exception do
+      MessageDlg('Erro ao pesquisar: ' + E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmCaixa.edtPesquisaKeyPress(Sender: TObject; var Key: char);
+begin
+  if Key = #13 then
+  begin
+    Key := #0;
+    btnPesquisarClick(Sender);
+  end;
 end;
 
 end.

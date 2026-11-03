@@ -1,5 +1,9 @@
 package com.example.erp2026_mobile;
 
+import android.content.Intent;
+
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -21,7 +25,7 @@ public class ClientesActivity extends BaseListaActivity {
 
     @Override
     protected String textoVazio() {
-        return "Nenhum cliente cadastrado.\nUse \"Inserir Cliente\" para cadastrar o primeiro.";
+        return "Nenhum cliente cadastrado.\nToque em \"Incluir cliente\" para cadastrar o primeiro.";
     }
 
     @Override
@@ -37,6 +41,15 @@ public class ClientesActivity extends BaseListaActivity {
     @Override
     protected String dicaBusca() {
         return "Pesquisar clientes";
+    }
+
+    @Override
+    protected void aoCriar() {
+        ExtendedFloatingActionButton fab = findViewById(R.id.fabIncluirCliente);
+        if (fab != null) {
+            fab.setOnClickListener(v ->
+                    startActivity(new Intent(this, InserirClienteActivity.class)));
+        }
     }
 
     @Override

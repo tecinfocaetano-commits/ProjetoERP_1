@@ -105,6 +105,21 @@ object frmMovEstoque: TfrmMovEstoque
       OnClick = btnFiltrarClick
       TabOrder = 1
     end
+    object lblPesquisa: TLabel
+      Left = 590
+      Height = 15
+      Top = 10
+      Width = 60
+      Caption = 'Pesquisar:'
+    end
+    object edtPesquisa: TEdit
+      Left = 654
+      Height = 23
+      Top = 7
+      Width = 185
+      OnKeyPress = edtPesquisaKeyPress
+      TabOrder = 4
+    end
   end
   object pnlBotoes: TPanel
     Left = 0

@@ -31,7 +31,7 @@ object frmKardex: TfrmKardex
   end
   object pnlFiltro: TPanel
     Left = 0
-    Height = 70
+    Height = 96
     Top = 50
     Width = 800
     Align = alTop
@@ -112,6 +112,30 @@ object frmKardex: TfrmKardex
       Width = 30
       Caption = 'OK'
       OnClick = btnFiltrarClick
+    end
+    object lblPesquisa: TLabel
+      Left = 8
+      Height = 16
+      Top = 64
+      Width = 60
+      Caption = 'Pesquisar:'
+    end
+    object edtPesquisa: TEdit
+      Left = 80
+      Height = 25
+      Top = 60
+      Width = 220
+      OnKeyPress = edtPesquisaKeyPress
+      TabOrder = 4
+    end
+    object btnPesquisarMov: TBitBtn
+      Left = 308
+      Height = 27
+      Top = 59
+      Width = 90
+      Caption = 'Pesquisar'
+      OnClick = btnPesquisarMovClick
+      TabOrder = 5
     end
   end
   object dbGrid: TDBGrid

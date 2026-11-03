@@ -30,6 +30,9 @@ type
     lblDataFim: TLabel;
     edtDataFim: TEdit;
     btnFiltrar: TBitBtn;
+    lblPesquisa: TLabel;
+    edtPesquisa: TEdit;
+    btnPesquisarMov: TBitBtn;
     btnFechar: TBitBtn;
     dbGrid: TDBGrid;
     DataSource1: TDataSource;
@@ -41,7 +44,9 @@ type
     procedure FormShow(Sender: TObject);
     procedure btnBuscarClick(Sender: TObject);
     procedure btnFiltrarClick(Sender: TObject);
+    procedure btnPesquisarMovClick(Sender: TObject);
     procedure btnFecharClick(Sender: TObject);
+    procedure edtPesquisaKeyPress(Sender: TObject; var Key: char);
   private
     FConexao: TConexao;
     FQuery: TSQLQuery;
@@ -142,6 +147,7 @@ end;
 procedure TfrmKardex.CarregarKardex;
 var
   LDataInicio, LDataFim: TDateTime;
+  LSQL: string;
 begin
   try
     if FProdutoId <= 0 then Exit;
@@ -152,9 +158,7 @@ begin
     LDataInicio := StrToDateDef(edtDataInicio.Text, Now);
     LDataFim := StrToDateDef(edtDataFim.Text, Now);
 
-    if FQuery.Active then
-      FQuery.Close;
-    FQuery.SQL.Text :=
+    LSQL :=
       'SELECT ME.DATA_MOVIMENTO, ' +
       'CASE ME.TIPO WHEN ''E'' THEN ''Entrada'' WHEN ''S'' THEN ''Saída'' ' +
       'WHEN ''A'' THEN ''Ajuste'' WHEN ''I'' THEN ''Inventário'' END AS TIPO, ' +
@@ -163,11 +167,25 @@ begin
       'ME.DOCUMENTO, ME.OBSERVACAO ' +
       'FROM MOVIMENTO_ESTOQUE ME ' +
       'WHERE ME.PRODUTO_ID = :PROD ' +
-      'AND ME.DATA_MOVIMENTO BETWEEN :DI AND :DF ' +
-      'ORDER BY ME.DATA_MOVIMENTO';
+      'AND ME.DATA_MOVIMENTO BETWEEN :DI AND :DF';
+
+    if Trim(edtPesquisa.Text) <> '' then
+      LSQL := LSQL + ' AND (UPPER(COALESCE(ME.DOCUMENTO, '''')) CONTAINING UPPER(:PESQ)' +
+                     ' OR UPPER(COALESCE(ME.OBSERVACAO, '''')) CONTAINING UPPER(:PESQ2))';
+
+    LSQL := LSQL + ' ORDER BY ME.DATA_MOVIMENTO';
+
+    if FQuery.Active then
+      FQuery.Close;
+    FQuery.SQL.Text := LSQL;
     FQuery.ParamByName('PROD').AsLargeInt := FProdutoId;
     FQuery.ParamByName('DI').AsDate := LDataInicio;
     FQuery.ParamByName('DF').AsDate := LDataFim + 1;
+    if Trim(edtPesquisa.Text) <> '' then
+    begin
+      FQuery.ParamByName('PESQ').AsString := Trim(edtPesquisa.Text);
+      FQuery.ParamByName('PESQ2').AsString := Trim(edtPesquisa.Text);
+    end;
     FQuery.Open;
     DataSource1.DataSet := FQuery;
   except
@@ -180,6 +198,7 @@ procedure TfrmKardex.CarregarResumo;
 var
   LQuery: TSQLQuery;
   LDataInicio, LDataFim: TDateTime;
+  LSQL: string;
 begin
   try
     if FConexao = nil then
@@ -188,19 +207,30 @@ begin
     LDataInicio := StrToDateDef(edtDataInicio.Text, Now);
     LDataFim := StrToDateDef(edtDataFim.Text, Now);
 
+    LSQL :=
+      'SELECT ' +
+      'COALESCE(SUM(CASE WHEN TIPO IN (''E'',''A'') THEN QUANTIDADE ELSE 0 END), 0) AS ENTRADAS, ' +
+      'COALESCE(SUM(CASE WHEN TIPO = ''S'' THEN QUANTIDADE ELSE 0 END), 0) AS SAIDAS ' +
+      'FROM MOVIMENTO_ESTOQUE ' +
+      'WHERE PRODUTO_ID = :PROD AND DATA_MOVIMENTO BETWEEN :DI AND :DF';
+
+    if Trim(edtPesquisa.Text) <> '' then
+      LSQL := LSQL + ' AND (UPPER(COALESCE(DOCUMENTO, '''')) CONTAINING UPPER(:PESQ)' +
+                     ' OR UPPER(COALESCE(OBSERVACAO, '''')) CONTAINING UPPER(:PESQ2))';
+
     LQuery := TSQLQuery.Create(nil);
     try
       LQuery.DataBase := FConexao.Connection;
       LQuery.Transaction := FConexao.Transaction;
-      LQuery.SQL.Text :=
-        'SELECT ' +
-        'COALESCE(SUM(CASE WHEN TIPO IN (''E'',''A'') THEN QUANTIDADE ELSE 0 END), 0) AS ENTRADAS, ' +
-        'COALESCE(SUM(CASE WHEN TIPO = ''S'' THEN QUANTIDADE ELSE 0 END), 0) AS SAIDAS ' +
-        'FROM MOVIMENTO_ESTOQUE ' +
-        'WHERE PRODUTO_ID = :PROD AND DATA_MOVIMENTO BETWEEN :DI AND :DF';
+      LQuery.SQL.Text := LSQL;
       LQuery.ParamByName('PROD').AsLargeInt := FProdutoId;
       LQuery.ParamByName('DI').AsDate := LDataInicio;
       LQuery.ParamByName('DF').AsDate := LDataFim + 1;
+      if Trim(edtPesquisa.Text) <> '' then
+      begin
+        LQuery.ParamByName('PESQ').AsString := Trim(edtPesquisa.Text);
+        LQuery.ParamByName('PESQ2').AsString := Trim(edtPesquisa.Text);
+      end;
       LQuery.Open;
 
       lblTotalEntradas.Caption := 'Entradas: ' + FormatFloat('#,##0.0000', LQuery.FieldByName('ENTRADAS').AsFloat);
@@ -220,6 +250,21 @@ procedure TfrmKardex.btnFiltrarClick(Sender: TObject);
 begin
   CarregarKardex;
   CarregarResumo;
+end;
+
+procedure TfrmKardex.btnPesquisarMovClick(Sender: TObject);
+begin
+  CarregarKardex;
+  CarregarResumo;
+end;
+
+procedure TfrmKardex.edtPesquisaKeyPress(Sender: TObject; var Key: char);
+begin
+  if Key = #13 then
+  begin
+    Key := #0;
+    btnPesquisarMovClick(Sender);
+  end;
 end;
 
 procedure TfrmKardex.btnFecharClick(Sender: TObject);

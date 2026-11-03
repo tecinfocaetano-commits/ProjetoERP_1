@@ -40,9 +40,9 @@
 | 12 | **Android: tela de configuração por empresa** — caminho do servidor (URL da API) + código de usuário, salvos **separadamente por empresa** (cada empresa tem a sua configuração) | ✅ concluído (02/11) | D9 — commit `67d26f4`; validado no emulador (§3.13) |
 | 13 | Regenerar `Banco\schema_canonico.sql` (está anterior à `015`: sem `PAIS`, `CIDADE_ID`, `GRADE`, `ESTOQUE_MATERIAL`) | ✅ concluído (02/11) | regenerado do banco real: **49 tabelas / 584 campos**; round-trip e banco novo verdes (§3.15 e §3.19) |
 | 14 | **Encoding dos literais acentuados** — o fonte é UTF-8, mas o processo não declarava a codepage padrão: o SQLDB tratava os bytes como CP1252 e gravava `NF de saÃ­da` | ✅ concluído (02/11) | adotado `SetMultiByteConversionCodePage(CP_UTF8)` no início do app/testes, **sem** `-FcUTF8` (que gerava 213 warnings e corrompia concatenações); ver §3.16 |
-| 15 | **Estoque: filtro de pesquisa** nas telas do módulo (movimentação/inventário/kardex) | ⏳ pendente | pedido do usuário em 02/11 |
-| 16 | **Financeiro: filtro de pesquisa** nas telas (contas a pagar/receber e movimento) | ⏳ pendente | pedido do usuário em 02/11 |
-| 17 | **Clientes: opção de incluir cliente** dentro da tela de clientes | ⏳ pendente | confirmar se é a tela **Pessoas** (desktop) ou a lista de **Clientes** do Android |
+| 15 | **Estoque: filtro de pesquisa** nas telas do módulo (movimentação/inventário/kardex) | ✅ concluído (02/11) | Movimentação e Kardex ganharam campo "Pesquisar" (produto/documento e documento/observação); Inventário já tinha (§3.20) |
+| 16 | **Financeiro: filtro de pesquisa** nas telas (contas a pagar/receber e movimento) | ✅ concluído (02/11) | Contas a Pagar/Receber (fornecedor/cliente + descrição), Movimento Financeiro e Caixa (§3.20) |
+| 17 | **Clientes: opção de incluir cliente** dentro da tela de clientes | ✅ concluído (02/11) | app Android: FAB "Incluir cliente" na lista de Clientes → `InserirClienteActivity` (POST `/api/clientes`), validado no emulador (§3.20) |
 
 ---
 
@@ -509,6 +509,28 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   faturamento **R$ 70,00**, a receber **R$ 170,00** e a pagar
   **R$ 1.595,00**; smoke de runtime instanciou as 11 telas alteradas
   (0 falhas).
+
+### 3.20 Filtros de pesquisa e inclusão de cliente (02/11, concluído)
+
+- **Estoque (desktop):** `uFrmMovEstoque` ganhou `edtPesquisa` (descrição ou
+  código do produto e documento) e `uFrmKardex` ganhou pesquisa em
+  documento/observação, aplicada também ao resumo de entradas/saídas;
+  `uFrmInventario` já tinha pesquisa (descrição/código) — nenhuma mudança.
+- **Financeiro (desktop):** `uFrmContasPagar` (fornecedor + descrição),
+  `uFrmContasReceber` (cliente + descrição) e `uFrmCaixa` (número/usuário
+  nos caixas e descrição/tipo/usuário nos movimentos, via `TCaixaService`
+  com filtro opcional). Em `uFrmMovimentoFinanceiro` a pesquisa herdada de
+  `TfrmCadastroBase` foi corrigida: `DOCUMENTO_ID CONTAINING` (BIGINT)
+  passou a `CAST(DOCUMENTO_ID AS VARCHAR(20))` e o `OR` foi parentizado.
+- **Android:** FAB "Incluir cliente" em `ClientesActivity`
+  (`activity_clientes.xml`, id `fabIncluirCliente`) abre
+  `InserirClienteActivity` (POST `/api/clientes`); a lista recarrega no
+  `onResume`. Nenhuma dependência nova e nenhum id existente alterado.
+- **Validação:** build desktop **0 erros/0 warnings**, suíte **65/65**,
+  Android `BUILD SUCCESSFUL`; SQLs dos filtros validados no Firebird e
+  smoke de runtime (7 telas, com pesquisa aplicada, 0 falhas); emulador
+  `Pixel_9` mostrou o FAB, abriu a tela e gravou "ClienteIncluidoApp"
+  (removido depois — base de volta a **9 clientes**).
 
 ---
 

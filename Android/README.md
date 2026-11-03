@@ -89,7 +89,9 @@ O menu **⋮** da barra superior tem:
 
 O menu inferior (Início/Clientes/Estoque/Vendas/Financeiro) continua sendo a
 navegação principal. A seta de voltar aparece em todas as telas, e Clientes e
-Vendas têm a barra de pesquisa ao lado dela.
+Vendas têm a barra de pesquisa ao lado dela. Na lista de **Clientes**, o botão
+**Incluir cliente** abre o formulário que grava via `POST /api/clientes` e a
+lista se atualiza ao voltar.
 
 ## Orçamentos
 

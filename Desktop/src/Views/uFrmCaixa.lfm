@@ -20,22 +20,46 @@ object frmCaixa: TfrmCaixa
       ParentFont = False
     end
     object btnAtualizar: TBitBtn
-      Left = 520
+      Left = 626
       Height = 30
       Top = 4
-      Width = 100
+      Width = 80
       Caption = '&Atualizar'
       OnClick = btnAtualizarClick
-      TabOrder = 0
+      TabOrder = 1
     end
     object btnFechar: TBitBtn
-      Left = 630
+      Left = 710
       Height = 30
       Top = 4
-      Width = 100
+      Width = 90
       Caption = '&Fechar'
       OnClick = btnFecharClick
-      TabOrder = 1
+      TabOrder = 2
+    end
+    object lblPesquisa: TLabel
+      Left = 290
+      Height = 16
+      Top = 12
+      Width = 55
+      Caption = 'Pesquisar:'
+    end
+    object edtPesquisa: TEdit
+      Left = 348
+      Height = 25
+      Top = 7
+      Width = 200
+      OnKeyPress = edtPesquisaKeyPress
+      TabOrder = 3
+    end
+    object btnPesquisar: TBitBtn
+      Left = 552
+      Height = 30
+      Top = 4
+      Width = 70
+      Caption = '&Buscar'
+      OnClick = btnPesquisarClick
+      TabOrder = 4
     end
   end
   object dbGridCaixas: TDBGrid

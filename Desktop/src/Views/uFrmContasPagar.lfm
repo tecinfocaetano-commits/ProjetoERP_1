@@ -95,6 +95,21 @@ object frmContasPagar: TfrmContasPagar
       OnClick = btnFiltrarClick
       TabOrder = 1
     end
+    object lblPesquisa: TLabel
+      Left = 566
+      Height = 16
+      Top = 10
+      Width = 60
+      Caption = 'Pesquisar:'
+    end
+    object edtPesquisa: TEdit
+      Left = 630
+      Height = 25
+      Top = 7
+      Width = 205
+      OnKeyPress = edtPesquisaKeyPress
+      TabOrder = 4
+    end
   end
   object pnlBotoes: TPanel
     Left = 0

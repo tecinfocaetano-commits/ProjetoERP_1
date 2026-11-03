@@ -26,7 +26,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (02/11/2026)
 
-**HEAD:** `3b78fc0` (D3) + este commit de docs do checkpoint.
+**HEAD:** commit **"Filtros em Estoque/Financeiro e inclusão de cliente no app Android"** (ver `git log --oneline -1`).
 Build: **0 erros / 0 warnings** · suíte **65/65** (02/11).
 
 ### O que fechou nesta sessão
@@ -69,19 +69,18 @@ Build: **0 erros / 0 warnings** · suíte **65/65** (02/11).
   `Pixel_9`: 9 clientes, faturamento R$ 70,00, a receber R$ 170,00, a pagar
   R$ 1.595,00. Smoke de runtime instanciou as 11 telas alteradas (0 falhas).
 
+- **Filtros + incluir cliente (02/11):** telas de Estoque (Movimentação e
+  Kardex; Inventário já tinha) e Financeiro (Contas a Pagar/Receber,
+  Movimento Financeiro e Caixa) com pesquisa; app Android com FAB
+  **Incluir cliente** na lista de Clientes. Build desktop **0/0**, suíte
+  **65/65**, Android `BUILD SUCCESSFUL`; smoke de runtime dos filtros com
+  0 falhas e inclusão real validada no emulador (§3.20).
+
 ### Próximo passo (executável)
 
-Pedidos do usuário após o D3 (02/11):
-
-1. **Estoque:** adicionar filtro de pesquisa nas telas do módulo
-   (movimentação/inventário/kardex).
-2. **Financeiro:** adicionar filtro de pesquisa nas telas
-   (contas a pagar/receber e movimento).
-3. **Clientes:** opção de **incluir cliente** dentro da tela de clientes —
-   confirmar se é a tela **Pessoas** (desktop) ou a lista de **Clientes**
-   do Android antes de implementar.
-
-Fechar cada item com build 0/0, suíte verde, docs e commit.
+Nenhuma pendência aberta do usuário. O próximo passo é o que for pedido;
+ao fechar cada marco: build 0/0, suíte verde, atualizar este checkpoint,
+`PLANO_E_LOG.md` e commitar.
 
 ---
 

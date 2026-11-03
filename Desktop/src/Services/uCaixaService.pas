@@ -36,11 +36,14 @@ type
     constructor Create;
 
     { Preenche AQuery (do chamador) com os caixas da empresa, já com o
-      SALDO por caixa e o nome do usuário responsável. }
-    procedure CarregarCaixas(AQuery: TSQLQuery);
+      SALDO por caixa e o nome do usuário responsável. AFiltro (opcional)
+      pesquisa no número do caixa e no nome do usuário. }
+    procedure CarregarCaixas(AQuery: TSQLQuery; const AFiltro: string = '');
 
-    { Preenche AQuery (do chamador) com os movimentos de um caixa. }
-    procedure CarregarMovimentos(AQuery: TSQLQuery; ACaixaId: Int64);
+    { Preenche AQuery (do chamador) com os movimentos de um caixa.
+      AFiltro (opcional) pesquisa na descrição, no tipo e no usuário. }
+    procedure CarregarMovimentos(AQuery: TSQLQuery; ACaixaId: Int64;
+      const AFiltro: string = '');
 
     { Preenche AQuery (do chamador) com ENTRADAS / SAIDAS / SALDO do caixa. }
     procedure CarregarResumo(AQuery: TSQLQuery; ACaixaId: Int64);
@@ -65,42 +68,74 @@ begin
   FConexao := TConexao.GetInstance;
 end;
 
-procedure TCaixaService.CarregarCaixas(AQuery: TSQLQuery);
+procedure TCaixaService.CarregarCaixas(AQuery: TSQLQuery; const AFiltro: string);
+var
+  LSQL: string;
 begin
   if AQuery = nil then
     raise Exception.Create('CarregarCaixas: query não informada.');
 
-  AQuery.Close;
-  AQuery.SQL.Text :=
+  LSQL :=
     'SELECT C.ID, CAST(C.NUMERO AS VARCHAR(20)) AS NUMERO, ' +
     'U.NOME AS USUARIO, C.DATA_ABERTURA, C.VALOR_ABERTURA, C.STATUS, ' +
     'C.DATA_FECHAMENTO, C.VALOR_FECHAMENTO, ' +
     SQL_SALDO + ' AS SALDO ' +
     'FROM CAIXA C ' +
     'LEFT JOIN USUARIO U ON U.ID = C.USUARIO_ID ' +
-    'WHERE (C.EMPRESA_ID = :EMP OR C.EMPRESA_ID IS NULL) ' +
-    'ORDER BY C.ID DESC';
+    'WHERE (C.EMPRESA_ID = :EMP OR C.EMPRESA_ID IS NULL)';
+
+  if Trim(AFiltro) <> '' then
+    LSQL := LSQL + ' AND (UPPER(COALESCE(U.NOME, '''')) CONTAINING UPPER(:PESQ)' +
+                   ' OR CAST(C.NUMERO AS VARCHAR(20)) CONTAINING :PESQ2)';
+
+  LSQL := LSQL + ' ORDER BY C.ID DESC';
+
+  AQuery.Close;
+  AQuery.SQL.Text := LSQL;
   AQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+  if Trim(AFiltro) <> '' then
+  begin
+    AQuery.ParamByName('PESQ').AsString := Trim(AFiltro);
+    AQuery.ParamByName('PESQ2').AsString := Trim(AFiltro);
+  end;
   AQuery.Open;
 end;
 
 procedure TCaixaService.CarregarMovimentos(AQuery: TSQLQuery;
-  ACaixaId: Int64);
+  ACaixaId: Int64; const AFiltro: string);
+var
+  LSQL: string;
 begin
   if AQuery = nil then
     raise Exception.Create('CarregarMovimentos: query não informada.');
   if ACaixaId <= 0 then
     raise Exception.Create('Caixa inválido.');
 
-  AQuery.Close;
-  AQuery.SQL.Text :=
+  LSQL :=
     'SELECT MC.ID, ' +
     'CASE MC.TIPO WHEN ''E'' THEN ''ENTRADA'' WHEN ''S'' THEN ''SAIDA'' ' +
     'ELSE MC.TIPO END AS TIPO, MC.VALOR, MC.DESCRICAO, MC.DATA_MOVIMENTO, ' +
     'U.NOME AS USUARIO FROM MOVIMENTO_CAIXA MC ' +
     'LEFT JOIN USUARIO U ON U.ID = MC.USUARIO_ID ' +
-    'WHERE MC.CAIXA_ID = :CX ORDER BY MC.ID';
+    'WHERE MC.CAIXA_ID = :CX';
+
+  if Trim(AFiltro) <> '' then
+    LSQL := LSQL + ' AND (UPPER(COALESCE(MC.DESCRICAO, '''')) CONTAINING UPPER(:PESQ)' +
+                   ' OR UPPER(CASE MC.TIPO WHEN ''E'' THEN ''ENTRADA'' ' +
+                   'WHEN ''S'' THEN ''SAIDA'' ELSE MC.TIPO END) CONTAINING UPPER(:PESQ2)' +
+                   ' OR UPPER(COALESCE(U.NOME, '''')) CONTAINING UPPER(:PESQ3))';
+
+  LSQL := LSQL + ' ORDER BY MC.ID';
+
+  AQuery.Close;
+  AQuery.SQL.Text := LSQL;
   AQuery.ParamByName('CX').AsLargeInt := ACaixaId;
+  if Trim(AFiltro) <> '' then
+  begin
+    AQuery.ParamByName('PESQ').AsString := Trim(AFiltro);
+    AQuery.ParamByName('PESQ2').AsString := Trim(AFiltro);
+    AQuery.ParamByName('PESQ3').AsString := Trim(AFiltro);
+  end;
   AQuery.Open;
 end;
 

@@ -27,6 +27,8 @@ type
     lblTipoFiltro: TLabel;
     cmbTipoFiltro: TComboBox;
     btnFiltrar: TBitBtn;
+    lblPesquisa: TLabel;
+    edtPesquisa: TEdit;
     pnlBotoes: TPanel;
     btnNovaMovimentacao: TBitBtn;
     btnFechar: TBitBtn;
@@ -57,6 +59,7 @@ type
     procedure btnFiltrarClick(Sender: TObject);
     procedure btnFecharClick(Sender: TObject);
     procedure btnBuscarProdutoClick(Sender: TObject);
+    procedure edtPesquisaKeyPress(Sender: TObject; var Key: char);
   private
     FConexao: TConexao;
     FQuery: TSQLQuery;
@@ -172,6 +175,11 @@ begin
       LSQL := LSQL + ' AND ME.TIPO = :TIPO';
     end;
 
+    if Trim(edtPesquisa.Text) <> '' then
+      LSQL := LSQL + ' AND (UPPER(P.DESCRICAO) CONTAINING UPPER(:PESQ)' +
+                     ' OR P.CODIGO CONTAINING :PESQ2' +
+                     ' OR UPPER(COALESCE(ME.DOCUMENTO, '''')) CONTAINING UPPER(:PESQ3))';
+
     LSQL := LSQL + ' ORDER BY ME.DATA_MOVIMENTO DESC';
 
     LDataInicio := StrToDateDef(edtDataInicio.Text, Now);
@@ -184,6 +192,12 @@ begin
     FQuery.ParamByName('DF').AsDate := LDataFim + 1;
     if cmbTipoFiltro.ItemIndex > 0 then
       FQuery.ParamByName('TIPO').AsString := LFiltroTipo;
+    if Trim(edtPesquisa.Text) <> '' then
+    begin
+      FQuery.ParamByName('PESQ').AsString := Trim(edtPesquisa.Text);
+      FQuery.ParamByName('PESQ2').AsString := Trim(edtPesquisa.Text);
+      FQuery.ParamByName('PESQ3').AsString := Trim(edtPesquisa.Text);
+    end;
     FQuery.Open;
     DataSource1.DataSet := FQuery;
   except
@@ -316,6 +330,15 @@ end;
 procedure TfrmMovEstoque.btnFiltrarClick(Sender: TObject);
 begin
   CarregarMovimentos;
+end;
+
+procedure TfrmMovEstoque.edtPesquisaKeyPress(Sender: TObject; var Key: char);
+begin
+  if Key = #13 then
+  begin
+    Key := #0;
+    CarregarMovimentos;
+  end;
 end;
 
 procedure TfrmMovEstoque.btnFecharClick(Sender: TObject);
