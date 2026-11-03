@@ -83,9 +83,9 @@ end;
 function TEstadoService.BuscarTodos(APaisId: Int64 = 0): TSQLQuery;
 begin
   if APaisId > 0 then
-    Result := FRepo.BuscarTodos('WHERE PAIS_ID = ' + IntToStr(APaisId) + ' ORDER BY NOME')
+    Result := FRepo.BuscarTodos('PAIS_ID = ' + IntToStr(APaisId), 'NOME')
   else
-    Result := FRepo.BuscarTodos('ORDER BY NOME');
+    Result := FRepo.BuscarTodos('', 'NOME');
 end;
 
 function TEstadoService.Inserir(AObj: TEstado): Int64;

@@ -149,16 +149,25 @@ end;
 function TfrmCompras.ProximoNumero: Integer;
 var
   LQuery: TSQLQuery;
+  LNumero: Int64;
 begin
   Result := 1;
   LQuery := TSQLQuery.Create(nil);
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT MAX(NUMERO) FROM PEDIDO_COMPRA';
+    { NUMERO e texto (pode vir rotulado, ex.: 'PC-TESTE-8'): MAX(NUMERO)
+      compararia texto ('9' > '10') e AsInteger estouraria com rotulo.
+      Le os numeros e fica com o maior deles. }
+    LQuery.SQL.Text := 'SELECT NUMERO FROM PEDIDO_COMPRA';
     LQuery.Open;
-    if not LQuery.IsEmpty and (LQuery.Fields[0].AsInteger > 0) then
-      Result := LQuery.Fields[0].AsInteger + 1;
+    while not LQuery.EOF do
+    begin
+      LNumero := StrToInt64Def(Trim(LQuery.Fields[0].AsString), 0);
+      if LNumero >= Result then
+        Result := LNumero + 1;
+      LQuery.Next;
+    end;
   finally
     LQuery.Free;
   end;

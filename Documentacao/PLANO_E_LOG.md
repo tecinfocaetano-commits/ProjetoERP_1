@@ -548,6 +548,33 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   atual declarado **sem itens abertos** (D3, filtros e "incluir cliente"
   concluídos em §3.19/§3.20).
 
+### 3.22 Teste de UI em todas as telas do desktop (03/11, concluído)
+
+- **Harness novo:** `Scripts\testes\telas_todas_ui.ps1` abre o app, lê o menu
+  Win32 (sem IDs fixos), aciona cada item por `WM_COMMAND`, espera a janela,
+  exige pelo menos um controle, tira evidência, fecha com `WM_CLOSE` e segue.
+  Diálogos `#32770` são lidos e fechados; se o texto tiver `Access violation`,
+  `SQL error`, `Token unknown` ou `invalid integer`, a tela é marcada **FALHA**
+  (não basta a janela abrir). Aceita `-ApenasId 3,24` para repetir um recorte.
+- **Saídas:** `Documentacao\TESTE_TELAS_DESKTOP.md` (tabela por tela) e
+  `Documentacao\evidencias\telas_<id>_<slug>.png` (ignoradas pelo git).
+- **Resultado final:** **33/33 telas OK**, 0 aviso, 0 falha.
+- **Bugs encontrados e corrigidos:**
+  1. **Geo** (`uPaisService`, `uEstadoService`, `uCidadeService`): passavam
+     `'ORDER BY NOME'` como se fosse a condição do `BuscarTodos`, gerando
+     `SELECT * FROM PAIS WHERE ORDER BY NOME` (**Token unknown - ORDER**).
+     Combos de País/Estado/Cidade e a tela **Pessoas** falhavam na inicialização.
+     Agora usam a assinatura certa: condição (`''` ou `PAIS_ID = ...`) + ordem `NOME`.
+  2. **NF-e** (`uFrmNFe`): a classe declarava `edtInicio`/`edtFim`, mas o `.lfm`
+     tem `edtDataInicio`/`edtDataFim` → campos `nil` e **Access violation** no
+     `FormCreate`. Campos e usos renomeados para os nomes do `.lfm`.
+  3. **Compras** (`uFrmCompras.ProximoNumero`): `SELECT MAX(NUMERO)` +
+     `AsInteger` estourava com o registro de teste `PC-TESTE-8` (NUMERO é texto)
+     e comparava texto (`'9' > '10'`). Agora lê os números com
+     `StrToInt64Def` e escolhe o maior.
+- **Limpeza:** campo morto `imgLogo` removido de `uFrmLogin` (não existe no `.lfm`).
+- **Validação:** build 0/0, suíte **65/65**, UI **33/33**.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)

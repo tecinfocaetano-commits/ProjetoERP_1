@@ -19,9 +19,9 @@ type
     lblTitulo: TLabel;
     pnlFiltro: TPanel;
     lblDataInicio: TLabel;
-    edtInicio: TEdit;
+    edtDataInicio: TEdit;
     lblDataFim: TLabel;
-    edtFim: TEdit;
+    edtDataFim: TEdit;
     btnFiltrar: TBitBtn;
     pnlBotoes: TPanel;
     btnEmitirNFe: TBitBtn;
@@ -75,8 +75,8 @@ begin
     DataSource1 := TDataSource.Create(Self);
 
   FACBr := TACBrHelper.Create;
-  edtInicio.Text := FormatDateTime('dd/mm/yyyy', IncMonth(Now, -1));
-  edtFim.Text := FormatDateTime('dd/mm/yyyy', Now);
+  edtDataInicio.Text := FormatDateTime('dd/mm/yyyy', IncMonth(Now, -1));
+  edtDataFim.Text := FormatDateTime('dd/mm/yyyy', Now);
   cmbAmbiente.ItemIndex := 1; // Homologação
   CarregarPedidos;
 end;
@@ -94,8 +94,8 @@ begin
     'WHERE PV.DATA_EMISSAO BETWEEN :DI AND :DF ' +
     'AND PV.STATUS <> ''O'' ' +
     'ORDER BY PV.NUMERO DESC';
-  FQuery.ParamByName('DI').AsDate := StrToDateDef(edtInicio.Text, Now);
-  FQuery.ParamByName('DF').AsDate := StrToDateDef(edtFim.Text, Now) + 1;
+  FQuery.ParamByName('DI').AsDate := StrToDateDef(edtDataInicio.Text, Now);
+  FQuery.ParamByName('DF').AsDate := StrToDateDef(edtDataFim.Text, Now) + 1;
   FQuery.Open;
   DataSource1.DataSet := FQuery;
 end;

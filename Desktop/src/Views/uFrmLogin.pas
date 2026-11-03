@@ -27,7 +27,6 @@ type
     btnEntrar: TBitBtn;
     btnSair: TBitBtn;
     lblStatus: TLabel;
-    imgLogo: TImage;
     procedure FormCreate(Sender: TObject);
     procedure btnEntrarClick(Sender: TObject);
     procedure btnSairClick(Sender: TObject);

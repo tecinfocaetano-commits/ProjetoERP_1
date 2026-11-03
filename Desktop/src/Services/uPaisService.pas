@@ -77,7 +77,7 @@ end;
 
 function TPaisService.BuscarTodos: TSQLQuery;
 begin
-  Result := FRepo.BuscarTodos('ORDER BY NOME');
+  Result := FRepo.BuscarTodos('', 'NOME');
 end;
 
 function TPaisService.Inserir(AObj: TPais): Int64;

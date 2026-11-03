@@ -27,7 +27,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 ## Estado atual da sessão (03/11/2026)
 
 **HEAD:** `ba439bd` (Docs: checkpoint 03/11 com HEAD e estado do git) — commit só de documentação; o último commit de código segue em `e4f4804` (Filtros em Estoque/Financeiro e inclusão de cliente no app Android). Árvore: **limpa** (nada não commitado; nenhum untracked).
-Build: **0 erros / 0 warnings** · suíte **65/65** (última verificação: 02/11).
+Build: **0 erros / 0 warnings** · suíte **65/65** · UI **33/33 telas** (03/11).
 
 > Se `git log -1` mostrar um hash diferente de `ba439bd`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
@@ -47,6 +47,7 @@ Build: **0 erros / 0 warnings** · suíte **65/65** (última verificação: 02/1
 
 | Item | Entrega |
 |---|---|
+| **Teste de todas as telas (desktop)** | `Scripts\testes\telas_todas_ui.ps1` percorre os **33 itens do menu** por `WM_COMMAND`, valida janela + controles, lê/fecha avisos e gera `Documentacao\TESTE_TELAS_DESKTOP.md` + evidências. Resultado **33/33 OK**. Encontrou e corrigiu 3 bugs: geo (`... WHERE ORDER BY NOME`), NF-e (campos `edtInicio/edtFim` sem componente no `.lfm` → AV) e Compras (`MAX(NUMERO)` sobre texto `PC-TESTE-8`). Detalhes em §3.22 |
 | **D3 — PESSOA unificada** | `CLIENTE` + `FORNECEDOR` → `PESSOA` (`TIPO` C/F). Tela única **Cadastros > Pessoas** (`uFrmPessoas`) com filtro Todos/Clientes/Fornecedores; tipo imutável após salvo; exclusão bloqueada quando referenciada. API `/api/clientes` mantém o contrato e filtra `TIPO='C'`. Suíte **65/65** (§3.19) |
 | **Dashboard de vendas (Android)** | `activity_dashboard.xml` sem botões: faturamento do mês + vendas, A receber / A pagar, orçamentos abertos, clientes e as 3 últimas vendas; cards abrem `OrcamentosActivity`, `ClientesActivity` e `VendasActivity`. Configuração e saída foram para o menu **⋮** (Atualizar resumo / Configuração / Sair). Validado no emulador — §3.18 |
 | **Seta de voltar + busca** | `BaseActivity` centraliza a seta em todas as telas; `BaseListaActivity` coloca a barra de pesquisa ao lado dela (Clientes e Vendas), filtrando sem diferenciar caixa/acentos. Commit `1a1c719` |
@@ -684,9 +685,10 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
 4. Testes unit: `Scripts\run_tests.bat` → esperado **65/65**.
-5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\fase6_01.ps1`
+5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\telas_todas_ui.ps1`
+   → esperado **TELAS-DESKTOP-UI CONCLUIDO** (33/33); `... Scripts\testes\fase6_01.ps1`
    → esperado **FASE6-01 CONCLUIDO**; e
-   `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\telas_adm_ui.ps1`
+   `... Scripts\testes\telas_adm_ui.ps1`
    → esperado **TELAS-ADM-UI CONCLUIDO**.
 6. Teste da API: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\pool_api.ps1`
    → esperado **POOL-TEST CONCLUIDO** (sobe a API com `ERP_API_POOL=3`; se a porta

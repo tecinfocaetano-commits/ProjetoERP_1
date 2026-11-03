@@ -79,9 +79,9 @@ end;
 function TCidadeService.BuscarTodos(AEstadoId: Int64 = 0): TSQLQuery;
 begin
   if AEstadoId > 0 then
-    Result := FRepo.BuscarTodos('WHERE ESTADO_ID = ' + IntToStr(AEstadoId) + ' ORDER BY NOME')
+    Result := FRepo.BuscarTodos('ESTADO_ID = ' + IntToStr(AEstadoId), 'NOME')
   else
-    Result := FRepo.BuscarTodos('ORDER BY NOME');
+    Result := FRepo.BuscarTodos('', 'NOME');
 end;
 
 function TCidadeService.Inserir(AObj: TCidade): Int64;
