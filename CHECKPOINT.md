@@ -1,4 +1,4 @@
-# CHECKPOINT — último ponto de parada (02/11/2026)
+# CHECKPOINT — último ponto de parada (03/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -24,10 +24,20 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ---
 
-## Estado atual da sessão (02/11/2026)
+## Estado atual da sessão (03/11/2026)
 
-**HEAD:** commit **"Filtros em Estoque/Financeiro e inclusão de cliente no app Android"** (ver `git log --oneline -1`).
-Build: **0 erros / 0 warnings** · suíte **65/65** (02/11).
+**HEAD:** `e4f4804` (Filtros em Estoque/Financeiro e inclusão de cliente no app Android). Árvore: **limpa** (nada não commitado; nenhum untracked).
+Build: **0 erros / 0 warnings** · suíte **65/65** (última verificação: 02/11).
+
+### Em andamento (não commitado)
+
+- Nada — árvore limpa. Último marco fechado e commitado em `e4f4804`.
+
+### Próximo passo (executável)
+
+1. Não há item aberto no backlog: aguardar o próximo pedido do usuário.
+2. Antes de qualquer commit, rodar `Scripts\build_desktop.bat` (esperado 0/0) e
+   `Scripts\run_tests.bat` (esperado **65/65**); se a suíte cair, não commitar.
 
 ### O que fechou nesta sessão
 
@@ -152,7 +162,7 @@ Build **0 erros / 0 warnings** · suíte **62/62**.
 2. **D9 (Android, depois do backlog):** tela de configuração com **caminho
    do servidor + código de usuário, salvos por empresa** — cada empresa
    usada tem a sua própria configuração.
-3. Ao fechar cada marco: build 0/0 + suíte 62/62; atualizar este checkpoint
+3. Ao fechar cada marco: build 0/0 + suíte 65/65; atualizar este checkpoint
    e o `PLANO_E_LOG.md`; commitar.
 
 ### Último marco concluído — migração `016` GRADE (commit `17be6ff`)
@@ -662,13 +672,14 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 
 ## Para continuar (ao ligar o PC)
 
-0. **Próximo marco:** nenhum item aberto no backlog — o item 11 (Android —
-   orçamentos) e o dashboard de vendas estão concluídos. Resta só **D3**
-   (unificar CLIENTE+FORNECEDOR), **adiada** até plano aprovado.
+0. **Próximo marco:** nenhum item aberto no backlog — D3 (`PESSOA`), os
+   filtros de Estoque/Financeiro e o botão "incluir cliente" no Android estão
+   concluídos (ver §3.19/§3.20 do `PLANO_E_LOG.md`). O próximo passo é o que
+   o usuário pedir.
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
-4. Testes unit: `Scripts\run_tests.bat` → esperado **62/62**.
+4. Testes unit: `Scripts\run_tests.bat` → esperado **65/65**.
 5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\fase6_01.ps1`
    → esperado **FASE6-01 CONCLUIDO**; e
    `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\telas_adm_ui.ps1`

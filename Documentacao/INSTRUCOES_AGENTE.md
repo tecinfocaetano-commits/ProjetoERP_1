@@ -26,7 +26,7 @@ Mantenha no topo, sempre com estes campos:
 ## Estado atual da sessão (data)
 
 **HEAD:** <hash> (<mensagem>). Árvore: limpa | suja.
-Build: 0 erros · suíte 62/62 (última verificação).
+Build: 0 erros · suíte 65/65 (última verificação).
 
 ### Em andamento (não commitado)
 - <arquivo exato> — o que já está pronto e o que falta (seja específico).
@@ -49,7 +49,7 @@ Regras do bloco:
 3. Ler `CHECKPOINT.md` e abrir os arquivos citados em "Em andamento".
 4. Rodar a base: `Scripts\build_desktop.bat` e `Scripts\run_tests.bat`.
 5. Executar o "Próximo passo".
-6. Só considerar pronto com **build 0/0** e **suíte 62/62**.
+6. Só considerar pronto com **build 0/0** e **suíte 65/65**.
 7. Atualizar `CHECKPOINT.md` + `PLANO_E_LOG.md` e **commitar**.
 
 ## Regras do projeto (não negociáveis)
@@ -60,7 +60,7 @@ Regras do bloco:
 - **SQL sempre parametrizado** (`:PARAM` + `ParamByName`), nunca concatenado.
 - Alterações de dados em **transação** (`IniciarTransacao` / `Confirmar` /
   `Cancelar`) com **auditoria** (`LogOperacao`).
-- **62/62** na suíte é o piso; se cair, não commite.
+- **65/65** na suíte é o piso; se cair, não commite.
 - Relatórios: **somente LazReport**; teste de impressão só em **PDF**.
 - **Avise antes de instalar pacotes.**
 - Firebird 5: identificador máximo **31 caracteres**; no `CREATE TABLE` o
@@ -75,7 +75,7 @@ Regras do bloco:
 ```powershell
 # build
 & "C:\Users\Charles\Documents\ProjetoERP_1\Scripts\build_desktop.bat"
-# suíte (esperado: Total: 62 | Passou: 62 | Falhou: 0)
+# suíte (esperado: Total: 65 | Passou: 65 | Falhou: 0)
 & "C:\Users\Charles\Documents\ProjetoERP_1\Scripts\run_tests.bat"
 # isql (acentos exigem SET NAMES UTF8)
 & "C:\Program Files\Firebird\Firebird_5_0\isql.exe" -user SYSDBA -password masterkey -charset UTF8 <banco.fdb> -i <arquivo.sql>
@@ -93,8 +93,6 @@ biblioteca/pacote, ou qualquer refactor que toque mais de ~5 telas.
 ## Backlog atual
 
 Sempre consulte `Documentacao\PLANO_E_LOG.md` §2 (tabela de itens com status).
-No momento: **GRADE concluída** (cadastro, item do pedido, mapa e produto),
-depois notas lendo `PRODUTO_FISCAL`, re-layout do Consumo, Produto com Cores,
-Compras → Nota de Entrada, vínculo geográfico em CLIENTE/FORNECEDOR. Depois
-do backlog: **D9 — Android com configuração de servidor + código de usuário
-por empresa** (cada empresa tem a sua).
+No momento **não há item aberto**: D3 (`PESSOA`), os filtros de
+Estoque/Financeiro e o "incluir cliente" no Android estão concluídos
+(§3.19/§3.20). O próximo passo é o que o usuário pedir.

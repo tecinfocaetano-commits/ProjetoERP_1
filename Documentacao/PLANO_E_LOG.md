@@ -532,6 +532,20 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   `Pixel_9` mostrou o FAB, abriu a tela e gravou "ClienteIncluidoApp"
   (removido depois — base de volta a **9 clientes**).
 
+### 3.21 Checkpoint por marco: HEAD + estado do git (03/11, concluído)
+
+- **`CHECKPOINT.md`:** o bloco "Estado atual" passou a trazer **HEAD com hash
+  e mensagem** (`e4f4804`), o estado do git (árvore limpa/suja + arquivos não
+  commitados), build/suíte e uma seção **Próximo passo (executável)**. Título
+  e data da sessão em 03/11; "Em andamento" vazio porque a árvore está limpa.
+- **Números defasados:** o piso da suíte subiu de **62/62** para **65/65** no
+  checkpoint, nas instruções e no "Para continuar". As menções a 62/62 em
+  seções **históricas** (§3.2–§3.18, "Estado anterior", execuções antigas)
+  ficam como registro da época — não são erro e não devem ser "corrigidas".
+- **`INSTRUCOES_AGENTE.md`:** exemplos/comandos e o piso em 65/65; backlog
+  atual declarado **sem itens abertos** (D3, filtros e "incluir cliente"
+  concluídos em §3.19/§3.20).
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)
