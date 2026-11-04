@@ -19,6 +19,10 @@ const
 function GerarToken(AUsuarioId: Int64; const ANome, ALogin: string; AEmpresaId: Int64): string;
 function ValidarToken(const AToken: string): Boolean;
 function ExtrairDadosToken(const AToken: string): TJSONObject;
+
+{ Usuario e empresa autenticados, lidos das claims do JWT (sub e
+  empresa_id). Devolve 0 quando o token nao tem a claim. }
+procedure DadosDoToken(Req: THorseRequest; out AUsuarioId, AEmpresaId: Int64);
 procedure MiddlewareJWT(Req: THorseRequest; Res: THorseResponse; Next: TNextProc);
 
 implementation
@@ -181,6 +185,26 @@ begin
   end;
 
   Next;
+end;
+
+{ Usuario e empresa autenticados, a partir das claims do token. }
+procedure DadosDoToken(Req: THorseRequest; out AUsuarioId, AEmpresaId: Int64);
+var
+  LToken: string;
+  LDados: TJSONObject;
+begin
+  AUsuarioId := 0;
+  AEmpresaId := 0;
+  LToken := StringReplace(Req.Headers['Authorization'], 'Bearer ',
+    '', [rfIgnoreCase]);
+  LDados := ExtrairDadosToken(LToken);
+  if LDados <> nil then
+  try
+    AUsuarioId := LDados.Get('sub', Int64(0));
+    AEmpresaId := LDados.Get('empresa_id', Int64(0));
+  finally
+    LDados.Free;
+  end;
 end;
 
 end.

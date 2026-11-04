@@ -17,7 +17,7 @@ procedure RegistrarRotasEstoque;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT;
 
 procedure GetEstoque(Req: THorseRequest; Res: THorseResponse);
 var
@@ -25,7 +25,16 @@ var
   LQuery: TSQLQuery;
   LArray: TJSONArray;
   LObj: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
 begin
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
   try
@@ -36,7 +45,8 @@ begin
       'P.ESTOQUE_MINIMO, P.ESTOQUE_MAXIMO, P.PRECO_CUSTO, ' +
       '(COALESCE(E.QUANTIDADE, 0) * P.PRECO_CUSTO) AS VALOR_ESTOQUE ' +
       'FROM PRODUTO P LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
-      'WHERE P.CONTROLA_ESTOQUE = ''S'' ORDER BY P.DESCRICAO';
+      'WHERE P.CONTROLA_ESTOQUE = ''S'' AND P.EMPRESA_ID = :EMP ORDER BY P.DESCRICAO';
+    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
     LQuery.Open;
 
     LArray := TJSONArray.Create;
@@ -66,8 +76,17 @@ var
   LData: TJSONData;
   LConexao: TConexao;
   LQuery: TSQLQuery;
+  LUsuarioId, LEmpresaId: Int64;
 begin
   try
+    DadosDoToken(Req, LUsuarioId, LEmpresaId);
+    if LEmpresaId <= 0 then
+    begin
+      Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+        .Status(THTTPStatus.Unauthorized);
+      Exit;
+    end;
+
     LData := nil;
     try
       LData := GetJSON(Req.Body);
@@ -91,7 +110,9 @@ begin
         LQuery.SQL.Text :=
           'INSERT INTO MOVIMENTO_ESTOQUE (ID, EMPRESA_ID, PRODUTO_ID, TIPO, QUANTIDADE, ' +
           'CUSTO_UNITARIO, DOCUMENTO, OBSERVACAO, USUARIO_ID) ' +
-          'VALUES (GEN_ID(GEN_MOVIMENTO_ESTOQUE_ID, 1), 1, :PROD, :TIPO, :QTD, :CUSTO, :DOC, :OBS, 1)';
+          'VALUES (GEN_ID(GEN_MOVIMENTO_ESTOQUE_ID, 1), :EMP, :PROD, :TIPO, :QTD, :CUSTO, :DOC, :OBS, :USU)';
+        LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
+        LQuery.ParamByName('USU').AsLargeInt := LUsuarioId;
         LQuery.ParamByName('PROD').AsLargeInt := LBody.Get('produto_id', Int64(0));
         LQuery.ParamByName('TIPO').AsString := LBody.Get('tipo', 'E');
         LQuery.ParamByName('QTD').AsFloat := LBody.Get('quantidade', Double(0));

@@ -1,13 +1,18 @@
 package com.example.erp2026_mobile;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/** Posição de estoque dos produtos. */
+/**
+ * Posicao de estoque dos produtos.
+ *
+ * <p>A lista vem do cache local, preenchido pela sincronizacao. Quando ha
+ * rede, a tela atualiza o cache sozinha na primeira exibicao.
+ */
 public class EstoqueActivity extends BaseListaActivity {
+
+    private boolean sincronizando;
+    private boolean sincronizouNestaVisita;
 
     @Override
     protected int layoutId() {
@@ -21,7 +26,8 @@ public class EstoqueActivity extends BaseListaActivity {
 
     @Override
     protected String textoVazio() {
-        return "Nenhum produto com controle de estoque.";
+        return "Nenhum produto com estoque salvo no aparelho.\n"
+                + "Use ⋮ › Sincronizar dados para baixar.";
     }
 
     @Override
@@ -30,27 +36,63 @@ public class EstoqueActivity extends BaseListaActivity {
     }
 
     @Override
+    protected void onResume() {
+        sincronizouNestaVisita = false;
+        super.onResume();
+    }
+
+    @Override
+    protected void aoPublicar() {
+        if (!sincronizouNestaVisita && Conectividade.temRede(this)) {
+            sincronizouNestaVisita = true;
+            sincronizar();
+        }
+    }
+
+    @Override
     protected List<String> buscar() throws Exception {
-        ApiClient.Result r = ApiClient.get("/api/estoque");
-        if (!r.ok()) {
-            throw new ApiException(r);
+        BancoLocal banco = BancoLocal.get(this);
+
+        // Primeira carga (cache vazio): espera o download para nao abrir vazio.
+        if (banco.contarEstoque() == 0 && Conectividade.temRede(this)) {
+            try {
+                Sincronizacao.baixarEstoque(this);
+            } catch (Exception ignorado) {
+                // segue com o que existe localmente
+            }
         }
 
-        JSONArray arr = new JSONArray(r.body);
         List<String> itens = new ArrayList<>();
-        for (int i = 0; i < arr.length(); i++) {
-            JSONObject o = arr.getJSONObject(i);
-            double quantidade = o.optDouble("quantidade", 0);
-            double minimo = o.optDouble("estoque_minimo", 0);
-
-            StringBuilder linha = new StringBuilder(Fmt.limpar(o.optString("descricao")));
-            linha.append("\nCód: ").append(Fmt.limpar(o.optString("codigo")));
-            linha.append("   Qtd: ").append(Fmt.quantidade(quantidade));
-            if (minimo > 0 && quantidade <= minimo) {
-                linha.append("\nEstoque baixo (mínimo ").append(Fmt.quantidade(minimo)).append(")");
-            }
-            itens.add(linha.toString());
+        for (EstoqueLocal item : banco.listarEstoque()) {
+            itens.add(item.resumo());
         }
         return itens;
+    }
+
+    private void sincronizar() {
+        if (sincronizando || isFinishing()) {
+            return;
+        }
+        sincronizando = true;
+
+        new Thread(() -> {
+            try {
+                Sincronizacao.baixarEstoque(this);
+            } catch (Sincronizacao.ErroApi e) {
+                if (e.resposta.status == 401) {
+                    runOnUiThread(() -> Sessao.tratarSessaoExpirada(this, e.resposta));
+                    sincronizando = false;
+                    return;
+                }
+            } catch (Exception ignorado) {
+                // mantem o cache anterior
+            }
+            sincronizando = false;
+            runOnUiThread(() -> {
+                if (!isFinishing()) {
+                    recarregar();
+                }
+            });
+        }).start();
     }
 }

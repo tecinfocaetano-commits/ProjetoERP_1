@@ -67,6 +67,9 @@ public final class BancoLocal {
                 + " pendentes=" + contarClientesPendentes()
                 + " produtos=" + contarProdutos()
                 + " orcamentos=" + contarOrcamentos()
+                + " vendas=" + contarVendas()
+                + " estoque=" + contarEstoque()
+                + " contas=" + (contarContasReceber() + contarContasPagar())
                 + " outbox=" + contarPendentes());
     }
 
@@ -562,6 +565,267 @@ public final class BancoLocal {
         o.criadoEm = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.O_CRIADO_EM));
         o.atualizadoEm = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.O_ATUALIZADO_EM));
         return o;
+    }
+
+    // ==================================================================
+    // Vendas, estoque e financeiro (caches de consulta - v3)
+    // ==================================================================
+
+    public List<VendaLocal> listarVendas() {
+        List<VendaLocal> lista = new ArrayList<>();
+        Cursor c = helper.getReadableDatabase().rawQuery(
+                "SELECT * FROM " + ErpDbHelper.T_VENDA
+                        + " WHERE " + ErpDbHelper.V_EMPRESA + " = ?"
+                        + " ORDER BY " + ErpDbHelper.V_ID_SERVIDOR + " DESC",
+                new String[]{empresaAtual()});
+        try {
+            while (c.moveToNext()) {
+                VendaLocal v = new VendaLocal();
+                v.id = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.V_ID));
+                v.idServidor = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.V_ID_SERVIDOR));
+                v.numero = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.V_NUMERO)));
+                v.clienteNome = nulo(c.getString(
+                        c.getColumnIndexOrThrow(ErpDbHelper.V_CLIENTE_NOME)));
+                v.total = c.getDouble(c.getColumnIndexOrThrow(ErpDbHelper.V_TOTAL));
+                v.data = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.V_DATA)));
+                v.status = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.V_STATUS)));
+                lista.add(v);
+            }
+        } finally {
+            c.close();
+        }
+        return lista;
+    }
+
+    /** Troca o cache de vendas pelo snapshot do servidor. */
+    public void substituirVendasServidor(List<VendaLocal> vendas) {
+        SQLiteDatabase db = helper.getWritableDatabase();
+        long agora = System.currentTimeMillis();
+        db.beginTransaction();
+        try {
+            db.delete(ErpDbHelper.T_VENDA,
+                    ErpDbHelper.V_EMPRESA + " = ?", new String[]{empresaAtual()});
+            for (VendaLocal v : vendas) {
+                if (v.idServidor == null) {
+                    continue;
+                }
+                ContentValues valores = new ContentValues();
+                valores.put(ErpDbHelper.V_EMPRESA, empresaAtual());
+                valores.put(ErpDbHelper.V_ID_SERVIDOR, v.idServidor);
+                valores.put(ErpDbHelper.V_NUMERO, texto(v.numero));
+                valores.put(ErpDbHelper.V_CLIENTE_NOME, texto(v.clienteNome));
+                valores.put(ErpDbHelper.V_TOTAL, v.total);
+                valores.put(ErpDbHelper.V_DATA, texto(v.data));
+                valores.put(ErpDbHelper.V_STATUS, texto(v.status));
+                valores.put(ErpDbHelper.V_ATUALIZADO_EM, agora);
+                db.insertOrThrow(ErpDbHelper.T_VENDA, null, valores);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public int contarVendas() {
+        return contar(ErpDbHelper.T_VENDA, null);
+    }
+
+    public List<EstoqueLocal> listarEstoque() {
+        List<EstoqueLocal> lista = new ArrayList<>();
+        Cursor c = helper.getReadableDatabase().rawQuery(
+                "SELECT * FROM " + ErpDbHelper.T_ESTOQUE
+                        + " WHERE " + ErpDbHelper.E_EMPRESA + " = ?"
+                        + " ORDER BY " + ErpDbHelper.E_DESCRICAO + " COLLATE NOCASE",
+                new String[]{empresaAtual()});
+        try {
+            while (c.moveToNext()) {
+                EstoqueLocal e = new EstoqueLocal();
+                e.id = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.E_ID));
+                e.idServidor = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.E_ID_SERVIDOR));
+                e.codigo = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.E_CODIGO)));
+                e.descricao = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.E_DESCRICAO)));
+                e.quantidade = c.getDouble(c.getColumnIndexOrThrow(ErpDbHelper.E_QUANTIDADE));
+                e.estoqueMinimo = c.getDouble(c.getColumnIndexOrThrow(ErpDbHelper.E_MINIMO));
+                e.valorEstoque = c.getDouble(c.getColumnIndexOrThrow(ErpDbHelper.E_VALOR));
+                lista.add(e);
+            }
+        } finally {
+            c.close();
+        }
+        return lista;
+    }
+
+    /** Troca o cache de estoque pelo snapshot do servidor. */
+    public void substituirEstoqueServidor(List<EstoqueLocal> itens) {
+        SQLiteDatabase db = helper.getWritableDatabase();
+        long agora = System.currentTimeMillis();
+        db.beginTransaction();
+        try {
+            db.delete(ErpDbHelper.T_ESTOQUE,
+                    ErpDbHelper.E_EMPRESA + " = ?", new String[]{empresaAtual()});
+            for (EstoqueLocal e : itens) {
+                if (e.idServidor == null) {
+                    continue;
+                }
+                ContentValues valores = new ContentValues();
+                valores.put(ErpDbHelper.E_EMPRESA, empresaAtual());
+                valores.put(ErpDbHelper.E_ID_SERVIDOR, e.idServidor);
+                valores.put(ErpDbHelper.E_CODIGO, texto(e.codigo));
+                valores.put(ErpDbHelper.E_DESCRICAO, texto(e.descricao));
+                valores.put(ErpDbHelper.E_QUANTIDADE, e.quantidade);
+                valores.put(ErpDbHelper.E_MINIMO, e.estoqueMinimo);
+                valores.put(ErpDbHelper.E_VALOR, e.valorEstoque);
+                valores.put(ErpDbHelper.E_ATUALIZADO_EM, agora);
+                db.insertOrThrow(ErpDbHelper.T_ESTOQUE, null, valores);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public int contarEstoque() {
+        return contar(ErpDbHelper.T_ESTOQUE, null);
+    }
+
+    public List<ContaLocal> listarContasReceber() {
+        return listarContas(ErpDbHelper.T_CONTA_RECEBER, ErpDbHelper.CR_ID,
+                ErpDbHelper.CR_EMPRESA, ErpDbHelper.CR_ID_SERVIDOR,
+                ErpDbHelper.CR_PESSOA_NOME, ErpDbHelper.CR_DESCRICAO,
+                ErpDbHelper.CR_VALOR, ErpDbHelper.CR_VENCIMENTO, ErpDbHelper.CR_STATUS);
+    }
+
+    public List<ContaLocal> listarContasPagar() {
+        return listarContas(ErpDbHelper.T_CONTA_PAGAR, ErpDbHelper.CP_ID,
+                ErpDbHelper.CP_EMPRESA, ErpDbHelper.CP_ID_SERVIDOR,
+                ErpDbHelper.CP_PESSOA_NOME, ErpDbHelper.CP_DESCRICAO,
+                ErpDbHelper.CP_VALOR, ErpDbHelper.CP_VENCIMENTO, ErpDbHelper.CP_STATUS);
+    }
+
+    private List<ContaLocal> listarContas(String tabela, String colId, String colEmpresa,
+                                          String colIdServidor, String colPessoa,
+                                          String colDescricao, String colValor,
+                                          String colVencimento, String colStatus) {
+        List<ContaLocal> lista = new ArrayList<>();
+        Cursor c = helper.getReadableDatabase().rawQuery(
+                "SELECT * FROM " + tabela + " WHERE " + colEmpresa + " = ?"
+                        + " ORDER BY " + colVencimento,
+                new String[]{empresaAtual()});
+        try {
+            while (c.moveToNext()) {
+                ContaLocal conta = new ContaLocal();
+                conta.id = c.getLong(c.getColumnIndexOrThrow(colId));
+                conta.idServidor = c.getLong(c.getColumnIndexOrThrow(colIdServidor));
+                conta.pessoaNome = nulo(c.getString(c.getColumnIndexOrThrow(colPessoa)));
+                conta.descricao = nulo(c.getString(c.getColumnIndexOrThrow(colDescricao)));
+                conta.valor = c.getDouble(c.getColumnIndexOrThrow(colValor));
+                conta.vencimento = nulo(c.getString(c.getColumnIndexOrThrow(colVencimento)));
+                conta.status = nulo(c.getString(c.getColumnIndexOrThrow(colStatus)));
+                lista.add(conta);
+            }
+        } finally {
+            c.close();
+        }
+        return lista;
+    }
+
+    public void substituirContasReceberServidor(List<ContaLocal> contas) {
+        substituirContas(ErpDbHelper.T_CONTA_RECEBER, ErpDbHelper.CR_EMPRESA,
+                ErpDbHelper.CR_ID_SERVIDOR, ErpDbHelper.CR_PESSOA_NOME,
+                ErpDbHelper.CR_DESCRICAO, ErpDbHelper.CR_VALOR,
+                ErpDbHelper.CR_VENCIMENTO, ErpDbHelper.CR_STATUS,
+                ErpDbHelper.CR_ATUALIZADO_EM, contas);
+    }
+
+    public void substituirContasPagarServidor(List<ContaLocal> contas) {
+        substituirContas(ErpDbHelper.T_CONTA_PAGAR, ErpDbHelper.CP_EMPRESA,
+                ErpDbHelper.CP_ID_SERVIDOR, ErpDbHelper.CP_PESSOA_NOME,
+                ErpDbHelper.CP_DESCRICAO, ErpDbHelper.CP_VALOR,
+                ErpDbHelper.CP_VENCIMENTO, ErpDbHelper.CP_STATUS,
+                ErpDbHelper.CP_ATUALIZADO_EM, contas);
+    }
+
+    private void substituirContas(String tabela, String colEmpresa, String colIdServidor,
+                                  String colPessoa, String colDescricao, String colValor,
+                                  String colVencimento, String colStatus,
+                                  String colAtualizadoEm, List<ContaLocal> contas) {
+        SQLiteDatabase db = helper.getWritableDatabase();
+        long agora = System.currentTimeMillis();
+        db.beginTransaction();
+        try {
+            db.delete(tabela, colEmpresa + " = ?", new String[]{empresaAtual()});
+            for (ContaLocal conta : contas) {
+                if (conta.idServidor == null) {
+                    continue;
+                }
+                ContentValues valores = new ContentValues();
+                valores.put(colEmpresa, empresaAtual());
+                valores.put(colIdServidor, conta.idServidor);
+                valores.put(colPessoa, texto(conta.pessoaNome));
+                valores.put(colDescricao, texto(conta.descricao));
+                valores.put(colValor, conta.valor);
+                valores.put(colVencimento, texto(conta.vencimento));
+                valores.put(colStatus, texto(conta.status));
+                valores.put(colAtualizadoEm, agora);
+                db.insertOrThrow(tabela, null, valores);
+            }
+            db.setTransactionSuccessful();
+        } finally {
+            db.endTransaction();
+        }
+    }
+
+    public int contarContasReceber() {
+        return contar(ErpDbHelper.T_CONTA_RECEBER, null);
+    }
+
+    public int contarContasPagar() {
+        return contar(ErpDbHelper.T_CONTA_PAGAR, null);
+    }
+
+    /** Resumo financeiro do ultimo download (usado pelo dashboard e pela tela Financeiro). */
+    public static final class ResumoFinanceiro {
+        public double faturamentoMes;
+        public int vendasMes;
+        public double aReceber;
+        public double aPagar;
+        public long atualizadoEm;
+    }
+
+    public void salvarResumoFinanceiro(double faturamentoMes, int vendasMes,
+                                       double aReceber, double aPagar) {
+        setMeta("fin_faturamento_mes", String.valueOf(faturamentoMes));
+        setMeta("fin_vendas_mes", String.valueOf(vendasMes));
+        setMeta("fin_a_receber", String.valueOf(aReceber));
+        setMeta("fin_a_pagar", String.valueOf(aPagar));
+        setMeta("fin_atualizado_em", String.valueOf(System.currentTimeMillis()));
+    }
+
+    /** Devolve null quando o resumo ainda nao foi baixado nesta empresa. */
+    public ResumoFinanceiro lerResumoFinanceiro() {
+        String atualizado = getMeta("fin_atualizado_em", "");
+        if (atualizado.isEmpty()) {
+            return null;
+        }
+        ResumoFinanceiro resumo = new ResumoFinanceiro();
+        resumo.faturamentoMes = numeroMeta("fin_faturamento_mes");
+        resumo.vendasMes = (int) numeroMeta("fin_vendas_mes");
+        resumo.aReceber = numeroMeta("fin_a_receber");
+        resumo.aPagar = numeroMeta("fin_a_pagar");
+        try {
+            resumo.atualizadoEm = Long.parseLong(atualizado);
+        } catch (NumberFormatException ignorado) {
+            resumo.atualizadoEm = 0;
+        }
+        return resumo;
+    }
+
+    private double numeroMeta(String chave) {
+        try {
+            return Double.parseDouble(getMeta(chave, "0"));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     // ==================================================================

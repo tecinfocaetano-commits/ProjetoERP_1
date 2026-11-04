@@ -17,7 +17,7 @@ procedure RegistrarRotasProdutos;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT;
 
 procedure GetProdutos(Req: THorseRequest; Res: THorseResponse);
 var
@@ -25,7 +25,17 @@ var
   LQuery: TSQLQuery;
   LArray: TJSONArray;
   LObj: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
 begin
+  { Catalogo da empresa do usuario logado. }
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
   try
@@ -35,7 +45,8 @@ begin
       'SELECT P.ID, P.CODIGO, P.DESCRICAO, P.PRECO_VENDA, P.PRECO_CUSTO, ' +
       'COALESCE(E.QUANTIDADE, 0) AS ESTOQUE, P.ATIVO ' +
       'FROM PRODUTO P LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
-      'WHERE P.ATIVO = ''A'' ORDER BY P.DESCRICAO';
+      'WHERE P.ATIVO = ''A'' AND P.EMPRESA_ID = :EMP ORDER BY P.DESCRICAO';
+    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
     LQuery.Open;
 
     LArray := TJSONArray.Create;
@@ -64,8 +75,18 @@ var
   LConexao: TConexao;
   LQuery: TSQLQuery;
   LObj: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
 begin
   LId := StrToInt64Def(Req.Params['id'], 0);
+
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
   try
@@ -73,8 +94,10 @@ begin
     LQuery.Transaction := LConexao.Transaction;
     LQuery.SQL.Text :=
       'SELECT P.*, COALESCE(E.QUANTIDADE, 0) AS ESTOQUE FROM PRODUTO P ' +
-      'LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID WHERE P.ID = :ID';
+      'LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
+      'WHERE P.ID = :ID AND P.EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := LId;
+    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
     LQuery.Open;
 
     if LQuery.IsEmpty then
@@ -104,8 +127,17 @@ var
   LData: TJSONData;
   LConexao: TConexao;
   LQuery: TSQLQuery;
+  LUsuarioId, LEmpresaId: Int64;
 begin
   try
+    DadosDoToken(Req, LUsuarioId, LEmpresaId);
+    if LEmpresaId <= 0 then
+    begin
+      Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+        .Status(THTTPStatus.Unauthorized);
+      Exit;
+    end;
+
     LData := nil;
     try
       LData := GetJSON(Req.Body);
@@ -129,7 +161,8 @@ begin
         LQuery.SQL.Text :=
           'INSERT INTO PRODUTO (ID, EMPRESA_ID, CATEGORIA_ID, UNIDADE_ID, CODIGO, DESCRICAO, ' +
           'PRECO_VENDA, PRECO_CUSTO, ATIVO, CONTROLA_ESTOQUE) ' +
-          'VALUES (GEN_ID(GEN_PRODUTO_ID, 1), 1, :CAT, :UNI, :COD, :DESC, :PV, :PC, ''A'', ''S'')';
+          'VALUES (GEN_ID(GEN_PRODUTO_ID, 1), :EMP, :CAT, :UNI, :COD, :DESC, :PV, :PC, ''A'', ''S'')';
+        LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
         LQuery.ParamByName('CAT').AsLargeInt := LBody.Get('categoria_id', Int64(1));
         LQuery.ParamByName('UNI').AsLargeInt := LBody.Get('unidade_id', Int64(1));
         LQuery.ParamByName('COD').AsString := LBody.Get('codigo', '');

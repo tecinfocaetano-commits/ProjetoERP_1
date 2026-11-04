@@ -9,6 +9,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/action_sincronizar"
+        android:title="Sincronizar dados"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_configuracao"
         android:title="Configuração (servidor e empresa)"
         app:showAsAction="never" />

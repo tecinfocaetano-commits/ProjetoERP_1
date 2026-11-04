@@ -49,25 +49,6 @@ begin
   end;
 end;
 
-{ Empresa/usuário autenticados: claims sub e empresa_id do JWT. }
-procedure DadosDoToken(Req: THorseRequest; out AUsuarioId, AEmpresaId: Int64);
-var
-  LToken: string;
-  LDados: TJSONObject;
-begin
-  AUsuarioId := 0;
-  AEmpresaId := 0;
-  LToken := StringReplace(Req.Headers['Authorization'], 'Bearer ', '', [rfIgnoreCase]);
-  LDados := ExtrairDadosToken(LToken);
-  if LDados <> nil then
-  try
-    AUsuarioId := LDados.Get('sub', Int64(0));
-    AEmpresaId := LDados.Get('empresa_id', Int64(0));
-  finally
-    LDados.Free;
-  end;
-end;
-
 { Próximo número sequencial, mantendo a regra do desktop
   (uFrmPedidoVenda.ProximoNumero): NUMERO é VARCHAR e valores não
   numéricos são ignorados. }

@@ -2,13 +2,15 @@ package com.example.erp2026_mobile;
 
 import android.widget.TextView;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/** Resumo financeiro e contas em aberto. */
+/**
+ * Resumo financeiro e contas em aberto.
+ *
+ * <p>Os totais e as contas vem do cache local, preenchido pela sincronizacao.
+ * Quando ha rede, a tela atualiza o cache sozinha na primeira exibicao.
+ */
 public class FinanceiroActivity extends BaseListaActivity {
 
     private TextView textViewTotalReceber;
@@ -16,6 +18,9 @@ public class FinanceiroActivity extends BaseListaActivity {
 
     private String resumoReceber = "A Receber: -";
     private String resumoPagar = "A Pagar: -";
+
+    private boolean sincronizando;
+    private boolean sincronizouNestaVisita;
 
     @Override
     protected int layoutId() {
@@ -29,12 +34,19 @@ public class FinanceiroActivity extends BaseListaActivity {
 
     @Override
     protected String textoVazio() {
-        return "Nenhuma conta em aberto.";
+        return "Nenhuma conta em aberto salva no aparelho.\n"
+                + "Use ⋮ › Sincronizar dados para baixar.";
     }
 
     @Override
     protected int itemMenuAtual() {
         return R.id.navFinanceiro;
+    }
+
+    @Override
+    protected void onResume() {
+        sincronizouNestaVisita = false;
+        super.onResume();
     }
 
     @Override
@@ -47,46 +59,73 @@ public class FinanceiroActivity extends BaseListaActivity {
     protected void aoPublicar() {
         textViewTotalReceber.setText(resumoReceber);
         textViewTotalPagar.setText(resumoPagar);
+
+        if (!sincronizouNestaVisita && Conectividade.temRede(this)) {
+            sincronizouNestaVisita = true;
+            sincronizar();
+        }
     }
 
     @Override
     protected List<String> buscar() throws Exception {
+        BancoLocal banco = BancoLocal.get(this);
+
+        // Primeira carga (cache vazio): espera o download para nao abrir vazio.
+        if (banco.lerResumoFinanceiro() == null && Conectividade.temRede(this)) {
+            try {
+                Sincronizacao.baixarResumoFinanceiro(this);
+                Sincronizacao.baixarContasReceber(this);
+                Sincronizacao.baixarContasPagar(this);
+            } catch (Exception ignorado) {
+                // segue com o que existe localmente
+            }
+        }
+
+        BancoLocal.ResumoFinanceiro resumo = banco.lerResumoFinanceiro();
+        if (resumo != null) {
+            resumoReceber = "A Receber: " + Fmt.moeda(resumo.aReceber);
+            resumoPagar = "A Pagar: " + Fmt.moeda(resumo.aPagar);
+        } else {
+            resumoReceber = "A Receber: -";
+            resumoPagar = "A Pagar: -";
+        }
+
         List<String> itens = new ArrayList<>();
-
-        ApiClient.Result resumo = ApiClient.get("/api/financeiro");
-        if (!resumo.ok()) {
-            throw new ApiException(resumo);
+        for (ContaLocal conta : banco.listarContasReceber()) {
+            itens.add(conta.resumo(true));
         }
-        JSONObject totais = new JSONObject(resumo.body);
-        resumoReceber = "A Receber: " + Fmt.moeda(totais.optDouble("a_receber", 0));
-        resumoPagar = "A Pagar: " + Fmt.moeda(totais.optDouble("a_pagar", 0));
-
-        ApiClient.Result receber = ApiClient.get("/api/financeiro/receber");
-        if (!receber.ok()) {
-            throw new ApiException(receber);
+        for (ContaLocal conta : banco.listarContasPagar()) {
+            itens.add(conta.resumo(false));
         }
-        JSONArray arrReceber = new JSONArray(receber.body);
-        for (int i = 0; i < arrReceber.length(); i++) {
-            JSONObject o = arrReceber.getJSONObject(i);
-            itens.add("A RECEBER  -  " + Fmt.limpar(o.optString("cliente"))
-                    + "\n" + Fmt.limpar(o.optString("descricao"))
-                    + "\n" + Fmt.moeda(o.optDouble("valor", 0))
-                    + "   Venc.: " + Fmt.limpar(o.optString("vencimento")));
-        }
-
-        ApiClient.Result pagar = ApiClient.get("/api/financeiro/pagar");
-        if (!pagar.ok()) {
-            throw new ApiException(pagar);
-        }
-        JSONArray arrPagar = new JSONArray(pagar.body);
-        for (int i = 0; i < arrPagar.length(); i++) {
-            JSONObject o = arrPagar.getJSONObject(i);
-            itens.add("A PAGAR  -  " + Fmt.limpar(o.optString("fornecedor"))
-                    + "\n" + Fmt.limpar(o.optString("descricao"))
-                    + "\n" + Fmt.moeda(o.optDouble("valor", 0))
-                    + "   Venc.: " + Fmt.limpar(o.optString("vencimento")));
-        }
-
         return itens;
+    }
+
+    private void sincronizar() {
+        if (sincronizando || isFinishing()) {
+            return;
+        }
+        sincronizando = true;
+
+        new Thread(() -> {
+            try {
+                Sincronizacao.baixarResumoFinanceiro(this);
+                Sincronizacao.baixarContasReceber(this);
+                Sincronizacao.baixarContasPagar(this);
+            } catch (Sincronizacao.ErroApi e) {
+                if (e.resposta.status == 401) {
+                    runOnUiThread(() -> Sessao.tratarSessaoExpirada(this, e.resposta));
+                    sincronizando = false;
+                    return;
+                }
+            } catch (Exception ignorado) {
+                // mantem o cache anterior
+            }
+            sincronizando = false;
+            runOnUiThread(() -> {
+                if (!isFinishing()) {
+                    recarregar();
+                }
+            });
+        }).start();
     }
 }

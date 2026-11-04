@@ -10,19 +10,16 @@ import android.widget.TextView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tela inicial do app: dashboard com o resumo de vendas do mês.
+ * Tela inicial do app: dashboard com o resumo de vendas do mes.
  *
- * <p>No lugar dos antigos botões, mostra os números da empresa (faturamento,
- * contas em aberto, orçamentos, clientes e as últimas vendas). A configuração
- * do servidor/empresa e a saída ficam no menu de três pontinhos da barra
- * superior. O menu inferior continua sendo a navegação principal.
+ * <p>Os numeros vem do cache local (preenchido por "Sincronizar dados" ou pela
+ * sincronizacao automatica em segundo plano). A configuracao do servidor e a
+ * sincronizacao ficam no menu de tres pontinhos da barra superior. O menu
+ * inferior continua sendo a navegacao principal.
  */
 public class DashboardActivity extends BaseActivity {
 
@@ -39,7 +36,10 @@ public class DashboardActivity extends BaseActivity {
     private TextView textViewUltimasVendas;
     private TextView textViewStatusResumo;
 
-    private boolean carregando;
+    private boolean sincronizando;
+
+    /** Mensagem da ultima sincronizacao (vazia quando deu tudo certo). */
+    private String avisoSincronizacao = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,6 +105,10 @@ public class DashboardActivity extends BaseActivity {
             carregarResumo();
             return true;
         }
+        if (id == R.id.action_sincronizar) {
+            abrir(SincronizacaoActivity.class);
+            return true;
+        }
         if (id == R.id.action_configuracao) {
             abrir(ConfiguracaoActivity.class);
             return true;
@@ -122,107 +126,69 @@ public class DashboardActivity extends BaseActivity {
     }
 
     /**
-     * Busca os números do dashboard em segundo plano.
-     *
-     * <p>As chamadas são independentes: se uma falhar, as demais ainda são
-     * exibidas e a falha aparece no rodapé, sem apagar o que já carregou.
+     * Mostra o que esta salvo no aparelho e, havendo rede, atualiza o cache em
+     * segundo plano. A tela nunca fica vazia esperando o servidor.
      */
     private void carregarResumo() {
-        if (carregando) {
-            return;
-        }
-        carregando = true;
-
-        new Thread(() -> {
-            final Resumo resumo = new Resumo();
-
-            try {
-                ApiClient.Result financeiro = ApiClient.get("/api/financeiro");
-                resumo.verificar(financeiro);
-                if (financeiro.ok()) {
-                    JSONObject totais = new JSONObject(financeiro.body);
-                    resumo.faturamentoMes = totais.optDouble("faturamento_mes", 0);
-                    resumo.vendasMes = totais.optInt("vendas_mes", 0);
-                    resumo.aReceber = totais.optDouble("a_receber", 0);
-                    resumo.aPagar = totais.optDouble("a_pagar", 0);
-                } else {
-                    resumo.falhou("resumo financeiro");
-                }
-            } catch (Exception e) {
-                resumo.falhou("resumo financeiro");
-            }
-
-            try {
-                ApiClient.Result orcamentos = ApiClient.get("/api/orcamentos");
-                resumo.verificar(orcamentos);
-                if (orcamentos.ok()) {
-                    resumo.orcamentosAbertos = new JSONArray(orcamentos.body).length();
-                } else {
-                    resumo.falhou("orçamentos");
-                }
-            } catch (Exception e) {
-                resumo.falhou("orçamentos");
-            }
-
-            try {
-                ApiClient.Result clientes = ApiClient.get("/api/clientes");
-                resumo.verificar(clientes);
-                if (clientes.ok()) {
-                    resumo.clientes = new JSONArray(clientes.body).length();
-                } else {
-                    resumo.falhou("clientes");
-                }
-            } catch (Exception e) {
-                resumo.falhou("clientes");
-            }
-
-            try {
-                ApiClient.Result vendas = ApiClient.get("/api/vendas");
-                resumo.verificar(vendas);
-                if (vendas.ok()) {
-                    JSONArray arr = new JSONArray(vendas.body);
-                    int limite = Math.min(ULTIMAS_VENDAS, arr.length());
-                    for (int i = 0; i < limite; i++) {
-                        resumo.ultimasVendas.add(linhaVenda(arr.getJSONObject(i)));
-                    }
-                } else {
-                    resumo.falhou("vendas");
-                }
-            } catch (Exception e) {
-                resumo.falhou("vendas");
-            }
-
-            runOnUiThread(() -> {
-                carregando = false;
-                if (resumo.naoAutorizado != null
-                        && Sessao.tratarSessaoExpirada(this, resumo.naoAutorizado)) {
-                    return;
-                }
-                publicar(resumo);
-            });
-        }).start();
+        publicarLocal();
+        sincronizarEmSegundoPlano();
     }
 
-    /** Monta as duas linhas de uma venda recente. */
-    private static String linhaVenda(JSONObject venda) {
-        String numero = Fmt.limpar(venda.optString("numero"));
-        String cliente = Fmt.limpar(venda.optString("cliente"));
-        String data = Fmt.limpar(venda.optString("data_emissao"));
-        String status = Fmt.limpar(venda.optString("status"));
+    /** Monta os numeros a partir do banco local. */
+    private void publicarLocal() {
+        BancoLocal banco = BancoLocal.get(this);
+        Resumo resumo = new Resumo();
 
-        StringBuilder linha = new StringBuilder();
-        linha.append(numero.isEmpty() ? "Pedido" : numero);
-        if (!cliente.isEmpty()) {
-            linha.append(" - ").append(cliente);
+        BancoLocal.ResumoFinanceiro financeiro = banco.lerResumoFinanceiro();
+        if (financeiro != null) {
+            resumo.faturamentoMes = financeiro.faturamentoMes;
+            resumo.vendasMes = financeiro.vendasMes;
+            resumo.aReceber = financeiro.aReceber;
+            resumo.aPagar = financeiro.aPagar;
+            resumo.temDados = true;
         }
-        linha.append("\n").append(Fmt.moeda(venda.optDouble("total", 0)));
-        if (!data.isEmpty()) {
-            linha.append("   Emissão: ").append(data);
+
+        resumo.orcamentosAbertos = banco.contarOrcamentos();
+        resumo.clientes = banco.contarClientes();
+
+        List<VendaLocal> vendas = banco.listarVendas();
+        int limite = Math.min(ULTIMAS_VENDAS, vendas.size());
+        for (int i = 0; i < limite; i++) {
+            resumo.ultimasVendas.add(vendas.get(i).resumo());
+            resumo.temDados = true;
         }
-        if (!status.isEmpty()) {
-            linha.append("   ").append(status);
+        if (resumo.clientes > 0 || resumo.orcamentosAbertos > 0) {
+            resumo.temDados = true;
         }
-        return linha.toString();
+
+        publicar(resumo);
+    }
+
+    /** Atualiza o cache completo sem travar a tela. */
+    private void sincronizarEmSegundoPlano() {
+        if (sincronizando || isFinishing() || !Conectividade.temRede(this)) {
+            return;
+        }
+        sincronizando = true;
+
+        new Thread(() -> {
+            final Sincronizacao.Resultado resultado = Sincronizacao.sincronizar(this);
+            runOnUiThread(() -> {
+                sincronizando = false;
+                if (isFinishing()) {
+                    return;
+                }
+                if (resultado.sessaoExpirada != null
+                        && Sessao.tratarSessaoExpirada(this, resultado.sessaoExpirada)) {
+                    return;
+                }
+                avisoSincronizacao = resultado.falhas == 0
+                        ? ""
+                        : "Não foi possível atualizar: " + resultado.primeiraFalha
+                        + ".\nUse ⋮ › Sincronizar dados para tentar de novo.";
+                publicarLocal();
+            });
+        }).start();
     }
 
     private void publicar(Resumo resumo) {
@@ -248,24 +214,16 @@ public class DashboardActivity extends BaseActivity {
             textViewUltimasVendas.setText(texto.toString());
         }
 
-        if (resumo.falhas.isEmpty()) {
-            textViewStatusResumo.setVisibility(View.GONE);
-        } else {
-            textViewStatusResumo.setText("Não foi possível carregar: "
-                    + junta(resumo.falhas) + ".\nToque em ⋮ › Atualizar resumo para tentar de novo.");
+        if (!resumo.temDados) {
+            textViewStatusResumo.setText("Ainda não há dados salvos no aparelho.\n"
+                    + "Use ⋮ › Sincronizar dados para baixar.");
             textViewStatusResumo.setVisibility(View.VISIBLE);
+        } else if (!avisoSincronizacao.isEmpty()) {
+            textViewStatusResumo.setText(avisoSincronizacao);
+            textViewStatusResumo.setVisibility(View.VISIBLE);
+        } else {
+            textViewStatusResumo.setVisibility(View.GONE);
         }
-    }
-
-    private static String junta(List<String> partes) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < partes.size(); i++) {
-            if (i > 0) {
-                sb.append(", ");
-            }
-            sb.append(partes.get(i));
-        }
-        return sb.toString();
     }
 
     private void confirmarSaida() {
@@ -280,7 +238,7 @@ public class DashboardActivity extends BaseActivity {
                 .show();
     }
 
-    /** Números exibidos no dashboard (preenchidos em segundo plano). */
+    /** Números exibidos no dashboard (preenchidos a partir do cache local). */
     private static final class Resumo {
         double faturamentoMes;
         int vendasMes;
@@ -288,18 +246,7 @@ public class DashboardActivity extends BaseActivity {
         double aPagar;
         int orcamentosAbertos;
         int clientes;
+        boolean temDados;
         final List<String> ultimasVendas = new ArrayList<>();
-        final List<String> falhas = new ArrayList<>();
-        ApiClient.Result naoAutorizado;
-
-        void verificar(ApiClient.Result resultado) {
-            if (resultado.status == 401 && naoAutorizado == null) {
-                naoAutorizado = resultado;
-            }
-        }
-
-        void falhou(String parte) {
-            falhas.add(parte);
-        }
     }
 }

@@ -17,7 +17,7 @@ procedure RegistrarRotasVendas;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uPedidoStatus;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uPedidoStatus, uMiddlewareJWT;
 
 procedure GetVendas(Req: THorseRequest; Res: THorseResponse);
 var
@@ -25,7 +25,16 @@ var
   LQuery: TSQLQuery;
   LArray: TJSONArray;
   LObj: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
 begin
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
   try
@@ -37,7 +46,9 @@ begin
       'CASE WHEN PV.STATUS = ''O'' THEN ''Orçamento'' ELSE ' +
         SqlCaseStatusPedido('PV.STATUS') + ' END AS STATUS ' +
       'FROM PEDIDO_VENDA PV LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
+      'WHERE PV.EMPRESA_ID = :EMP ' +
       'ORDER BY PV.DATA_EMISSAO DESC ROWS 100';
+    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
     LQuery.Open;
 
     LArray := TJSONArray.Create;
@@ -68,8 +79,18 @@ var
   LObj: TJSONObject;
   LItens: TJSONArray;
   LItem: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
 begin
   LId := StrToInt64Def(Req.Params['id'], 0);
+
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
   try
@@ -79,8 +100,10 @@ begin
     // Cabeçalho
     LQuery.SQL.Text :=
       'SELECT PV.*, C.NOME AS CLIENTE_NOME FROM PEDIDO_VENDA PV ' +
-      'LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' WHERE PV.ID = :ID';
+      'LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
+      'WHERE PV.ID = :ID AND PV.EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := LId;
+    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
     LQuery.Open;
 
     if LQuery.IsEmpty then

@@ -24,8 +24,8 @@ public class ErpDbHelper extends SQLiteOpenHelper {
 
     public static final String NOME_BANCO = "erp2026.db";
 
-    /** v2: produto_local, desconto do item e quantidade de itens no orcamento. */
-    public static final int VERSAO = 2;
+    /** v3: cache de vendas, estoque e financeiro para a sincronizacao total. */
+    public static final int VERSAO = 3;
 
     // ---- clientes -------------------------------------------------
     public static final String T_CLIENTE = "cliente_local";
@@ -97,6 +97,53 @@ public class ErpDbHelper extends SQLiteOpenHelper {
     public static final String T_META = "meta";
     public static final String M_CHAVE = "chave";
     public static final String M_VALOR = "valor";
+
+    // ---- vendas (cache de consulta) ------------------------------
+    public static final String T_VENDA = "venda_local";
+    public static final String V_ID = "id";
+    public static final String V_EMPRESA = "empresa";
+    public static final String V_ID_SERVIDOR = "id_servidor";
+    public static final String V_NUMERO = "numero";
+    public static final String V_CLIENTE_NOME = "cliente_nome";
+    public static final String V_TOTAL = "total";
+    public static final String V_DATA = "data";
+    public static final String V_STATUS = "status";
+    public static final String V_ATUALIZADO_EM = "atualizado_em";
+
+    // ---- estoque (cache de consulta) -----------------------------
+    public static final String T_ESTOQUE = "estoque_local";
+    public static final String E_ID = "id";
+    public static final String E_EMPRESA = "empresa";
+    public static final String E_ID_SERVIDOR = "id_servidor";
+    public static final String E_CODIGO = "codigo";
+    public static final String E_DESCRICAO = "descricao";
+    public static final String E_QUANTIDADE = "quantidade";
+    public static final String E_MINIMO = "estoque_minimo";
+    public static final String E_VALOR = "valor_estoque";
+    public static final String E_ATUALIZADO_EM = "atualizado_em";
+
+    // ---- contas a receber / a pagar (cache de consulta) ----------
+    public static final String T_CONTA_RECEBER = "conta_receber_local";
+    public static final String CR_ID = "id";
+    public static final String CR_EMPRESA = "empresa";
+    public static final String CR_ID_SERVIDOR = "id_servidor";
+    public static final String CR_PESSOA_NOME = "pessoa_nome";
+    public static final String CR_DESCRICAO = "descricao";
+    public static final String CR_VALOR = "valor";
+    public static final String CR_VENCIMENTO = "vencimento";
+    public static final String CR_STATUS = "status";
+    public static final String CR_ATUALIZADO_EM = "atualizado_em";
+
+    public static final String T_CONTA_PAGAR = "conta_pagar_local";
+    public static final String CP_ID = "id";
+    public static final String CP_EMPRESA = "empresa";
+    public static final String CP_ID_SERVIDOR = "id_servidor";
+    public static final String CP_PESSOA_NOME = "pessoa_nome";
+    public static final String CP_DESCRICAO = "descricao";
+    public static final String CP_VALOR = "valor";
+    public static final String CP_VENCIMENTO = "vencimento";
+    public static final String CP_STATUS = "status";
+    public static final String CP_ATUALIZADO_EM = "atualizado_em";
 
     public ErpDbHelper(Context contexto) {
         super(contexto, NOME_BANCO, null, VERSAO);
@@ -196,6 +243,72 @@ public class ErpDbHelper extends SQLiteOpenHelper {
                 + M_VALOR + " TEXT, "
                 + "PRIMARY KEY (" + B_EMPRESA + ", " + M_CHAVE + ")"
                 + ")");
+
+        criarTabelasConsulta(db);
+    }
+
+    /**
+     * Tabelas de consulta preenchidas pela sincronizacao (v3).
+     *
+     * <p>Sao snapshots do servidor por empresa: nao tem referencia de outras
+     * tabelas locais, entao podem ser substituidos a cada sincronizacao.
+     */
+    private void criarTabelasConsulta(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + T_VENDA + " ("
+                + V_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + V_EMPRESA + " TEXT NOT NULL DEFAULT '', "
+                + V_ID_SERVIDOR + " INTEGER NOT NULL, "
+                + V_NUMERO + " TEXT, "
+                + V_CLIENTE_NOME + " TEXT, "
+                + V_TOTAL + " REAL NOT NULL DEFAULT 0, "
+                + V_DATA + " TEXT, "
+                + V_STATUS + " TEXT, "
+                + V_ATUALIZADO_EM + " INTEGER NOT NULL DEFAULT 0"
+                + ")");
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS ux_venda_servidor ON " + T_VENDA
+                + " (" + V_EMPRESA + ", " + V_ID_SERVIDOR + ")");
+
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + T_ESTOQUE + " ("
+                + E_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + E_EMPRESA + " TEXT NOT NULL DEFAULT '', "
+                + E_ID_SERVIDOR + " INTEGER NOT NULL, "
+                + E_CODIGO + " TEXT, "
+                + E_DESCRICAO + " TEXT, "
+                + E_QUANTIDADE + " REAL NOT NULL DEFAULT 0, "
+                + E_MINIMO + " REAL NOT NULL DEFAULT 0, "
+                + E_VALOR + " REAL NOT NULL DEFAULT 0, "
+                + E_ATUALIZADO_EM + " INTEGER NOT NULL DEFAULT 0"
+                + ")");
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS ux_estoque_servidor ON " + T_ESTOQUE
+                + " (" + E_EMPRESA + ", " + E_ID_SERVIDOR + ")");
+
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + T_CONTA_RECEBER + " ("
+                + CR_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + CR_EMPRESA + " TEXT NOT NULL DEFAULT '', "
+                + CR_ID_SERVIDOR + " INTEGER NOT NULL, "
+                + CR_PESSOA_NOME + " TEXT, "
+                + CR_DESCRICAO + " TEXT, "
+                + CR_VALOR + " REAL NOT NULL DEFAULT 0, "
+                + CR_VENCIMENTO + " TEXT, "
+                + CR_STATUS + " TEXT, "
+                + CR_ATUALIZADO_EM + " INTEGER NOT NULL DEFAULT 0"
+                + ")");
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS ux_conta_receber_servidor ON "
+                + T_CONTA_RECEBER + " (" + CR_EMPRESA + ", " + CR_ID_SERVIDOR + ")");
+
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + T_CONTA_PAGAR + " ("
+                + CP_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + CP_EMPRESA + " TEXT NOT NULL DEFAULT '', "
+                + CP_ID_SERVIDOR + " INTEGER NOT NULL, "
+                + CP_PESSOA_NOME + " TEXT, "
+                + CP_DESCRICAO + " TEXT, "
+                + CP_VALOR + " REAL NOT NULL DEFAULT 0, "
+                + CP_VENCIMENTO + " TEXT, "
+                + CP_STATUS + " TEXT, "
+                + CP_ATUALIZADO_EM + " INTEGER NOT NULL DEFAULT 0"
+                + ")");
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS ux_conta_pagar_servidor ON "
+                + T_CONTA_PAGAR + " (" + CP_EMPRESA + ", " + CP_ID_SERVIDOR + ")");
     }
 
     private void criarTabelaProdutos(SQLiteDatabase db) {
@@ -225,6 +338,10 @@ public class ErpDbHelper extends SQLiteOpenHelper {
             criarTabelaProdutos(db);
             db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS ux_orcamento_servidor ON "
                     + T_ORCAMENTO + " (" + O_EMPRESA + ", " + O_ID_SERVIDOR + ")");
+        }
+        if (versaoAntiga < 3) {
+            // v2 -> v3: cache de vendas, estoque e financeiro (sincronizacao total).
+            criarTabelasConsulta(db);
         }
     }
 }

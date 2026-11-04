@@ -28,6 +28,7 @@
         <activity android:name=".InserirClienteActivity"/>
         <activity android:name=".ConsultarClientesActivity"/>
         <activity android:name=".ConfiguracaoActivity"/>
+        <activity android:name=".SincronizacaoActivity"/>
 
     </application>
 </manifest>

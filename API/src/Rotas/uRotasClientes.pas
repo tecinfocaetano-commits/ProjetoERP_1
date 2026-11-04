@@ -17,7 +17,7 @@ procedure RegistrarRotasClientes;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT;
 
 procedure GetClientes(Req: THorseRequest; Res: THorseResponse);
 var
@@ -25,13 +25,26 @@ var
   LQuery: TSQLQuery;
   LArray: TJSONArray;
   LObj: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
 begin
+  { Empresa do usuario logado: cada um ve apenas os clientes da sua empresa. }
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT ID, NOME, CPF_CNPJ, EMAIL, TELEFONE, CIDADE, UF, ATIVO FROM PESSOA WHERE TIPO = ''C'' ORDER BY NOME';
+    LQuery.SQL.Text :=
+      'SELECT ID, NOME, CPF_CNPJ, EMAIL, TELEFONE, CIDADE, UF, ATIVO ' +
+      'FROM PESSOA WHERE TIPO = ''C'' AND EMPRESA_ID = :EMP ORDER BY NOME';
+    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
     LQuery.Open;
 
     LArray := TJSONArray.Create;
@@ -62,6 +75,7 @@ var
   LConexao: TConexao;
   LQuery: TSQLQuery;
   LObj: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
 begin
   LId := StrToInt64Def(Req.Params['id'], 0);
   if LId = 0 then
@@ -70,13 +84,23 @@ begin
     Exit;
   end;
 
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT * FROM PESSOA WHERE ID = :ID AND TIPO = ''C''';
+    LQuery.SQL.Text :=
+      'SELECT * FROM PESSOA WHERE ID = :ID AND TIPO = ''C'' AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := LId;
+    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
     LQuery.Open;
 
     if LQuery.IsEmpty then
@@ -109,8 +133,17 @@ var
   LData: TJSONData;
   LConexao: TConexao;
   LQuery: TSQLQuery;
+  LUsuarioId, LEmpresaId: Int64;
 begin
   try
+    DadosDoToken(Req, LUsuarioId, LEmpresaId);
+    if LEmpresaId <= 0 then
+    begin
+      Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+        .Status(THTTPStatus.Unauthorized);
+      Exit;
+    end;
+
     LData := nil;
     try
       LData := GetJSON(Req.Body);
@@ -133,7 +166,8 @@ begin
         LQuery.Transaction := LConexao.Transaction;
         LQuery.SQL.Text :=
           'INSERT INTO PESSOA (ID, EMPRESA_ID, TIPO, TIPO_PESSOA, NOME, CPF_CNPJ, EMAIL, TELEFONE, ENDERECO, CIDADE, UF, CEP, ATIVO) ' +
-          'VALUES (GEN_ID(GEN_PESSOA_ID, 1), 1, ''C'', ''F'', :NOME, :CPF, :EMAIL, :TEL, :END, :CID, :UF, :CEP, ''A'')';
+          'VALUES (GEN_ID(GEN_PESSOA_ID, 1), :EMP, ''C'', ''F'', :NOME, :CPF, :EMAIL, :TEL, :END, :CID, :UF, :CEP, ''A'')';
+        LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
         LQuery.ParamByName('NOME').AsString := LBody.Get('nome', '');
         LQuery.ParamByName('CPF').AsString := LBody.Get('cpf_cnpj', '');
         LQuery.ParamByName('EMAIL').AsString := LBody.Get('email', '');
@@ -162,6 +196,7 @@ var
   LId: Int64;
   LConexao: TConexao;
   LQuery: TSQLQuery;
+  LUsuarioId, LEmpresaId: Int64;
 begin
   LId := StrToInt64Def(Req.Params['id'], 0);
   if LId = 0 then
@@ -169,13 +204,24 @@ begin
     Res.Send('{"error":"ID inválido"}').Status(THTTPStatus.BadRequest);
     Exit;
   end;
+
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text := 'DELETE FROM PESSOA WHERE ID = :ID AND TIPO = ''C''';
+    LQuery.SQL.Text :=
+      'DELETE FROM PESSOA WHERE ID = :ID AND TIPO = ''C'' AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := LId;
+    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
     LQuery.ExecSQL;
     LConexao.Confirmar;
     Res.Send('{"message":"Cliente removido"}').Status(THTTPStatus.OK);

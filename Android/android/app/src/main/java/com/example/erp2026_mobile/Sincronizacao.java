@@ -21,13 +21,23 @@ import java.util.Map;
  * o erro anotado para a proxima tentativa.
  *
  * <p><b>Download:</b> atualiza os caches de clientes, produtos e orcamentos em
- * aberto. Os caches nunca apagam registros locais pendentes.
+ * aberto e, na sincronizacao total, tambem vendas, estoque e financeiro. Os
+ * caches de clientes/produtos/orcamentos nunca apagam registros locais
+ * pendentes; vendas/estoque/contas sao snapshots (substituidos por inteiro).
  *
  * <p>Chame sempre em thread de fundo. Nao mexe em telas.
  */
 public final class Sincronizacao {
 
     private static final int LIMITE_FILA = 500;
+
+    /** Conjuntos com data de ultima sincronizacao guardada em {@code meta}. */
+    public static final String CONJUNTO_CLIENTES = "clientes";
+    public static final String CONJUNTO_PRODUTOS = "produtos";
+    public static final String CONJUNTO_ORCAMENTOS = "orcamentos";
+    public static final String CONJUNTO_VENDAS = "vendas";
+    public static final String CONJUNTO_ESTOQUE = "estoque";
+    public static final String CONJUNTO_FINANCEIRO = "financeiro";
 
     private Sincronizacao() { }
 
@@ -39,6 +49,10 @@ public final class Sincronizacao {
         public int clientesBaixados;
         public int produtosBaixados;
         public int orcamentosBaixados;
+        public int vendasBaixadas;
+        public int estoqueBaixados;
+        public int contasReceberBaixadas;
+        public int contasPagarBaixadas;
         public int falhas;
         public String primeiraFalha = "";
 
@@ -65,6 +79,10 @@ public final class Sincronizacao {
                     .append(clientesBaixados).append(" cliente(s), ")
                     .append(produtosBaixados).append(" produto(s), ")
                     .append(orcamentosBaixados).append(" orçamento(s) em aberto.");
+            sb.append("\n").append(vendasBaixadas).append(" venda(s), ")
+                    .append(estoqueBaixados).append(" item(ns) de estoque, ")
+                    .append(contasReceberBaixadas).append(" conta(s) a receber e ")
+                    .append(contasPagarBaixadas).append(" a pagar.");
             if (falhas > 0) {
                 sb.append("\n").append(falhas).append(" falha(s)");
                 if (primeiraFalha != null && !primeiraFalha.isEmpty()) {
@@ -108,6 +126,7 @@ public final class Sincronizacao {
         if (r.sessaoExpirada == null) {
             try {
                 r.clientesBaixados = baixarClientes(contexto);
+                marcarSincronizado(banco, CONJUNTO_CLIENTES);
             } catch (ErroApi e) {
                 registrar(r, e.resposta);
             } catch (Exception e) {
@@ -115,6 +134,7 @@ public final class Sincronizacao {
             }
             try {
                 r.produtosBaixados = baixarProdutos(contexto);
+                marcarSincronizado(banco, CONJUNTO_PRODUTOS);
             } catch (ErroApi e) {
                 registrar(r, e.resposta);
             } catch (Exception e) {
@@ -122,10 +142,37 @@ public final class Sincronizacao {
             }
             try {
                 r.orcamentosBaixados = baixarOrcamentos(contexto);
+                marcarSincronizado(banco, CONJUNTO_ORCAMENTOS);
             } catch (ErroApi e) {
                 registrar(r, e.resposta);
             } catch (Exception e) {
                 falha(r, "orçamentos: " + e.getMessage());
+            }
+            try {
+                r.vendasBaixadas = baixarVendas(contexto);
+                marcarSincronizado(banco, CONJUNTO_VENDAS);
+            } catch (ErroApi e) {
+                registrar(r, e.resposta);
+            } catch (Exception e) {
+                falha(r, "vendas: " + e.getMessage());
+            }
+            try {
+                r.estoqueBaixados = baixarEstoque(contexto);
+                marcarSincronizado(banco, CONJUNTO_ESTOQUE);
+            } catch (ErroApi e) {
+                registrar(r, e.resposta);
+            } catch (Exception e) {
+                falha(r, "estoque: " + e.getMessage());
+            }
+            try {
+                baixarResumoFinanceiro(contexto);
+                r.contasReceberBaixadas = baixarContasReceber(contexto);
+                r.contasPagarBaixadas = baixarContasPagar(contexto);
+                marcarSincronizado(banco, CONJUNTO_FINANCEIRO);
+            } catch (ErroApi e) {
+                registrar(r, e.resposta);
+            } catch (Exception e) {
+                falha(r, "financeiro: " + e.getMessage());
             }
         }
         if (r.sessaoExpirada == null) {
@@ -357,6 +404,142 @@ public final class Sincronizacao {
         }
         BancoLocal.get(contexto).substituirOrcamentosServidor(orcamentos);
         return orcamentos.size();
+    }
+
+    /** Baixa as vendas mais recentes e troca o cache local. */
+    public static int baixarVendas(Context contexto) throws Exception {
+        ApiClient.Result res = ApiClient.get("/api/vendas");
+        if (!res.ok()) {
+            throw new ErroApi(res);
+        }
+        JSONArray arr = new JSONArray(res.body);
+        List<VendaLocal> vendas = new ArrayList<>();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.getJSONObject(i);
+            VendaLocal venda = new VendaLocal();
+            venda.idServidor = o.optLong("id");
+            venda.numero = Fmt.limpar(o.optString("numero"));
+            venda.clienteNome = Fmt.limpar(o.optString("cliente"));
+            venda.total = o.optDouble("total", 0);
+            venda.data = Fmt.limpar(o.optString("data_emissao"));
+            venda.status = Fmt.limpar(o.optString("status"));
+            vendas.add(venda);
+        }
+        BancoLocal.get(contexto).substituirVendasServidor(vendas);
+        return vendas.size();
+    }
+
+    /** Baixa a posicao de estoque e troca o cache local. */
+    public static int baixarEstoque(Context contexto) throws Exception {
+        ApiClient.Result res = ApiClient.get("/api/estoque");
+        if (!res.ok()) {
+            throw new ErroApi(res);
+        }
+        JSONArray arr = new JSONArray(res.body);
+        List<EstoqueLocal> itens = new ArrayList<>();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.getJSONObject(i);
+            EstoqueLocal item = new EstoqueLocal();
+            item.idServidor = o.optLong("id");
+            item.codigo = Fmt.limpar(o.optString("codigo"));
+            item.descricao = Fmt.limpar(o.optString("descricao"));
+            item.quantidade = o.optDouble("quantidade", 0);
+            item.estoqueMinimo = o.optDouble("estoque_minimo", 0);
+            item.valorEstoque = o.optDouble("valor_estoque", 0);
+            itens.add(item);
+        }
+        BancoLocal.get(contexto).substituirEstoqueServidor(itens);
+        return itens.size();
+    }
+
+    /** Baixa o resumo financeiro do mes e guarda em {@code meta}. */
+    public static void baixarResumoFinanceiro(Context contexto) throws Exception {
+        ApiClient.Result res = ApiClient.get("/api/financeiro");
+        if (!res.ok()) {
+            throw new ErroApi(res);
+        }
+        JSONObject totais = new JSONObject(res.body);
+        BancoLocal.get(contexto).salvarResumoFinanceiro(
+                totais.optDouble("faturamento_mes", 0),
+                totais.optInt("vendas_mes", 0),
+                totais.optDouble("a_receber", 0),
+                totais.optDouble("a_pagar", 0));
+    }
+
+    /** Baixa as contas a receber em aberto e troca o cache local. */
+    public static int baixarContasReceber(Context contexto) throws Exception {
+        ApiClient.Result res = ApiClient.get("/api/financeiro/receber");
+        if (!res.ok()) {
+            throw new ErroApi(res);
+        }
+        JSONArray arr = new JSONArray(res.body);
+        List<ContaLocal> contas = new ArrayList<>();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.getJSONObject(i);
+            ContaLocal conta = new ContaLocal();
+            conta.idServidor = o.optLong("id");
+            conta.pessoaNome = Fmt.limpar(o.optString("cliente"));
+            conta.descricao = Fmt.limpar(o.optString("descricao"));
+            conta.valor = o.optDouble("valor", 0);
+            conta.vencimento = Fmt.limpar(o.optString("vencimento"));
+            contas.add(conta);
+        }
+        BancoLocal.get(contexto).substituirContasReceberServidor(contas);
+        return contas.size();
+    }
+
+    /** Baixa as contas a pagar em aberto e troca o cache local. */
+    public static int baixarContasPagar(Context contexto) throws Exception {
+        ApiClient.Result res = ApiClient.get("/api/financeiro/pagar");
+        if (!res.ok()) {
+            throw new ErroApi(res);
+        }
+        JSONArray arr = new JSONArray(res.body);
+        List<ContaLocal> contas = new ArrayList<>();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.getJSONObject(i);
+            ContaLocal conta = new ContaLocal();
+            conta.idServidor = o.optLong("id");
+            conta.pessoaNome = Fmt.limpar(o.optString("fornecedor"));
+            conta.descricao = Fmt.limpar(o.optString("descricao"));
+            conta.valor = o.optDouble("valor", 0);
+            conta.vencimento = Fmt.limpar(o.optString("vencimento"));
+            contas.add(conta);
+        }
+        BancoLocal.get(contexto).substituirContasPagarServidor(contas);
+        return contas.size();
+    }
+
+    // ------------------------------------------------------------------
+    // Datas de sincronizacao (usadas pela tela "Sincronizar dados")
+    // ------------------------------------------------------------------
+
+    private static void marcarSincronizado(BancoLocal banco, String conjunto) {
+        banco.setMeta("sync_" + conjunto, String.valueOf(System.currentTimeMillis()));
+    }
+
+    /** Momento da ultima sincronizacao do conjunto, ou 0 se nunca baixou. */
+    public static long ultimaSincronizacao(Context contexto, String conjunto) {
+        String valor = BancoLocal.get(contexto).getMeta("sync_" + conjunto, "");
+        if (valor.isEmpty()) {
+            return 0;
+        }
+        try {
+            return Long.parseLong(valor);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** Data/hora da ultima sincronizacao do conjunto, pronta para a tela. */
+    public static String ultimaSincronizacaoTexto(Context contexto, String conjunto) {
+        long quando = ultimaSincronizacao(contexto, conjunto);
+        if (quando <= 0) {
+            return "nunca";
+        }
+        java.text.SimpleDateFormat formato =
+                new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault());
+        return formato.format(new java.util.Date(quando));
     }
 
     // ------------------------------------------------------------------

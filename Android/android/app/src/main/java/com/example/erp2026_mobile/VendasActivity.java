@@ -1,13 +1,19 @@
 package com.example.erp2026_mobile;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/** Pedidos de venda registrados. */
+/**
+ * Pedidos de venda registrados.
+ *
+ * <p>A lista vem do cache local, preenchido pela sincronizacao. Quando ha
+ * rede, a tela atualiza o cache sozinha na primeira exibicao, sem travar a
+ * lista que ja apareceu com os dados do aparelho.
+ */
 public class VendasActivity extends BaseListaActivity {
+
+    private boolean sincronizando;
+    private boolean sincronizouNestaVisita;
 
     @Override
     protected int layoutId() {
@@ -21,7 +27,7 @@ public class VendasActivity extends BaseListaActivity {
 
     @Override
     protected String textoVazio() {
-        return "Nenhuma venda registrada.";
+        return "Nenhuma venda salva no aparelho.\nUse ⋮ › Sincronizar dados para baixar.";
     }
 
     @Override
@@ -40,36 +46,68 @@ public class VendasActivity extends BaseListaActivity {
     }
 
     @Override
+    protected void onResume() {
+        sincronizouNestaVisita = false;
+        super.onResume();
+    }
+
+    @Override
     protected void aoCriar() {
         findViewById(R.id.buttonOrcamentos).setOnClickListener(v -> Navegacao.abrirOrcamentos(this));
     }
 
     @Override
+    protected void aoPublicar() {
+        if (!sincronizouNestaVisita && Conectividade.temRede(this)) {
+            sincronizouNestaVisita = true;
+            sincronizar();
+        }
+    }
+
+    @Override
     protected List<String> buscar() throws Exception {
-        ApiClient.Result r = ApiClient.get("/api/vendas");
-        if (!r.ok()) {
-            throw new ApiException(r);
+        BancoLocal banco = BancoLocal.get(this);
+
+        // Primeira carga (cache vazio): espera o download para nao abrir vazio.
+        if (banco.contarVendas() == 0 && Conectividade.temRede(this)) {
+            try {
+                Sincronizacao.baixarVendas(this);
+            } catch (Exception ignorado) {
+                // segue com o que existe localmente
+            }
         }
 
-        JSONArray arr = new JSONArray(r.body);
         List<String> itens = new ArrayList<>();
-        for (int i = 0; i < arr.length(); i++) {
-            JSONObject o = arr.getJSONObject(i);
-            String data = Fmt.limpar(o.optString("data_emissao"));
-            String status = Fmt.limpar(o.optString("status"));
-
-            StringBuilder linha = new StringBuilder("Pedido ");
-            linha.append(Fmt.limpar(o.optString("numero")));
-            linha.append(" - ").append(Fmt.limpar(o.optString("cliente")));
-            linha.append("\n").append(Fmt.moeda(o.optDouble("total", 0)));
-            if (!data.isEmpty()) {
-                linha.append("   Emissão: ").append(data);
-            }
-            if (!status.isEmpty()) {
-                linha.append("\n").append(status);
-            }
-            itens.add(linha.toString());
+        for (VendaLocal venda : banco.listarVendas()) {
+            itens.add(venda.resumo());
         }
         return itens;
+    }
+
+    private void sincronizar() {
+        if (sincronizando || isFinishing()) {
+            return;
+        }
+        sincronizando = true;
+
+        new Thread(() -> {
+            try {
+                Sincronizacao.baixarVendas(this);
+            } catch (Sincronizacao.ErroApi e) {
+                if (e.resposta.status == 401) {
+                    runOnUiThread(() -> Sessao.tratarSessaoExpirada(this, e.resposta));
+                    sincronizando = false;
+                    return;
+                }
+            } catch (Exception ignorado) {
+                // mantem o cache anterior
+            }
+            sincronizando = false;
+            runOnUiThread(() -> {
+                if (!isFinishing()) {
+                    recarregar();
+                }
+            });
+        }).start();
     }
 }
