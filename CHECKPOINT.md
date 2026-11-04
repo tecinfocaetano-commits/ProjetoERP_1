@@ -16,6 +16,7 @@
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
    (deve dar **65/65**). Ruído conhecido: `InitializeFppkg failed`.
+   Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
 Regras do projeto: português; regra de negócio em Services; SQL sempre
@@ -26,16 +27,16 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (03/11/2026)
 
-**HEAD:** `9dcacb3` (API e Android: sincronizacao total por empresa). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md` e `PLANO_E_LOG.md`).
-Build: Android `BUILD SUCCESSFUL` · suíte desktop **65/65** · build desktop **0/0** (sem alteração no desktop nesta etapa).
+**HEAD:** `7908750` (Testes: suite Robolectric da sincronizacao Android). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md` e `PLANO_E_LOG.md`).
+Build: Android `BUILD SUCCESSFUL` · testes Android **5/5** · suíte desktop **65/65** · build desktop **0/0** (desktop sem alteração nesta etapa).
 
-> Se `git log -1` mostrar um hash diferente de `9dcacb3`, é porque o commit
+> Se `git log -1` mostrar um hash diferente de `7908750`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — a sincronização total (vendas, estoque e financeiro) está no commit
-  `9dcacb3`. O banco real não recebeu dados de teste nesta etapa.
+- Nada — os testes da sincronização estão no commit `7908750`. O banco real
+  não recebeu dados de teste nesta etapa.
 
 ### Próximo passo (executável)
 
@@ -46,11 +47,14 @@ Build: Android `BUILD SUCCESSFUL` · suíte desktop **65/65** · build desktop *
 3. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
    (esperado 0/0) e `Scripts\run_tests.bat` (esperado **65/65**); se a suíte
    cair, não commitar.
+4. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
+   (esperado **5/5**) e `Scripts\build_android.bat` (esperado `BUILD SUCCESSFUL`).
 
 ### O que fechou nesta sessão
 
 | Item | Entrega |
 |---|---|
+| **Testes unitários da sincronização (Android)** | `SincronizacaoTest` (JUnit 4 + Robolectric 4.13, apenas `testImplementation` — não entra no APK) roda na JVM com SQLite real e servidor HTTP falso: download dos 6 conjuntos, envio da outbox e id do servidor, snapshots isolados por empresa e 401 (no envio e no download). **5/5** verdes; a rodada agora para no primeiro 401. Detalhes em `PLANO_E_LOG.md` §3.25 |
 | **Sincronização total (Android + API)** | Menu **⋮ › Sincronizar dados** abre `SincronizacaoActivity`: empresa/usuário do token, contagem e última sincronização de cada conjunto, pendências e **Baixar tudo**. A API passou a filtrar **todas** as consultas por `EMPRESA_ID` do JWT (clientes, produtos, vendas, estoque e financeiro) e os POSTs usam a empresa do token. Android: schema local **v3** com `venda_local`, `estoque_local`, `conta_receber_local` e `conta_pagar_local`; Vendas/Estoque/Financeiro e Dashboard leem do banco local e sincronizam em segundo plano. Detalhes em `PLANO_E_LOG.md` §3.24 |
 | **Modo off-line (Android)** | Banco SQLite local `erp2026.db` (schema v2) + fila `outbox` + `Sincronizacao`: **clientes** e **orçamentos** funcionam sem rede (cache local, cadastro salvo no aparelho, "Sincronizar (N pendentes)") e sobem sozinhos quando a conexão volta. Sem dependência nova (só `SQLiteOpenHelper`). Detalhes em `PLANO_E_LOG.md` §3.23 |
 | **Teste de todas as telas (desktop)** | `Scripts\testes\telas_todas_ui.ps1` percorre os **33 itens do menu** por `WM_COMMAND`, valida janela + controles, lê/fecha avisos e gera `Documentacao\TESTE_TELAS_DESKTOP.md` + evidências. Resultado **33/33 OK**. Encontrou e corrigiu 3 bugs: geo (`... WHERE ORDER BY NOME`), NF-e (campos `edtInicio/edtFim` sem componente no `.lfm` → AV) e Compras (`MAX(NUMERO)` sobre texto `PC-TESTE-8`). Detalhes em §3.22 |
@@ -689,6 +693,7 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 |---|---|
 | Suíte de **UI** (autônoma) | `Scripts\testes\{erpui, fase5lib, fase6_01, fase6_pdftext}.ps1` |
 | Suíte de **unit tests** | `Scripts\build_tests.bat` / `Scripts\run_tests.bat` → `Desktop\bin\Tests.exe` |
+| Testes do app **Android** (JVM) | `Android\android\app\src\test\java\com\example\erp2026_mobile\SincronizacaoTest.java` (`Scripts\run_tests_android.bat`) |
 | Testes de Produção | `Desktop\src\Tests\uProducaoTest.pas` (+ `uTestRunner.pas`, `Tests.lpi`) |
 | Testes das telas de administração | `Desktop\src\Tests\uTelasAdmTest.pas` (+ `uTestRunner.pas`, `Tests.lpi`) |
 | Suíte de UI das telas novas | `Scripts\testes\telas_adm_ui.ps1` (abre as 4 telas pelo menu) |
@@ -723,6 +728,8 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
    em `10.0.2.2:9000`, então a API precisa estar no ar). Para apontar para
    outro servidor/empresa, use o menu **⋮ ▸ Configuração (servidor e empresa)**
    dentro do app (ver `Android\CONFIGURACAO_POR_EMPRESA.md`).
+8. Testes Android (JVM, sem emulador): `Scripts\run_tests_android.bat`
+   → esperado **5/5** (`SincronizacaoTest`, JUnit + Robolectric).
 
 ---
 

@@ -672,6 +672,45 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   **65/65** e build desktop **0/0**; nenhum dado de teste foi gravado no banco
   real nesta etapa.
 
+### 3.25 Testes unitários da sincronização Android (03/11, concluído)
+
+- **Decisão:** JUnit 4 + Robolectric 4.13 como `testImplementation` (só teste;
+  não entra no APK) para exercitar o SQLite real do Android e o `ApiClient`
+  sem emulador. Nenhuma dependência de runtime foi adicionada.
+- **Arquivo:** `Android\android\app\src\test\java\com\example\erp2026_mobile\SincronizacaoTest.java`,
+  com `@RunWith(RobolectricTestRunner.class)` e `@Config(sdk = 34)`;
+  `app\build.gradle` ganhou `testOptions { unitTests.includeAndroidResources = true }`.
+- **Servidor falso:** `ServerSocket` em `127.0.0.1:0` (HTTP/1.1 mínimo) —
+  `com.sun.net.httpserver` não existe no `android.jar` usado para compilar os
+  testes. Cada teste configura status/corpo por rota; `POST /api/clientes`
+  cria o cliente (id 77) e passa a devolvê-lo na lista.
+- **Isolamento:** antes/depois de cada caso, o singleton `BancoLocal.instancia`
+  é zerado por reflexão, o `helper` é fechado e `erp2026.db` é apagado; as
+  preferências `erp2026`/`erp2026_config` são limpas e a empresa volta a "1".
+- **Casos (5/5 verdes):**
+  1. `sincronizarBaixaTodosOsConjuntos` — clientes, produtos, orçamentos,
+     vendas, estoque, resumo financeiro e contas; contadores do `Resultado`,
+     tabelas locais, metas `sync_*`/`ultima_sincronizacao` e resumo `fin_*`.
+  2. `sincronizarEnviaClientePendenteEBaixaIdDoServidor` — INSERT na outbox,
+     POST, recarga da lista, `id_servidor = 77` e fila zerada.
+  3. `snapshotsSubstituemDadosEIsolamPorEmpresa` — empresa 1 com 2 vendas,
+     empresa 2 com 1, volta à 1 com as 2 intactas e novo snapshot substitui.
+  4. `resposta401MarcaSessaoExpiradaEInterrompeDownloads` — 401 no primeiro
+     GET preenche `sessaoExpirada`, mostra a mensagem e não grava metadados.
+  5. `resposta401NoEnvioInterrompeAntesDosDownloads` — 401 no POST mantém a
+     operação na fila e não tenta os demais conjuntos.
+- **Correção revelada pelo teste:** a rodada continuava baixando os outros
+  conjuntos depois de um 401 (só `enviarOrcamentos` era interrompido).
+  `Sincronizacao.sincronizar` agora guarda cada download com
+  `r.sessaoExpirada == null`; falhas não-401 continuam isoladas por conjunto.
+- **Comando:** `Scripts\run_tests_android.bat` (ou
+  `Android\android\gradlew.bat testDebugUnitTest`). Resultado **5/5**;
+  `assembleDebug` **BUILD SUCCESSFUL**. Relatório em
+  `Android\android\app\build\reports\tests\testDebugUnitTest\index.html`.
+  A primeira execução baixa Robolectric/android-all; depois roda em segundos.
+- **Sem rastro:** os testes usam banco e preferências próprios do Robolectric;
+  nada é gravado no `DADOS.FDB` nem no aparelho.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)
