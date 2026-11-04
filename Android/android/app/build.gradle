@@ -26,6 +26,10 @@ android {
         targetCompatibility JavaVersion.VERSION_17
         encoding 'UTF-8'
     }
+
+    testOptions {
+        unitTests.includeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -34,4 +38,9 @@ dependencies {
     implementation 'com.google.android.material:material:1.12.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     // JDBC/Jaybird removido: o app consome a API REST (ver ApiClient.java)
+
+    // Testes unitarios locais (JVM): SQLite real via Robolectric e servidor
+    // HTTP falso. Estas dependencias NAO entram no APK.
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.13'
 }

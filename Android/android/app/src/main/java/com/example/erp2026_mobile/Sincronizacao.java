@@ -123,6 +123,9 @@ public final class Sincronizacao {
         if (r.sessaoExpirada == null) {
             enviarOrcamentos(banco, r);
         }
+        // Cada conjunto e independente: uma falha de rede/HTTP nao impede os
+        // demais. A excecao e o 401: sem token valido nao adianta continuar,
+        // entao a rodada para no primeiro conjunto que sinalizar sessao expirada.
         if (r.sessaoExpirada == null) {
             try {
                 r.clientesBaixados = baixarClientes(contexto);
@@ -132,6 +135,8 @@ public final class Sincronizacao {
             } catch (Exception e) {
                 falha(r, "clientes: " + e.getMessage());
             }
+        }
+        if (r.sessaoExpirada == null) {
             try {
                 r.produtosBaixados = baixarProdutos(contexto);
                 marcarSincronizado(banco, CONJUNTO_PRODUTOS);
@@ -140,6 +145,8 @@ public final class Sincronizacao {
             } catch (Exception e) {
                 falha(r, "produtos: " + e.getMessage());
             }
+        }
+        if (r.sessaoExpirada == null) {
             try {
                 r.orcamentosBaixados = baixarOrcamentos(contexto);
                 marcarSincronizado(banco, CONJUNTO_ORCAMENTOS);
@@ -148,6 +155,8 @@ public final class Sincronizacao {
             } catch (Exception e) {
                 falha(r, "orçamentos: " + e.getMessage());
             }
+        }
+        if (r.sessaoExpirada == null) {
             try {
                 r.vendasBaixadas = baixarVendas(contexto);
                 marcarSincronizado(banco, CONJUNTO_VENDAS);
@@ -156,6 +165,8 @@ public final class Sincronizacao {
             } catch (Exception e) {
                 falha(r, "vendas: " + e.getMessage());
             }
+        }
+        if (r.sessaoExpirada == null) {
             try {
                 r.estoqueBaixados = baixarEstoque(contexto);
                 marcarSincronizado(banco, CONJUNTO_ESTOQUE);
@@ -164,6 +175,8 @@ public final class Sincronizacao {
             } catch (Exception e) {
                 falha(r, "estoque: " + e.getMessage());
             }
+        }
+        if (r.sessaoExpirada == null) {
             try {
                 baixarResumoFinanceiro(contexto);
                 r.contasReceberBaixadas = baixarContasReceber(contexto);
