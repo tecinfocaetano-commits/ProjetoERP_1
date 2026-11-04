@@ -618,12 +618,59 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   avião recarregou tudo do banco (`clientes=10 pendentes=0 produtos=4
   orcamentos=1 outbox=0`). Os registros de teste saíram do banco ao final
   (PESSOA 1396 + PEDIDO_VENDA 1007) e a suíte voltou a **65/65**.
-- **Observação:** `VendasActivity` continua online-only (fora do escopo); o
-  botão **Orçamentos** dela já abre a tela off-line. Os registros criados para
-  validar a sincronização (cliente "Cliente Offline Teste" / PESSOA 1396 e
-  orçamento 1007) foram removidos do banco real depois do teste — a base voltou
-  aos **9 clientes** e a suíte a **65/65** (o `TestIntegridade018` confere essa
-  contagem fixa).
+- **Observação:** naquele momento `VendasActivity` continuava online-only; o
+  §3.24 passou a lê-la do banco local. O botão **Orçamentos** dela já abre a
+  tela off-line. Os registros criados para validar a sincronização (cliente
+  "Cliente Offline Teste" / PESSOA 1396 e orçamento 1007) foram removidos do
+  banco real depois do teste — a base voltou aos **9 clientes** e a suíte a
+  **65/65** (o `TestIntegridade018` confere essa contagem fixa).
+
+### 3.24 Sincronização total por empresa: vendas, estoque e financeiro (03/11, concluído)
+
+- **Escopo (decidido com o usuário):** "sincronizar tudo" baixa **clientes,
+  produtos, orçamentos, vendas, estoque e financeiro** da empresa do usuário
+  logado. O vínculo **vendedor/fornecedor** fica documentado para quando existir
+  no banco — hoje `USUARIO` só tem `EMPRESA_ID` (não há tabela `VENDEDOR`).
+- **API — empresa do token em tudo:** `DadosDoToken` passou para
+  `uMiddlewareJWT` (interface + implementação) e é usado por clientes, produtos,
+  vendas, estoque e financeiro. Todas as consultas ganharam
+  `EMPRESA_ID = :EMP`; os `POST /api/clientes`, `POST /api/produtos` e
+  `POST /api/estoque/movimento` deixaram de gravar `EMPRESA_ID = 1` fixo e usam
+  a empresa/usuário do JWT. `EMPRESA_ID <= 0` responde **401** com
+  "Token sem empresa. Entre novamente.".
+- **Banco local v3:** `ErpDbHelper.VERSAO = 3`; `criarTabelasConsulta(db)` cria
+  `venda_local`, `estoque_local`, `conta_receber_local` e `conta_pagar_local`
+  no `onCreate` e no `onUpgrade` (`versaoAntiga < 3`), com índice único por
+  `(empresa, id_servidor)`. Modelos novos: `VendaLocal`, `EstoqueLocal` e
+  `ContaLocal`. `BancoLocal` ganhou listar/substituir/contar para cada conjunto
+  e `salvarResumoFinanceiro`/`lerResumoFinanceiro` (metas `fin_*`).
+- **Snapshots:** vendas, estoque e contas são **delete+insert por empresa**
+  (nada local os referencia); clientes, produtos e orçamentos continuam com
+  **upsert por `id_servidor`** para não quebrar ids locais pendentes.
+- **Sincronizacao:** novos `baixarVendas`, `baixarEstoque`,
+  `baixarResumoFinanceiro`, `baixarContasReceber` e `baixarContasPagar`; cada
+  conjunto grava a meta `sync_<conjunto>` e a tela mostra a última data. O
+  `Resultado` passou a contar vendas/estoque/contas no resumo exibido.
+- **Tela nova:** `SincronizacaoActivity` + `activity_sincronizacao.xml`, aberta
+  por **⋮ › Sincronizar dados** (`action_sincronizar` em `menu_dashboard.xml`,
+  registrada no `AndroidManifest.xml`). Mostra empresa/usuário, o que será
+  baixado (contagem + última sincronização), pendências da `outbox` e o botão
+  **Baixar tudo**; sem rede, avisa que os dados continuam no aparelho.
+- **Telas de consulta:** `VendasActivity`, `EstoqueActivity` e
+  `FinanceiroActivity` leem do banco local e sincronizam em segundo plano na
+  primeira exibição (padrão `sincronizouNestaVisita` de `ClientesActivity`).
+  `DashboardActivity` lê o resumo/contagens/últimas vendas do cache, publica
+  imediatamente e atualiza em segundo plano; "Atualizar resumo" força a rodada.
+- **Validação:** API recompilada e os 8 endpoints testados com token → **200**;
+  Android `BUILD SUCCESSFUL`; logcat mostrou `banco erp2026.db v3` com as 10
+  tabelas. No emulador `Pixel_9`, **Baixar tudo** salvou 9 clientes, 4 produtos,
+  0 orçamentos, 4 vendas, 4 itens de estoque, 2 contas a receber e 3 a pagar; o
+  Dashboard exibiu faturamento R$ 70,00, A receber R$ 170,00 e A pagar
+  R$ 1.595,00. Em **modo avião**, após `force-stop`, Dashboard, Vendas, Estoque
+  e Financeiro continuaram abrindo com os dados locais e o botão mostrou
+  "Sem conexão. Os dados continuam salvos no aparelho.". Suíte desktop
+  **65/65** e build desktop **0/0**; nenhum dado de teste foi gravado no banco
+  real nesta etapa.
 
 ---
 

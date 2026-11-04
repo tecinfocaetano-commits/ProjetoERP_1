@@ -26,24 +26,23 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (03/11/2026)
 
-**HEAD:** `862b26f` (Android: modo off-line de clientes e orçamentos com sincronização). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md` e `PLANO_E_LOG.md`).
-Build: Android `BUILD SUCCESSFUL` · suíte desktop **65/65** (sem alteração no desktop nesta etapa).
+**HEAD:** `9dcacb3` (API e Android: sincronizacao total por empresa). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md` e `PLANO_E_LOG.md`).
+Build: Android `BUILD SUCCESSFUL` · suíte desktop **65/65** · build desktop **0/0** (sem alteração no desktop nesta etapa).
 
-> Se `git log -1` mostrar um hash diferente de `862b26f`, é porque o commit
+> Se `git log -1` mostrar um hash diferente de `9dcacb3`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — o modo off-line está no commit `862b26f`. Os registros usados para
-  validar a sincronização ("Cliente Offline Teste", PESSOA 1396, e orçamento
-  1007/número 2) foram removidos do banco real ao final, devolvendo a base aos
-  **9 clientes** e à suíte **65/65**.
+- Nada — a sincronização total (vendas, estoque e financeiro) está no commit
+  `9dcacb3`. O banco real não recebeu dados de teste nesta etapa.
 
 ### Próximo passo (executável)
 
 1. Não há item aberto no backlog: aguardar o próximo pedido do usuário.
-2. Opcional: validar no emulador a **conversão** de um orçamento sincronizado e
-   o fluxo de **sessão expirada (401)** durante a sincronização.
+2. Opcional: quando existir vínculo de **vendedor/fornecedor** em `USUARIO`,
+   filtrar vendas/contas por esse vínculo (hoje o filtro é só a empresa do
+   token, conforme decidido).
 3. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
    (esperado 0/0) e `Scripts\run_tests.bat` (esperado **65/65**); se a suíte
    cair, não commitar.
@@ -52,6 +51,7 @@ Build: Android `BUILD SUCCESSFUL` · suíte desktop **65/65** (sem alteração n
 
 | Item | Entrega |
 |---|---|
+| **Sincronização total (Android + API)** | Menu **⋮ › Sincronizar dados** abre `SincronizacaoActivity`: empresa/usuário do token, contagem e última sincronização de cada conjunto, pendências e **Baixar tudo**. A API passou a filtrar **todas** as consultas por `EMPRESA_ID` do JWT (clientes, produtos, vendas, estoque e financeiro) e os POSTs usam a empresa do token. Android: schema local **v3** com `venda_local`, `estoque_local`, `conta_receber_local` e `conta_pagar_local`; Vendas/Estoque/Financeiro e Dashboard leem do banco local e sincronizam em segundo plano. Detalhes em `PLANO_E_LOG.md` §3.24 |
 | **Modo off-line (Android)** | Banco SQLite local `erp2026.db` (schema v2) + fila `outbox` + `Sincronizacao`: **clientes** e **orçamentos** funcionam sem rede (cache local, cadastro salvo no aparelho, "Sincronizar (N pendentes)") e sobem sozinhos quando a conexão volta. Sem dependência nova (só `SQLiteOpenHelper`). Detalhes em `PLANO_E_LOG.md` §3.23 |
 | **Teste de todas as telas (desktop)** | `Scripts\testes\telas_todas_ui.ps1` percorre os **33 itens do menu** por `WM_COMMAND`, valida janela + controles, lê/fecha avisos e gera `Documentacao\TESTE_TELAS_DESKTOP.md` + evidências. Resultado **33/33 OK**. Encontrou e corrigiu 3 bugs: geo (`... WHERE ORDER BY NOME`), NF-e (campos `edtInicio/edtFim` sem componente no `.lfm` → AV) e Compras (`MAX(NUMERO)` sobre texto `PC-TESTE-8`). Detalhes em §3.22 |
 | **D3 — PESSOA unificada** | `CLIENTE` + `FORNECEDOR` → `PESSOA` (`TIPO` C/F). Tela única **Cadastros > Pessoas** (`uFrmPessoas`) com filtro Todos/Clientes/Fornecedores; tipo imutável após salvo; exclusão bloqueada quando referenciada. API `/api/clientes` mantém o contrato e filtra `TIPO='C'`. Suíte **65/65** (§3.19) |
@@ -81,6 +81,16 @@ Build: Android `BUILD SUCCESSFUL` · suíte desktop **65/65** (sem alteração n
   vendas; menu ⋮ com os 3 itens; **Atualizar resumo** recarregou 4× sem erro;
   os cards e a configuração abrem as telas certas e a seta volta; **Sair**
   pede confirmação.
+- **Sincronização total validada no emulador `Pixel_9` (03/11):** com a API
+  local no ar, o menu ⋮ abriu **Sincronizar dados** mostrando Empresa 1 /
+  Administrador e as contagens (9 clientes, 4 produtos, 0 orçamentos, 4 vendas,
+  4 itens de estoque, 5 contas). **Baixar tudo** respondeu "Salvo no aparelho:
+  9 cliente(s), 4 produto(s), 0 orçamento(s), 4 venda(s), 4 item(ns) de estoque,
+  2 conta(s) a receber e 3 a pagar."; o Dashboard passou a exibir faturamento
+  R$ 70,00, A receber R$ 170,00 e A pagar R$ 1.595,00, e as telas Vendas,
+  Estoque e Financeiro mostraram os dados do cache. Em **modo avião**, após
+  `force-stop`, as mesmas telas continuaram abrindo com os dados locais e o
+  botão exibiu "Sem conexão. Os dados continuam salvos no aparelho.".
 - **Item 11 validado no emulador `Pixel_9` (Android 16)** com a API local no
   ar: criar orçamento com 2 × R$ 35 e desconto R$ 5 → lista mostra
   **Orçamento 3 / R$ 65,00 / 1 item(ns)**; converter pela confirmação → some
