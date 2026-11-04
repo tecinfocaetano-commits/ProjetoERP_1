@@ -10,6 +10,13 @@ import android.widget.Toast;
 
 import org.json.JSONObject;
 
+/**
+ * Cadastro de cliente.
+ *
+ * <p>Fluxo off-line: grava sempre no banco local e enfileira o envio na
+ * {@code outbox}. Se houver conexao, tenta sincronizar na hora; caso contrario
+ * o cadastro fica salvo no aparelho e sobe na proxima sincronizacao.
+ */
 public class InserirClienteActivity extends BaseActivity {
     private EditText editTextNome;
     private EditText editTextCpf;
@@ -103,74 +110,94 @@ public class InserirClienteActivity extends BaseActivity {
 
         editTextUf.setText(uf);
 
+        final ClienteLocal cliente = new ClienteLocal(nome, cpf);
+        cliente.endereco = editTextEndereco.getText().toString().trim();
+        cliente.cidade = editTextCidade.getText().toString().trim();
+        cliente.uf = uf;
+        cliente.cep = editTextCep.getText().toString().trim();
+        cliente.telefone = editTextTelefone.getText().toString().trim();
+        cliente.email = email;
+
         salvando = true;
         buttonSalvar.setEnabled(false);
         buttonSalvar.setText("Salvando...");
-        textViewStatus.setText("Enviando para a API...");
+        textViewStatus.setText("Salvando no aparelho...");
 
         new Thread(new Runnable() {
             @Override
             public void run() {
+                boolean salvou = false;
+                Sincronizacao.Resultado resultado = null;
+
                 try {
+                    BancoLocal banco = BancoLocal.get(InserirClienteActivity.this);
+                    long idLocal = banco.inserirCliente(cliente, false);
+
+                    // Payload para diagnostico; o envio real usa os dados do banco.
                     JSONObject corpo = new JSONObject();
-                    corpo.put("nome", nome);
-                    corpo.put("cpf_cnpj", cpf);
-                    corpo.put("endereco", editTextEndereco.getText().toString().trim());
-                    corpo.put("cidade", editTextCidade.getText().toString().trim());
-                    corpo.put("uf", uf);
-                    corpo.put("cep", editTextCep.getText().toString().trim());
-                    corpo.put("telefone", editTextTelefone.getText().toString().trim());
-                    corpo.put("email", email);
+                    corpo.put("nome", cliente.nome);
+                    corpo.put("cpf_cnpj", cliente.cpfCnpj);
+                    corpo.put("endereco", cliente.endereco);
+                    corpo.put("cidade", cliente.cidade);
+                    corpo.put("uf", cliente.uf);
+                    corpo.put("cep", cliente.cep);
+                    corpo.put("telefone", cliente.telefone);
+                    corpo.put("email", cliente.email);
+                    banco.enfileirar(ItemOutbox.TIPO_CLIENTE,
+                            ItemOutbox.ACAO_INSERIR, idLocal, corpo.toString());
 
-                    final ApiClient.Result r = ApiClient.post("/api/clientes", corpo.toString());
+                    salvou = true;
 
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            salvando = false;
-                            buttonSalvar.setEnabled(true);
-                            buttonSalvar.setText("Salvar Cliente");
-
-                            if (r.ok()) {
-                                Toast.makeText(InserirClienteActivity.this,
-                                        "Cliente " + nome + " cadastrado com sucesso.",
-                                        Toast.LENGTH_LONG).show();
-                                // Volta para o menu principal; as listas se atualizam sozinhas
-                                setResult(RESULT_OK);
-                                finish();
-                            } else if (r.status == 401) {
-                                Sessao.tratarSessaoExpirada(InserirClienteActivity.this, r);
-                            } else {
-                                textViewStatus.setText(mensagemDeErro(r));
-                                Toast.makeText(InserirClienteActivity.this,
-                                        "Não foi possível salvar o cliente.",
-                                        Toast.LENGTH_LONG).show();
-                            }
-                        }
-                    });
-                } catch (final Exception e) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            salvando = false;
-                            buttonSalvar.setEnabled(true);
-                            buttonSalvar.setText("Salvar Cliente");
-                            textViewStatus.setText("Falha de conexão.\n"
-                                    + "Verifique se a API está no ar.");
-                        }
-                    });
+                    if (Conectividade.temRede(InserirClienteActivity.this)) {
+                        resultado = Sincronizacao.sincronizar(InserirClienteActivity.this);
+                    }
+                } catch (Exception e) {
+                    salvou = false;
                 }
+
+                final boolean salvouFinal = salvou;
+                final Sincronizacao.Resultado resultadoFinal = resultado;
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        salvando = false;
+                        buttonSalvar.setEnabled(true);
+                        buttonSalvar.setText("Salvar Cliente");
+
+                        if (!salvouFinal) {
+                            textViewStatus.setText("Não foi possível salvar o cliente no aparelho.");
+                            Toast.makeText(InserirClienteActivity.this,
+                                    "Não foi possível salvar o cliente.",
+                                    Toast.LENGTH_LONG).show();
+                            return;
+                        }
+
+                        if (resultadoFinal != null && resultadoFinal.sessaoExpirada != null) {
+                            Sessao.tratarSessaoExpirada(InserirClienteActivity.this,
+                                    resultadoFinal.sessaoExpirada);
+                            return;
+                        }
+
+                        boolean enviado = resultadoFinal != null
+                                && resultadoFinal.clientesEnviados > 0;
+
+                        if (enviado) {
+                            Toast.makeText(InserirClienteActivity.this,
+                                    "Cliente " + nome + " cadastrado e sincronizado.",
+                                    Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(InserirClienteActivity.this,
+                                    "Cliente " + nome + " salvo no aparelho.\n"
+                                            + "Será enviado ao servidor na próxima sincronização.",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                        // Volta para a lista; ela recarrega sozinha
+                        setResult(RESULT_OK);
+                        finish();
+                    }
+                });
             }
         }).start();
-    }
-
-    private String mensagemDeErro(ApiClient.Result r) {
-        if (r.status == 400) {
-            return "A API recusou os dados enviados (HTTP 400).";
-        }
-        if (r.status >= 500) {
-            return "Erro no servidor da API (HTTP " + r.status + ").";
-        }
-        return "A API respondeu com erro HTTP " + r.status + ".";
     }
 }

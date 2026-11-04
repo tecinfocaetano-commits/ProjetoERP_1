@@ -83,6 +83,18 @@
 
     </FrameLayout>
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonSincronizar"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginTop="4dp"
+        android:text="Sincronizar"
+        android:textSize="15sp"
+        app:cornerRadius="16dp"/>
+
     <include
         layout="@layout/include_bottom_nav"
         android:layout_width="match_parent"

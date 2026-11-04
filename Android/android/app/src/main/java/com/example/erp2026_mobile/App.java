@@ -20,5 +20,12 @@ public class App extends Application {
         // Empresa configurada (D9): deixa o ApiClient apontado para o
         // servidor certo antes de qualquer tela chamar a API.
         Configuracao.aplicarNoApi(this);
+        // Banco local (SQLite): criado/aberto no inicio para o modo off-line
+        // (cache de clientes, orcamentos e fila de sincronizacao).
+        try {
+            BancoLocal.get(this).aquecer();
+        } catch (RuntimeException e) {
+            android.util.Log.e(BancoLocal.TAG, "falha ao abrir o banco local", e);
+        }
     }
 }

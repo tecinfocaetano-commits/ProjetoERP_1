@@ -12,18 +12,18 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 /**
  * Cadastro de orçamento no app.
  *
- * <p>Cliente e produtos vêm da API. Os itens são montados na tela e enviados
- * para {@code POST /api/orcamentos}; o servidor recalcula os totais e grava
+ * <p>Off-line: clientes e produtos vem do banco local (cache do servidor). O
+ * orçamento é gravado no aparelho e entra na fila de sincronização; quando há
+ * conexão, é enviado na hora para a API. O servidor recalcula os totais e grava
  * como PEDIDO_VENDA com STATUS 'O'.
  */
 public class InserirOrcamentoActivity extends BaseActivity {
@@ -44,8 +44,8 @@ public class InserirOrcamentoActivity extends BaseActivity {
     private Button buttonLimparItens;
     private Button buttonSalvar;
 
-    private final List<Cliente> clientes = new ArrayList<>();
-    private final List<Produto> produtos = new ArrayList<>();
+    private final List<ClienteLocal> clientes = new ArrayList<>();
+    private final List<ProdutoLocal> produtos = new ArrayList<>();
     private final List<Item> itens = new ArrayList<>();
 
     private double subtotalAtual;
@@ -109,7 +109,7 @@ public class InserirOrcamentoActivity extends BaseActivity {
     }
 
     // ------------------------------------------------------------------
-    // Carga de clientes e produtos
+    // Carga de clientes e produtos (banco local + atualizacao on-line)
     // ------------------------------------------------------------------
 
     private void carregarDados() {
@@ -118,66 +118,52 @@ public class InserirOrcamentoActivity extends BaseActivity {
         textViewStatus.setText("Carregando clientes e produtos...");
 
         new Thread(() -> {
-            try {
-                final ApiClient.Result rc = ApiClient.get("/api/clientes");
-                if (!rc.ok()) {
-                    falhaCarregamento(rc);
-                    return;
-                }
-                final ApiClient.Result rp = ApiClient.get("/api/produtos");
-                if (!rp.ok()) {
-                    falhaCarregamento(rp);
-                    return;
-                }
+            BancoLocal banco = BancoLocal.get(this);
+            boolean temRede = Conectividade.temRede(this);
 
-                JSONArray ac = new JSONArray(rc.body);
-                JSONArray ap = new JSONArray(rp.body);
-
-                final List<Cliente> novosClientes = new ArrayList<>();
-                novosClientes.add(new Cliente(0, "Selecione o cliente..."));
-                for (int i = 0; i < ac.length(); i++) {
-                    JSONObject o = ac.getJSONObject(i);
-                    novosClientes.add(new Cliente(o.optLong("id"), Fmt.limpar(o.optString("nome"))));
+            if (temRede) {
+                // Atualiza os caches sem impedir o uso off-line se falhar.
+                try {
+                    Sincronizacao.baixarClientes(this);
+                } catch (Exception ignorado) {
+                    // usa o cache atual
                 }
-
-                final List<Produto> novosProdutos = new ArrayList<>();
-                novosProdutos.add(new Produto(0, "Selecione o produto...", 0));
-                for (int i = 0; i < ap.length(); i++) {
-                    JSONObject o = ap.getJSONObject(i);
-                    novosProdutos.add(new Produto(
-                            o.optLong("id"),
-                            Fmt.limpar(o.optString("descricao")),
-                            o.optDouble("preco_venda", 0)));
+                try {
+                    Sincronizacao.baixarProdutos(this);
+                } catch (Exception ignorado) {
+                    // usa o cache atual
                 }
-
-                runOnUiThread(() -> preencher(novosClientes, novosProdutos));
-            } catch (final Exception e) {
-                runOnUiThread(() -> {
-                    textViewStatus.setText("Falha de conexão.\nVerifique se a API está no ar.");
-                });
             }
+
+            final List<ClienteLocal> novosClientes = new ArrayList<>();
+            novosClientes.add(new ClienteLocal("Selecione o cliente...", ""));
+            novosClientes.addAll(banco.listarClientes());
+
+            final List<ProdutoLocal> novosProdutos = new ArrayList<>();
+            novosProdutos.add(new ProdutoLocal(null, "Selecione o produto...", 0));
+            novosProdutos.addAll(banco.listarProdutos());
+
+            final boolean comRede = temRede;
+            runOnUiThread(() -> preencher(novosClientes, novosProdutos, comRede));
         }).start();
     }
 
-    private void falhaCarregamento(final ApiClient.Result r) {
-        runOnUiThread(() -> {
-            if (Sessao.tratarSessaoExpirada(this, r)) {
-                return;
-            }
-            textViewStatus.setText("Não foi possível carregar os dados (HTTP " + r.status + ").");
-        });
-    }
-
     /** Roda na thread da interface: monta os spinners já com os dados. */
-    private void preencher(List<Cliente> novosClientes, List<Produto> novosProdutos) {
+    private void preencher(List<ClienteLocal> novosClientes,
+                           List<ProdutoLocal> novosProdutos,
+                           boolean comRede) {
         clientes.clear();
         clientes.addAll(novosClientes);
         produtos.clear();
         produtos.addAll(novosProdutos);
 
         List<String> nomesClientes = new ArrayList<>();
-        for (Cliente c : clientes) {
-            nomesClientes.add(c.nome);
+        for (ClienteLocal c : clientes) {
+            if (c.id == 0) {
+                nomesClientes.add(c.nome);
+            } else {
+                nomesClientes.add(c.nome + (c.idServidor == null ? " (novo)" : ""));
+            }
         }
         ArrayAdapter<String> adClientes = new ArrayAdapter<>(
                 this, android.R.layout.simple_spinner_item, nomesClientes);
@@ -186,11 +172,11 @@ public class InserirOrcamentoActivity extends BaseActivity {
         spinnerCliente.setSelection(0);
 
         List<String> nomesProdutos = new ArrayList<>();
-        for (Produto p : produtos) {
+        for (ProdutoLocal p : produtos) {
             if (p.id == 0) {
-                nomesProdutos.add(p.nome);
+                nomesProdutos.add(p.descricao);
             } else {
-                nomesProdutos.add(p.nome + " — " + Fmt.moeda(p.preco));
+                nomesProdutos.add(p.descricao + " — " + Fmt.moeda(p.precoVenda));
             }
         }
         ArrayAdapter<String> adProdutos = new ArrayAdapter<>(
@@ -199,14 +185,30 @@ public class InserirOrcamentoActivity extends BaseActivity {
         spinnerProduto.setAdapter(adProdutos);
         spinnerProduto.setSelection(0);
 
-        if (clientes.size() <= 1 || produtos.size() <= 1) {
-            textViewStatus.setText("Cadastre clientes e produtos no desktop para usar orçamentos.");
+        boolean temClientes = clientes.size() > 1;
+        boolean temProdutos = produtos.size() > 1;
+
+        if (!temClientes || !temProdutos) {
+            StringBuilder msg = new StringBuilder();
+            if (!temClientes) {
+                msg.append("Nenhum cliente salvo. Cadastre em Clientes");
+            }
+            if (!temProdutos) {
+                if (msg.length() > 0) {
+                    msg.append(" e ");
+                }
+                msg.append("nenhum produto salvo. Conecte-se uma vez para baixar o catálogo");
+            }
+            msg.append(".");
+            textViewStatus.setText(msg.toString());
+        } else if (!comRede) {
+            textViewStatus.setText("Modo off-line: usando os dados salvos no aparelho.");
         } else {
             textViewStatus.setText("");
         }
 
-        buttonAdicionarItem.setEnabled(produtos.size() > 1);
-        buttonSalvar.setEnabled(clientes.size() > 1);
+        buttonAdicionarItem.setEnabled(temProdutos);
+        buttonSalvar.setEnabled(temClientes);
     }
 
     // ------------------------------------------------------------------
@@ -217,12 +219,12 @@ public class InserirOrcamentoActivity extends BaseActivity {
         if (position < 0 || position >= produtos.size()) {
             return;
         }
-        Produto p = produtos.get(position);
+        ProdutoLocal p = produtos.get(position);
         if (p.id == 0) {
             editTextValorUnitario.setText("");
             return;
         }
-        editTextValorUnitario.setText(String.format(BR, "%.2f", p.preco));
+        editTextValorUnitario.setText(String.format(BR, "%.2f", p.precoVenda));
     }
 
     private void adicionarItem() {
@@ -232,7 +234,7 @@ public class InserirOrcamentoActivity extends BaseActivity {
             return;
         }
 
-        Produto produto = produtos.get(posicao);
+        ProdutoLocal produto = produtos.get(posicao);
         double quantidade = numero(editTextQuantidade.getText().toString());
         double valor = numero(editTextValorUnitario.getText().toString());
         double desconto = numero(editTextDescontoItem.getText().toString());
@@ -258,7 +260,7 @@ public class InserirOrcamentoActivity extends BaseActivity {
             return;
         }
 
-        itens.add(new Item(produto.id, produto.nome, quantidade, valor, desconto));
+        itens.add(new Item(produto.idServidor, produto.descricao, quantidade, valor, desconto));
         atualizarItens();
 
         // Prepara o próximo item
@@ -308,7 +310,7 @@ public class InserirOrcamentoActivity extends BaseActivity {
     }
 
     // ------------------------------------------------------------------
-    // Gravação
+    // Gravação (local + fila de sincronização)
     // ------------------------------------------------------------------
 
     private void salvar() {
@@ -326,9 +328,9 @@ public class InserirOrcamentoActivity extends BaseActivity {
             return;
         }
 
-        final long clienteId = clientes.get(posicaoCliente).id;
+        final ClienteLocal cliente = clientes.get(posicaoCliente);
         final String observacoes = editTextObservacoes.getText().toString().trim();
-        final double desconto = numero(editTextDesconto.getText().toString());
+        double desconto = numero(editTextDesconto.getText().toString());
 
         if (Double.isNaN(desconto) || desconto < 0) {
             editTextDesconto.setError("Informe um desconto válido");
@@ -341,84 +343,105 @@ public class InserirOrcamentoActivity extends BaseActivity {
             return;
         }
 
+        final double descontoFinal = desconto;
+
         salvando = true;
         buttonSalvar.setEnabled(false);
         buttonSalvar.setText("Salvando...");
-        textViewStatus.setText("Enviando para a API...");
+        textViewStatus.setText("Salvando no aparelho...");
 
         new Thread(() -> {
+            boolean salvou = false;
+            Sincronizacao.Resultado resultado = null;
+            String numero = "";
+
             try {
-                JSONObject corpo = new JSONObject();
-                corpo.put("cliente_id", clienteId);
-                corpo.put("desconto", desconto);
-                corpo.put("observacoes", observacoes);
+                BancoLocal banco = BancoLocal.get(this);
 
-                JSONArray lista = new JSONArray();
+                OrcamentoLocal orcamento = new OrcamentoLocal();
+                orcamento.clienteLocalId = cliente.id;
+                orcamento.clienteNome = cliente.nome;
+                orcamento.data = new SimpleDateFormat("dd/MM/yyyy", BR).format(new Date());
+                orcamento.desconto = descontoFinal;
+                orcamento.total = subtotalAtual - descontoFinal;
+                orcamento.observacao = observacoes;
+                orcamento.status = OrcamentoLocal.STATUS_RASCUNHO;
+                orcamento.sincronizado = false;
+
+                List<OrcamentoItemLocal> locais = new ArrayList<>();
                 for (Item item : itens) {
-                    JSONObject o = new JSONObject();
-                    o.put("produto_id", item.produtoId);
-                    o.put("quantidade", item.quantidade);
-                    o.put("valor_unitario", item.valorUnitario);
-                    o.put("desconto", item.desconto);
-                    lista.put(o);
+                    OrcamentoItemLocal li = new OrcamentoItemLocal(
+                            item.descricao, item.quantidade, item.valorUnitario);
+                    li.produtoId = item.produtoId;
+                    li.desconto = item.desconto;
+                    li.recalcular();
+                    locais.add(li);
                 }
-                corpo.put("itens", lista);
 
-                final ApiClient.Result r = ApiClient.post("/api/orcamentos", corpo.toString());
+                long idLocal = banco.salvarOrcamento(orcamento, locais);
 
-                runOnUiThread(() -> {
-                    salvando = false;
-                    buttonSalvar.setEnabled(true);
-                    buttonSalvar.setText("Salvar orçamento");
+                // O envio real e montado a partir do banco; o payload fica so
+                // como referencia/diagnostico da fila.
+                banco.enfileirar(ItemOutbox.TIPO_ORCAMENTO,
+                        ItemOutbox.ACAO_INSERIR, idLocal, "{}");
 
-                    if (Sessao.tratarSessaoExpirada(InserirOrcamentoActivity.this, r)) {
-                        return;
-                    }
-                    if (r.ok()) {
-                        String numero = "";
-                        try {
-                            numero = new JSONObject(r.body).optString("numero", "");
-                        } catch (Exception ignored) {
+                salvou = true;
+
+                if (Conectividade.temRede(InserirOrcamentoActivity.this)) {
+                    resultado = Sincronizacao.sincronizar(InserirOrcamentoActivity.this);
+                    if (resultado.orcamentosEnviados > 0) {
+                        OrcamentoLocal salvo = banco.buscarOrcamento(idLocal);
+                        if (salvo != null) {
+                            numero = salvo.numero;
                         }
-                        Toast.makeText(InserirOrcamentoActivity.this,
-                                "Orçamento " + numero + " salvo com sucesso.",
-                                Toast.LENGTH_LONG).show();
-                        setResult(RESULT_OK);
-                        finish();
-                    } else {
-                        textViewStatus.setText(mensagemDeErro(r));
-                        Toast.makeText(InserirOrcamentoActivity.this,
-                                "Não foi possível salvar o orçamento.",
-                                Toast.LENGTH_LONG).show();
                     }
-                });
-            } catch (final Exception e) {
-                runOnUiThread(() -> {
-                    salvando = false;
-                    buttonSalvar.setEnabled(true);
-                    buttonSalvar.setText("Salvar orçamento");
-                    textViewStatus.setText("Falha de conexão.\nVerifique se a API está no ar.");
-                });
+                }
+            } catch (Exception e) {
+                salvou = false;
             }
-        }).start();
-    }
 
-    private String mensagemDeErro(ApiClient.Result r) {
-        String detalhe = "";
-        try {
-            detalhe = new JSONObject(r.body).optString("error", "");
-        } catch (Exception ignored) {
-        }
-        if (!detalhe.isEmpty()) {
-            return detalhe;
-        }
-        if (r.status == 400) {
-            return "A API recusou os dados enviados (HTTP 400).";
-        }
-        if (r.status >= 500) {
-            return "Erro no servidor da API (HTTP " + r.status + ").";
-        }
-        return "A API respondeu com erro HTTP " + r.status + ".";
+            final boolean salvouFinal = salvou;
+            final Sincronizacao.Resultado resultadoFinal = resultado;
+            final String numeroFinal = numero;
+
+            runOnUiThread(() -> {
+                salvando = false;
+                buttonSalvar.setEnabled(true);
+                buttonSalvar.setText("Salvar orçamento");
+
+                if (!salvouFinal) {
+                    textViewStatus.setText("Não foi possível salvar o orçamento no aparelho.");
+                    Toast.makeText(InserirOrcamentoActivity.this,
+                            "Não foi possível salvar o orçamento.",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                if (resultadoFinal != null && resultadoFinal.sessaoExpirada != null) {
+                    Sessao.tratarSessaoExpirada(InserirOrcamentoActivity.this,
+                            resultadoFinal.sessaoExpirada);
+                    return;
+                }
+
+                boolean enviado = resultadoFinal != null
+                        && resultadoFinal.orcamentosEnviados > 0;
+
+                if (enviado) {
+                    String texto = numeroFinal.isEmpty()
+                            ? "Orçamento salvo e sincronizado com o servidor."
+                            : "Orçamento " + numeroFinal + " salvo e sincronizado.";
+                    Toast.makeText(InserirOrcamentoActivity.this, texto,
+                            Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(InserirOrcamentoActivity.this,
+                            "Orçamento salvo no aparelho.\n"
+                                    + "Será enviado ao servidor na próxima sincronização.",
+                            Toast.LENGTH_LONG).show();
+                }
+                setResult(RESULT_OK);
+                finish();
+            });
+        }).start();
     }
 
     /** Aceita "35,50", "35.50" e "1.234,56"; devolve NaN quando inválido. */
@@ -441,39 +464,17 @@ public class InserirOrcamentoActivity extends BaseActivity {
     }
 
     // ------------------------------------------------------------------
-    // Modelos simples da tela
+    // Modelo simples dos itens da tela
     // ------------------------------------------------------------------
 
-    private static final class Cliente {
-        final long id;
-        final String nome;
-
-        Cliente(long id, String nome) {
-            this.id = id;
-            this.nome = nome;
-        }
-    }
-
-    private static final class Produto {
-        final long id;
-        final String nome;
-        final double preco;
-
-        Produto(long id, String nome, double preco) {
-            this.id = id;
-            this.nome = nome;
-            this.preco = preco;
-        }
-    }
-
     private static final class Item {
-        final long produtoId;
+        final Long produtoId;
         final String descricao;
         final double quantidade;
         final double valorUnitario;
         final double desconto;
 
-        Item(long produtoId, String descricao, double quantidade,
+        Item(Long produtoId, String descricao, double quantidade,
              double valorUnitario, double desconto) {
             this.produtoId = produtoId;
             this.descricao = descricao;
@@ -483,7 +484,7 @@ public class InserirOrcamentoActivity extends BaseActivity {
         }
 
         double total() {
-            return quantidade * valorUnitario - desconto;
+            return (quantidade * valorUnitario) - desconto;
         }
     }
 }
