@@ -575,6 +575,56 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Limpeza:** campo morto `imgLogo` removido de `uFrmLogin` (não existe no `.lfm`).
 - **Validação:** build 0/0, suíte **65/65**, UI **33/33**.
 
+### 3.23 Android off-line: clientes e orçamentos com sincronização (03/11, concluído)
+
+- **Banco local:** `ErpDbHelper` (`SQLiteOpenHelper`, schema **v2**) cria
+  `erp2026.db` com `cliente_local`, `produto_local`, `orcamento_local`,
+  `orcamento_item_local`, `outbox` e `meta` — todas as tabelas de negócio com a
+  coluna `empresa`, porque a configuração é por empresa (D9). `onUpgrade` faz
+  v1→v2 (`produto_local`, `desconto` no item, `qtd_itens` no cabeçalho) sem
+  recriar o banco. Nenhuma dependência nova no Gradle (sem Room).
+- **Modelo:** id local (`id`, auto-incremento) separado do id do servidor
+  (`id_servidor`); `sincronizado` marca o que já existe na API. Caches usam
+  **upsert por `id_servidor`** (nunca delete+insert), para não quebrar o id
+  local referenciado por orçamentos pendentes.
+- **Gravação sempre local primeiro:** `InserirClienteActivity` e
+  `InserirOrcamentoActivity` gravam no SQLite e enfileiram na `outbox`; só
+  então tentam `Sincronizacao.sincronizar` se `Conectividade.temRede`. Sem
+  rede, o cadastro fica salvo e sobe na próxima sincronização.
+- **Fila (`outbox`):** `BancoLocal.enfileirar` não duplica INSERT pendente do
+  mesmo registro local (atualiza o payload). Falha vira `tentativas` +
+  `ultimo_erro` e a linha **permanece** para a próxima rodada.
+- **Ordem de envio:** clientes antes de orçamentos. `POST /api/clientes` não
+  devolve id, então após o POST o app relê `GET /api/clientes` e localiza o
+  cadastro por **nome + dígitos do CPF/CNPJ** (maior id), gravando
+  `id_servidor`; se o cliente já existir (envio anterior confirmado), só
+  vincula. O orçamento é montado **na hora do envio a partir do banco** (não do
+  JSON da fila), com o `cliente_id` do servidor e `produto_id` de cada item;
+  `POST /api/orcamentos` devolve `id`/`numero`, gravados no registro local.
+- **Telas:** `ClientesActivity` e `OrcamentosActivity` listam do banco local,
+  sincronizam em segundo plano na primeira exibição e têm
+  `buttonSincronizar` ("Sincronizar (N pendente[s])"). Off-line mostram estado
+  vazio com mensagem própria, sem erro de servidor. Orçamento ainda não enviado
+  não pode ser convertido (o diálogo oferece **Sincronizar**).
+- **Layouts:** `activity_clientes.xml` e `activity_orcamentos.xml` ganharam o
+  `buttonSincronizar`; **nenhum `android:id` existente foi alterado**.
+  `App.onCreate` abre o banco e loga tabelas/contagens na tag `ErpDb`.
+- **Validação:** Android `BUILD SUCCESSFUL`; migração v1→v2 vista no logcat
+  (`banco erp2026.db v2` + 6 tabelas). No emulador `Pixel_9`, em modo avião:
+  cliente salvo local ("aguardando sincronização", 1 pendente) e orçamento
+  #1 de 1 × R$ 35,00 (2 pendentes); religando a rede e sincronizando, a API
+  recebeu cliente 1396 e orçamento 1007 (número 2, R$ 35,00, 1 item) e o app
+  exibiu **Orçamento 2** com 0 pendentes. `force-stop` + relançamento em modo
+  avião recarregou tudo do banco (`clientes=10 pendentes=0 produtos=4
+  orcamentos=1 outbox=0`). Os registros de teste saíram do banco ao final
+  (PESSOA 1396 + PEDIDO_VENDA 1007) e a suíte voltou a **65/65**.
+- **Observação:** `VendasActivity` continua online-only (fora do escopo); o
+  botão **Orçamentos** dela já abre a tela off-line. Os registros criados para
+  validar a sincronização (cliente "Cliente Offline Teste" / PESSOA 1396 e
+  orçamento 1007) foram removidos do banco real depois do teste — a base voltou
+  aos **9 clientes** e a suíte a **65/65** (o `TestIntegridade018` confere essa
+  contagem fixa).
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)

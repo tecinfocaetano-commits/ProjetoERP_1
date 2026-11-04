@@ -26,27 +26,33 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (03/11/2026)
 
-**HEAD:** `b5cb2ff` (Teste de UI em todas as telas do desktop e correções: geo, NF-e, Compras). Árvore: **limpa** (nada não commitado; nenhum untracked).
-Build: **0 erros / 0 warnings** · suíte **65/65** · UI **33/33 telas** (03/11).
+**HEAD:** `862b26f` (Android: modo off-line de clientes e orçamentos com sincronização). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md` e `PLANO_E_LOG.md`).
+Build: Android `BUILD SUCCESSFUL` · suíte desktop **65/65** (sem alteração no desktop nesta etapa).
 
-> Se `git log -1` mostrar um hash diferente de `b5cb2ff`, é porque o commit
+> Se `git log -1` mostrar um hash diferente de `862b26f`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — árvore limpa. Último marco fechado em `b5cb2ff` (teste de todas as
-  telas + correções); este texto foi gravado no commit de docs seguinte.
+- Nada — o modo off-line está no commit `862b26f`. Os registros usados para
+  validar a sincronização ("Cliente Offline Teste", PESSOA 1396, e orçamento
+  1007/número 2) foram removidos do banco real ao final, devolvendo a base aos
+  **9 clientes** e à suíte **65/65**.
 
 ### Próximo passo (executável)
 
 1. Não há item aberto no backlog: aguardar o próximo pedido do usuário.
-2. Antes de qualquer commit, rodar `Scripts\build_desktop.bat` (esperado 0/0) e
-   `Scripts\run_tests.bat` (esperado **65/65**); se a suíte cair, não commitar.
+2. Opcional: validar no emulador a **conversão** de um orçamento sincronizado e
+   o fluxo de **sessão expirada (401)** durante a sincronização.
+3. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
+   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **65/65**); se a suíte
+   cair, não commitar.
 
 ### O que fechou nesta sessão
 
 | Item | Entrega |
 |---|---|
+| **Modo off-line (Android)** | Banco SQLite local `erp2026.db` (schema v2) + fila `outbox` + `Sincronizacao`: **clientes** e **orçamentos** funcionam sem rede (cache local, cadastro salvo no aparelho, "Sincronizar (N pendentes)") e sobem sozinhos quando a conexão volta. Sem dependência nova (só `SQLiteOpenHelper`). Detalhes em `PLANO_E_LOG.md` §3.23 |
 | **Teste de todas as telas (desktop)** | `Scripts\testes\telas_todas_ui.ps1` percorre os **33 itens do menu** por `WM_COMMAND`, valida janela + controles, lê/fecha avisos e gera `Documentacao\TESTE_TELAS_DESKTOP.md` + evidências. Resultado **33/33 OK**. Encontrou e corrigiu 3 bugs: geo (`... WHERE ORDER BY NOME`), NF-e (campos `edtInicio/edtFim` sem componente no `.lfm` → AV) e Compras (`MAX(NUMERO)` sobre texto `PC-TESTE-8`). Detalhes em §3.22 |
 | **D3 — PESSOA unificada** | `CLIENTE` + `FORNECEDOR` → `PESSOA` (`TIPO` C/F). Tela única **Cadastros > Pessoas** (`uFrmPessoas`) com filtro Todos/Clientes/Fornecedores; tipo imutável após salvo; exclusão bloqueada quando referenciada. API `/api/clientes` mantém o contrato e filtra `TIPO='C'`. Suíte **65/65** (§3.19) |
 | **Dashboard de vendas (Android)** | `activity_dashboard.xml` sem botões: faturamento do mês + vendas, A receber / A pagar, orçamentos abertos, clientes e as 3 últimas vendas; cards abrem `OrcamentosActivity`, `ClientesActivity` e `VendasActivity`. Configuração e saída foram para o menu **⋮** (Atualizar resumo / Configuração / Sair). Validado no emulador — §3.18 |
@@ -60,6 +66,15 @@ Build: **0 erros / 0 warnings** · suíte **65/65** · UI **33/33 telas** (03/11
 | **Encoding (item 14)** | `SetMultiByteConversionCodePage(CP_UTF8)` no início do app e dos testes; **sem `-FcUTF8`** (a flag gerava 213 warnings e corrompia concatenações). Contorno local removido; banco sem mojibake — §3.16 |
 | **Backlog 5–9** | fechado em 01/11 (ver "Estado anterior" abaixo) |
 
+- **Modo off-line validado no emulador `Pixel_9` (API local no ar):** em modo
+  avião, cliente "Cliente Offline Teste" foi salvo no aparelho e apareceu como
+  "(aguardando sincronização)" com o botão **Sincronizar (1 pendente)**;
+  orçamento #1 (1 × R$ 35,00) para esse cliente levou o contador a **2
+  pendentes**. Religando a rede e tocando **Sincronizar**, o servidor recebeu
+  o cliente (id 1396) e o orçamento (id 1007 / número 2 / R$ 35,00 / 1 item), e
+  o app passou a mostrar **Orçamento 2** com contador **0**. `force-stop` +
+  relançamento ainda em modo avião carregou clientes e orçamento do banco
+  (`clientes=10 pendentes=0 produtos=4 orcamentos=1 outbox=0`).
 - **Dashboard validado no emulador `Pixel_9` (Android 16)** com a API local no
   ar: faturamento **R$ 70,00** (1 venda no mês), **A receber R$ 170,00**,
   **A pagar R$ 1.595,00**, **0 orçamentos**, **9 clientes** e as 3 últimas
