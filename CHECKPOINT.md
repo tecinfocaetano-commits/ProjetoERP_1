@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **99/99**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **133/133**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
@@ -27,26 +27,27 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (04/11/2026)
 
-**HEAD:** `6db1cb7` (Testes: suite desktop dos cadastros geografico e fase 1). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md` e `PLANO_E_LOG.md`).
-Build: desktop **0/0** · suíte desktop **99/99** · testes Android **5/5** (inalterados nesta etapa).
+**HEAD:** `f918f8f` (Testes: suite desktop das notas fiscais de entrada e saida). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md` e `PLANO_E_LOG.md`).
+Build: desktop **0/0** · suíte desktop **133/133** · testes Android **5/5** (inalterados nesta etapa).
 
-> Se `git log -1` mostrar um hash diferente de `6db1cb7`, é porque o commit
+> Se `git log -1` mostrar um hash diferente de `f918f8f`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — os testes dos cadastros estão no commit `6db1cb7`. O banco real
-  não recebeu dados de teste nesta etapa (conferido após a limpeza).
+- Nada — a suíte das notas está no commit `f918f8f`. O banco real ficou sem
+  dados de teste nesta etapa: conferido **zero órfãos** e nenhuma linha com o
+  sufixo da rodada; `LOG_SISTEMA` cortado no topo capturado antes da suíte.
 
 ### Próximo passo (executável)
 
-1. **Etapa seguinte (decidida com o usuário):** testes unitários das **notas
-   fiscais de entrada e saída** no desktop — `CriarDoPedidoCompra`/`Processar`,
-   saldo/estoque, contas a pagar/receber, chave de acesso e cancelamento.
+1. **Etapa seguinte (a definir com o usuário):** novas áreas para testes
+   unitários no desktop (estoque/financeiro/pedidos) ou correção do cadastro
+   de produto (ver pendência abaixo).
 2. Manter o padrão desta etapa: dados com timestamp, limpeza explícita no
    `finally`, sem mock de banco.
 3. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
-   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **99/99**); se a suíte
+   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **133/133**); se a suíte
    cair, não commitar.
 4. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
    (esperado **5/5**) e `Scripts\build_android.bat` (esperado `BUILD SUCCESSFUL`).
@@ -55,6 +56,7 @@ Build: desktop **0/0** · suíte desktop **99/99** · testes Android **5/5** (in
 
 | Item | Entrega |
 |---|---|
+| **Testes unitários das notas fiscais (desktop)** | `uNotasFiscaisTest` (34 testes: 15 de entrada + 19 de saída) cobre criação a partir do pedido, processamento/faturamento, estoque e custo médio, contas a pagar/receber, chave de acesso de 44 dígitos com DV, cancelamento/estorno, itens, classificação fiscal e XML, com banco real. Suíte **133/133**. Revelou que `PRODUTO` exige `CATEGORIA_ID`/`UNIDADE_ID` (domínio `DM_ID` NOT NULL). Detalhes em `PLANO_E_LOG.md` §3.27 |
 | **Testes unitários dos cadastros (desktop)** | `uGeograficoTest` (11) + `uCadastrosFase1Test` (23) cobrem País/Estado/Cidade, Cor, Material, Produto Fiscal e Grade com banco real. Suíte **99/99**. Revelaram e corrigiram 3 bugs: *double free* em `BuscarPorId` (País/Estado/Cidade/Grade), `string right truncation` no `Pesquisar` (Material/Produto Fiscal) e validação de produto na tabela errada (`DefinirGradeDoProduto`). Detalhes em `PLANO_E_LOG.md` §3.26 |
 | **Testes unitários da sincronização (Android)** | `SincronizacaoTest` (JUnit 4 + Robolectric 4.13, apenas `testImplementation` — não entra no APK) roda na JVM com SQLite real e servidor HTTP falso: download dos 6 conjuntos, envio da outbox e id do servidor, snapshots isolados por empresa e 401 (no envio e no download). **5/5** verdes; a rodada agora para no primeiro 401. Detalhes em `PLANO_E_LOG.md` §3.25 |
 | **Sincronização total (Android + API)** | Menu **⋮ › Sincronizar dados** abre `SincronizacaoActivity`: empresa/usuário do token, contagem e última sincronização de cada conjunto, pendências e **Baixar tudo**. A API passou a filtrar **todas** as consultas por `EMPRESA_ID` do JWT (clientes, produtos, vendas, estoque e financeiro) e os POSTs usam a empresa do token. Android: schema local **v3** com `venda_local`, `estoque_local`, `conta_receber_local` e `conta_pagar_local`; Vendas/Estoque/Financeiro e Dashboard leem do banco local e sincronizam em segundo plano. Detalhes em `PLANO_E_LOG.md` §3.24 |
@@ -124,9 +126,9 @@ Build: desktop **0/0** · suíte desktop **99/99** · testes Android **5/5** (in
 
 ### Próximo passo (executável)
 
-**Testes unitários das notas fiscais de entrada/saída no desktop** (etapa
-seguinte decidida com o usuário). Ao fechar cada marco: build 0/0, suíte
-verde, atualizar este checkpoint, `PLANO_E_LOG.md` e commitar.
+**A definir com o usuário** — a suíte das notas fiscais fechou em 04/11
+(ver "Estado atual" no topo). Ao fechar cada marco: build 0/0, suíte verde,
+atualizar este checkpoint, `PLANO_E_LOG.md` e commitar.
 
 ---
 
@@ -716,7 +718,7 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
-4. Testes unit: `Scripts\run_tests.bat` → esperado **65/65**.
+4. Testes unit: `Scripts\run_tests.bat` → esperado **133/133**.
 5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\telas_todas_ui.ps1`
    → esperado **TELAS-DESKTOP-UI CONCLUIDO** (33/33); `... Scripts\testes\fase6_01.ps1`
    → esperado **FASE6-01 CONCLUIDO**; e
@@ -766,6 +768,12 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 - ~~Encoding dos literais acentuados (`NF de saÃ­da` no `CONTA_RECEBER`).~~ —
   **concluído (02/11)**: `SetMultiByteConversionCodePage(CP_UTF8)` no app/testes,
   sem `-FcUTF8`; contorno local removido e banco sem mojibake (§3.16).
+- **Cadastro de produto não grava `CATEGORIA_ID`/`UNIDADE_ID`** (revelado pelos
+  testes das notas em 04/11): no banco real as duas colunas usam o domínio
+  `DM_ID`, que é `NOT NULL`, mas `uFrmProdutos.Salvar` não as inclui no `INSERT`
+  — incluir produto pela tela falha com *validation error*. A tela já carrega
+  `cmbCategoria`/`cmbUnidade`; falta usar as duas no `INSERT`/`UPDATE` (e
+  preenchê-las em `PreencherCampos`). Os testes usam os valores `1`/`1`.
 
 ---
 

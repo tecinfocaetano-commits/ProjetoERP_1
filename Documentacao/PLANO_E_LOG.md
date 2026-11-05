@@ -755,6 +755,71 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.27 Testes unitários das notas fiscais no desktop (04/11, concluído)
+
+- **Escopo:** segunda etapa de "ambos, em etapas" — **34 testes** em
+  `Desktop\src\Tests\uNotasFiscaisTest.pas` (15 de entrada + 19 de saída),
+  registrados em `uTestRunner.pas` e `Tests.lpi`.
+- **Nota de entrada** (`TNotaEntradaService`):
+  - `CriarDoPedidoCompra`: cabeçalho (fornecedor, número, série/modelo, CFOP,
+    totais), itens copiados com classificação fiscal do `PRODUTO_FISCAL`
+    (e fallback para material sem vínculo), pedido **Confirmado** e vinculado,
+    auditoria `NOTA_ENTRADA/I`.
+  - Recusas: pedido inexistente, cancelado, sem itens e pedido que já gerou
+    nota.
+  - `Processar` com produto: saldo 10 → 15, custo médio ponderado
+    `(10*10 + 5*20)/15`, `PRODUTO.PRECO_CUSTO` atualizado, movimento `E`,
+    conta a pagar e bloqueio de reprocessamento.
+  - `Processar` com material: saldo 2 → 5, movimento com saldo
+    anterior/posterior, último custo no cadastro e condição 3× com três
+    vencimentos de 30 dias.
+  - Erros: nota sem itens, item sem produto/material, nota inexistente;
+    `Cancelar` de nota aberta e de nota já processada; `ExcluirItem` +
+    `RecalcularTotais`; `PrimeiroItemSemProduto`; `CarregarFiscalDoProduto`
+    (vínculo, fallback do cadastro e produto zero).
+- **Nota de saída** (`TNotaSaidaService`):
+  - `CriarDoPedido`: cabeçalho, itens, fiscal com fallback, totais,
+    `NotaDoPedido`, `QuantidadeItens` e bloqueio de segunda nota ativa;
+    recusas para pedido inexistente, faturado e cancelado; nota sem itens.
+  - `VerificarSaldo`: saldo suficiente, insuficiente (devolve descrição,
+    disponível e solicitado) e item que não movimenta estoque.
+  - `AtualizarCabecalho`: campos do cabeçalho, frete/seguro/outras no total,
+    bloqueio após faturar e cliente obrigatório.
+  - `GerarChaveAcesso`: 44 dígitos, AAMM da emissão, modelo, série e número
+    com zeros à esquerda e **DV módulo 11 conferido de forma independente**.
+  - `Faturar`: status `P`, baixa de estoque 10 → 6, `SALDO_APOS` do item,
+    movimento `S`, contas a receber, chave/protocolo de homologação, pedido
+    `F` com número e chave da NF-e; recusas sem cliente, sem itens, com
+    estoque insuficiente (rollback sem movimento), item sem produto e nota
+    inexistente.
+  - `Cancelar`: nota aberta (sem movimentar estoque) e nota faturada
+    (estorno do saldo, contas em aberto canceladas, pedido de volta a
+    `P`, `NUMERO_NFE`/`CHAVE_NFE` limpos, motivo e data gravados).
+  - `ExcluirItem` + `RecalcularTotais` e `GerarXML` (declaração, `nfeProc`,
+    número, item, total, cliente e nota inexistente).
+- **Padrão:** fixtures confirmadas antes de cada Service (os Services
+  confirmam a transação internamente), sufixo de timestamp, limpeza no
+  `finally` na ordem das dependências e `LOG_SISTEMA` cortado no topo
+  capturado antes da suíte.
+- **Resultado:** suíte desktop **133/133** (`Scripts\run_tests.bat`), antes
+  **99/99**; build **0/0**. Banco real sem resíduos: nenhuma linha com o
+  sufixo da rodada e **zero órfãos** na consulta do `TestIntegridade018`.
+- **Achados e lições:**
+  1. `PRODUTO.CATEGORIA_ID` e `PRODUTO.UNIDADE_ID` são `NOT NULL` no banco
+     real (domínio `DM_ID`), mas `uFrmProdutos.Salvar` não grava as duas —
+     incluir produto pela tela falha. As fixtures usam `1`/`1`; o bug do
+     formulário ficou registrado como pendência (fora do escopo desta etapa).
+  2. No SQLDB/Firebird um parâmetro nomeado repetido (`:P`) só é ligado na
+     **primeira** ocorrência; as demais ficam `NULL`. A limpeza passou a usar
+     `:P1`/`:P2`/`:P3` — sem isso sobravam `CONTA_RECEBER` órfãs.
+  3. `RecalcularTotais` não confirma a transação: os testes de processamento
+     de entrada chamam `RecalcularTotais` + `Confirmar` antes de `Processar`
+     (sem total a nota não gera contas a pagar).
+- **Commit:** `f918f8f` (testes + registro no runner/projeto); a documentação
+  deste marco vem no commit seguinte.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
