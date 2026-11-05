@@ -20,6 +20,8 @@ uses
   uFrmUsuariosTest,
   uProducaoTest,
   uTelasAdmTest,
+  uGeograficoTest,
+  uCadastrosFase1Test,
   uConexao,
   uSessao;
 
@@ -80,6 +82,14 @@ begin
 
     // Executar testes das telas de administração (30/10/2026)
     TTelasAdmTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes dos cadastros geográficos (04/11/2026)
+    TGeograficoTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes dos cadastros da Fase 1 (04/11/2026)
+    TCadastrosFase1Test.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais

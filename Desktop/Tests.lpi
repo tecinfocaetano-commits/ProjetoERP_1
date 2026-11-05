@@ -67,6 +67,14 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src\Tests\uGeograficoTest.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Tests\uCadastrosFase1Test.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\Config\uConexao.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

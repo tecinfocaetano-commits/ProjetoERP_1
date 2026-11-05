@@ -183,9 +183,13 @@ end;
 
 function TMaterialService.Pesquisar(const ATermo: string): TSQLQuery;
 begin
+  { CAST + CONTAINING: o termo pode ser maior que CODIGO (30) ou
+    CODIGO_BARRAS (20) e o CONTAINING direto estoura com "string
+    right truncation". O CAST amplia a coluna para o tamanho do termo. }
   Result := FRepo.BuscarTodosParam(
-    '(UPPER(DESCRICAO) CONTAINING UPPER(:T) OR ' +
-    'CODIGO CONTAINING :T OR CODIGO_BARRAS CONTAINING :T)',
+    '(UPPER(CAST(DESCRICAO AS VARCHAR(1000))) CONTAINING UPPER(:T) OR ' +
+    'UPPER(CAST(CODIGO AS VARCHAR(200))) CONTAINING UPPER(:T) OR ' +
+    'UPPER(CAST(CODIGO_BARRAS AS VARCHAR(200))) CONTAINING UPPER(:T))',
     ['T'], [ATermo],
     'DESCRICAO');
 end;

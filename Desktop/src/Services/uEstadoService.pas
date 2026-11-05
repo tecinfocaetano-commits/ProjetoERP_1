@@ -72,7 +72,8 @@ begin
       else
         FreeAndNil(Result);
     finally
-      LQuery.Free;
+      if LQuery.Active then
+        LQuery.Close;
     end;
   except
     Result.Free;

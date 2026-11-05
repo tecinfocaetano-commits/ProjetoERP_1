@@ -162,7 +162,8 @@ begin
       else
         FreeAndNil(Result);
     finally
-      LQuery.Free;
+      if LQuery.Active then
+        LQuery.Close;
     end;
   except
     Result.Free;
@@ -686,11 +687,23 @@ procedure TGradeService.DefinirGradeDoProduto(AProdutoId, AGradeId: Int64);
 var
   LQuery: TSQLQuery;
 begin
-  ValidarId(AProdutoId, 'Produto');
+  { o produto é de outra tabela: ValidarId usaria o repositório de
+    GRADE e recusaria qualquer produto existente. }
+  if AProdutoId <= 0 then
+    raise Exception.CreateFmt('Produto: ID inválido (%d).', [AProdutoId]);
+
   Conexao.IniciarTransacao;
   LQuery := NovaConsulta;
   try
     try
+      LQuery.SQL.Text := 'SELECT COUNT(*) FROM PRODUTO WHERE ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := AProdutoId;
+      LQuery.Open;
+      if LQuery.Fields[0].AsLargeInt = 0 then
+        raise Exception.CreateFmt(
+          'Produto com ID %d não encontrado.', [AProdutoId]);
+      LQuery.Close;
+
       LQuery.SQL.Text := 'UPDATE PRODUTO SET GRADE_ID = :GRADE WHERE ID = :ID';
       if AGradeId > 0 then
         LQuery.ParamByName('GRADE').AsLargeInt := AGradeId

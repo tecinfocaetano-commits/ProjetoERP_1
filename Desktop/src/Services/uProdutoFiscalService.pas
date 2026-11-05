@@ -195,9 +195,13 @@ end;
 
 function TProdutoFiscalService.Pesquisar(const ATermo: string): TSQLQuery;
 begin
+  { CAST + CONTAINING: o termo pode ser maior que NCM (10) e o
+    CONTAINING direto estoura com "string right truncation". O CAST
+    amplia a coluna para o tamanho do termo. }
   Result := FRepo.BuscarTodosParam(
-    '(UPPER(DESCRICAO) CONTAINING UPPER(:T) OR ' +
-    'CODIGO CONTAINING :T OR NCM CONTAINING :T)',
+    '(UPPER(CAST(DESCRICAO AS VARCHAR(1000))) CONTAINING UPPER(:T) OR ' +
+    'UPPER(CAST(CODIGO AS VARCHAR(200))) CONTAINING UPPER(:T) OR ' +
+    'UPPER(CAST(NCM AS VARCHAR(200))) CONTAINING UPPER(:T))',
     ['T'], [ATermo],
     'DESCRICAO');
 end;
