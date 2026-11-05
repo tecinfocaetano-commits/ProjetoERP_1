@@ -713,6 +713,48 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.26 Testes unitários dos cadastros no desktop (04/11, concluído)
+
+- **Escopo (decidido com o usuário):** "ambos, em etapas" — primeiro os
+  cadastros, depois as notas fiscais de entrada/saída. Esta etapa cobre
+  **País, Estado, Cidade, Cor, Material, Produto Fiscal e Grade**.
+- **Arquivos novos:**
+  - `Desktop\src\Tests\uGeograficoTest.pas` — **11 testes** de
+    País/Estado/Cidade: ciclo completo (inserir, buscar, pesquisar, atualizar,
+    excluir), campos obrigatórios, UF inválida, pai inexistente e busca por
+    ID inexistente.
+  - `Desktop\src\Tests\uCadastrosFase1Test.pas` — **23 testes** de Cor (4),
+    Material (4), Produto Fiscal (4) e Grade (11): ciclo completo,
+    duplicidade, campos vazios, limites de tamanho, vínculo grade×produto,
+    `USA_GRADE`, soma de quantidades e tipos de grade.
+  - Registrados em `Desktop\src\Tests\uTestRunner.pas` e `Desktop\Tests.lpi`.
+- **Padrão dos testes:** dados com sufixo de timestamp, limpeza explícita no
+  `finally` (`DELETE` por ID e remoção de `LOG_SISTEMA` acima do topo
+  capturado), sem mock de banco — igual às suítes existentes.
+- **Resultado:** suíte desktop **99/99** (`Scripts\run_tests.bat`), antes
+  **65/65**; `Scripts\build_desktop.bat` linka com **0/0**. Banco real deixado
+  limpo: zero registros `%TESTE%` em País/Estado/Cidade/Cor/Material/Produto
+  Fiscal/Grade, `PRODUTO 1.GRADE_ID = NULL` e `USA_GRADE = 'N'`.
+- **Bugs reais corrigidos pelos testes:**
+  1. `BuscarPorId` de `uPaisService`, `uEstadoService`, `uCidadeService` e
+     `uGradeService` liberava a query interna do repositório (`LQuery.Free`)
+     e o destructor a liberava de novo — *double free*. Agora apenas faz
+     `Close` quando ativa.
+  2. `Pesquisar` de `uMaterialService` e `uProdutoFiscalService` usava
+     `CONTAINING` direto em `CODIGO` (30), `CODIGO_BARRAS` (20) e `NCM` (10);
+     termo maior que a coluna estourava `string right truncation`. Agora usa
+     `UPPER(CAST(coluna AS VARCHAR(n))) CONTAINING UPPER(:T)`.
+  3. `TGradeService.DefinirGradeDoProduto` validava o produto no repositório
+     de `GRADE` (`ValidarId`), recusando qualquer produto existente. Agora
+     consulta `PRODUTO` diretamente antes do `UPDATE`.
+- **Limites reais confirmados no banco:** `PAIS.CODIGO` 5, `ESTADO.UF` 2,
+  `MATERIAL.CODIGO` 30, `PRODUTO_FISCAL.NCM` 10 e `GRADE.NOME` 60 — os dados
+  de teste passaram a respeitá-los.
+- **Commit:** `6db1cb7` (testes + correções); a documentação deste marco vem
+  no commit seguinte.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
