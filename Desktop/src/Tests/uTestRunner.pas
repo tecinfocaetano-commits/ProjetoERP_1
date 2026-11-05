@@ -22,6 +22,7 @@ uses
   uTelasAdmTest,
   uGeograficoTest,
   uCadastrosFase1Test,
+  uNotasFiscaisTest,
   uConexao,
   uSessao;
 
@@ -90,6 +91,10 @@ begin
 
     // Executar testes dos cadastros da Fase 1 (04/11/2026)
     TCadastrosFase1Test.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes das notas fiscais de entrada e saída (04/11/2026)
+    TNotasFiscaisTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais
