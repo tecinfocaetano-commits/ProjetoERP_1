@@ -842,6 +842,44 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.29 Testes do caixa e filtro com texto longo (07/11, concluído)
+
+- **Escopo:** terceira etapa de "ambos, em etapas" — **17 testes** em
+  `Desktop\src\Tests\uCaixaTest.pas`, registrados em `uTestRunner.pas` e
+  `Tests.lpi`. `TCaixaService` é somente leitura (consulta `CAIXA` e
+  `MOVIMENTO_CAIXA`), então a suíte não audita nada e a limpeza é só DELETE
+  dos fixtures pelo sufixo.
+- **`CarregarCaixas`:** saldo por caixa (entradas `E` menos saídas `S`;
+  `G`/`P` ficam fora do saldo), `NUMERO` convertido para texto, nome do
+  usuário via `LEFT JOIN`, `VALOR_ABERTURA`, status `A`/`F` com data e valor
+  de fechamento, caixa sem movimento (saldo 0), usuário inexistente (nome
+  vazio), ordenação por `ID` decrescente, escopo da empresa da sessão
+  (caixa de outra empresa não aparece) e filtros por número/usuário.
+- **`CarregarMovimentos`:** tradução `E→ENTRADA`, `S→SAIDA` e `G`/`P`
+  mantidos, ordenação por `ID`, valores, descrição e usuário; filtros por
+  descrição, tipo (`SAIDA`) e usuário; caixa `0`/negativo recusado.
+- **`CarregarResumo`:** `ENTRADAS` (só `E`), `SAIDAS` (só `S`) e `SALDO`
+  (E−S) com `CAST NUMERIC(18,4)`; caixa vazio devolve zeros; caixa inválido
+  recusado.
+- **Bug real encontrado e corrigido:** o filtro de `CarregarCaixas` comparava
+  `CAST(C.NUMERO AS VARCHAR(20)) CONTAINING :PESQ2`; quando o texto digitado
+  passava de 20 caracteres o Firebird devolvia *string right truncation*
+  (`expected length 20, actual 28`). As buscas dos dois métodos passaram a
+  comparar com `CAST(:PESQ AS VARCHAR(1000))` (e `:PESQ2`/`:PESQ3`), sem
+  alterar o resultado dos filtros.
+- **Domínio `DM_ID`:** `CAIXA.EMPRESA_ID`, `CAIXA.USUARIO_ID` e
+  `MOVIMENTO_CAIXA.EMPRESA_ID` são `DM_ID` e portanto **NOT NULL** no banco
+  real (o `RDB$NULL_FLAG` do campo fica nulo porque a obrigatoriedade vem do
+  domínio). Os fixtures informam sempre empresa e usuário; a cláusula
+  `OR C.EMPRESA_ID IS NULL` do Service é inalcançável, mas foi mantida.
+- **Resultado:** suíte desktop **150/150** (antes **133/133**), build desktop
+  **0/0**. Banco conferido: 3 caixas (as pré-existentes), 0 movimentos de
+  teste e nenhuma linha com o sufixo da rodada.
+- **Commit:** `bf94ef3` (testes + correção do Service + registro no
+  runner/projeto); a documentação deste marco vem no commit seguinte.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
