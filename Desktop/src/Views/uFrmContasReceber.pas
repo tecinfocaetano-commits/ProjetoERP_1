@@ -11,7 +11,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils,
-  uConexao, uSessao;
+  uConexao, uSessao, uContasService;
 
 type
   TfrmContasReceber = class(TForm)
@@ -106,49 +106,29 @@ end;
 
 procedure TfrmContasReceber.CarregarContas;
 var
-  LSQL: string;
+  LStatus: string;
   LAberto: Double;
   LPago: Double;
-  LStatus: string;
+  LContas: TContasService;
 begin
-  LSQL :=
-    'SELECT CR.ID, C.NOME AS CLIENTE, CR.DESCRICAO, CR.VALOR, ' +
-    'CR.DATA_VENCIMENTO, CR.DATA_PAGAMENTO, CR.VALOR_PAGO, ' +
-    'CASE CR.STATUS WHEN ''A'' THEN ''Aberta'' WHEN ''P'' THEN ''Paga'' ' +
-    'WHEN ''C'' THEN ''Cancelada'' END AS STATUS_DESC ' +
-    'FROM CONTA_RECEBER CR ' +
-    'LEFT JOIN PESSOA C ON C.ID = CR.CLIENTE_ID AND C.TIPO = ''C'' ' +
-    'WHERE CR.DATA_VENCIMENTO BETWEEN :DI AND :DF';
-
-  if cmbStatusFiltro.ItemIndex > 0 then
-  begin
-    case cmbStatusFiltro.ItemIndex of
-      1: LStatus := 'A';
-      2: LStatus := 'P';
-      3: LStatus := 'C';
-    end;
-    LSQL := LSQL + ' AND CR.STATUS = :STATUS';
+  case cmbStatusFiltro.ItemIndex of
+    1: LStatus := 'A';
+    2: LStatus := 'P';
+    3: LStatus := 'C';
+  else
+    LStatus := '';
   end;
 
-  if Trim(edtPesquisa.Text) <> '' then
-    LSQL := LSQL + ' AND (UPPER(COALESCE(C.NOME, '''')) CONTAINING UPPER(:PESQ)' +
-                   ' OR UPPER(COALESCE(CR.DESCRICAO, '''')) CONTAINING UPPER(:PESQ2))';
-
-  LSQL := LSQL + ' ORDER BY CR.DATA_VENCIMENTO';
-
-  if FQuery.Active then
-    FQuery.Close;
-  FQuery.SQL.Text := LSQL;
-  FQuery.ParamByName('DI').AsDate := StrToDateDef(edtDataInicio.Text, Now);
-  FQuery.ParamByName('DF').AsDate := StrToDateDef(edtDataFim.Text, Now);
-  if cmbStatusFiltro.ItemIndex > 0 then
-    FQuery.ParamByName('STATUS').AsString := LStatus;
-  if Trim(edtPesquisa.Text) <> '' then
-  begin
-    FQuery.ParamByName('PESQ').AsString := Trim(edtPesquisa.Text);
-    FQuery.ParamByName('PESQ2').AsString := Trim(edtPesquisa.Text);
+  LContas := TContasService.Create;
+  try
+    LContas.CarregarContasReceber(FQuery,
+      StrToDateDef(edtDataInicio.Text, Now),
+      StrToDateDef(edtDataFim.Text, Now),
+      LStatus, Trim(edtPesquisa.Text));
+  finally
+    LContas.Free;
   end;
-  FQuery.Open;
+
   DataSource1.DataSet := FQuery;
 
   // Resumo
@@ -170,41 +150,31 @@ end;
 
 procedure TfrmContasReceber.btnNovoClick(Sender: TObject);
 var
-  LCliente, LDesc, LValor, LVenc: string;
-  LQuery: TSQLQuery;
+  LDesc, LValor, LVenc: string;
+  LContas: TContasService;
 begin
   if not InputQuery('Nova Conta a Receber', 'Descrição:', LDesc) then Exit;
   if not InputQuery('Nova Conta a Receber', 'Valor:', LValor) then Exit;
   if not InputQuery('Nova Conta a Receber', 'Vencimento (DD/MM/AAAA):', LVenc) then Exit;
 
-  LQuery := TSQLQuery.Create(nil);
+  LContas := TContasService.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text :=
-      'INSERT INTO CONTA_RECEBER (EMPRESA_ID, DESCRICAO, VALOR, DATA_VENCIMENTO, STATUS) ' +
-      'VALUES (:EMP, :DESC, :VLR, :VENC, ''A'')';
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.ParamByName('DESC').AsString := LDesc;
-    LQuery.ParamByName('VLR').AsFloat := StrToFloatDef(LValor, 0);
-    LQuery.ParamByName('VENC').AsDate := StrToDateDef(LVenc, Now + 30);
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
-    CarregarContas;
-  except
-    on E: Exception do
-    begin
-      FConexao.Cancelar;
-      MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
+    try
+      LContas.CriarContaReceber(LDesc, StrToFloatDef(LValor, 0),
+        StrToDateDef(LVenc, Now + 30));
+      CarregarContas;
+    except
+      on E: Exception do
+        MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
     end;
+  finally
+    LContas.Free;
   end;
-  LQuery.Free;
 end;
 
 procedure TfrmContasReceber.btnBaixarClick(Sender: TObject);
 var
-  LQuery: TSQLQuery;
+  LContas: TContasService;
 begin
   if FQuery.IsEmpty then Exit;
   if FQuery.FieldByName('STATUS_DESC').AsString <> 'Aberta' then
@@ -215,26 +185,18 @@ begin
 
   if MessageDlg('Confirma baixa desta conta?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
 
-  LQuery := TSQLQuery.Create(nil);
+  LContas := TContasService.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text :=
-      'UPDATE CONTA_RECEBER SET STATUS = ''P'', DATA_PAGAMENTO = CURRENT_DATE, ' +
-      'VALOR_PAGO = VALOR WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FQuery.FieldByName('ID').AsLargeInt;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
-    CarregarContas;
-  except
-    on E: Exception do
-    begin
-      FConexao.Cancelar;
-      MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
+    try
+      LContas.BaixarContaReceber(FQuery.FieldByName('ID').AsLargeInt);
+      CarregarContas;
+    except
+      on E: Exception do
+        MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
     end;
+  finally
+    LContas.Free;
   end;
-  LQuery.Free;
 end;
 
 procedure TfrmContasReceber.btnFiltrarClick(Sender: TObject);

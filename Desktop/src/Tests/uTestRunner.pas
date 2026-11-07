@@ -24,6 +24,7 @@ uses
   uCadastrosFase1Test,
   uNotasFiscaisTest,
   uCaixaTest,
+  uContasTest,
   uConexao,
   uSessao;
 
@@ -100,6 +101,10 @@ begin
 
     // Executar testes do caixa (financeiro) (07/11/2026)
     TCaixaTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes de contas a pagar/receber (07/11/2026)
+    TContasTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais
