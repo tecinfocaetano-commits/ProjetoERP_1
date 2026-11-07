@@ -918,6 +918,44 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.31 Estoque: Service e testes (07/11, concluído)
+
+- **Refatoração:** as regras de `uFrmMovEstoque` foram para
+  `Desktop\src\Services\uEstoqueService.pas`. A tela continua com os campos,
+  o combo de tipo e as mensagens; a regra ficou no Service.
+- **Service:**
+  - `RegistrarMovimento`: exige produto existente **na empresa da sessão**,
+    tipo `E` (entrada), `S` (saída), `A` (ajuste) ou `I` (inventário),
+    quantidade > 0 e custo não negativo; recusa documento acima de 50 e
+    observação acima de 255 caracteres; grava empresa, usuário, documento e
+    observação, devolve o ID e audita `INSERT` em `LOG_SISTEMA`;
+  - `CarregarMovimentos`: período do dia inicial ao dia final **inclusive**,
+    filtro por tipo, pesquisa por descrição/código/documento e **escopo da
+    empresa da sessão**. A tela não filtrava empresa e o texto longo estourava
+    `string right truncation` em `CODIGO` (30) / `DOCUMENTO` (50); o Service
+    usa `CAST(:PESQ AS VARCHAR(1000))` nas três comparações;
+  - `SaldoProduto`: soma `ESTOQUE.QUANTIDADE` por empresa/produto. O `SUM`
+    precisa de `CAST(... AS NUMERIC(15,4))`: sem ele o SQLDB entrega o campo
+    como `ftUnknown` e `AsFloat` volta **0** (mesma lição do saldo do caixa).
+- **Trigger conferida:** `TRG_MOVEST_AI` soma `E` e `A`, subtrai `S`, não
+  altera em `I` e cria a linha de `ESTOQUE` quando o produto ainda não tem
+  saldo. Os testes exercitam a trigger de verdade, sem mock.
+- **Testes:** `Desktop\src\Tests\uEstoqueTest.pas`, **18 testes**, cobrindo
+  registro e campos gravados, efeito da trigger (E/S/A/I), criação do saldo,
+  validações (produto 0/inexistente/de outra empresa, tipo, quantidade, custo,
+  limites de texto), saldo e escopo da empresa, listagem por período (dia final
+  inclusive), tipo, documento, texto longo e validações de query/período/tipo.
+  Limpeza por sufixo (movimentos → estoque → produto) + corte do `LOG_SISTEMA`
+  no topo capturado.
+- **Resultado:** suíte desktop **184/184** (antes **166/166**), build desktop
+  **0/0**. Banco conferido: 10 movimentos e 4 linhas de `ESTOQUE` (as
+  pré-existentes), nenhum produto de teste, nenhuma linha com empresa `999999`
+  e nenhum log `MOVIMENTO_ESTOQUE` sobrando.
+- **Commit:** `2f0e3f7` (Service + tela + testes); a documentação deste marco
+  vem no commit seguinte.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
