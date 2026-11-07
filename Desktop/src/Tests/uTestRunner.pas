@@ -23,6 +23,7 @@ uses
   uGeograficoTest,
   uCadastrosFase1Test,
   uNotasFiscaisTest,
+  uCaixaTest,
   uConexao,
   uSessao;
 
@@ -95,6 +96,10 @@ begin
 
     // Executar testes das notas fiscais de entrada e saída (04/11/2026)
     TNotasFiscaisTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes do caixa (financeiro) (07/11/2026)
+    TCaixaTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais

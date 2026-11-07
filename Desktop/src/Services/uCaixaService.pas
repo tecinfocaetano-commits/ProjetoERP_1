@@ -85,8 +85,10 @@ begin
     'WHERE (C.EMPRESA_ID = :EMP OR C.EMPRESA_ID IS NULL)';
 
   if Trim(AFiltro) <> '' then
-    LSQL := LSQL + ' AND (UPPER(COALESCE(U.NOME, '''')) CONTAINING UPPER(:PESQ)' +
-                   ' OR CAST(C.NUMERO AS VARCHAR(20)) CONTAINING :PESQ2)';
+    LSQL := LSQL + ' AND (UPPER(COALESCE(U.NOME, '''')) CONTAINING ' +
+                   'UPPER(CAST(:PESQ AS VARCHAR(1000)))' +
+                   ' OR CAST(C.NUMERO AS VARCHAR(20)) CONTAINING ' +
+                   'CAST(:PESQ2 AS VARCHAR(1000)))';
 
   LSQL := LSQL + ' ORDER BY C.ID DESC';
 
@@ -120,10 +122,13 @@ begin
     'WHERE MC.CAIXA_ID = :CX';
 
   if Trim(AFiltro) <> '' then
-    LSQL := LSQL + ' AND (UPPER(COALESCE(MC.DESCRICAO, '''')) CONTAINING UPPER(:PESQ)' +
+    LSQL := LSQL + ' AND (UPPER(COALESCE(MC.DESCRICAO, '''')) CONTAINING ' +
+                   'UPPER(CAST(:PESQ AS VARCHAR(1000)))' +
                    ' OR UPPER(CASE MC.TIPO WHEN ''E'' THEN ''ENTRADA'' ' +
-                   'WHEN ''S'' THEN ''SAIDA'' ELSE MC.TIPO END) CONTAINING UPPER(:PESQ2)' +
-                   ' OR UPPER(COALESCE(U.NOME, '''')) CONTAINING UPPER(:PESQ3))';
+                   'WHEN ''S'' THEN ''SAIDA'' ELSE MC.TIPO END) CONTAINING ' +
+                   'UPPER(CAST(:PESQ2 AS VARCHAR(1000)))' +
+                   ' OR UPPER(COALESCE(U.NOME, '''')) CONTAINING ' +
+                   'UPPER(CAST(:PESQ3 AS VARCHAR(1000))))';
 
   LSQL := LSQL + ' ORDER BY MC.ID';
 
