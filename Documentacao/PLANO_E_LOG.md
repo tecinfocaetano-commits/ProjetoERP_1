@@ -880,6 +880,44 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.30 Contas a pagar/receber: Service e testes (07/11, concluído)
+
+- **Refatoração:** as regras que estavam dentro de `uFrmContasPagar` e
+  `uFrmContasReceber` foram para `Desktop\src\Services\uContasService.pas`
+  (regra de negócio em Service, como no resto do projeto). As telas passaram
+  a chamar o Service e mantêm só a interação (InputQuery/MessageDlg) e o
+  resumo na tela.
+- **Service:**
+  - `GarantirFinanceiroPagar`/`Receber`: reutiliza o primeiro `FINANCEIRO`
+    da empresa com `TIPO` `P`/`R` e cria o plano padrão quando não existe;
+  - `CriarContaPagar`/`Receber`: descrição obrigatória, valor > 0 e
+    vencimento informado; grava `FINANCEIRO_ID`, `FORNECEDOR_ID`/`CLIENTE_ID`
+    (0 = sem vínculo), status `A`, parcela 1 e audita `INSERT`;
+  - `BaixarContaPagar`/`Receber`: só conta `A` no escopo da empresa; grava
+    `STATUS` `P`, `DATA_PAGAMENTO = CURRENT_DATE` e `VALOR_PAGO = VALOR`;
+    recusa inexistente, paga e cancelada; audita `BAIXA`;
+  - `CarregarContasPagar`/`Receber`: período de vencimento, status e pesquisa
+    por nome/descrição (com `CAST(:PESQ AS VARCHAR(1000))`), sempre no escopo
+    da empresa da sessão e em ordem de vencimento. Antes as telas não
+    filtravam empresa.
+- **Bug real corrigido:** a inclusão de **conta a receber** pela tela não
+  gravava `FINANCEIRO_ID`; como `CONTA_RECEBER.FINANCEIRO_ID` é `DM_ID`
+  (`NOT NULL`), a operação falhava com *validation error*. O Service grava o
+  plano `R` e `CLIENTE_ID = 0` quando não há vínculo.
+- **Testes:** `Desktop\src\Tests\uContasTest.pas`, **16 testes**, cobrindo
+  plano (reuso e tipos), criação (campos e validações), baixa (sucesso,
+  dupla, inexistente, cancelada), listagem (período, status, texto longo,
+  ordem e escopo da empresa) e auditoria. Limpeza por sufixo + corte do
+  `LOG_SISTEMA` no topo capturado.
+- **Resultado:** suíte desktop **166/166** (antes **150/150**), build desktop
+  **0/0**. Banco conferido: 3 contas a pagar e 2 a receber (as
+  pré-existentes), 2 planos financeiros e nenhuma linha com o sufixo da
+  rodada; nenhum log `CONTA_PAGAR`/`CONTA_RECEBER` sobrou.
+- **Commit:** `f0d947d` (Service + telas + testes); a documentação deste
+  marco vem no commit seguinte.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

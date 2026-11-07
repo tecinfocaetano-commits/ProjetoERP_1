@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **150/150**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **166/166**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
@@ -27,27 +27,28 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (07/11/2026)
 
-**HEAD:** `bf94ef3` (Testes: suite do caixa e correcao do filtro com texto longo). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md` e `PLANO_E_LOG.md`).
-Build: desktop **0/0** · suíte desktop **150/150** · testes Android **5/5** (inalterados nesta etapa).
+**HEAD:** `f0d947d` (Financeiro: service de contas a pagar/receber e testes). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md` e `PLANO_E_LOG.md`).
+Build: desktop **0/0** · suíte desktop **166/166** · testes Android **5/5** (inalterados nesta etapa).
 
-> Se `git log -1` mostrar um hash diferente de `bf94ef3`, é porque o commit
+> Se `git log -1` mostrar um hash diferente de `f0d947d`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — a suíte do caixa e a correção do filtro estão no commit `bf94ef3`.
-  Banco real conferido sem resíduos: 3 caixas (as que já existiam), 0
-  movimentos de teste e nenhuma linha com o sufixo da rodada.
+- Nada — o Service de contas e os testes estão no commit `f0d947d`.
+  Banco conferido sem resíduos: 3 contas a pagar e 2 a receber (as
+  pré-existentes), 2 planos financeiros, nenhuma linha com o sufixo da rodada
+  e nenhum log `CONTA_PAGAR`/`CONTA_RECEBER` sobrando.
 
 ### Próximo passo (executável)
 
-1. **Etapa seguinte (a definir com o usuário):** novas áreas para testes
-   unitários no desktop — contas a pagar/receber (financeiro), estoque ou
-   pedidos (verificar os Services disponíveis antes de montar a suíte).
+1. **Etapa seguinte (a definir com o usuário):** testes de **estoque** ou
+   **pedidos** no desktop (verificar os Services/rotinas disponíveis antes de
+   montar a suíte).
 2. Manter o padrão desta etapa: dados com timestamp, limpeza explícita no
    `finally`, sem mock de banco.
 3. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
-   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **150/150**); se a suíte
+   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **166/166**); se a suíte
    cair, não commitar.
 4. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
    (esperado **5/5**) e `Scripts\build_android.bat` (esperado `BUILD SUCCESSFUL`).
@@ -56,6 +57,7 @@ Build: desktop **0/0** · suíte desktop **150/150** · testes Android **5/5** (
 
 | Item | Entrega |
 |---|---|
+| **Contas a pagar/receber (Service + testes)** | `uContasService` tirou as regras de dentro das telas: plano financeiro por tipo, criação com `FINANCEIRO_ID` obrigatório, baixa só de conta aberta, listagem por período/status/texto no escopo da empresa e auditoria `INSERT`/`BAIXA`. Corrigiu a inclusão de **conta a receber**, que não gravava `FINANCEIRO_ID` (`DM_ID NOT NULL`). `uContasTest` com **16 testes**. Suíte **166/166**. Detalhes em `PLANO_E_LOG.md` §3.30 |
 | **Testes unitários do caixa (desktop)** | `uCaixaTest` (17 testes) cobre `TCaixaService`: saldo por caixa (E−S; G/P fora do saldo), número como texto, usuário do `LEFT JOIN`, status/datas de fechamento, escopo da empresa, ordenação por ID decrescente, filtros por número/usuário/descrição/tipo e o resumo ENTRADAS/SAIDAS/SALDO, além das validações de query nula e caixa inválido. Suíte **150/150**. Revelou que o filtro por número estourava `string right truncation` acima de 20 caracteres — corrigido no Service. Detalhes em `PLANO_E_LOG.md` §3.29 |
 | **Correção do cadastro de produto** | `uFrmProdutos` não gravava `CATEGORIA_ID`/`UNIDADE_ID` no `INSERT`/`UPDATE`, mas o domínio `DM_ID` é `NOT NULL` — incluir produto pela tela falhava. Agora os combos são **obrigatórios** na validação, entram no `INSERT`/`UPDATE` e são reselecionados em `PreencherCampos`. Build **0/0**, suíte **133/133**. Detalhes em `PLANO_E_LOG.md` §3.28 |
 | **Testes unitários das notas fiscais (desktop)** | `uNotasFiscaisTest` (34 testes: 15 de entrada + 19 de saída) cobre criação a partir do pedido, processamento/faturamento, estoque e custo médio, contas a pagar/receber, chave de acesso de 44 dígitos com DV, cancelamento/estorno, itens, classificação fiscal e XML, com banco real. Suíte **133/133**. Revelou que `PRODUTO` exige `CATEGORIA_ID`/`UNIDADE_ID` (domínio `DM_ID` NOT NULL). Detalhes em `PLANO_E_LOG.md` §3.27 |
