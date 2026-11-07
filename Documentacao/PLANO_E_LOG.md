@@ -820,6 +820,28 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.28 Correção do cadastro de produto: categoria e unidade (07/11, concluído)
+
+- **Bug:** `uFrmProdutos.Salvar` montava o `INSERT`/`UPDATE` de `PRODUTO` sem
+  `CATEGORIA_ID` e `UNIDADE_ID`. No banco real as duas colunas usam o domínio
+  `DM_ID`, que é `NOT NULL`, então incluir produto pela tela falhava com
+  *validation error* — a pendência foi revelada pelos testes das notas (§3.27).
+- **Correção em `Desktop\src\Views\uFrmProdutos.pas`:**
+  - `Salvar`: `CATEGORIA_ID` e `UNIDADE_ID` entraram no `INSERT` (`:CAT`,
+    `:UNID`) e no `UPDATE`; os parâmetros vêm de
+    `cmbCategoria.Items.Objects[i]` / `cmbUnidade.Items.Objects[i]` (o ID já
+    estava guardado nos combos, só não era usado).
+  - `Validar`: categoria e unidade passam a ser **obrigatórias** (mensagem e
+    foco no combo), em vez de gravar defaults silenciosos.
+  - `PreencherCampos`: depois de carregar o registro, percorre os itens dos
+    combos e seleciona o ID gravado (mesmo padrão já usado em `cmbGrade`).
+- **Verificação:** `Scripts\build_desktop.bat` **0/0** (725 linhas, sem erros)
+  e `Scripts\run_tests.bat` **133/133** — nenhuma regressão nas suítes
+  existentes.
+- **Commit:** `fed1cbd` (Produtos: gravar categoria e unidade no cadastro).
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
