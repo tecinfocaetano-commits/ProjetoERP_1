@@ -362,7 +362,7 @@ procedure TfrmProdutos.PreencherCampos;
 var
   LQuery: TSQLQuery;
   I: Integer;
-  LGradeId: Int64;
+  LGradeId, LCategoriaId, LUnidadeId: Int64;
 begin
   LQuery := TSQLQuery.Create(nil);
   try
@@ -392,6 +392,28 @@ begin
         cmbStatus.ItemIndex := 0
       else
         cmbStatus.ItemIndex := 1;
+
+      cmbCategoria.ItemIndex := 0;
+      LCategoriaId := LQuery.FieldByName('CATEGORIA_ID').AsLargeInt;
+      if LCategoriaId > 0 then
+        for I := 1 to cmbCategoria.Items.Count - 1 do
+          if (cmbCategoria.Items.Objects[I] <> nil) and
+             (PtrInt(cmbCategoria.Items.Objects[I]) = LCategoriaId) then
+          begin
+            cmbCategoria.ItemIndex := I;
+            Break;
+          end;
+
+      cmbUnidade.ItemIndex := 0;
+      LUnidadeId := LQuery.FieldByName('UNIDADE_ID').AsLargeInt;
+      if LUnidadeId > 0 then
+        for I := 1 to cmbUnidade.Items.Count - 1 do
+          if (cmbUnidade.Items.Objects[I] <> nil) and
+             (PtrInt(cmbUnidade.Items.Objects[I]) = LUnidadeId) then
+          begin
+            cmbUnidade.ItemIndex := I;
+            Break;
+          end;
 
       cmbGrade.ItemIndex := 0;
       LGradeId := 0;
@@ -430,6 +452,22 @@ begin
     Exit;
   end;
 
+  if (cmbCategoria.ItemIndex <= 0) or
+     (cmbCategoria.Items.Objects[cmbCategoria.ItemIndex] = nil) then
+  begin
+    MessageDlg('Selecione a Categoria do produto.', mtWarning, [mbOK], 0);
+    cmbCategoria.SetFocus;
+    Exit;
+  end;
+
+  if (cmbUnidade.ItemIndex <= 0) or
+     (cmbUnidade.Items.Objects[cmbUnidade.ItemIndex] = nil) then
+  begin
+    MessageDlg('Selecione a Unidade do produto.', mtWarning, [mbOK], 0);
+    cmbUnidade.SetFocus;
+    Exit;
+  end;
+
   if StrToFloatDef(edtPrecoVenda.Text, 0) <= 0 then
   begin
     MessageDlg('O Preço de Venda deve ser maior que zero.', mtWarning, [mbOK], 0);
@@ -457,17 +495,19 @@ begin
     if FEstado = efInserindo then
     begin
       LQuery.SQL.Text :=
-        'INSERT INTO PRODUTO (EMPRESA_ID, CODIGO, CODIGO_BARRAS, DESCRICAO, DESCRICAO_PDV, ' +
+        'INSERT INTO PRODUTO (EMPRESA_ID, CATEGORIA_ID, UNIDADE_ID, CODIGO, ' +
+        'CODIGO_BARRAS, DESCRICAO, DESCRICAO_PDV, ' +
         'NCM, CEST, CFOP_VENDA, PRECO_CUSTO, PRECO_VENDA, MARGEM_LUCRO, ' +
         'ESTOQUE_MINIMO, ESTOQUE_MAXIMO, CONTROLA_ESTOQUE, ATIVO, OBSERVACOES, GRADE_ID) ' +
-        'VALUES (:EMP, :COD, :BAR, :DESC, :PDV, :NCM, :CEST, :CFOP, ' +
+        'VALUES (:EMP, :CAT, :UNID, :COD, :BAR, :DESC, :PDV, :NCM, :CEST, :CFOP, ' +
         ':CUSTO, :VENDA, :MARGEM, :MIN, :MAX, :CTRL, :ATIVO, :OBS, :GRADE)';
       LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     end
     else
     begin
       LQuery.SQL.Text :=
-        'UPDATE PRODUTO SET CODIGO = :COD, CODIGO_BARRAS = :BAR, DESCRICAO = :DESC, ' +
+        'UPDATE PRODUTO SET CATEGORIA_ID = :CAT, UNIDADE_ID = :UNID, ' +
+        'CODIGO = :COD, CODIGO_BARRAS = :BAR, DESCRICAO = :DESC, ' +
         'DESCRICAO_PDV = :PDV, NCM = :NCM, CEST = :CEST, CFOP_VENDA = :CFOP, ' +
         'PRECO_CUSTO = :CUSTO, PRECO_VENDA = :VENDA, MARGEM_LUCRO = :MARGEM, ' +
         'ESTOQUE_MINIMO = :MIN, ESTOQUE_MAXIMO = :MAX, CONTROLA_ESTOQUE = :CTRL, ' +
@@ -489,6 +529,21 @@ begin
     LQuery.ParamByName('MAX').AsFloat := StrToFloatDef(edtEstoqueMax.Text, 0);
     LQuery.ParamByName('CTRL').AsString := LControla;
     LQuery.ParamByName('OBS').AsString := mmoObservacoes.Text;
+
+    { categoria e unidade sao obrigatorias (dominio DM_ID NOT NULL) }
+    if (cmbCategoria.ItemIndex > 0) and
+       (cmbCategoria.Items.Objects[cmbCategoria.ItemIndex] <> nil) then
+      LQuery.ParamByName('CAT').AsLargeInt :=
+        PtrInt(cmbCategoria.Items.Objects[cmbCategoria.ItemIndex])
+    else
+      LQuery.ParamByName('CAT').Clear;
+
+    if (cmbUnidade.ItemIndex > 0) and
+       (cmbUnidade.Items.Objects[cmbUnidade.ItemIndex] <> nil) then
+      LQuery.ParamByName('UNID').AsLargeInt :=
+        PtrInt(cmbUnidade.Items.Objects[cmbUnidade.ItemIndex])
+    else
+      LQuery.ParamByName('UNID').Clear;
 
     if cmbStatus.ItemIndex = 0 then
       LQuery.ParamByName('ATIVO').AsString := 'A'
