@@ -25,6 +25,7 @@ uses
   uNotasFiscaisTest,
   uCaixaTest,
   uContasTest,
+  uEstoqueTest,
   uConexao,
   uSessao;
 
@@ -105,6 +106,10 @@ begin
 
     // Executar testes de contas a pagar/receber (07/11/2026)
     TContasTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes de movimentação de estoque (07/11/2026)
+    TEstoqueTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais

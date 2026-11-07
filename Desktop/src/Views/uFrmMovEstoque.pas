@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls, Spin, DateUtils,
-  uConexao, uSessao;
+  uConexao, uSessao, uEstoqueService;
 
 type
   { TfrmMovEstoque }
@@ -148,57 +148,32 @@ end;
 
 procedure TfrmMovEstoque.CarregarMovimentos;
 var
-  LSQL, LFiltroTipo: string;
-  LDataInicio, LDataFim: TDateTime;
+  LFiltroTipo: string;
+  LEstoque: TEstoqueService;
 begin
   try
     if FQuery = nil then
       raise Exception.Create('FQuery não foi inicializado');
 
-    LSQL :=
-      'SELECT ME.ID, P.DESCRICAO AS PRODUTO, ' +
-      'CASE ME.TIPO WHEN ''E'' THEN ''Entrada'' WHEN ''S'' THEN ''Saída'' ' +
-      'WHEN ''A'' THEN ''Ajuste'' WHEN ''I'' THEN ''Inventário'' END AS TIPO_DESC, ' +
-      'ME.QUANTIDADE, ME.CUSTO_UNITARIO, ME.DOCUMENTO, ME.DATA_MOVIMENTO ' +
-      'FROM MOVIMENTO_ESTOQUE ME ' +
-      'JOIN PRODUTO P ON P.ID = ME.PRODUTO_ID ' +
-      'WHERE ME.DATA_MOVIMENTO BETWEEN :DI AND :DF';
-
-    if cmbTipoFiltro.ItemIndex > 0 then
-    begin
-      case cmbTipoFiltro.ItemIndex of
-        1: LFiltroTipo := 'E';
-        2: LFiltroTipo := 'S';
-        3: LFiltroTipo := 'A';
-        4: LFiltroTipo := 'I';
-      end;
-      LSQL := LSQL + ' AND ME.TIPO = :TIPO';
+    case cmbTipoFiltro.ItemIndex of
+      1: LFiltroTipo := 'E';
+      2: LFiltroTipo := 'S';
+      3: LFiltroTipo := 'A';
+      4: LFiltroTipo := 'I';
+    else
+      LFiltroTipo := '';
     end;
 
-    if Trim(edtPesquisa.Text) <> '' then
-      LSQL := LSQL + ' AND (UPPER(P.DESCRICAO) CONTAINING UPPER(:PESQ)' +
-                     ' OR P.CODIGO CONTAINING :PESQ2' +
-                     ' OR UPPER(COALESCE(ME.DOCUMENTO, '''')) CONTAINING UPPER(:PESQ3))';
-
-    LSQL := LSQL + ' ORDER BY ME.DATA_MOVIMENTO DESC';
-
-    LDataInicio := StrToDateDef(edtDataInicio.Text, Now);
-    LDataFim := StrToDateDef(edtDataFim.Text, Now);
-
-    if FQuery.Active then
-      FQuery.Close;
-    FQuery.SQL.Text := LSQL;
-    FQuery.ParamByName('DI').AsDate := LDataInicio;
-    FQuery.ParamByName('DF').AsDate := LDataFim + 1;
-    if cmbTipoFiltro.ItemIndex > 0 then
-      FQuery.ParamByName('TIPO').AsString := LFiltroTipo;
-    if Trim(edtPesquisa.Text) <> '' then
-    begin
-      FQuery.ParamByName('PESQ').AsString := Trim(edtPesquisa.Text);
-      FQuery.ParamByName('PESQ2').AsString := Trim(edtPesquisa.Text);
-      FQuery.ParamByName('PESQ3').AsString := Trim(edtPesquisa.Text);
+    LEstoque := TEstoqueService.Create;
+    try
+      LEstoque.CarregarMovimentos(FQuery,
+        StrToDateDef(edtDataInicio.Text, Now),
+        StrToDateDef(edtDataFim.Text, Now),
+        LFiltroTipo, Trim(edtPesquisa.Text));
+    finally
+      LEstoque.Free;
     end;
-    FQuery.Open;
+
     DataSource1.DataSet := FQuery;
   except
     on E: Exception do
@@ -266,60 +241,36 @@ end;
 
 procedure TfrmMovEstoque.btnConfirmarClick(Sender: TObject);
 var
-  LQuery: TSQLQuery;
   LTipo: string;
+  LEstoque: TEstoqueService;
 begin
-  if FProdutoId <= 0 then
-  begin
-    MessageDlg('Selecione um produto.', mtWarning, [mbOK], 0);
-    Exit;
-  end;
-
-  if StrToFloatDef(edtQuantidade.Text, 0) <= 0 then
-  begin
-    MessageDlg('Informe uma quantidade válida.', mtWarning, [mbOK], 0);
-    Exit;
-  end;
-
   case cmbTipo.ItemIndex of
     0: LTipo := 'E';
     1: LTipo := 'S';
     2: LTipo := 'A';
     3: LTipo := 'I';
-  else LTipo := 'E';
+  else
+    LTipo := 'E';
   end;
 
-  LQuery := TSQLQuery.Create(nil);
+  LEstoque := TEstoqueService.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text :=
-      'INSERT INTO MOVIMENTO_ESTOQUE (EMPRESA_ID, PRODUTO_ID, TIPO, QUANTIDADE, ' +
-      'CUSTO_UNITARIO, DOCUMENTO, OBSERVACAO, USUARIO_ID) ' +
-      'VALUES (:EMP, :PROD, :TIPO, :QTD, :CUSTO, :DOC, :OBS, :USR)';
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.ParamByName('PROD').AsLargeInt := FProdutoId;
-    LQuery.ParamByName('TIPO').AsString := LTipo;
-    LQuery.ParamByName('QTD').AsFloat := StrToFloatDef(edtQuantidade.Text, 0);
-    LQuery.ParamByName('CUSTO').AsFloat := StrToFloatDef(edtCustoUnit.Text, 0);
-    LQuery.ParamByName('DOC').AsString := edtDocumento.Text;
-    LQuery.ParamByName('OBS').AsString := mmoObservacao.Text;
-    LQuery.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    try
+      LEstoque.RegistrarMovimento(FProdutoId, LTipo,
+        StrToFloatDef(edtQuantidade.Text, 0),
+        StrToFloatDef(edtCustoUnit.Text, 0),
+        edtDocumento.Text, mmoObservacao.Text);
 
-    MessageDlg('Movimentação registrada com sucesso!', mtInformation, [mbOK], 0);
-    MostrarPainelMovimentacao(False);
-    CarregarMovimentos;
-  except
-    on E: Exception do
-    begin
-      FConexao.Cancelar;
-      MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
+      MessageDlg('Movimentação registrada com sucesso!', mtInformation, [mbOK], 0);
+      MostrarPainelMovimentacao(False);
+      CarregarMovimentos;
+    except
+      on E: Exception do
+        MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
     end;
+  finally
+    LEstoque.Free;
   end;
-  LQuery.Free;
 end;
 
 procedure TfrmMovEstoque.btnCancelarMovClick(Sender: TObject);
