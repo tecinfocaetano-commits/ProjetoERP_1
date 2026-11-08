@@ -27,28 +27,28 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `3950d31` (Inventário: Service + testes). Árvore: limpa.
-Build: desktop **0/0** · suíte desktop **317/317** (308 + 9 novos) · testes Android **5/5** (inalterados).
+**HEAD:** `82d21e0` (Kardex: Service + testes). Árvore: limpa.
+Build: desktop **0/0** · suíte desktop **326/326** (317 + 9 novos) · testes Android **5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente de `0bff99d`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — o Service do Inventário, a tela adaptada e os testes estão no
-  commit `3950d31`. Banco conferido sem resíduos.
+- Nada — o Service do Kardex, a tela adaptada e os testes estão no
+  commit `82d21e0`. Banco conferido sem resíduos.
 
 ### Próximo passo (executável)
 
-1. **Kardex (`uFrmKardex.pas`):** extrair regras para Service (validação de
-   produto/quantidade/data, estoque, movimento, custo médio), corrigir
+1. **Consumo/Ficha/Bipagem/Cores:** extrair regras para Service (validação
+   de produto/quantidade/data, estoque, movimento, custo médio), corrigir
    filtros de empresa e cobrir com suíte nova, registrando em
    `uTestRunner.pas` e `Tests.lpi`.
-2. Depois: **Consumo/Ficha/Bipagem/Cores** e **NFe**, uma por marco.
+2. Depois: **NFe**, uma por marco.
 3. Manter o padrão desta etapa: dados com timestamp, limpeza explícita no
    `finally`, sem mock de banco.
 4. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
-   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **317/317** ou mais); se
+   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **326/326** ou mais); se
    a suíte cair, não commitar.
 5. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
    (esperado **5/5**) e `Scripts\build_android.bat` (esperado `BUILD SUCCESSFUL`).
