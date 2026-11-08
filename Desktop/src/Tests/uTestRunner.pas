@@ -30,6 +30,7 @@ uses
   uPedidoCompraTest,
   uOrcamentoTest,
   uPDVTest,
+  uMovimentoFinanceiroTest,
   uConexao,
   uSessao;
 

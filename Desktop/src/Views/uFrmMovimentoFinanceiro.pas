@@ -7,6 +7,10 @@ unit uFrmMovimentoFinanceiro;
   Financeira
   Descrição: CRUD da movimentação financeira (separada do
              Caixa). Entradas/saídas por categoria.
+
+  A tela apenas coleta os dados e delega as regras ao
+  TMovimentoFinanceiroService (validação, transação, escopo da
+  empresa e auditoria).
   ============================================================ }
 
 interface
@@ -14,7 +18,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uSessao;
+  uFrmCadastroBase, uConexao, uSessao, uMovimentoFinanceiroService;
 
 type
   { TfrmMovimentoFinanceiro }
@@ -32,6 +36,8 @@ type
     lblDocumento: TLabel;
     edtDocumento: TEdit;
     procedure FormCreate(Sender: TObject);
+  public
+    destructor Destroy; override;
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -43,7 +49,11 @@ type
     function Excluir: Boolean; override;
   private
     FQuery: TSQLQuery;
+    FService: TMovimentoFinanceiroService;
     procedure ConfigurarGrid;
+    function MontarDados: TMovimentoFinanceiroDados;
+    procedure SelecionarTipo(ATipo: Char);
+    procedure SelecionarCategoria(const ACategoria: string);
   end;
 
 var
@@ -62,6 +72,8 @@ begin
     if not FConexao.Conectado then
       FConexao.Conectar;
 
+    FService := TMovimentoFinanceiroService.Create;
+
     FQuery := TSQLQuery.Create(Self);
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
@@ -73,17 +85,11 @@ begin
     Caption := 'Movimentação Financeira';
     ConfigurarGrid;
 
-    cmbTipo.Items.Clear;
-    cmbTipo.Items.Add('Entrada');
-    cmbTipo.Items.Add('Saída');
+    FService.CarregarTipos(cmbTipo.Items);
     cmbTipo.ItemIndex := 0;
 
     // categoria é sugestão (editável)
-    cmbCategoria.Items.Clear;
-    cmbCategoria.Items.Add('RECEBIMENTO');
-    cmbCategoria.Items.Add('PAGAMENTO');
-    cmbCategoria.Items.Add('TRANSFERENCIA');
-    cmbCategoria.Items.Add('OUTRAS');
+    FService.CarregarCategorias(cmbCategoria.Items);
     cmbCategoria.ItemIndex := 0;
 
     FEstado := efNavegando;
@@ -94,6 +100,12 @@ begin
     on E: Exception do
       MessageDlg('Erro ao inicializar formulário: ' + E.Message, mtError, [mbOK], 0);
   end;
+end;
+
+destructor TfrmMovimentoFinanceiro.Destroy;
+begin
+  FService.Free;
+  inherited Destroy;
 end;
 
 procedure TfrmMovimentoFinanceiro.ConfigurarGrid;
@@ -108,27 +120,8 @@ begin
 end;
 
 procedure TfrmMovimentoFinanceiro.CarregarDados(const AFiltro: string);
-var
-  LSQL: string;
 begin
-  LSQL := 'SELECT ID, DATA_MOVIMENTO, TIPO, CATEGORIA, DESCRICAO, VALOR ' +
-          'FROM MOVIMENTO_FINANCEIRO';
-  if AFiltro <> '' then
-    LSQL := LSQL + ' WHERE (UPPER(COALESCE(DESCRICAO, '''')) CONTAINING UPPER(:FILTRO) ' +
-                   'OR UPPER(COALESCE(CATEGORIA, '''')) CONTAINING UPPER(:FILTRO2) ' +
-                   'OR CAST(DOCUMENTO_ID AS VARCHAR(20)) CONTAINING :FILTRO3)';
-  LSQL := LSQL + ' ORDER BY DATA_MOVIMENTO DESC, ID DESC';
-
-  if FQuery.Active then
-    FQuery.Close;
-  FQuery.SQL.Text := LSQL;
-  if AFiltro <> '' then
-  begin
-    FQuery.ParamByName('FILTRO').AsString := AFiltro;
-    FQuery.ParamByName('FILTRO2').AsString := AFiltro;
-    FQuery.ParamByName('FILTRO3').AsString := AFiltro;
-  end;
-  FQuery.Open;
+  FService.CarregarMovimentos(FQuery, AFiltro);
   DataSource1.DataSet := FQuery;
 end;
 
@@ -152,52 +145,70 @@ begin
   edtDocumento.Clear;
 end;
 
+procedure TfrmMovimentoFinanceiro.SelecionarTipo(ATipo: Char);
+var
+  LIdx: Integer;
+begin
+  for LIdx := 0 to cmbTipo.Items.Count - 1 do
+    if (cmbTipo.Items.Objects[LIdx] <> nil) and
+       (Chr(PtrInt(cmbTipo.Items.Objects[LIdx])) = ATipo) then
+    begin
+      cmbTipo.ItemIndex := LIdx;
+      Exit;
+    end;
+  cmbTipo.ItemIndex := 0;
+end;
+
+procedure TfrmMovimentoFinanceiro.SelecionarCategoria(const ACategoria: string);
+var
+  LIdx: Integer;
+begin
+  // categoria pode não estar na lista de sugestões
+  cmbCategoria.ItemIndex := -1;
+  cmbCategoria.Text := ACategoria;
+  for LIdx := 0 to cmbCategoria.Items.Count - 1 do
+    if SameText(cmbCategoria.Items[LIdx], ACategoria) then
+    begin
+      cmbCategoria.ItemIndex := LIdx;
+      Break;
+    end;
+end;
+
 procedure TfrmMovimentoFinanceiro.PreencherCampos;
 var
-  LQuery: TSQLQuery;
-  LIdx: Integer;
-  LTipo: string;
+  LDados: TMovimentoFinanceiroDados;
 begin
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT * FROM MOVIMENTO_FINANCEIRO WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.Open;
+  if not FService.BuscarMovimento(FIdSelecionado, LDados) then
+    Exit;
 
-    if not LQuery.IsEmpty then
-    begin
-      edtData.Text := FormatDateTime('dd/mm/yyyy',
-        LQuery.FieldByName('DATA_MOVIMENTO').AsDateTime);
+  edtData.Text := FormatDateTime('dd/mm/yyyy', LDados.DataMovimento);
+  SelecionarTipo(LDados.Tipo);
+  SelecionarCategoria(LDados.Categoria);
+  edtDescricao.Text := LDados.Descricao;
+  edtValor.Text := FormatFloat('#,##0.00', LDados.Valor);
+  if LDados.DocumentoId > 0 then
+    edtDocumento.Text := IntToStr(LDados.DocumentoId)
+  else
+    edtDocumento.Clear;
+end;
 
-      LTipo := LQuery.FieldByName('TIPO').AsString;
-      if LTipo = 'E' then
-        cmbTipo.ItemIndex := 0
-      else
-        cmbTipo.ItemIndex := 1;
-
-      // categoria pode não estar na lista de sugestões
-      cmbCategoria.Text := LQuery.FieldByName('CATEGORIA').AsString;
-      for LIdx := 0 to cmbCategoria.Items.Count - 1 do
-        if SameText(cmbCategoria.Items[LIdx], LQuery.FieldByName('CATEGORIA').AsString) then
-        begin
-          cmbCategoria.ItemIndex := LIdx;
-          Break;
-        end;
-
-      edtDescricao.Text := LQuery.FieldByName('DESCRICAO').AsString;
-      edtValor.Text := FormatFloat('#,##0.00', LQuery.FieldByName('VALOR').AsFloat);
-      edtDocumento.Text := LQuery.FieldByName('DOCUMENTO_ID').AsString;
-    end;
-  finally
-    LQuery.Free;
-  end;
+function TfrmMovimentoFinanceiro.MontarDados: TMovimentoFinanceiroDados;
+begin
+  Result.Id := FIdSelecionado;
+  Result.DataMovimento := StrToDateDef(edtData.Text, 0);
+  if (cmbTipo.ItemIndex >= 0) and (cmbTipo.Items.Objects[cmbTipo.ItemIndex] <> nil) then
+    Result.Tipo := Chr(PtrInt(cmbTipo.Items.Objects[cmbTipo.ItemIndex]))
+  else
+    Result.Tipo := 'E';
+  Result.Categoria := Trim(cmbCategoria.Text);
+  Result.Descricao := edtDescricao.Text;
+  Result.Valor := StrToFloatDef(edtValor.Text, 0);
+  Result.DocumentoId := StrToInt64Def(Trim(edtDocumento.Text), 0);
 end;
 
 procedure TfrmMovimentoFinanceiro.PreencherObjeto;
 begin
-  // montado direto no Salvar
+  // montado em MontarDados no Salvar
 end;
 
 function TfrmMovimentoFinanceiro.Validar: Boolean;
@@ -225,86 +236,41 @@ begin
     Exit;
   end;
 
+  if StrToInt64Def(Trim(edtDocumento.Text), 0) < 0 then
+  begin
+    MessageDlg('O documento não pode ser negativo.', mtWarning, [mbOK], 0);
+    edtDocumento.SetFocus;
+    Exit;
+  end;
+
   Result := True;
 end;
 
 function TfrmMovimentoFinanceiro.Salvar: Boolean;
 var
-  LQuery: TSQLQuery;
-  LTipo: string;
-  LDoc: Int64;
+  LDados: TMovimentoFinanceiroDados;
 begin
   Result := False;
-  if cmbTipo.ItemIndex = 0 then LTipo := 'E' else LTipo := 'S';
-  LDoc := StrToInt64Def(Trim(edtDocumento.Text), 0);
-
-  LQuery := TSQLQuery.Create(nil);
+  LDados := MontarDados;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
-    if FEstado = efInserindo then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO MOVIMENTO_FINANCEIRO (EMPRESA_ID, DATA_MOVIMENTO, TIPO, ' +
-        'CATEGORIA, DESCRICAO, VALOR, DOCUMENTO_ID, USUARIO_ID) ' +
-        'VALUES (:EMP, :DATA, :TIPO, :CAT, :DESC, :VALOR, :DOC, :USER)';
-      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-      LQuery.ParamByName('USER').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    end
-    else
-    begin
-      LQuery.SQL.Text :=
-        'UPDATE MOVIMENTO_FINANCEIRO SET DATA_MOVIMENTO = :DATA, TIPO = :TIPO, ' +
-        'CATEGORIA = :CAT, DESCRICAO = :DESC, VALOR = :VALOR, DOCUMENTO_ID = :DOC ' +
-        'WHERE ID = :ID';
-      LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    end;
-
-    LQuery.ParamByName('DATA').AsDate := StrToDateDef(edtData.Text, Now);
-    LQuery.ParamByName('TIPO').AsString := LTipo;
-    LQuery.ParamByName('CAT').AsString := Trim(cmbCategoria.Text);
-    LQuery.ParamByName('DESC').AsString := edtDescricao.Text;
-    LQuery.ParamByName('VALOR').AsFloat := StrToFloatDef(edtValor.Text, 0);
-    LQuery.ParamByName('DOC').AsLargeInt := LDoc;
-
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    FService.SalvarMovimento(LDados);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao salvar: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 function TfrmMovimentoFinanceiro.Excluir: Boolean;
-var
-  LQuery: TSQLQuery;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text := 'DELETE FROM MOVIMENTO_FINANCEIRO WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    FService.ExcluirMovimento(FIdSelecionado);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao excluir: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 end.
