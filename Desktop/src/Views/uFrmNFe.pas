@@ -91,9 +91,11 @@ begin
     SqlCaseStatusPedido('PV.STATUS') + ' AS STATUS ' +
     'FROM PEDIDO_VENDA PV ' +
     'LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
-    'WHERE PV.DATA_EMISSAO BETWEEN :DI AND :DF ' +
+    'WHERE PV.EMPRESA_ID = :EMP ' +
+    'AND PV.DATA_EMISSAO BETWEEN :DI AND :DF ' +
     'AND PV.STATUS <> ''O'' ' +
     'ORDER BY PV.NUMERO DESC';
+  FQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   FQuery.ParamByName('DI').AsDate := StrToDateDef(edtDataInicio.Text, Now);
   FQuery.ParamByName('DF').AsDate := StrToDateDef(edtDataFim.Text, Now) + 1;
   FQuery.Open;

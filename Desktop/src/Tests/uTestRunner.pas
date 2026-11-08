@@ -135,6 +135,18 @@ begin
     TPDVTest.RunAllTests(LSuite);
     WriteLn('');
 
+    // Executar testes do Movimento Financeiro (08/11/2026)
+    TMovimentoFinanceiroTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes do Inventário (08/11/2026)
+    TInventarioTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes do Kardex (08/11/2026)
+    TKardexTest.RunAllTests(LSuite);
+    WriteLn('');
+
     // Imprimir resultados finais
     LSuite.PrintResults;
 

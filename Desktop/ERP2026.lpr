@@ -44,6 +44,9 @@ uses
   // Services
   uServiceBase,
   uPessoaService,
+  uMovimentoFinanceiroService,
+  uInventarioService,
+  uKardexService,
   uProdutoFiscalService,
   uMaterialService,
   uCorService,

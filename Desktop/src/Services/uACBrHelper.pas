@@ -57,7 +57,7 @@ type
 implementation
 
 uses
-  uConexao, SQLDB, uAuditoria;
+  uConexao, SQLDB, uAuditoria, uSessao;
 
 constructor TACBrHelper.Create;
 begin
@@ -102,9 +102,11 @@ begin
       'C.CIDADE, C.UF, C.CEP, E.RAZAO_SOCIAL AS EMPRESA_RAZAO, E.CNPJ AS EMPRESA_CNPJ ' +
       'FROM PEDIDO_VENDA PV ' +
       'JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
+      '  AND C.EMPRESA_ID = PV.EMPRESA_ID ' +
       'JOIN EMPRESA E ON E.ID = PV.EMPRESA_ID ' +
-      'WHERE PV.ID = :ID';
+      'WHERE PV.ID = :ID AND PV.EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := APedidoId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
 
     if LQuery.IsEmpty then
@@ -112,7 +114,9 @@ begin
 
     // Gerar próximo número
     LQuery.Close;
-    LQuery.SQL.Text := 'SELECT COALESCE(MAX(NUMERO_NFE), 0) + 1 FROM PEDIDO_VENDA WHERE NUMERO_NFE IS NOT NULL';
+    LQuery.SQL.Text := 'SELECT COALESCE(MAX(NUMERO_NFE), 0) + 1 FROM PEDIDO_VENDA ' +
+      'WHERE NUMERO_NFE IS NOT NULL AND EMPRESA_ID = :EMP';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     Result.Numero := LQuery.Fields[0].AsInteger;
     Result.Serie := 1;
@@ -148,16 +152,26 @@ begin
     Result.Status := ansPendente;
     Result.XML := '<nfeProc><!-- XML será gerado pelo ACBr --></nfeProc>';
 
-    // Atualizar pedido com dados da NF-e
+    // Atualizar pedido com dados da NF-e (transação + auditoria)
     LQuery.Close;
     LQuery.SQL.Text :=
       'UPDATE PEDIDO_VENDA SET NUMERO_NFE = :NUM, CHAVE_NFE = :CHAVE ' +
-      'WHERE ID = :ID';
+      'WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('NUM').AsInteger := Result.Numero;
     LQuery.ParamByName('CHAVE').AsString := Result.ChaveAcesso;
     LQuery.ParamByName('ID').AsLargeInt := APedidoId;
-    LQuery.ExecSQL;
-    LConexao.Confirmar;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LConexao.IniciarTransacao;
+    try
+      LQuery.ExecSQL;
+      RegistrarAuditoria('PEDIDO_VENDA', 'NFE', APedidoId, '',
+        ResumoAuditoria(['NUMERO_NFE=' + IntToStr(Result.Numero),
+          'CHAVE=' + Result.ChaveAcesso]));
+      LConexao.Confirmar;
+    except
+      LConexao.Cancelar;
+      raise;
+    end;
   finally
     LQuery.Free;
   end;

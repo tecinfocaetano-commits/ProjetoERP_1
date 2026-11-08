@@ -11,7 +11,7 @@ unit uInventarioService;
     - filtro por descrição e código (parametrizado)
     - filtros opcionais: apenas com estoque e abaixo do mínimo
     - cálculo do valor total do estoque (quantidade × custo)
-    - apenas produtos com CONTROLE_ESTOQUE='S' e ATIVO='A'
+    - apenas produtos com CONTROLA_ESTOQUE='S' e ATIVO='A'
 
   Toda escrita abre e confirma a própria transação e registra
   auditoria em LOG_SISTEMA.
@@ -62,6 +62,10 @@ implementation
 uses
   uSessao, uAuditoria;
 
+const
+  { O CAST do parâmetro evita "string right truncation" no filtro. }
+  SQL_FILTRO_TEXTO = 'VARCHAR(1000)';
+
 constructor TInventarioService.Create;
 begin
   inherited Create;
@@ -82,15 +86,15 @@ begin
     '  COALESCE(E.QUANTIDADE, 0) AS QTD_ATUAL, ' +
     '  P.ESTOQUE_MINIMO, P.ESTOQUE_MAXIMO, ' +
     '  P.PRECO_CUSTO, P.PRECO_VENDA, ' +
-    '  (COALESCE(E.QUANTIDADE, 0) * P.PRECO_CUSTO) AS VALOR_ESTOQUE ' +
+    '  (COALESCE(E.QUANTIDADE, 0) * CAST(P.PRECO_CUSTO AS DOUBLE PRECISION)) AS VALOR_ESTOQUE ' +
     'FROM PRODUTO P ' +
     'LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
-    'WHERE P.EMPRESA_ID = :EMP AND P.CONTROLE_ESTOQUE = ''S'' AND P.ATIVO = ''A''';
+    'WHERE P.EMPRESA_ID = :EMP AND P.CONTROLA_ESTOQUE = ''S'' AND P.ATIVO = ''A''';
 
   LWhere := '';
   if Trim(AFiltro) <> '' then
     LWhere := ' AND (UPPER(P.DESCRICAO) CONTAINING UPPER(:FILTRO) ' +
-      'OR P.CODIGO CONTAINING :FILTRO2)';
+      'OR P.CODIGO CONTAINING CAST(:FILTRO2 AS ' + SQL_FILTRO_TEXTO + '))';
 
   if AApenasComEstoque then
   begin
@@ -140,10 +144,10 @@ begin
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
     LQuery.SQL.Text :=
-      'SELECT SUM(COALESCE(E.QUANTIDADE, 0) * P.PRECO_CUSTO) AS VALOR ' +
+      'SELECT SUM(COALESCE(E.QUANTIDADE, 0) * CAST(P.PRECO_CUSTO AS DOUBLE PRECISION)) AS VALOR ' +
       'FROM PRODUTO P ' +
       'LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
-      'WHERE P.EMPRESA_ID = :EMP AND P.CONTROLE_ESTOQUE = ''S'' AND P.ATIVO = ''A''';
+      'WHERE P.EMPRESA_ID = :EMP AND P.CONTROLA_ESTOQUE = ''S'' AND P.ATIVO = ''A''';
     LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     Result := LQuery.FieldByName('VALOR').AsFloat;
