@@ -1051,6 +1051,56 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.34 Orçamento: Service e testes (08/11, concluído)
+
+- **Refatoração:** as regras de `uFrmOrcamento` foram para
+  `Desktop\src\Services\uOrcamentoService.pas`. A tela mantém os campos, os
+  combos, o grid de itens e as mensagens; a regra de negócio (gravação com
+  status `O`, numeração, totais, validação e conversão) ficou no Service.
+- **Service:** o orçamento é um `PEDIDO_VENDA` com `STATUS='O'`, então a
+  gravação delega para `TPedidoVendaService.SalvarPedido` com status `O`
+  (reaproveita numeração por empresa, totais, validações, itens,
+  `PRECO_UNITARIO`/`VALOR_UNITARIO`, CFOP padrão `5102` e auditoria `INSERT`).
+  Regras próprias:
+  - `SalvarOrcamento`: grava sempre com `STATUS='O'`, devolve o ID e usa
+    `ProximoNumero` quando o número é vazio ou `'0'`;
+  - `ConverterEmPedido`: busca o registro, recusa inexistente, de **outra
+    empresa** e com status diferente de `O` (inclusive já convertido `P`);
+    o `UPDATE` tem `STATUS='O'` no `WHERE` (protege contra conversão dupla) e
+    grava auditoria `CONVERSAO` (`STATUS=O` → `STATUS=P`) na mesma transação;
+  - `QuantidadeItens` e `ProximoNumero` delegam ao Service de pedido de venda.
+- **Correções em relação à tela antiga:** `CarregarClientes` passou a filtrar a
+  empresa da sessão; a busca de produto passou a filtrar a empresa e usa
+  `:COD1/:COD2/:COD3` (no SQLDB um parâmetro repetido só é ligado na primeira
+  ocorrência, então buscar por código de barras/ID não funcionava); o
+  orçamento passou a gravar `NUMERO`, `PRECO_UNITARIO`, CFOP e auditoria; o
+  total do item/pedido usa as funções do Service (nunca negativo); e a
+  conversão não muda mais qualquer registro para `P` sem validar status/escopo.
+  A tela também não limpa mais o formulário logo após salvar: mantém o ID para
+  o botão **Gerar Pedido** e limpa só o que já foi gravado.
+- **Observação:** `edtData`/`edtValidade`/`edtVendedor` continuam apenas na
+  interface — `PEDIDO_VENDA` não tem colunas de validade nem de vendedor (o
+  vendedor exibido é o usuário da sessão). Nada novo foi persistido à força.
+- **Testes:** `Desktop\src\Tests\uOrcamentoTest.pas`, **23 testes**, cobrindo
+  totais, gravação completa (cabeçalho, item, `PRECO_UNITARIO`,
+  `VALOR_UNITARIO`, CFOP padrão, auditoria, `DATA_EMISSAO` pela trigger e
+  entrega nula), número automático, numeração ignorando texto e por empresa,
+  múltiplos itens, desconto maior que o subtotal, data de entrega, conversão
+  em pedido (`O` → `P` + auditoria `CONVERSAO`), conversão dupla/inexistente/
+  de outra empresa/status inválido e as validações (cliente 0/inexistente/
+  inativo/fornecedor, sem itens, produto 0/inexistente/de outra empresa,
+  quantidade, valores negativos, observações e número). Limpeza por sufixo
+  (grade → itens → pedidos → produtos → pessoas) + corte do `LOG_SISTEMA` no
+  topo capturado.
+- **Resultado:** suíte desktop **254/254** (antes **231/231**), build desktop
+  **0/0**. Banco conferido: 4 pedidos e 6 itens (os pré-existentes), nenhuma
+  linha em `ITEM_PEDIDO_GRADE`, nenhuma pessoa/produto de teste, nenhuma linha
+  com empresa `999999` e nenhum log de `CONVERSAO`.
+- **Commit:** `ae86f28` (Service + tela + testes); a documentação deste marco
+  vem no commit seguinte.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

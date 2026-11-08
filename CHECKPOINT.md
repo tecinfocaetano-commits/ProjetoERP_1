@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **231/231**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **254/254**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
@@ -27,46 +27,41 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `d7e3304` (Compras: service de pedido de compra e testes). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md`, `PLANO_E_LOG.md` e `PROMPT_AMANHA.md`).
-Build: desktop **0/0** · suíte desktop **231/231** · testes Android **5/5** (inalterados nesta etapa).
+**HEAD:** `ae86f28` (Orcamento: service com conversao em pedido e testes). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md`, `PLANO_E_LOG.md` e `PROMPT_AMANHA.md`).
+Build: desktop **0/0** · suíte desktop **254/254** · testes Android **5/5** (inalterados nesta etapa).
 
-> Se `git log -1` mostrar um hash diferente de `d7e3304`, é porque o commit
+> Se `git log -1` mostrar um hash diferente de `ae86f28`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — o Service de pedido de compra e os testes estão no commit `d7e3304`.
-  Banco conferido sem resíduos: 1 pedido de compra (`PC-TESTE-8`,
-  `CONFIRMADO`) e 1 item (os pré-existentes), nenhuma pessoa/material de teste e
-  nenhuma linha com empresa `999999`.
+- Nada — o Service de orçamento e os testes estão no commit `ae86f28`.
+  Banco conferido sem resíduos: 4 pedidos e 6 itens (os pré-existentes),
+  nenhuma linha em `ITEM_PEDIDO_GRADE`, nenhuma pessoa/produto de teste,
+  nenhuma linha com empresa `999999` e nenhum log de `CONVERSAO`.
 
 ### Próximo passo (executável)
 
-1. **Orçamento (`uFrmOrcamento.pas`):** a tela grava `PEDIDO_VENDA` com
-   `STATUS='O'` e converte para `'P'`. Extrair as regras para Service
-   (reutilizar `uPedidoVendaService` com status `'O'` ou criar
-   `uOrcamentoService`), corrigir o filtro de empresa em `CarregarClientes` e
-   na busca de produto, gravar os itens com totais consistentes e converter o
-   orçamento em pedido validando status/escopo.
-2. Criar `uOrcamentoTest` (~15–20 testes), registrar em `uTestRunner.pas` e
-   `Tests.lpi`, rodar `Scripts\build_tests.bat` + `Scripts\run_tests.bat`
-   (esperado **231 + novos**) e `Scripts\build_desktop.bat` (0/0).
-3. Conferir o banco sem resíduos de orçamento/item/cliente/produto/log e
-   commitar o código; depois as docs.
-4. Continuar as demais telas restantes (ex.: PDV, Movimento Financeiro,
-   Inventário/Kardex, Consumo/Ficha/Bipagem/Cores, NFe), uma por marco.
-5. Manter o padrão desta etapa: dados com timestamp, limpeza explícita no
+1. **PDV (`uFrmPDV.pas`, 547 linhas e 12 SQL):** próxima tela grande. Extrair
+   as regras de venda para Service (numeração, totais, validações, itens,
+   pagamento e baixa de estoque), corrigir filtros de empresa e cobrir com
+   `uPDVTest` (~20 testes), registrando em `uTestRunner.pas` e `Tests.lpi`.
+2. Depois: **Movimento Financeiro** (`uFrmMovimentoFinanceiro.pas`),
+   **Inventário/Kardex** (`uFrmInventario.pas`/`uFrmKardex.pas`),
+   **Consumo/Ficha/Bipagem/Cores** e **NFe**, uma por marco.
+3. Manter o padrão desta etapa: dados com timestamp, limpeza explícita no
    `finally`, sem mock de banco.
-6. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
-   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **231/231** ou mais); se
+4. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
+   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **254/254** ou mais); se
    a suíte cair, não commitar.
-7. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
+5. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
    (esperado **5/5**) e `Scripts\build_android.bat` (esperado `BUILD SUCCESSFUL`).
 
 ### O que fechou nesta sessão
 
 | Item | Entrega |
 |---|---|
+| **Orçamento (Service + testes)** | `uOrcamentoService` tirou as regras de `uFrmOrcamento`: o orçamento é um `PEDIDO_VENDA` com `STATUS='O'`, então a gravação delega ao `TPedidoVendaService` (numeração por empresa, totais nunca negativos, `PRECO_UNITARIO`/`VALOR_UNITARIO`, CFOP `5102`, itens na mesma transação e auditoria `INSERT`). `ConverterEmPedido` só aceita orçamento da empresa com status `O`, usa `STATUS='O'` no `WHERE` (conversão dupla bloqueada) e audita `CONVERSAO`. A tela passou a filtrar clientes/produtos pela empresa, buscar produto por `:COD1/:COD2/:COD3` e manter o ID após salvar para o botão **Gerar Pedido**. `uOrcamentoTest` com **23 testes**. Suíte **254/254**. Detalhes em `PLANO_E_LOG.md` §3.34 |
 | **Compras (Service + testes)** | `uPedidoCompraService` tirou as regras de `uFrmCompras`: numeração **por empresa** (maior `NUMERO` numérico + 1, ignorando textos como `PC-TESTE-8`), total do item = quantidade × valor − desconto e total do pedido = subtotal − desconto (ambos nunca negativos), status `ABERTO`/`CONFIRMADO`/`CANCELADO`, datas opcionais, cabeçalho + itens na **mesma transação** com auditoria `INSERT` e ID por `RETURNING ID`. A tela passou a listar só fornecedores ativos da empresa. `uPedidoCompraTest` com **22 testes** cobre totais, numeração, gravação, status, datas e todas as validações. Suíte **231/231**. Detalhes em `PLANO_E_LOG.md` §3.33 |
 | **Pedido de venda (Service + testes)** | `uPedidoVendaService` tirou as regras de `uFrmPedidoVenda`: numeração **por empresa** (maior `NUMERO` numérico + 1, ignorando textos), totais de item/pedido nunca negativos, gravação de cabeçalho e itens na **mesma transação** com `PRECO_UNITARIO` e `VALOR_UNITARIO`, CFOP padrão `5102`, `DATA_ENTREGA` opcional e auditoria `INSERT`; a quantidade do item com grade passa a ser a soma dos tamanhos e a grade efetiva entra na transação do pedido. `uPedidoVendaTest` com **25 testes** cobre totais, numeração, gravação, grade, desconto maior que o subtotal, data de entrega, campos opcionais nulos e todas as validações. Suíte **209/209**. Detalhes em `PLANO_E_LOG.md` §3.32 |
 | **Estoque (Service + testes)** | `uEstoqueService` tirou as regras de `uFrmMovEstoque`: registro com produto da empresa da sessão, tipo `E/S/A/I`, quantidade > 0, custo não negativo, limites de documento (50) e observação (255) e auditoria `INSERT`; a listagem passou a filtrar a empresa e usa `CAST` no texto (evita `string right truncation` em `CODIGO`/`DOCUMENTO`). `SaldoProduto` usa `CAST` no `SUM` (sem ele `AsFloat` volta 0). `uEstoqueTest` com **18 testes** cobre a trigger `TRG_MOVEST_AI` (E/A somam, S subtrai, I não altera), criação da linha de `ESTOQUE`, escopo da empresa e validações. Suíte **184/184**. Detalhes em `PLANO_E_LOG.md` §3.31 |
