@@ -103,6 +103,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src\Tests\uPDVTest.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\Config\uConexao.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

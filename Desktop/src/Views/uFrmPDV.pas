@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, Grids, DB, SQLDB, ComCtrls,
-  uConexao, uSessao;
+  uConexao, uSessao, uPDVService;
 
 type
   { TfrmPDV }
@@ -65,15 +65,21 @@ type
     procedure btnFecharCaixaClick(Sender: TObject);
   private
     FConexao: TConexao;
+    FService: TPDVService;
     FCaixaId: Int64;
-    FVendaNumero: Integer;
+    { ID do produto e preço "cru" de cada linha do grid (linha 1 = índice 0) }
+    FProdutoIds: TStringList;
+    FPrecos: TStringList;
     procedure ConfigurarGrid;
+    procedure CarregarFormasPagamento;
+    procedure AtualizarCaixaAberto;
     procedure BuscarProduto(const ACodigo: string);
+    procedure RenumerarItens;
     procedure RecalcularTotais;
     procedure LimparVenda;
-    function VerificarCaixaAberto: Boolean;
     procedure AbrirCaixa;
-    procedure RegistrarMovimentoCaixa(ATipo: Char; AValor: Double; const ADesc: string);
+  public
+    destructor Destroy; override;
   end;
 
 var
@@ -83,6 +89,14 @@ implementation
 
 {$R *.lfm}
 
+destructor TfrmPDV.Destroy;
+begin
+  FProdutoIds.Free;
+  FPrecos.Free;
+  FService.Free;
+  inherited Destroy;
+end;
+
 procedure TfrmPDV.FormCreate(Sender: TObject);
 begin
   try
@@ -90,15 +104,19 @@ begin
     // Iniciar conexão com o banco
     if not FConexao.Conectado then
       FConexao.Conectar;
+
+    FService := TPDVService.Create;
+    FProdutoIds := TStringList.Create;
+    FPrecos := TStringList.Create;
     FCaixaId := 0;
 
     ConfigurarGrid;
+    CarregarFormasPagamento;
     lblOperador.Caption := 'Operador: ' + TSessao.GetInstance.UsuarioNome;
 
-    if not VerificarCaixaAberto then
+    AtualizarCaixaAberto;
+    if FCaixaId <= 0 then
       AbrirCaixa;
-
-    FVendaNumero := 1;
   except
     on E: Exception do
       MessageDlg('Erro ao inicializar formulário: ' + E.Message, mtError, [mbOK], 0);
@@ -131,34 +149,22 @@ begin
   sgItens.ColWidths[5] := 90;
 end;
 
-function TfrmPDV.VerificarCaixaAberto: Boolean;
-var
-  LQuery: TSQLQuery;
+procedure TfrmPDV.CarregarFormasPagamento;
 begin
-  Result := False;
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text :=
-      'SELECT ID FROM CAIXA WHERE USUARIO_ID = :USR AND STATUS = ''A'' ' +
-      'AND DATA_ABERTURA >= CURRENT_DATE';
-    LQuery.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    LQuery.Open;
-    if not LQuery.IsEmpty then
-    begin
-      FCaixaId := LQuery.FieldByName('ID').AsLargeInt;
-      Result := True;
-      lblCaixa.Caption := 'Caixa: ' + IntToStr(FCaixaId) + ' (Aberto)';
-    end;
-  finally
-    LQuery.Free;
-  end;
+  FService.CarregarFormasPagamento(cmbFormaPag.Items);
+end;
+
+procedure TfrmPDV.AtualizarCaixaAberto;
+begin
+  FCaixaId := FService.CaixaAberto;
+  if FCaixaId > 0 then
+    lblCaixa.Caption := 'Caixa: ' + IntToStr(FCaixaId) + ' (Aberto)'
+  else
+    lblCaixa.Caption := 'Caixa: fechado';
 end;
 
 procedure TfrmPDV.AbrirCaixa;
 var
-  LQuery: TSQLQuery;
   LValor: string;
 begin
   if not InputQuery('Abertura de Caixa', 'Valor inicial:', LValor) then
@@ -167,96 +173,79 @@ begin
     Exit;
   end;
 
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text :=
-      'INSERT INTO CAIXA (EMPRESA_ID, USUARIO_ID, VALOR_ABERTURA, STATUS) ' +
-      'VALUES (:EMP, :USR, :VLR, ''A'')';
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    LQuery.ParamByName('VLR').AsFloat := StrToFloatDef(LValor, 0);
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
-
-    LQuery.SQL.Text := 'SELECT GEN_ID(GEN_CAIXA_ID, 0) FROM RDB$DATABASE';
-    LQuery.Open;
-    FCaixaId := LQuery.Fields[0].AsLargeInt;
+    FCaixaId := FService.AbrirCaixa(StrToFloatDef(LValor, 0));
     lblCaixa.Caption := 'Caixa: ' + IntToStr(FCaixaId) + ' (Aberto)';
     MessageDlg('Caixa aberto com sucesso!', mtInformation, [mbOK], 0);
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 procedure TfrmPDV.BuscarProduto(const ACodigo: string);
 var
-  LQuery: TSQLQuery;
+  LProdutoId: Int64;
+  LCodigoProduto, LDescricao: string;
+  LPreco: Double;
   LRow: Integer;
 begin
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text :=
-      'SELECT ID, CODIGO, DESCRICAO, PRECO_VENDA FROM PRODUTO ' +
-      'WHERE (CODIGO = :COD OR CODIGO_BARRAS = :COD) AND ATIVO = ''A''';
-    LQuery.ParamByName('COD').AsString := ACodigo;
-    LQuery.Open;
-
-    if not LQuery.IsEmpty then
-    begin
-      LRow := sgItens.RowCount;
-      sgItens.RowCount := LRow + 1;
-      sgItens.Cells[0, LRow] := IntToStr(LRow);
-      sgItens.Cells[1, LRow] := LQuery.FieldByName('CODIGO').AsString;
-      sgItens.Cells[2, LRow] := LQuery.FieldByName('DESCRICAO').AsString;
-      sgItens.Cells[3, LRow] := '1';
-      sgItens.Cells[4, LRow] := FormatFloat('#,##0.00', LQuery.FieldByName('PRECO_VENDA').AsFloat);
-      sgItens.Cells[5, LRow] := FormatFloat('#,##0.00', LQuery.FieldByName('PRECO_VENDA').AsFloat);
-
-      lblProdutoDesc.Caption := LQuery.FieldByName('DESCRICAO').AsString +
-        ' - R$ ' + FormatFloat('#,##0.00', LQuery.FieldByName('PRECO_VENDA').AsFloat);
-
-      RecalcularTotais;
-    end
-    else
-    begin
-      lblProdutoDesc.Caption := 'Produto não encontrado!';
-      // MessageBeep removido para compatibilidade multi-plataforma
-    end;
-  finally
-    LQuery.Free;
+  if not FService.BuscarProduto(ACodigo, LProdutoId, LCodigoProduto,
+    LDescricao, LPreco) then
+  begin
+    lblProdutoDesc.Caption := 'Produto não encontrado!';
+    Exit;
   end;
+
+  LRow := sgItens.RowCount;
+  sgItens.RowCount := LRow + 1;
+  FProdutoIds.Add(IntToStr(LProdutoId));
+  FPrecos.Add(FloatToStr(LPreco));
+
+  sgItens.Cells[0, LRow] := IntToStr(LRow);
+  sgItens.Cells[1, LRow] := LCodigoProduto;
+  sgItens.Cells[2, LRow] := LDescricao;
+  sgItens.Cells[3, LRow] := '1';
+  sgItens.Cells[4, LRow] := FormatFloat('#,##0.00', LPreco);
+  sgItens.Cells[5, LRow] := FormatFloat('#,##0.00', TotalItemPDV(1, LPreco));
+
+  lblProdutoDesc.Caption := LDescricao + ' - R$ ' +
+    FormatFloat('#,##0.00', LPreco);
+
+  RecalcularTotais;
+end;
+
+procedure TfrmPDV.RenumerarItens;
+var
+  I: Integer;
+begin
+  for I := 1 to sgItens.RowCount - 1 do
+    sgItens.Cells[0, I] := IntToStr(I);
 end;
 
 procedure TfrmPDV.RecalcularTotais;
 var
   I: Integer;
-  LSub: Double;
-  LDesc: Double;
-  LRecebido: Double;
+  LSub, LDesc, LTotal, LRecebido, LTroco: Double;
 begin
   LSub := 0;
-  for I := 1 to sgItens.RowCount - 1 do
-    LSub := LSub + StrToFloatDef(sgItens.Cells[5, I], 0);
+  for I := 0 to FPrecos.Count - 1 do
+    LSub := LSub + StrToFloatDef(FPrecos[I], 0);
 
   LDesc := StrToFloatDef(edtDesconto.Text, 0);
-  lblSubtotalValor.Caption := 'R$ ' + FormatFloat('#,##0.00', LSub);
-  lblTotalValor.Caption := 'R$ ' + FormatFloat('#,##0.00', LSub - LDesc);
-  lblItensQtd.Caption := IntToStr(sgItens.RowCount - 1);
+  LTotal := TotalVendaPDV(LSub, LDesc);
 
-  // Calcular troco
+  lblSubtotalValor.Caption := 'R$ ' + FormatFloat('#,##0.00', LSub);
+  lblTotalValor.Caption := 'R$ ' + FormatFloat('#,##0.00', LTotal);
+  lblItensQtd.Caption := IntToStr(FProdutoIds.Count);
+
+  // Calcular troco (nunca negativo)
   LRecebido := StrToFloatDef(edtRecebido.Text, 0);
+  LTroco := LRecebido - LTotal;
+  if LTroco < 0 then
+    LTroco := 0;
   if LRecebido > 0 then
-    lblTrocoValor.Caption := 'R$ ' + FormatFloat('#,##0.00', LRecebido - (LSub - LDesc))
+    lblTrocoValor.Caption := 'R$ ' + FormatFloat('#,##0.00', LTroco)
   else
     lblTrocoValor.Caption := 'R$ 0,00';
 end;
@@ -297,15 +286,12 @@ end;
 
 procedure TfrmPDV.btnFinalizarClick(Sender: TObject);
 var
-  LQuery: TSQLQuery;
+  LItens: TItensPDVEntrada;
   I: Integer;
-  LTotal: Double;
-  LPedidoId: Int64;
-  LCodigo: string;
-  LQtd, LPreco: Double;
-  LProdutoId: Int64;
+  LSub, LDesc, LTotal: Double;
+  LFormaId: Int64;
 begin
-  if sgItens.RowCount <= 1 then
+  if FProdutoIds.Count = 0 then
   begin
     MessageDlg('Nenhum item na venda.', mtWarning, [mbOK], 0);
     Exit;
@@ -317,127 +303,61 @@ begin
     Exit;
   end;
 
-  LTotal := StrToFloatDef(
-    StringReplace(StringReplace(lblTotalValor.Caption, 'R$ ', '', []), '.', '', [rfReplaceAll]),
-    0);
+  if FCaixaId <= 0 then
+  begin
+    MessageDlg('Abra o caixa antes de finalizar a venda.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
 
-  LQuery := TSQLQuery.Create(nil);
+  { monta os itens a partir das listas paralelas (ID e preço "cru"),
+    evitando reinterpretar texto formatado do grid }
+  LSub := 0;
+  SetLength(LItens, FProdutoIds.Count);
+  for I := 0 to FProdutoIds.Count - 1 do
+  begin
+    LItens[I].ProdutoId := StrToInt64Def(FProdutoIds[I], 0);
+    LItens[I].Quantidade := 1;
+    LItens[I].PrecoUnitario := StrToFloatDef(FPrecos[I], 0);
+    LSub := LSub + TotalItemPDV(LItens[I].Quantidade, LItens[I].PrecoUnitario);
+  end;
+
+  LDesc := StrToFloatDef(edtDesconto.Text, 0);
+  LTotal := TotalVendaPDV(LSub, LDesc);
+  LFormaId := Int64(PtrInt(cmbFormaPag.Items.Objects[cmbFormaPag.ItemIndex]));
+
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
-    // Criar pedido de venda tipo PDV
-    LQuery.SQL.Text :=
-      'INSERT INTO PEDIDO_VENDA (EMPRESA_ID, USUARIO_ID, STATUS, ' +
-      'SUBTOTAL, DESCONTO, TOTAL, OBSERVACOES) ' +
-      'VALUES (:EMP, :USR, ''F'', :SUB, :DESC, :TOT, ''PDV'')';
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    LQuery.ParamByName('SUB').AsFloat := StrToFloatDef(
-      StringReplace(StringReplace(lblSubtotalValor.Caption, 'R$ ', '', []), '.', '', [rfReplaceAll]), 0);
-    LQuery.ParamByName('DESC').AsFloat := StrToFloatDef(edtDesconto.Text, 0);
-    LQuery.ParamByName('TOT').AsFloat := LTotal;
-    LQuery.ExecSQL;
-
-    // Obter ID do pedido gerado
-    LQuery.SQL.Text := 'SELECT GEN_ID(GEN_PEDIDO_VENDA_ID, 0) FROM RDB$DATABASE';
-    LQuery.Open;
-    LPedidoId := LQuery.Fields[0].AsLargeInt;
-    LQuery.Close;
-
-    // Salvar itens do pedido
-    for I := 1 to sgItens.RowCount - 1 do
-    begin
-      LCodigo := sgItens.Cells[1, I];
-      LQtd := StrToFloatDef(sgItens.Cells[3, I], 0);
-      LPreco := StrToFloatDef(
-        StringReplace(StringReplace(sgItens.Cells[4, I], '.', '', [rfReplaceAll]), ',', '.', [rfReplaceAll]),
-        0);
-
-      // Buscar ID do produto pelo código
-      LQuery.SQL.Text := 'SELECT ID FROM PRODUTO WHERE CODIGO = :COD OR CODIGO_BARRAS = :COD';
-      LQuery.ParamByName('COD').AsString := LCodigo;
-      LQuery.Open;
-
-      if not LQuery.IsEmpty then
-      begin
-        LProdutoId := LQuery.FieldByName('ID').AsLargeInt;
-        LQuery.Close;
-        // Inserir item do pedido
-        LQuery.SQL.Text :=
-          'INSERT INTO ITEM_PEDIDO_VENDA (PEDIDO_VENDA_ID, PRODUTO_ID, QUANTIDADE, PRECO_UNITARIO, TOTAL) ' +
-          'VALUES (:PEDIDO, :PROD, :QTD, :PRECO, :TOTAL)';
-        LQuery.ParamByName('PEDIDO').AsLargeInt := LPedidoId;
-        LQuery.ParamByName('PROD').AsLargeInt := LProdutoId;
-        LQuery.ParamByName('QTD').AsFloat := LQtd;
-        LQuery.ParamByName('PRECO').AsFloat := LPreco;
-        LQuery.ParamByName('TOTAL').AsFloat := LQtd * LPreco;
-        LQuery.ExecSQL;
-      end
-      else
-        LQuery.Close;
-    end;
-
-    // Registrar movimento no caixa
-    RegistrarMovimentoCaixa('V', LTotal, 'Venda PDV');
-
-    FConexao.Confirmar;
+    FService.SalvarVenda(FCaixaId, LItens, LDesc, LFormaId);
     MessageDlg('Venda finalizada! Total: R$ ' + FormatFloat('#,##0.00', LTotal),
       mtInformation, [mbOK], 0);
     LimparVenda;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
-end;
-
-procedure TfrmPDV.RegistrarMovimentoCaixa(ATipo: Char; AValor: Double; const ADesc: string);
-var
-  LQuery: TSQLQuery;
-begin
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text :=
-      'INSERT INTO MOVIMENTO_CAIXA (CAIXA_ID, TIPO, VALOR, DESCRICAO) ' +
-      'VALUES (:CX, :TIPO, :VLR, :DESC)';
-    LQuery.ParamByName('CX').AsLargeInt := FCaixaId;
-    LQuery.ParamByName('TIPO').AsString := ATipo;
-    LQuery.ParamByName('VLR').AsFloat := AValor;
-    LQuery.ParamByName('DESC').AsString := ADesc;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
-  except
-    on E: Exception do
-    begin
-      FConexao.Cancelar;
-      raise;
-    end;
-  end;
-  LQuery.Free;
 end;
 
 procedure TfrmPDV.btnCancelarItemClick(Sender: TObject);
 var
   I: Integer;
 begin
-  if (sgItens.Row < 1) or (sgItens.RowCount <= 1) then Exit;
+  I := sgItens.Row;
+  if (I < 1) or (sgItens.RowCount <= 1) then Exit;
+
+  if I - 1 < FProdutoIds.Count then
+    FProdutoIds.Delete(I - 1);
+  if I - 1 < FPrecos.Count then
+    FPrecos.Delete(I - 1);
+
   for I := sgItens.Row to sgItens.RowCount - 2 do
     sgItens.Rows[I].Assign(sgItens.Rows[I + 1]);
   sgItens.RowCount := sgItens.RowCount - 1;
+  RenumerarItens;
   RecalcularTotais;
 end;
 
 procedure TfrmPDV.btnCancelarVendaClick(Sender: TObject);
 begin
-  if sgItens.RowCount <= 1 then Exit;
+  if FProdutoIds.Count = 0 then Exit;
   if MessageDlg('Cancelar a venda atual?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
     LimparVenda;
 end;
@@ -445,15 +365,22 @@ end;
 procedure TfrmPDV.btnSangriaClick(Sender: TObject);
 var
   LValor: string;
+  LNum: Double;
 begin
+  if FCaixaId <= 0 then
+  begin
+    MessageDlg('Abra o caixa antes de lançar a sangria.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
   if not InputQuery('Sangria de Caixa', 'Valor da sangria:', LValor) then Exit;
-  if StrToFloatDef(LValor, 0) <= 0 then
+  LNum := StrToFloatDef(LValor, 0);
+  if LNum <= 0 then
   begin
     MessageDlg('Valor inválido.', mtWarning, [mbOK], 0);
     Exit;
   end;
   try
-    RegistrarMovimentoCaixa('S', StrToFloatDef(LValor, 0), 'Sangria');
+    FService.RegistrarMovimento(FCaixaId, 'S', LNum, 'Sangria');
     MessageDlg('Sangria registrada: R$ ' + LValor, mtInformation, [mbOK], 0);
   except
     on E: Exception do
@@ -464,15 +391,22 @@ end;
 procedure TfrmPDV.btnSuprimentoClick(Sender: TObject);
 var
   LValor: string;
+  LNum: Double;
 begin
+  if FCaixaId <= 0 then
+  begin
+    MessageDlg('Abra o caixa antes de lançar o suprimento.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
   if not InputQuery('Suprimento de Caixa', 'Valor do suprimento:', LValor) then Exit;
-  if StrToFloatDef(LValor, 0) <= 0 then
+  LNum := StrToFloatDef(LValor, 0);
+  if LNum <= 0 then
   begin
     MessageDlg('Valor inválido.', mtWarning, [mbOK], 0);
     Exit;
   end;
   try
-    RegistrarMovimentoCaixa('E', StrToFloatDef(LValor, 0), 'Suprimento');
+    FService.RegistrarMovimento(FCaixaId, 'E', LNum, 'Suprimento');
     MessageDlg('Suprimento registrado: R$ ' + LValor, mtInformation, [mbOK], 0);
   except
     on E: Exception do
@@ -482,55 +416,31 @@ end;
 
 procedure TfrmPDV.btnFecharCaixaClick(Sender: TObject);
 var
-  LQuery: TSQLQuery;
   LSaldo: Double;
 begin
+  if FCaixaId <= 0 then
+  begin
+    MessageDlg('Não há caixa aberto para fechar.', mtWarning, [mbOK], 0);
+    Exit;
+  end;
   if MessageDlg('Fechar o caixa?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
 
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
-    // Calcular valor de fechamento
-    // (o CAST é necessário: SQLDB devolve expressões NUMERIC sem CAST como NULL)
-    LQuery.SQL.Text :=
-      'SELECT CAST(COALESCE(C.VALOR_ABERTURA, 0) + ' +
-      'COALESCE((SELECT SUM(CASE WHEN MC.TIPO IN (''V'',''E'') THEN MC.VALOR ELSE -MC.VALOR END) ' +
-      'FROM MOVIMENTO_CAIXA MC WHERE MC.CAIXA_ID = C.ID), 0) AS NUMERIC(18,4)) AS SALDO ' +
-      'FROM CAIXA C WHERE C.ID = :CX';
-    LQuery.ParamByName('CX').AsLargeInt := FCaixaId;
-    LQuery.Open;
-
-    LSaldo := LQuery.FieldByName('SALDO').AsFloat;
-    if LQuery.Active then
-      LQuery.Close;
-
-    LQuery.SQL.Text :=
-      'UPDATE CAIXA SET STATUS = ''F'', DATA_FECHAMENTO = CURRENT_TIMESTAMP, ' +
-      'VALOR_FECHAMENTO = :VLR WHERE ID = :CX';
-    LQuery.ParamByName('VLR').AsFloat := LSaldo;
-    LQuery.ParamByName('CX').AsLargeInt := FCaixaId;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
-
+    LSaldo := FService.FecharCaixa(FCaixaId);
     MessageDlg('Caixa fechado! Saldo: R$ ' + FormatFloat('#,##0.00', LSaldo),
       mtInformation, [mbOK], 0);
     Close;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 procedure TfrmPDV.LimparVenda;
 begin
   sgItens.RowCount := 1;
+  FProdutoIds.Clear;
+  FPrecos.Clear;
   edtCodigo.Clear;
   edtDesconto.Text := '0,00';
   edtRecebido.Clear;
@@ -540,7 +450,6 @@ begin
   lblTrocoValor.Caption := 'R$ 0,00';
   lblItensQtd.Caption := '0';
   cmbFormaPag.ItemIndex := -1;
-  Inc(FVendaNumero);
   edtCodigo.SetFocus;
 end;
 

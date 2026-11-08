@@ -29,6 +29,7 @@ uses
   uPedidoVendaTest,
   uPedidoCompraTest,
   uOrcamentoTest,
+  uPDVTest,
   uConexao,
   uSessao;
 
@@ -125,6 +126,10 @@ begin
 
     // Executar testes de orçamento (08/11/2026)
     TOrcamentoTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes do PDV (08/11/2026)
+    TPDVTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais

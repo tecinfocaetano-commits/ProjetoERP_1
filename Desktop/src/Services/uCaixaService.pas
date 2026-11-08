@@ -11,8 +11,8 @@ unit uCaixaService;
   esta tela é só leitura.
 
   Regras:
-    - saldo do caixa = entradas (TIPO 'E') menos saídas (TIPO 'S'),
-      calculado no SQL;
+    - saldo do caixa = entradas (TIPO 'E' e 'V') menos saídas
+      (TIPO 'S'), calculado no SQL; 'V' é a venda do PDV;
     - CAST(COALESCE((subconsulta), 0) AS NUMERIC(18,4)): sem o CAST
       o Firebird devolve o campo como ftUnknown e a grade não mostra
       o valor (convenção já usada no resto do projeto);
@@ -58,7 +58,7 @@ const
   { subconsulta de saldo: o CAST externo evita ftUnknown no Firebird }
   SQL_SALDO =
     'CAST(COALESCE((SELECT SUM(CASE MC.TIPO WHEN ''E'' THEN MC.VALOR ' +
-    'WHEN ''S'' THEN -MC.VALOR ELSE 0 END) ' +
+    'WHEN ''V'' THEN MC.VALOR WHEN ''S'' THEN -MC.VALOR ELSE 0 END) ' +
     'FROM MOVIMENTO_CAIXA MC WHERE MC.CAIXA_ID = C.ID), 0) ' +
     'AS NUMERIC(18,4))';
 
@@ -116,7 +116,7 @@ begin
   LSQL :=
     'SELECT MC.ID, ' +
     'CASE MC.TIPO WHEN ''E'' THEN ''ENTRADA'' WHEN ''S'' THEN ''SAIDA'' ' +
-    'ELSE MC.TIPO END AS TIPO, MC.VALOR, MC.DESCRICAO, MC.DATA_MOVIMENTO, ' +
+    'WHEN ''V'' THEN ''VENDA'' ELSE MC.TIPO END AS TIPO, MC.VALOR, MC.DESCRICAO, MC.DATA_MOVIMENTO, ' +
     'U.NOME AS USUARIO FROM MOVIMENTO_CAIXA MC ' +
     'LEFT JOIN USUARIO U ON U.ID = MC.USUARIO_ID ' +
     'WHERE MC.CAIXA_ID = :CX';
@@ -125,7 +125,8 @@ begin
     LSQL := LSQL + ' AND (UPPER(COALESCE(MC.DESCRICAO, '''')) CONTAINING ' +
                    'UPPER(CAST(:PESQ AS VARCHAR(1000)))' +
                    ' OR UPPER(CASE MC.TIPO WHEN ''E'' THEN ''ENTRADA'' ' +
-                   'WHEN ''S'' THEN ''SAIDA'' ELSE MC.TIPO END) CONTAINING ' +
+                   'WHEN ''S'' THEN ''SAIDA'' WHEN ''V'' THEN ''VENDA'' ' +
+                   'ELSE MC.TIPO END) CONTAINING ' +
                    'UPPER(CAST(:PESQ2 AS VARCHAR(1000)))' +
                    ' OR UPPER(COALESCE(U.NOME, '''')) CONTAINING ' +
                    'UPPER(CAST(:PESQ3 AS VARCHAR(1000))))';
@@ -154,11 +155,11 @@ begin
   AQuery.Close;
   AQuery.SQL.Text :=
     'SELECT ' +
-    'CAST(COALESCE(SUM(CASE WHEN MC.TIPO = ''E'' THEN MC.VALOR ELSE 0 END), 0) ' +
+    'CAST(COALESCE(SUM(CASE WHEN MC.TIPO IN (''E'',''V'') THEN MC.VALOR ELSE 0 END), 0) ' +
     'AS NUMERIC(18,4)) AS ENTRADAS, ' +
     'CAST(COALESCE(SUM(CASE WHEN MC.TIPO = ''S'' THEN MC.VALOR ELSE 0 END), 0) ' +
     'AS NUMERIC(18,4)) AS SAIDAS, ' +
-    'CAST(COALESCE(SUM(CASE WHEN MC.TIPO = ''E'' THEN MC.VALOR ' +
+    'CAST(COALESCE(SUM(CASE WHEN MC.TIPO IN (''E'',''V'') THEN MC.VALOR ' +
     'WHEN MC.TIPO = ''S'' THEN -MC.VALOR ELSE 0 END), 0) ' +
     'AS NUMERIC(18,4)) AS SALDO ' +
     'FROM MOVIMENTO_CAIXA MC WHERE MC.CAIXA_ID = :CX';
