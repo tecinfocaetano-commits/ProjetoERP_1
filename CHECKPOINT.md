@@ -51,13 +51,29 @@ Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (
 |---|---|
 | **Suíte do fluxo de produção** | `uProducaoFluxoTest` (12 testes) cobre o `TProducaoService` com banco real — antes só havia testes de estrutura/permissão/auditoria (`uProducaoTest`). Cobre: validações e upsert de `GravarFichaTecnica`, `CriarMapa` (pendente/parcial, status do pedido `P`→`E`, empresa herdada do pedido), `GerarTaloes` (`ITEM`/`UNIDADE`, código `T`+6 dígitos, transições `PENDENTE`→`EM_PRODUCAO`), `BiparTalao` (`INICIO`→`CONCLUSAO`, `DUPLICADO`/`INVALIDO`, mapa `CONCLUIDO` e pedido `D`), `CancelarMapa`/`CancelarTalao` e o ciclo de consumo (`GerarConsumoMaterial` planejado × produzido, ficha obrigatória, `QTD_PREVISTA` com perda, `QTD_REAL`, saldo insuficiente, movimentos `S`/`E` e estorno). Registrado no `uTestRunner`/`Tests.lpi`. Suíte **337/337**. Commit `c57cb90`. |
 
+### Varredura de telas (08/11) — resultado
+
+- **Produção limpa:** `uFrmConsumoMaterial`, `uFrmFichaTecnica`,
+  `uFrmBipagem`, `uFrmCoresProduto` não têm nenhum INSERT/UPDATE/DELETE —
+  100% delegado a `TProducaoService`/`TCorService`.
+- **Escrita direta restante nas telas** (candidatas ao próximo marco):
+  - `uFrmNotaEntrada` — INSERT/UPDATE de `NOTA_ENTRADA` e
+    `NOTA_ENTRADA_ITEM` no form, embora `TNotaEntradaService` exista e já
+    seja usado para totais/processar/cancelar/excluir item;
+  - cadastros simples que escrevem direto apesar de terem Service:
+    `uFrmCategorias`, `uFrmCidade`, `uFrmEstado`, `uFrmPais`,
+    `uFrmMaterial`, `uFrmProdutoFiscal`, `uFrmProdutos`, `uFrmUsuarios`
+    (CRUD puro — menor risco, mas fura a regra "negócio no Service");
+  - `uFrmLogin` — UPDATE de `USUARIO.SENHA`/`ULTIMO_ACESSO` (troca de
+    senha na tela; avaliar se vira método de Service).
+
 ### Próximo passo (executável)
 
-1. Backlog restante do `PLANO_E_LOG.md` — revisar telas de produção
-   (`uFrmConsumoMaterial`, `uFrmFichaTecnica`, `uFrmBipagem`,
-   `uFrmCoresProduto`) para confirmar que 100% das regras passam pelo
-   Service (já delegam; falta só varredura fina de SQL direto na tela).
-2. Depois: continuar backlog, um marco por vez.
+1. **Nota de Entrada:** mover INSERT/UPDATE de cabeçalho e itens para o
+   `TNotaEntradaService` (mesma transação + auditoria), mantendo os calls
+   já existentes; cobrir com teste se faltar.
+2. Depois: cadastros simples (delegar ao Service existente) e o UPDATE de
+   senha do login, um marco por vez.
 3. Antes de qualquer commit: `Scripts\build_desktop.bat` (0/0) e
    `Scripts\run_tests.bat` (**337/337** ou mais); Android
    `Scripts\run_tests_android.bat` (**5/5**).
