@@ -64,6 +64,12 @@ begin
         Result.EstadoId := LQuery.FieldByName('ESTADO_ID').AsLargeInt;
         Result.Nome := LQuery.FieldByName('NOME').AsString;
         Result.CodigoIbge := LQuery.FieldByName('CODIGO_IBGE').AsString;
+        if LQuery.FindField('CEP_PADRAO') <> nil then
+          Result.CepPadrao := Trim(LQuery.FieldByName('CEP_PADRAO').AsString);
+        if LQuery.FindField('ATIVO') <> nil then
+          Result.Ativo := LQuery.FieldByName('ATIVO').AsString[1]
+        else
+          Result.Ativo := 'A';
       end
       else
         FreeAndNil(Result);
@@ -86,33 +92,38 @@ begin
 end;
 
 function TCidadeService.Inserir(AObj: TCidade): Int64;
-var
-  LCampos, LParams: string;
-  LNome, LVal: array of string;
 begin
   Validar(AObj);
-  LCampos := 'ESTADO_ID, NOME, CODIGO_IBGE';
-  LParams := ':ESTADO, :NOME, :IBGE';
-  LNome := ['ESTADO', 'NOME', 'IBGE'];
-  LVal := [IntToStr(AObj.EstadoId), AObj.Nome, AObj.CodigoIbge];
-  Result := FRepo.InserirParam(LCampos, LParams, LNome, LVal);
+  if AObj.Ativo = #0 then
+    AObj.Ativo := 'A';
+  Result := FRepo.InserirParam(
+    'ESTADO_ID, NOME, CODIGO_IBGE, CEP_PADRAO, ATIVO',
+    ':ESTADO, :NOME, :IBGE, :CEP, :ATIVO',
+    ['ESTADO', 'NOME', 'IBGE', 'CEP', 'ATIVO'],
+    [IntToStr(AObj.EstadoId), AObj.Nome, AObj.CodigoIbge,
+     AObj.CepPadrao, AObj.Ativo]);
+  LogOperacao('CIDADE', 'I', Result);
 end;
 
 function TCidadeService.Atualizar(AObj: TCidade): Boolean;
-var
-  LCamposParam: string;
-  LNome, LVal: array of string;
 begin
+  ValidarId(AObj.Id, 'Cidade');
   Validar(AObj);
-  LCamposParam := 'ESTADO_ID = :ESTADO, NOME = :NOME, CODIGO_IBGE = :IBGE';
-  LNome := ['ESTADO', 'NOME', 'IBGE'];
-  LVal := [IntToStr(AObj.EstadoId), AObj.Nome, AObj.CodigoIbge];
-  Result := FRepo.AtualizarParam(AObj.Id, LCamposParam, LNome, LVal);
+  Result := FRepo.AtualizarParam(
+    AObj.Id,
+    'ESTADO_ID = :ESTADO, NOME = :NOME, CODIGO_IBGE = :IBGE, ' +
+    'CEP_PADRAO = :CEP, ATIVO = :ATIVO',
+    ['ESTADO', 'NOME', 'IBGE', 'CEP', 'ATIVO'],
+    [IntToStr(AObj.EstadoId), AObj.Nome, AObj.CodigoIbge,
+     AObj.CepPadrao, AObj.Ativo]);
+  LogOperacao('CIDADE', 'U', AObj.Id);
 end;
 
 function TCidadeService.Excluir(AId: Int64): Boolean;
 begin
+  ValidarId(AId, 'Cidade');
   Result := FRepo.Excluir(AId);
+  LogOperacao('CIDADE', 'D', AId);
 end;
 
 end.

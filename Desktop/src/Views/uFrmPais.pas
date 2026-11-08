@@ -13,7 +13,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao;
+  uFrmCadastroBase, uConexao, uPaisService, uPais;
 
 type
   { TfrmPais }
@@ -38,6 +38,8 @@ type
     function Excluir: Boolean; override;
   private
     FQuery: TSQLQuery;
+    FService: TPaisService;
+    destructor Destroy; override;
     procedure ConfigurarGrid;
   end;
 
@@ -50,6 +52,12 @@ implementation
 
 { TfrmPais }
 
+destructor TfrmPais.Destroy;
+begin
+  FreeAndNil(FService);
+  inherited Destroy;
+end;
+
 procedure TfrmPais.FormCreate(Sender: TObject);
 begin
   try
@@ -60,6 +68,7 @@ begin
     FQuery := TSQLQuery.Create(Self);
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
+    FService := TPaisService.Create;
 
     lblTitulo.Caption := 'Cadastro de Países';
     Caption := 'Países';
@@ -167,88 +176,45 @@ end;
 
 function TfrmPais.Salvar: Boolean;
 var
-  LQuery: TSQLQuery;
+  LPais: TPais;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
+  LPais := TPais.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
     if FEstado = efInserindo then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO PAIS (NOME, CODIGO, DDI, ATIVO) ' +
-        'VALUES (:NOME, :CODIGO, :DDI, :ATIVO)';
-    end
+      LPais.Id := 0
     else
-    begin
-      LQuery.SQL.Text :=
-        'UPDATE PAIS SET NOME = :NOME, CODIGO = :CODIGO, DDI = :DDI, ' +
-        'ATIVO = :ATIVO WHERE ID = :ID';
-      LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    end;
-
-    LQuery.ParamByName('NOME').AsString := Trim(edtNome.Text);
-    LQuery.ParamByName('CODIGO').AsString := Trim(UpperCase(edtCodigo.Text));
-    LQuery.ParamByName('DDI').AsString := Trim(edtDdi.Text);
+      LPais.Id := FIdSelecionado;
+    LPais.Nome := Trim(edtNome.Text);
+    LPais.Codigo := Trim(UpperCase(edtCodigo.Text));
+    LPais.Ddi := Trim(edtDdi.Text);
     if cmbStatus.ItemIndex = 0 then
-      LQuery.ParamByName('ATIVO').AsString := 'A'
+      LPais.Ativo := 'A'
     else
-      LQuery.ParamByName('ATIVO').AsString := 'I';
+      LPais.Ativo := 'I';
 
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    if LPais.Id = 0 then
+      LPais.Id := FService.Inserir(LPais)
+    else
+      FService.Atualizar(LPais);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao salvar: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
+  LPais.Free;
 end;
 
 function TfrmPais.Excluir: Boolean;
-var
-  LQuery: TSQLQuery;
-  LUsos: Int64;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-
-    { não deixa excluir país com estados (referência lógica) }
-    LQuery.SQL.Text := 'SELECT COUNT(*) FROM ESTADO WHERE PAIS_ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.Open;
-    LUsos := LQuery.Fields[0].AsLargeInt;
-    LQuery.Close;
-    if LUsos > 0 then
-    begin
-      MessageDlg('Este país possui estados vinculados e não pode ser excluído.',
-        mtWarning, [mbOK], 0);
-      Exit;
-    end;
-
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text := 'DELETE FROM PAIS WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    FService.Excluir(FIdSelecionado);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao excluir: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 end.

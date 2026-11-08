@@ -13,7 +13,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao;
+  uFrmCadastroBase, uConexao, uEstadoService, uEstado;
 
 type
   { TfrmEstado }
@@ -40,6 +40,8 @@ type
     function Excluir: Boolean; override;
   private
     FQuery: TSQLQuery;
+    FService: TEstadoService;
+    destructor Destroy; override;
     procedure ConfigurarGrid;
     procedure CarregarPaises;
     function IdPaisSelecionado: Int64;
@@ -55,6 +57,12 @@ implementation
 
 { TfrmEstado }
 
+destructor TfrmEstado.Destroy;
+begin
+  FreeAndNil(FService);
+  inherited Destroy;
+end;
+
 procedure TfrmEstado.FormCreate(Sender: TObject);
 begin
   try
@@ -65,6 +73,7 @@ begin
     FQuery := TSQLQuery.Create(Self);
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
+    FService := TEstadoService.Create;
 
     lblTitulo.Caption := 'Cadastro de Estados';
     Caption := 'Estados';
@@ -228,88 +237,46 @@ end;
 
 function TfrmEstado.Salvar: Boolean;
 var
-  LQuery: TSQLQuery;
+  LEstado: TEstado;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
+  LEstado := TEstado.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
     if FEstado = efInserindo then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO ESTADO (PAIS_ID, NOME, UF, CODIGO_IBGE, ATIVO) ' +
-        'VALUES (:PAIS, :NOME, :UF, :IBGE, :ATIVO)';
-    end
+      LEstado.Id := 0
     else
-    begin
-      LQuery.SQL.Text :=
-        'UPDATE ESTADO SET PAIS_ID = :PAIS, NOME = :NOME, UF = :UF, ' +
-        'CODIGO_IBGE = :IBGE, ATIVO = :ATIVO WHERE ID = :ID';
-      LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    end;
-
-    LQuery.ParamByName('PAIS').AsLargeInt := IdPaisSelecionado;
-    LQuery.ParamByName('NOME').AsString := Trim(edtNome.Text);
-    LQuery.ParamByName('UF').AsString := Trim(UpperCase(edtUf.Text));
-    LQuery.ParamByName('IBGE').AsString := Trim(edtIbge.Text);
+      LEstado.Id := FIdSelecionado;
+    LEstado.PaisId := IdPaisSelecionado;
+    LEstado.Nome := Trim(edtNome.Text);
+    LEstado.Uf := Trim(UpperCase(edtUf.Text));
+    LEstado.CodigoIbge := Trim(edtIbge.Text);
     if cmbStatus.ItemIndex = 0 then
-      LQuery.ParamByName('ATIVO').AsString := 'A'
+      LEstado.Ativo := 'A'
     else
-      LQuery.ParamByName('ATIVO').AsString := 'I';
+      LEstado.Ativo := 'I';
 
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    if LEstado.Id = 0 then
+      LEstado.Id := FService.Inserir(LEstado)
+    else
+      FService.Atualizar(LEstado);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao salvar: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
+  LEstado.Free;
 end;
 
 function TfrmEstado.Excluir: Boolean;
-var
-  LQuery: TSQLQuery;
-  LUsos: Int64;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-
-    LQuery.SQL.Text := 'SELECT COUNT(*) FROM CIDADE WHERE ESTADO_ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.Open;
-    LUsos := LQuery.Fields[0].AsLargeInt;
-    LQuery.Close;
-    if LUsos > 0 then
-    begin
-      MessageDlg('Este estado possui cidades vinculadas e não pode ser excluído.',
-        mtWarning, [mbOK], 0);
-      Exit;
-    end;
-
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text := 'DELETE FROM ESTADO WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    FService.Excluir(FIdSelecionado);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao excluir: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 end.

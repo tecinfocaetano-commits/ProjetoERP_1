@@ -63,6 +63,10 @@ begin
         Result.Nome := LQuery.FieldByName('NOME').AsString;
         Result.Codigo := LQuery.FieldByName('CODIGO').AsString;
         Result.Ddi := LQuery.FieldByName('DDI').AsString;
+        if LQuery.FindField('ATIVO') <> nil then
+          Result.Ativo := LQuery.FieldByName('ATIVO').AsString[1]
+        else
+          Result.Ativo := 'A';
       end
       else
         FreeAndNil(Result);
@@ -82,33 +86,53 @@ begin
 end;
 
 function TPaisService.Inserir(AObj: TPais): Int64;
-var
-  LCampos, LParams: string;
-  LNome, LVal: array of string;
 begin
   Validar(AObj);
-  LCampos := 'NOME, CODIGO, DDI';
-  LParams := ':NOME, :CODIGO, :DDI';
-  LNome := ['NOME', 'CODIGO', 'DDI'];
-  LVal := [AObj.Nome, AObj.Codigo, AObj.Ddi];
-  Result := FRepo.InserirParam(LCampos, LParams, LNome, LVal);
+  if AObj.Ativo = #0 then
+    AObj.Ativo := 'A';
+  Result := FRepo.InserirParam(
+    'NOME, CODIGO, DDI, ATIVO', ':NOME, :CODIGO, :DDI, :ATIVO',
+    ['NOME', 'CODIGO', 'DDI', 'ATIVO'],
+    [AObj.Nome, AObj.Codigo, AObj.Ddi, AObj.Ativo]);
+  LogOperacao('PAIS', 'I', Result);
 end;
 
 function TPaisService.Atualizar(AObj: TPais): Boolean;
-var
-  LCamposParam: string;
-  LNome, LVal: array of string;
 begin
+  ValidarId(AObj.Id, 'País');
   Validar(AObj);
-  LCamposParam := 'NOME = :NOME, CODIGO = :CODIGO, DDI = :DDI';
-  LNome := ['NOME', 'CODIGO', 'DDI'];
-  LVal := [AObj.Nome, AObj.Codigo, AObj.Ddi];
-  Result := FRepo.AtualizarParam(AObj.Id, LCamposParam, LNome, LVal);
+  Result := FRepo.AtualizarParam(
+    AObj.Id,
+    'NOME = :NOME, CODIGO = :CODIGO, DDI = :DDI, ATIVO = :ATIVO',
+    ['NOME', 'CODIGO', 'DDI', 'ATIVO'],
+    [AObj.Nome, AObj.Codigo, AObj.Ddi, AObj.Ativo]);
+  LogOperacao('PAIS', 'U', AObj.Id);
 end;
 
 function TPaisService.Excluir(AId: Int64): Boolean;
+var
+  LQuery: TSQLQuery;
+  LUsos: Int64;
 begin
+  ValidarId(AId, 'País');
+  { não deixa excluir país com estados vinculados (referência lógica) }
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := Conexao.Connection;
+    LQuery.Transaction := Conexao.Transaction;
+    LQuery.SQL.Text := 'SELECT COUNT(*) FROM ESTADO WHERE PAIS_ID = :ID';
+    LQuery.ParamByName('ID').AsLargeInt := AId;
+    LQuery.Open;
+    LUsos := LQuery.Fields[0].AsLargeInt;
+    LQuery.Close;
+  finally
+    LQuery.Free;
+  end;
+  if LUsos > 0 then
+    raise Exception.Create(
+      'Este país possui estados vinculados e não pode ser excluído.');
   Result := FRepo.Excluir(AId);
+  LogOperacao('PAIS', 'D', AId);
 end;
 
 end.

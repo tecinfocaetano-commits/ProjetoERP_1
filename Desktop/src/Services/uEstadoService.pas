@@ -68,6 +68,10 @@ begin
         Result.Nome := LQuery.FieldByName('NOME').AsString;
         Result.Uf := LQuery.FieldByName('UF').AsString;
         Result.CodigoIbge := LQuery.FieldByName('CODIGO_IBGE').AsString;
+        if LQuery.FindField('ATIVO') <> nil then
+          Result.Ativo := LQuery.FieldByName('ATIVO').AsString[1]
+        else
+          Result.Ativo := 'A';
       end
       else
         FreeAndNil(Result);
@@ -90,33 +94,55 @@ begin
 end;
 
 function TEstadoService.Inserir(AObj: TEstado): Int64;
-var
-  LCampos, LParams: string;
-  LNome, LVal: array of string;
 begin
   Validar(AObj);
-  LCampos := 'PAIS_ID, NOME, UF, CODIGO_IBGE';
-  LParams := ':PAIS, :NOME, :UF, :IBGE';
-  LNome := ['PAIS', 'NOME', 'UF', 'IBGE'];
-  LVal := [IntToStr(AObj.PaisId), AObj.Nome, AObj.Uf, AObj.CodigoIbge];
-  Result := FRepo.InserirParam(LCampos, LParams, LNome, LVal);
+  if AObj.Ativo = #0 then
+    AObj.Ativo := 'A';
+  Result := FRepo.InserirParam(
+    'PAIS_ID, NOME, UF, CODIGO_IBGE, ATIVO',
+    ':PAIS, :NOME, :UF, :IBGE, :ATIVO',
+    ['PAIS', 'NOME', 'UF', 'IBGE', 'ATIVO'],
+    [IntToStr(AObj.PaisId), AObj.Nome, AObj.Uf, AObj.CodigoIbge, AObj.Ativo]);
+  LogOperacao('ESTADO', 'I', Result);
 end;
 
 function TEstadoService.Atualizar(AObj: TEstado): Boolean;
-var
-  LCamposParam: string;
-  LNome, LVal: array of string;
 begin
+  ValidarId(AObj.Id, 'Estado');
   Validar(AObj);
-  LCamposParam := 'PAIS_ID = :PAIS, NOME = :NOME, UF = :UF, CODIGO_IBGE = :IBGE';
-  LNome := ['PAIS', 'NOME', 'UF', 'IBGE'];
-  LVal := [IntToStr(AObj.PaisId), AObj.Nome, AObj.Uf, AObj.CodigoIbge];
-  Result := FRepo.AtualizarParam(AObj.Id, LCamposParam, LNome, LVal);
+  Result := FRepo.AtualizarParam(
+    AObj.Id,
+    'PAIS_ID = :PAIS, NOME = :NOME, UF = :UF, CODIGO_IBGE = :IBGE, ' +
+    'ATIVO = :ATIVO',
+    ['PAIS', 'NOME', 'UF', 'IBGE', 'ATIVO'],
+    [IntToStr(AObj.PaisId), AObj.Nome, AObj.Uf, AObj.CodigoIbge, AObj.Ativo]);
+  LogOperacao('ESTADO', 'U', AObj.Id);
 end;
 
 function TEstadoService.Excluir(AId: Int64): Boolean;
+var
+  LQuery: TSQLQuery;
+  LUsos: Int64;
 begin
+  ValidarId(AId, 'Estado');
+  { não deixa excluir estado com cidades vinculadas (referência lógica) }
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := Conexao.Connection;
+    LQuery.Transaction := Conexao.Transaction;
+    LQuery.SQL.Text := 'SELECT COUNT(*) FROM CIDADE WHERE ESTADO_ID = :ID';
+    LQuery.ParamByName('ID').AsLargeInt := AId;
+    LQuery.Open;
+    LUsos := LQuery.Fields[0].AsLargeInt;
+    LQuery.Close;
+  finally
+    LQuery.Free;
+  end;
+  if LUsos > 0 then
+    raise Exception.Create(
+      'Este estado possui cidades vinculadas e não pode ser excluído.');
   Result := FRepo.Excluir(AId);
+  LogOperacao('ESTADO', 'D', AId);
 end;
 
 end.

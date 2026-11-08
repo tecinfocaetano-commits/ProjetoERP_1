@@ -17,11 +17,13 @@ type
     FNome: string;
     FCodigo: string;
     FDdi: string;
+    FAtivo: Char;
   public
     property Id: Int64 read FId write FId;
     property Nome: string read FNome write FNome;
     property Codigo: string read FCodigo write FCodigo;
     property Ddi: string read FDdi write FDdi;
+    property Ativo: Char read FAtivo write FAtivo;
   end;
 
 implementation

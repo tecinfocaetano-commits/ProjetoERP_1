@@ -18,12 +18,14 @@ type
     FNome: string;
     FUf: string;
     FCodigoIbge: string;
+    FAtivo: Char;
   public
     property Id: Int64 read FId write FId;
     property PaisId: Int64 read FPaisId write FPaisId;
     property Nome: string read FNome write FNome;
     property Uf: string read FUf write FUf;
     property CodigoIbge: string read FCodigoIbge write FCodigoIbge;
+    property Ativo: Char read FAtivo write FAtivo;
   end;
 
 implementation

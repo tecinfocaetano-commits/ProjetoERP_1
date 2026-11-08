@@ -17,11 +17,15 @@ type
     FEstadoId: Int64;
     FNome: string;
     FCodigoIbge: string;
+    FCepPadrao: string;
+    FAtivo: Char;
   public
     property Id: Int64 read FId write FId;
     property EstadoId: Int64 read FEstadoId write FEstadoId;
     property Nome: string read FNome write FNome;
     property CodigoIbge: string read FCodigoIbge write FCodigoIbge;
+    property CepPadrao: string read FCepPadrao write FCepPadrao;
+    property Ativo: Char read FAtivo write FAtivo;
   end;
 
 implementation
