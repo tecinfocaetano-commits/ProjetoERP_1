@@ -12,7 +12,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, Grids, DateUtils,
-  uConexao, uSessao, uGrade, uGradeService, uFrmGradeQuantidades;
+  uConexao, uSessao, uGrade, uGradeService, uFrmGradeQuantidades,
+  uPedidoVendaService;
 
 type
   { TfrmPedidoVenda }
@@ -219,9 +220,7 @@ begin
   LQtd := SomarQuantidades(ATamanhos);
   LVlr := StrToFloatDef(sgItens.Cells[3, ARow], 0);
   LDesc := StrToFloatDef(sgItens.Cells[4, ARow], 0);
-  LTotal := (LQtd * LVlr) - LDesc;
-  if LTotal < 0 then
-    LTotal := 0;
+  LTotal := TotalItemPedido(LQtd, LVlr, LDesc);
 
   sgItens.Cells[2, ARow] := FormatFloat('#,##0.####', LQtd);
   sgItens.Cells[5, ARow] := FormatFloat('#,##0.00', LTotal);
@@ -395,28 +394,14 @@ end;
 
 function TfrmPedidoVenda.ProximoNumero: Integer;
 var
-  LQuery: TSQLQuery;
-  LNum, LMax: Integer;
+  LPedido: TPedidoVendaService;
 begin
-  LMax := 0;
-  LQuery := TSQLQuery.Create(nil);
+  LPedido := TPedidoVendaService.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    // NUMERO é VARCHAR no banco; ignorar valores não numéricos
-    LQuery.SQL.Text := 'SELECT NUMERO FROM PEDIDO_VENDA';
-    LQuery.Open;
-    while not LQuery.EOF do
-    begin
-      LNum := StrToIntDef(Trim(LQuery.FieldByName('NUMERO').AsString), 0);
-      if LNum > LMax then
-        LMax := LNum;
-      LQuery.Next;
-    end;
+    Result := LPedido.ProximoNumero;
   finally
-    LQuery.Free;
+    LPedido.Free;
   end;
-  Result := LMax + 1;
 end;
 
 procedure TfrmPedidoVenda.btnBuscarProdClick(Sender: TObject);
@@ -467,7 +452,7 @@ begin
   LQtd := StrToFloatDef(edtQtd.Text, 0);
   LVlr := StrToFloatDef(edtVlrUnit.Text, 0);
   LDesc := StrToFloatDef(edtDescItem.Text, 0);
-  LTotal := (LQtd * LVlr) - LDesc;
+  LTotal := TotalItemPedido(LQtd, LVlr, LDesc);
 
   if LQtd <= 0 then
   begin
@@ -487,9 +472,7 @@ begin
         LTamPadrao, LTamanhos, True) then
         Exit;
       LQtd := SomarQuantidades(LTamanhos);
-      LTotal := (LQtd * LVlr) - LDesc;
-      if LTotal < 0 then
-        LTotal := 0;
+      LTotal := TotalItemPedido(LQtd, LVlr, LDesc);
     end;
   end;
 
@@ -537,14 +520,15 @@ end;
 procedure TfrmPedidoVenda.RecalcularTotais;
 var
   I: Integer;
-  LSub: Double;
+  LSub, LDesc: Double;
 begin
   LSub := 0;
   for I := 1 to sgItens.RowCount - 1 do
     LSub := LSub + StrToFloatDef(sgItens.Cells[5, I], 0);
 
+  LDesc := StrToFloatDef(edtDesconto.Text, 0);
   edtSubtotal.Text := FormatFloat('#,##0.00', LSub);
-  edtTotal.Text := FormatFloat('#,##0.00', LSub - StrToFloatDef(edtDesconto.Text, 0));
+  edtTotal.Text := FormatFloat('#,##0.00', TotalDoPedidoVenda(LSub, LDesc));
 end;
 
 procedure TfrmPedidoVenda.edtDescontoExit(Sender: TObject);
@@ -554,11 +538,11 @@ end;
 
 procedure TfrmPedidoVenda.btnSalvarClick(Sender: TObject);
 var
-  LQuery: TSQLQuery;
-  I: Integer;
   LClienteId, LFormaPagId, LCondPagId: Int64;
-  LItemId: Int64;
-  LTamanhos: TGradeTamanhos;
+  LItens: TItensPedidoEntrada;
+  LPedido: TPedidoVendaService;
+  LNumero: string;
+  I: Integer;
 begin
   if cmbCliente.ItemIndex < 0 then
   begin
@@ -582,88 +566,37 @@ begin
   else
     LCondPagId := 0;
 
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-
-    FConexao.IniciarTransacao;
-
-    // Salvar cabeçalho
-    LQuery.SQL.Text :=
-      'INSERT INTO PEDIDO_VENDA (EMPRESA_ID, CLIENTE_ID, USUARIO_ID, NUMERO, ' +
-      'STATUS, SUBTOTAL, DESCONTO, TOTAL, FORMA_PAGAMENTO_ID, CONDICAO_PAGAMENTO_ID, OBSERVACOES) ' +
-      'VALUES (:EMP, :CLI, :USR, :NUM, :STS, :SUB, :DESC, :TOT, :FP, :CP, :OBS)';
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.ParamByName('CLI').AsLargeInt := LClienteId;
-    LQuery.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    LQuery.ParamByName('NUM').AsInteger := StrToIntDef(edtNumero.Text, 0);
-    LQuery.ParamByName('STS').AsString := 'P';
-    LQuery.ParamByName('SUB').AsFloat := StrToFloatDef(edtSubtotal.Text, 0);
-    LQuery.ParamByName('DESC').AsFloat := StrToFloatDef(edtDesconto.Text, 0);
-    LQuery.ParamByName('TOT').AsFloat := StrToFloatDef(edtTotal.Text, 0);
-    if LFormaPagId > 0 then
-      LQuery.ParamByName('FP').AsLargeInt := LFormaPagId
-    else
-      LQuery.ParamByName('FP').Clear;
-    if LCondPagId > 0 then
-      LQuery.ParamByName('CP').AsLargeInt := LCondPagId
-    else
-      LQuery.ParamByName('CP').Clear;
-    LQuery.ParamByName('OBS').AsString := mmoObs.Text;
-    LQuery.ExecSQL;
-
-    // Obter ID do pedido
-    LQuery.SQL.Text := 'SELECT GEN_ID(GEN_PEDIDO_VENDA_ID, 0) FROM RDB$DATABASE';
-    LQuery.Open;
-    FPedidoId := LQuery.Fields[0].AsLargeInt;
-    if LQuery.Active then
-      LQuery.Close;
-
-    // Salvar itens
-    for I := 1 to sgItens.RowCount - 1 do
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO ITEM_PEDIDO (PEDIDO_VENDA_ID, PRODUTO_ID, QUANTIDADE, ' +
-        'VALOR_UNITARIO, DESCONTO, VALOR_TOTAL, CFOP) ' +
-        'VALUES (:PED, :PROD, :QTD, :VLR, :DESC, :TOT, :CFOP)';
-      LQuery.ParamByName('PED').AsLargeInt := FPedidoId;
-      LQuery.ParamByName('PROD').AsLargeInt := StrToInt64(sgItens.Cells[0, I]);
-      LQuery.ParamByName('QTD').AsFloat := StrToFloatDef(sgItens.Cells[2, I], 0);
-      LQuery.ParamByName('VLR').AsFloat := StrToFloatDef(sgItens.Cells[3, I], 0);
-      LQuery.ParamByName('DESC').AsFloat := StrToFloatDef(sgItens.Cells[4, I], 0);
-      LQuery.ParamByName('TOT').AsFloat := StrToFloatDef(sgItens.Cells[5, I], 0);
-      LQuery.ParamByName('CFOP').AsString := sgItens.Cells[6, I];
-      LQuery.ExecSQL;
-
-      { grade efetiva do item: entra na MESMA transação do pedido }
-      if FUsaGrade then
-      begin
-        LTamanhos := GradeDaLinha(I);
-        if Length(LTamanhos) > 0 then
-        begin
-          LQuery.Close;
-          LQuery.SQL.Text :=
-            'SELECT GEN_ID(GEN_ITEM_PEDIDO_ID, 0) AS ID FROM RDB$DATABASE';
-          LQuery.Open;
-          LItemId := LQuery.FieldByName('ID').AsLargeInt;
-          LQuery.Close;
-          FGradeService.SalvarGradeItemPedido(LItemId, LTamanhos);
-        end;
-      end;
-    end;
-
-    FConexao.Confirmar;
-    MessageDlg('Pedido salvo com sucesso! Nº ' + edtNumero.Text, mtInformation, [mbOK], 0);
-    LimparFormulario;
-  except
-    on E: Exception do
-    begin
-      FConexao.Cancelar;
-      MessageDlg('Erro ao salvar pedido: ' + E.Message, mtError, [mbOK], 0);
-    end;
+  { monta os itens do grid para o Service: a regra de total, de grade
+    e de gravação fica toda no TPedidoVendaService }
+  LItens := nil;
+  SetLength(LItens, sgItens.RowCount - 1);
+  for I := 1 to sgItens.RowCount - 1 do
+  begin
+    LItens[I - 1].ProdutoId := StrToInt64Def(sgItens.Cells[0, I], 0);
+    LItens[I - 1].Quantidade := StrToFloatDef(sgItens.Cells[2, I], 0);
+    LItens[I - 1].ValorUnitario := StrToFloatDef(sgItens.Cells[3, I], 0);
+    LItens[I - 1].Desconto := StrToFloatDef(sgItens.Cells[4, I], 0);
+    LItens[I - 1].Cfop := sgItens.Cells[6, I];
+    LItens[I - 1].Tamanhos := GradeDaLinha(I);
   end;
-  LQuery.Free;
+
+  LNumero := Trim(edtNumero.Text);
+  LPedido := TPedidoVendaService.Create;
+  try
+    try
+      FPedidoId := LPedido.SalvarPedido(LClienteId, LNumero, LItens,
+        StrToFloatDef(edtDesconto.Text, 0), LFormaPagId, LCondPagId,
+        mmoObs.Text, 'P');
+      MessageDlg('Pedido salvo com sucesso! Nº ' + LNumero,
+        mtInformation, [mbOK], 0);
+      LimparFormulario;
+    except
+      on E: Exception do
+        MessageDlg('Erro ao salvar pedido: ' + E.Message, mtError, [mbOK], 0);
+    end;
+  finally
+    LPedido.Free;
+  end;
 end;
 
 procedure TfrmPedidoVenda.LimparFormulario;

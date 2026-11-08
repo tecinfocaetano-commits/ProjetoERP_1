@@ -26,6 +26,7 @@ uses
   uCaixaTest,
   uContasTest,
   uEstoqueTest,
+  uPedidoVendaTest,
   uConexao,
   uSessao;
 
@@ -110,6 +111,10 @@ begin
 
     // Executar testes de movimentação de estoque (07/11/2026)
     TEstoqueTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes de pedido de venda (08/11/2026)
+    TPedidoVendaTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais

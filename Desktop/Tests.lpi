@@ -91,6 +91,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src\Tests\uPedidoVendaTest.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\Config\uConexao.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
