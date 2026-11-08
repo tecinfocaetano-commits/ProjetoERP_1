@@ -31,6 +31,7 @@ uses
   uOrcamentoTest,
   uPDVTest,
   uMovimentoFinanceiroTest,
+  uInventarioTest,
   uConexao,
   uSessao;
 

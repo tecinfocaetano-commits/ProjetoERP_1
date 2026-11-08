@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uConexao;
+  uConexao, uInventarioService;
 
 type
   { TfrmInventario }
@@ -38,6 +38,7 @@ type
   private
     FConexao: TConexao;
     FQuery: TSQLQuery;
+    FService: TInventarioService;
     procedure CarregarInventario;
   end;
 
@@ -52,23 +53,18 @@ procedure TfrmInventario.FormCreate(Sender: TObject);
 begin
   try
     FConexao := TConexao.GetInstance;
-    if FConexao = nil then
-      raise Exception.Create('FConexao não foi inicializado');
-
-    // Iniciar conexão com o banco
     if not FConexao.Conectado then
       FConexao.Conectar;
 
-    FQuery := TSQLQuery.Create(Self);
-    if FQuery = nil then
-      raise Exception.Create('FQuery não foi criado');
+    FService := TInventarioService.Create;
 
+    FQuery := TSQLQuery.Create(Self);
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
 
-    // Criar DataSource1 se não existir
     if DataSource1 = nil then
       DataSource1 := TDataSource.Create(Self);
+
     CarregarInventario;
   except
     on E: Exception do
@@ -78,39 +74,10 @@ end;
 
 procedure TfrmInventario.CarregarInventario;
 var
-  LSQL, LWhere: string;
   LTotal: Double;
 begin
-  LSQL :=
-    'SELECT P.ID, P.CODIGO, P.DESCRICAO, ' +
-    'COALESCE(E.QUANTIDADE, 0) AS QTD_ATUAL, ' +
-    'P.ESTOQUE_MINIMO, P.ESTOQUE_MAXIMO, ' +
-    'P.PRECO_CUSTO, P.PRECO_VENDA, ' +
-    '(COALESCE(E.QUANTIDADE, 0) * P.PRECO_CUSTO) AS VALOR_ESTOQUE ' +
-    'FROM PRODUTO P ' +
-    'LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
-    'WHERE P.CONTROLA_ESTOQUE = ''S'' AND P.ATIVO = ''A''';
-
-  if Trim(edtPesquisa.Text) <> '' then
-    LSQL := LSQL + ' AND (UPPER(P.DESCRICAO) CONTAINING UPPER(:FILTRO) OR P.CODIGO CONTAINING :FILTRO2)';
-
-  if chkApenasComEstoque.Checked then
-    LSQL := LSQL + ' AND COALESCE(E.QUANTIDADE, 0) > 0';
-
-  if chkAbaixoMinimo.Checked then
-    LSQL := LSQL + ' AND COALESCE(E.QUANTIDADE, 0) < P.ESTOQUE_MINIMO AND P.ESTOQUE_MINIMO > 0';
-
-  LSQL := LSQL + ' ORDER BY P.DESCRICAO';
-
-  if FQuery.Active then
-    FQuery.Close;
-  FQuery.SQL.Text := LSQL;
-  if Trim(edtPesquisa.Text) <> '' then
-  begin
-    FQuery.ParamByName('FILTRO').AsString := edtPesquisa.Text;
-    FQuery.ParamByName('FILTRO2').AsString := edtPesquisa.Text;
-  end;
-  FQuery.Open;
+  FService.CarregarInventario(FQuery, edtPesquisa.Text,
+    chkApenasComEstoque.Checked, chkAbaixoMinimo.Checked);
   DataSource1.DataSet := FQuery;
 
   // Resumo
@@ -118,14 +85,8 @@ begin
   lblTotalItens.Caption := Format('Total Itens: %d', [FQuery.RecordCount]);
   FQuery.First;
 
-  // Calcular valor total
-  LTotal := 0;
-  while not FQuery.EOF do
-  begin
-    LTotal := LTotal + FQuery.FieldByName('VALOR_ESTOQUE').AsFloat;
-    FQuery.Next;
-  end;
-  FQuery.First;
+  // Calcular valor total usando o Service
+  LTotal := FService.ValorTotalEstoque;
   lblValorTotal.Caption := Format('Valor Total Estoque: R$ %s', [FormatFloat('#,##0.00', LTotal)]);
 end;
 
