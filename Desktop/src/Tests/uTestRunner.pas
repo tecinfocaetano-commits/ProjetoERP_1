@@ -33,6 +33,7 @@ uses
   uMovimentoFinanceiroTest,
   uInventarioTest,
   uKardexTest,
+  uProducaoFluxoTest,
   uConexao,
   uSessao;
 
@@ -145,6 +146,10 @@ begin
 
     // Executar testes do Kardex (08/11/2026)
     TKardexTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes do Fluxo de Produção (08/11/2026)
+    TProducaoFluxoTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais
