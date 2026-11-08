@@ -1099,6 +1099,70 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Commit:** `ae86f28` (Service + tela + testes); a documentação deste marco
   vem no commit seguinte.
 
+### 3.35 PDV: Service e testes (08/11, concluído)
+
+- **Refatoração:** as regras de `uFrmPDV` foram para
+  `Desktop\src\Services\uPDVService.pas`. A tela manteve o layout, o grid, os
+  atalhos (F2–F6/ESC), as mensagens e as listas paralelas
+  `FProdutoIds`/`FPrecos` (para não reinterpretar o texto formatado do grid);
+  a regra de negócio (caixa, venda, itens, movimento, saldo e fechamento)
+  ficou no Service.
+- **Correções em relação à tela antiga:** o PDV gravava itens em
+  `ITEM_PEDIDO_VENDA` (**tabela inexistente** — a correta é `ITEM_PEDIDO`),
+  não informava `CLIENTE_ID` (domínio `DM_ID NOT NULL`), omitia
+  `EMPRESA_ID`/`USUARIO_ID` em `MOVIMENTO_CAIXA` e confirmava o movimento no
+  meio da venda (venda e baixa podiam divergir). Tudo passou a ser gravado na
+  **mesma transação**, com auditoria.
+- **Service (`TPDVService`):**
+  - `ProximoNumeroVenda`/`ProximoNumeroCaixa`: maior `NUMERO` **numérico** da
+    empresa + 1, ignorando textos (ex.: `ORC-...`) e outra empresa;
+  - `CaixaAberto(AUsuarioId = 0)`: caixa `STATUS='A'` da empresa/usuário
+    (padrão: sessão); `AbrirCaixa` recusa valor negativo e caixa já aberto,
+    grava número automático e audita `INSERT`; `FecharCaixa` grava
+    `STATUS='F'`, `DATA_FECHAMENTO`, `VALOR_FECHAMENTO` (saldo) e audita
+    `FECHAMENTO`, recusando fechar de novo;
+  - `BuscarProduto`: por `CODIGO` ou `CODIGO_BARRAS` (`:COD1/:COD2`, pois no
+    SQLDB um parâmetro repetido só é ligado na primeira ocorrência), somente
+    `ATIVO='A'` e da empresa;
+  - `SalvarVenda`: valida caixa aberto da empresa, itens, desconto, cliente e
+    observações; calcula subtotal/total (nunca negativos); grava cabeçalho
+    `PEDIDO_VENDA` com `STATUS='F'`, número automático e cliente informado ou
+    **"Consumidor Final"** (criado/reutilizado por empresa), itens em
+    `ITEM_PEDIDO` (`PRECO_UNITARIO`, `VALOR_UNITARIO`, `DESCONTO=0`,
+    `VALOR_TOTAL`, CFOP `5102`) e um `MOVIMENTO_CAIXA` `TIPO='V'` com
+    `EMPRESA_ID`, `USUARIO_ID`, `PEDIDO_VENDA_ID` e `FORMA_PAGAMENTO_ID`
+    opcional — tudo na mesma transação, com auditoria `INSERT` das duas
+    tabelas;
+  - `RegistrarMovimento`: só `E`/`S`, valor > 0, caixa aberto da empresa e
+    descrição até 255, com auditoria;
+  - `SaldoCaixa`: abertura + entradas (`E` e `V`) − saídas (`S`), com `CAST`
+    numérico (sem ele o Firebird devolve `ftUnknown` e o valor vem 0);
+  - `QuantidadeItens` e `CarregarFormasPagamento` (ID em `Objects`).
+- **Caixa (`uCaixaService`):** `TIPO='V'` passou a contar como **entrada** no
+  saldo da grade e no resumo (`ENTRADAS`/`SALDO`), e o movimento aparece como
+  `VENDA` na grade/filtro. Antes a venda do PDV ficava fora do saldo.
+  Observação: a grade/resumo do `TCaixaService` mostram o saldo **só dos
+  movimentos**; a abertura entra apenas no `SaldoCaixa` do PDV.
+- **Consumidor Final:** a venda balcão sem cliente usa/cria uma `PESSOA`
+  `TIPO='C'`, `TIPO_PESSOA='F'`, `ATIVO='A'`, nome `Consumidor Final` e
+  `CPF_CNPJ='000.000.000-00'`, por empresa; vendas seguintes reutilizam.
+- **Testes:** `Desktop\src\Tests\uPDVTest.pas`, **34 testes**, cobrindo totais,
+  numeração (texto/outra empresa) de venda e caixa, `CaixaAberto`, abertura
+  (inclusive duplicada/negativa), busca de produto (código/barras/inativo/
+  outra empresa/vazio), venda completa (cabeçalho `F`, item, movimento `V`,
+  auditorias), consumidor final (reuso e forma de pagamento nula), múltiplos
+  itens, desconto maior, número automático, saldo (PDV + grade/resumo do
+  `TCaixaService`), sangria/suprimento, fechamento, formas de pagamento e as
+  validações (sem itens, caixa/produto/cliente inválidos, quantidade, preço,
+  desconto e observações). Limpeza por sufixo + remoção dos caixas do usuário
+  fictício `990001` + corte do `LOG_SISTEMA` no topo capturado.
+- **Resultado:** suíte desktop **288/288** (antes **254/254**), build desktop
+  **0/0**. Banco conferido: nenhuma pessoa/produto de teste, nenhum pedido com
+  observação de teste, nenhum caixa do usuário `990001`, nenhum movimento
+  desses caixas e nenhum "Consumidor Final" criado pela suíte.
+- **Commit:** `0bff99d` (Service + tela + caixa + testes); a documentação
+  deste marco vem no commit seguinte.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)

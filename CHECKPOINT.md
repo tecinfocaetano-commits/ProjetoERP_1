@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **254/254**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **288/288**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
@@ -27,32 +27,32 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `ae86f28` (Orcamento: service com conversao em pedido e testes). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md`, `PLANO_E_LOG.md` e `PROMPT_AMANHA.md`).
-Build: desktop **0/0** · suíte desktop **254/254** · testes Android **5/5** (inalterados nesta etapa).
+**HEAD:** `0bff99d` (PDV: service com venda, caixa e testes). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md`, `PLANO_E_LOG.md` e `PROMPT_AMANHA.md`).
+Build: desktop **0/0** · suíte desktop **288/288** · testes Android **5/5** (inalterados nesta etapa).
 
-> Se `git log -1` mostrar um hash diferente de `ae86f28`, é porque o commit
+> Se `git log -1` mostrar um hash diferente de `0bff99d`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — o Service de orçamento e os testes estão no commit `ae86f28`.
-  Banco conferido sem resíduos: 4 pedidos e 6 itens (os pré-existentes),
-  nenhuma linha em `ITEM_PEDIDO_GRADE`, nenhuma pessoa/produto de teste,
-  nenhuma linha com empresa `999999` e nenhum log de `CONVERSAO`.
+- Nada — o Service do PDV, a tela, o ajuste do caixa e os testes estão no
+  commit `0bff99d`. Banco conferido sem resíduos: nenhuma pessoa/produto de
+  teste, nenhum pedido com observação de teste, nenhum caixa do usuário
+  fictício `990001`, nenhum movimento desses caixas e nenhum
+  "Consumidor Final" criado pela suíte.
 
 ### Próximo passo (executável)
 
-1. **PDV (`uFrmPDV.pas`, 547 linhas e 12 SQL):** próxima tela grande. Extrair
-   as regras de venda para Service (numeração, totais, validações, itens,
-   pagamento e baixa de estoque), corrigir filtros de empresa e cobrir com
-   `uPDVTest` (~20 testes), registrando em `uTestRunner.pas` e `Tests.lpi`.
-2. Depois: **Movimento Financeiro** (`uFrmMovimentoFinanceiro.pas`),
-   **Inventário/Kardex** (`uFrmInventario.pas`/`uFrmKardex.pas`),
+1. **Movimento Financeiro (`uFrmMovimentoFinanceiro.pas`):** próxima tela.
+   Extrair as regras para Service (validação de conta/plano, tipo
+   entrada/saída, valor, data e auditoria), corrigir filtros de empresa e
+   cobrir com uma suíte nova, registrando em `uTestRunner.pas` e `Tests.lpi`.
+2. Depois: **Inventário/Kardex** (`uFrmInventario.pas`/`uFrmKardex.pas`),
    **Consumo/Ficha/Bipagem/Cores** e **NFe**, uma por marco.
 3. Manter o padrão desta etapa: dados com timestamp, limpeza explícita no
    `finally`, sem mock de banco.
 4. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
-   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **254/254** ou mais); se
+   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **288/288** ou mais); se
    a suíte cair, não commitar.
 5. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
    (esperado **5/5**) e `Scripts\build_android.bat` (esperado `BUILD SUCCESSFUL`).
@@ -61,6 +61,7 @@ Build: desktop **0/0** · suíte desktop **254/254** · testes Android **5/5** (
 
 | Item | Entrega |
 |---|---|
+| **PDV (Service + testes)** | `uPDVService` tirou as regras de `uFrmPDV`: um caixa aberto por empresa/usuário, abertura com número automático e auditoria `INSERT`, venda como `PEDIDO_VENDA` com `STATUS='F'`, cliente informado ou **"Consumidor Final"** da empresa, itens em `ITEM_PEDIDO` (com `PRECO_UNITARIO`/`VALOR_UNITARIO` e CFOP `5102`) e movimento de caixa `V` na **mesma transação**, além de sangria/suprimento, saldo e fechamento. Corrigiu o PDV antigo, que gravava em `ITEM_PEDIDO_VENDA` (tabela inexistente), omitia `CLIENTE_ID`, `EMPRESA_ID`/`USUARIO_ID` do movimento e confirmava no meio da venda. O `TCaixaService` passou a contar `TIPO='V'` como entrada (venda do PDV aparecia fora do saldo). `uPDVTest` com **34 testes**. Suíte **288/288**. Detalhes em `PLANO_E_LOG.md` §3.35 |
 | **Orçamento (Service + testes)** | `uOrcamentoService` tirou as regras de `uFrmOrcamento`: o orçamento é um `PEDIDO_VENDA` com `STATUS='O'`, então a gravação delega ao `TPedidoVendaService` (numeração por empresa, totais nunca negativos, `PRECO_UNITARIO`/`VALOR_UNITARIO`, CFOP `5102`, itens na mesma transação e auditoria `INSERT`). `ConverterEmPedido` só aceita orçamento da empresa com status `O`, usa `STATUS='O'` no `WHERE` (conversão dupla bloqueada) e audita `CONVERSAO`. A tela passou a filtrar clientes/produtos pela empresa, buscar produto por `:COD1/:COD2/:COD3` e manter o ID após salvar para o botão **Gerar Pedido**. `uOrcamentoTest` com **23 testes**. Suíte **254/254**. Detalhes em `PLANO_E_LOG.md` §3.34 |
 | **Compras (Service + testes)** | `uPedidoCompraService` tirou as regras de `uFrmCompras`: numeração **por empresa** (maior `NUMERO` numérico + 1, ignorando textos como `PC-TESTE-8`), total do item = quantidade × valor − desconto e total do pedido = subtotal − desconto (ambos nunca negativos), status `ABERTO`/`CONFIRMADO`/`CANCELADO`, datas opcionais, cabeçalho + itens na **mesma transação** com auditoria `INSERT` e ID por `RETURNING ID`. A tela passou a listar só fornecedores ativos da empresa. `uPedidoCompraTest` com **22 testes** cobre totais, numeração, gravação, status, datas e todas as validações. Suíte **231/231**. Detalhes em `PLANO_E_LOG.md` §3.33 |
 | **Pedido de venda (Service + testes)** | `uPedidoVendaService` tirou as regras de `uFrmPedidoVenda`: numeração **por empresa** (maior `NUMERO` numérico + 1, ignorando textos), totais de item/pedido nunca negativos, gravação de cabeçalho e itens na **mesma transação** com `PRECO_UNITARIO` e `VALOR_UNITARIO`, CFOP padrão `5102`, `DATA_ENTREGA` opcional e auditoria `INSERT`; a quantidade do item com grade passa a ser a soma dos tamanhos e a grade efetiva entra na transação do pedido. `uPedidoVendaTest` com **25 testes** cobre totais, numeração, gravação, grade, desconto maior que o subtotal, data de entrega, campos opcionais nulos e todas as validações. Suíte **209/209**. Detalhes em `PLANO_E_LOG.md` §3.32 |
@@ -724,12 +725,13 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 ## Para continuar (ao ligar o PC)
 
 0. **Próximo marco:** a suíte desktop das áreas cobertas fechou (cadastros,
-   notas fiscais, caixa, contas, estoque e pedidos de venda). O próximo passo
-   é o que o usuário pedir.
+   notas fiscais, caixa, contas, estoque, pedidos de venda, compras, orçamento
+   e PDV). O próximo passo é **Movimento Financeiro**; depois
+   Inventário/Kardex, Consumo/Ficha/Bipagem/Cores e NFe.
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
-4. Testes unit: `Scripts\run_tests.bat` → esperado **209/209**.
+4. Testes unit: `Scripts\run_tests.bat` → esperado **288/288**.
 5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\telas_todas_ui.ps1`
    → esperado **TELAS-DESKTOP-UI CONCLUIDO** (33/33); `... Scripts\testes\fase6_01.ps1`
    → esperado **FASE6-01 CONCLUIDO**; e
