@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, Grids, DateUtils,
-  uConexao, uSessao;
+  uConexao, uSessao, uPedidoVendaService, uOrcamentoService;
 
 type
   { TfrmOrcamento }
@@ -126,7 +126,10 @@ begin
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT ID, NOME FROM PESSOA WHERE TIPO = ''C'' AND ATIVO = ''A'' ORDER BY NOME';
+    LQuery.SQL.Text :=
+      'SELECT ID, NOME FROM PESSOA ' +
+      'WHERE TIPO = ''C'' AND ATIVO = ''A'' AND EMPRESA_ID = :EMP ORDER BY NOME';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     while not LQuery.EOF do
     begin
@@ -148,10 +151,18 @@ begin
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
+    { no SQLDB um parâmetro nomeado repetido só é ligado na primeira
+      ocorrência: usar :COD1/:COD2/:COD3 para buscar por código,
+      código de barras e ID }
     LQuery.SQL.Text :=
       'SELECT ID, DESCRICAO, PRECO_VENDA FROM PRODUTO ' +
-      'WHERE (CODIGO = :COD OR CODIGO_BARRAS = :COD OR CAST(ID AS VARCHAR(20)) = :COD) AND ATIVO = ''A''';
-    LQuery.ParamByName('COD').AsString := Trim(edtProduto.Text);
+      'WHERE (CODIGO = :COD1 OR CODIGO_BARRAS = :COD2 ' +
+      '  OR CAST(ID AS VARCHAR(20)) = :COD3) ' +
+      'AND ATIVO = ''A'' AND EMPRESA_ID = :EMP';
+    LQuery.ParamByName('COD1').AsString := Trim(edtProduto.Text);
+    LQuery.ParamByName('COD2').AsString := Trim(edtProduto.Text);
+    LQuery.ParamByName('COD3').AsString := Trim(edtProduto.Text);
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
     begin
@@ -196,7 +207,7 @@ begin
   sgItens.Cells[2, LRow] := FormatFloat('#,##0.0000', LQtd);
   sgItens.Cells[3, LRow] := FormatFloat('#,##0.0000', LVlr);
   sgItens.Cells[4, LRow] := FormatFloat('#,##0.00', LDesc);
-  sgItens.Cells[5, LRow] := FormatFloat('#,##0.00', (LQtd * LVlr) - LDesc);
+  sgItens.Cells[5, LRow] := FormatFloat('#,##0.00', TotalItemPedido(LQtd, LVlr, LDesc));
   edtProduto.Clear;
   lblProdutoDesc.Caption := '';
   FProdutoId := 0;
@@ -224,7 +235,8 @@ begin
   for I := 1 to sgItens.RowCount - 1 do
     LSub := LSub + StrToFloatDef(sgItens.Cells[5, I], 0);
   edtSubtotal.Text := FormatFloat('#,##0.00', LSub);
-  edtTotal.Text := FormatFloat('#,##0.00', LSub - StrToFloatDef(edtDesconto.Text, 0));
+  edtTotal.Text := FormatFloat('#,##0.00',
+    TotalDoPedidoVenda(LSub, StrToFloatDef(edtDesconto.Text, 0)));
 end;
 
 procedure TfrmOrcamento.edtDescontoExit(Sender: TObject);
@@ -234,9 +246,12 @@ end;
 
 procedure TfrmOrcamento.btnSalvarClick(Sender: TObject);
 var
-  LQuery: TSQLQuery;
   I: Integer;
   LClienteId: Int64;
+  LItens: TItensPedidoEntrada;
+  LService: TOrcamentoService;
+  LNumero: string;
+  LDesconto: Double;
 begin
   if cmbCliente.ItemIndex < 0 then
   begin
@@ -249,91 +264,92 @@ begin
     Exit;
   end;
 
-  LClienteId := PtrInt(cmbCliente.Items.Objects[cmbCliente.ItemIndex]);
+  LClienteId := Int64(PtrInt(cmbCliente.Items.Objects[cmbCliente.ItemIndex]));
 
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
-    // Salva orçamento como pedido de venda com status 'O' (Orçamento)
-    LQuery.SQL.Text :=
-      'INSERT INTO PEDIDO_VENDA (EMPRESA_ID, CLIENTE_ID, USUARIO_ID, STATUS, ' +
-      'SUBTOTAL, DESCONTO, TOTAL, OBSERVACOES) ' +
-      'VALUES (:EMP, :CLI, :USR, ''O'', :SUB, :DESC, :TOT, :OBS)';
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.ParamByName('CLI').AsLargeInt := LClienteId;
-    LQuery.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    LQuery.ParamByName('SUB').AsFloat := StrToFloatDef(edtSubtotal.Text, 0);
-    LQuery.ParamByName('DESC').AsFloat := StrToFloatDef(edtDesconto.Text, 0);
-    LQuery.ParamByName('TOT').AsFloat := StrToFloatDef(edtTotal.Text, 0);
-    LQuery.ParamByName('OBS').AsString := mmoObs.Text;
-    LQuery.ExecSQL;
-
-    LQuery.SQL.Text := 'SELECT GEN_ID(GEN_PEDIDO_VENDA_ID, 0) FROM RDB$DATABASE';
-    LQuery.Open;
-    FOrcamentoId := LQuery.Fields[0].AsLargeInt;
-    if LQuery.Active then
-      LQuery.Close;
-
-    for I := 1 to sgItens.RowCount - 1 do
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO ITEM_PEDIDO (PEDIDO_VENDA_ID, PRODUTO_ID, QUANTIDADE, ' +
-        'VALOR_UNITARIO, DESCONTO, VALOR_TOTAL) ' +
-        'VALUES (:PED, :PROD, :QTD, :VLR, :DESC, :TOT)';
-      LQuery.ParamByName('PED').AsLargeInt := FOrcamentoId;
-      LQuery.ParamByName('PROD').AsLargeInt := StrToInt64(sgItens.Cells[0, I]);
-      LQuery.ParamByName('QTD').AsFloat := StrToFloatDef(sgItens.Cells[2, I], 0);
-      LQuery.ParamByName('VLR').AsFloat := StrToFloatDef(sgItens.Cells[3, I], 0);
-      LQuery.ParamByName('DESC').AsFloat := StrToFloatDef(sgItens.Cells[4, I], 0);
-      LQuery.ParamByName('TOT').AsFloat := StrToFloatDef(sgItens.Cells[5, I], 0);
-      LQuery.ExecSQL;
-    end;
-
-    FConexao.Confirmar;
-    MessageDlg('Orçamento salvo com sucesso!', mtInformation, [mbOK], 0);
-    LimparFormulario;
-  except
-    on E: Exception do
-    begin
-      FConexao.Cancelar;
-      MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
-    end;
+  { monta os itens do grid para o Service: validação, totais, gravação
+    dos itens e auditoria ficam em TOrcamentoService/TPedidoVendaService }
+  LItens := nil;
+  SetLength(LItens, sgItens.RowCount - 1);
+  for I := 1 to sgItens.RowCount - 1 do
+  begin
+    LItens[I - 1].ProdutoId := StrToInt64Def(sgItens.Cells[0, I], 0);
+    LItens[I - 1].Quantidade := StrToFloatDef(sgItens.Cells[2, I], 0);
+    LItens[I - 1].ValorUnitario := StrToFloatDef(sgItens.Cells[3, I], 0);
+    LItens[I - 1].Desconto := StrToFloatDef(sgItens.Cells[4, I], 0);
+    LItens[I - 1].Cfop := '';
+    LItens[I - 1].Tamanhos := nil;
   end;
-  LQuery.Free;
+
+  LDesconto := StrToFloatDef(edtDesconto.Text, 0);
+  LService := TOrcamentoService.Create;
+  try
+    try
+      { o número exibido é o mesmo que será gravado }
+      LNumero := Trim(edtNumero.Text);
+      if (LNumero = '') or (LNumero = '0') then
+        LNumero := IntToStr(LService.ProximoNumero);
+
+      FOrcamentoId := LService.SalvarOrcamento(LClienteId, LNumero, LItens,
+        LDesconto, mmoObs.Text);
+      edtNumero.Text := LNumero;
+
+      { mantém o ID para o botão "Gerar Pedido"; limpa só o que já foi
+        gravado, para não salvar o mesmo orçamento duas vezes }
+      cmbCliente.ItemIndex := -1;
+      sgItens.RowCount := 1;
+      edtSubtotal.Text := '0,00';
+      edtDesconto.Text := '0,00';
+      edtTotal.Text := '0,00';
+      mmoObs.Clear;
+
+      MessageDlg('Orçamento salvo com sucesso! Use "Gerar Pedido" para convertê-lo.',
+        mtInformation, [mbOK], 0);
+    except
+      on E: Exception do
+        MessageDlg('Erro ao salvar orçamento: ' + E.Message, mtError, [mbOK], 0);
+    end;
+  finally
+    LService.Free;
+  end;
 end;
 
 procedure TfrmOrcamento.btnGerarPedidoClick(Sender: TObject);
 var
-  LQuery: TSQLQuery;
+  LService: TOrcamentoService;
 begin
   if FOrcamentoId <= 0 then
   begin
     MessageDlg('Salve o orçamento antes de gerar o pedido.', mtWarning, [mbOK], 0);
     Exit;
   end;
-  // Converter orçamento em pedido alterando status
-  LQuery := TSQLQuery.Create(nil);
+
+  { valida empresa e status ('O') antes de mudar para 'P', com auditoria }
+  LService := TOrcamentoService.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'UPDATE PEDIDO_VENDA SET STATUS = ''P'' WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FOrcamentoId;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
-    MessageDlg('Orçamento convertido em Pedido!', mtInformation, [mbOK], 0);
+    try
+      LService.ConverterEmPedido(FOrcamentoId);
+      MessageDlg('Orçamento convertido em Pedido!', mtInformation, [mbOK], 0);
+      LimparFormulario;
+    except
+      on E: Exception do
+        MessageDlg('Erro ao converter orçamento: ' + E.Message, mtError, [mbOK], 0);
+    end;
   finally
-    LQuery.Free;
+    LService.Free;
   end;
 end;
 
 procedure TfrmOrcamento.LimparFormulario;
 begin
+  edtNumero.Clear;
   edtData.Text := FormatDateTime('dd/mm/yyyy', Now);
   edtValidade.Text := FormatDateTime('dd/mm/yyyy', IncMonth(Now, 1));
   cmbCliente.ItemIndex := -1;
+  edtProduto.Clear;
+  lblProdutoDesc.Caption := '';
+  edtQtd.Clear;
+  edtVlrUnit.Clear;
+  edtDescItem.Text := '0,00';
   sgItens.RowCount := 1;
   edtSubtotal.Text := '0,00';
   edtDesconto.Text := '0,00';

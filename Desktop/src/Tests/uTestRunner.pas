@@ -28,6 +28,7 @@ uses
   uEstoqueTest,
   uPedidoVendaTest,
   uPedidoCompraTest,
+  uOrcamentoTest,
   uConexao,
   uSessao;
 
@@ -120,6 +121,10 @@ begin
 
     // Executar testes de pedido de compra (08/11/2026)
     TPedidoCompraTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes de orçamento (08/11/2026)
+    TOrcamentoTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais

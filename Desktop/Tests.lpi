@@ -99,6 +99,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src\Tests\uOrcamentoTest.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\Config\uConexao.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
