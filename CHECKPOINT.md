@@ -27,7 +27,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `6e6b707` (NotaEntrada: cabecalho e itens gravados via Service).
+**HEAD:** `70e946c` (Geograficos: forms delegam escrita aos Services).
 Árvore: limpa.
 Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (inalterados).
 
@@ -63,6 +63,13 @@ Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (
   cabeçalho ganhou guarda `STATUS <> 'P'` + `EMPRESA_ID` e update do item
   exige `NOTA_ENTRADA_ID` (anti-IDOR). Build 0/0, suíte **337/337**.
   Commit `6e6b707`.
+- **Geográficos — RESOLVIDO (marco 3.42):** `uFrmPais`/`uFrmEstado`/
+  `uFrmCidade` não têm mais INSERT/UPDATE/DELETE — montam o model e
+  chamam `Inserir`/`Atualizar`/`Excluir` do Service. Models ganharam
+  `Ativo` (+`CepPadrao` em `TCidade`); Services passaram a gravar
+  `ATIVO`/`CEP_PADRAO`, auditar via `LogOperacao` e validar filhos no
+  delete (país→estados, estado→cidades). Build 0/0, suíte **337/337**.
+  Commit `70e946c`.
 - **Escrita direta restante nas telas** (próximos candidatos):
   - cadastros simples que escrevem direto apesar de terem Service:
     `uFrmCategorias`, `uFrmCidade`, `uFrmEstado`, `uFrmPais`,
@@ -73,10 +80,10 @@ Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (
 
 ### Próximo passo (executável)
 
-1. **Cadastros simples:** delegar as escritas diretas ao Service já
-   existente — `uFrmCategorias`, `uFrmCidade`, `uFrmEstado`, `uFrmPais`,
-   `uFrmMaterial`, `uFrmProdutoFiscal`, `uFrmProdutos`, `uFrmUsuarios`
-   (CRUD puro; começar pelos geográficos, já testados). Um marco por vez.
+1. **Cadastros simples restantes:** delegar as escritas diretas ao
+   Service já existente — `uFrmCategorias`, `uFrmMaterial`,
+   `uFrmProdutoFiscal`, `uFrmProdutos`, `uFrmUsuarios` (CRUD puro;
+   geográficos já migrados no marco 3.42). Um marco por vez.
 2. Depois: `uFrmLogin` (UPDATE de `USUARIO.SENHA`/`ULTIMO_ACESSO` —
    avaliar método de Service para troca de senha com auditoria).
 3. Antes de qualquer commit: `Scripts\build_desktop.bat` (0/0) e

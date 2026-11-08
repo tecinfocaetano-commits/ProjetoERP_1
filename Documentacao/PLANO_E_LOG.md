@@ -1299,6 +1299,25 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Resultado:** build **0 erros**, suíte **337/337**.
 - **Commit:** `6e6b707`.
 
+### 3.42 Geográficos — escrita delegada aos Services (08/11)
+
+- **Problema:** `uFrmPais`/`uFrmEstado`/`uFrmCidade` faziam
+  INSERT/UPDATE/DELETE direto no form apesar de os Services já existirem
+  (e sem auditoria nem validação de filhos no delete).
+- **Entrega:**
+  - Models `TPais`/`TEstado`/`TCidade` ganharam `Ativo` e `TCidade`
+    ganhou `CepPadrao` — campos que a tela já gravava mas o model não
+    expunha.
+  - Services: `ATIVO`/`CEP_PADRAO` no insert/update, leitura no
+    `BuscarPorId`, `LogOperacao` em I/U/D, `ValidarId` no update/excluir
+    e checagem de filhos no delete (país→ESTADO, estado→CIDADE) com a
+    mesma mensagem que a tela exibia.
+  - Forms montam o model e chamam `Inserir`/`Atualizar`/`Excluir`;
+    `FService` liberado no `destructor`.
+- **Resultado:** build **0 erros**, suíte **337/337** (inclui
+  `uGeograficoTest`, que já exercitava os Services).
+- **Commit:** `70e946c`.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)
