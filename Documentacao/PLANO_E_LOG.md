@@ -1005,6 +1005,52 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.33 Compras: Service e testes (08/11, concluído)
+
+- **Refatoração:** as regras de `uFrmCompras` foram para
+  `Desktop\src\Services\uPedidoCompraService.pas`. A tela mantém os campos, os
+  combos, o grid de itens e as mensagens; a regra de negócio (numeração, totais,
+  validação e gravação) ficou no Service.
+- **Service:**
+  - `ProximoNumero`: maior `NUMERO` **numérico** da empresa da sessão + 1.
+    `NUMERO` é `VARCHAR(20)`: valores como `PC-TESTE-8` são ignorados. Antes a
+    tela lia todos os pedidos, sem filtrar empresa;
+  - `TotalItemCompra`/`TotalDoPedidoCompra` (funções exportadas): item =
+    `quantidade * valor unitário - desconto` e pedido = `subtotal - desconto`,
+    ambos **nunca negativos**. A tela usa as mesmas funções no grid e no
+    subtotal/total, então o valor exibido e o gravado não divergem;
+  - `SalvarPedido`: valida fornecedor ativo do tipo `F` da empresa, pelo menos um
+    material da empresa, quantidade > 0, valor unitário e descontos não
+    negativos, observações até 500 e status `ABERTO`/`CONFIRMADO`/`CANCELADO`
+    (vazio = `ABERTO`); número vazio ou `'0'` usa `ProximoNumero`; grava
+    `DATA_EMISSAO`/`DATA_ENTREGA` só quando informadas (a trigger preenche a
+    emissão com a data atual) e devolve o ID;
+  - **Transação única:** cabeçalho + itens entram na mesma transação, com
+    auditoria `INSERT` em `LOG_SISTEMA`;
+  - **Correções em relação à tela antiga:** a numeração passou a ser por
+    empresa; o ID do pedido vem de `RETURNING ID` em vez de
+    `GEN_ID(..., 0)`; o total do item nunca fica negativo; o desconto do pedido
+    passou a ser gravado e abatido do total; e o combo de fornecedores passou a
+    listar só os **ativos da empresa** da sessão.
+- **Testes:** `Desktop\src\Tests\uPedidoCompraTest.pas`, **22 testes**, cobrindo
+  totais (item/pedido e nunca negativo), subtotal/total no Service, gravação
+  completa (cabeçalho, itens, `SUBTOTAL`/`DESCONTO`/`TOTAL`, datas, auditoria),
+  número automático (`''` e `'0'`), numeração ignorando texto e por empresa,
+  múltiplos itens, desconto maior que o subtotal, status
+  `ABERTO`/`CONFIRMADO`/`CANCELADO`, datas opcionais, e as validações
+  (fornecedor 0/inexistente/inativo/cliente, sem itens, material
+  0/inexistente/de outra empresa, quantidade, valores negativos, observações,
+  número e status). Limpeza por sufixo (itens → pedidos → materiais → pessoas)
+  + corte do `LOG_SISTEMA` no topo capturado.
+- **Resultado:** suíte desktop **231/231** (antes **209/209**), build desktop
+  **0/0**. Banco conferido: 1 pedido de compra (`PC-TESTE-8`, `CONFIRMADO`) e 1
+  item (os pré-existentes), nenhuma pessoa/material de teste e nenhuma linha com
+  empresa `999999`.
+- **Commit:** `d7e3304` (Service + tela + testes); a documentação deste marco
+  vem no commit seguinte.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

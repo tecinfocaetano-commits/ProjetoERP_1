@@ -10,19 +10,19 @@ Regras: responder em português; terminar toda resposta com exatamente 3 linhas 
 
 Estado em 08/11/2026:
 
-- **HEAD:** `ff66e68` (Pedido de venda: service com regras, numeracao por empresa e testes). Árvore limpa.
-- Suíte desktop **209/209**; build desktop **0/0**; testes Android **5/5**.
-- Concluído nesta etapa: testes unitários das **notas fiscais** (`uNotasFiscaisTest`, 34), dos **cadastros** (`uGeograficoTest` 11 + `uCadastrosFase1Test` 23), a **correção do cadastro de produto** (§3.28), os testes do **caixa** (`uCaixaTest`, 17 — §3.29), as **contas a pagar/receber** (`uContasTest`, 16 — §3.30), o **estoque** (`uEstoqueTest`, 18 — §3.31) e os **pedidos de venda** (`uPedidoVendaTest`, 25 — §3.32), que moveu as regras da tela para `uPedidoVendaService`, numerou por empresa e passou a gravar `PRECO_UNITARIO`.
-- Banco real conferido sem resíduos: 4 pedidos e 6 itens (pré-existentes), nenhuma linha em `ITEM_PEDIDO_GRADE`, nenhum cliente/produto de teste e nenhuma linha com empresa `999999`.
-- **Próximo passo (a definir):** a suíte desktop das áreas cobertas fechou (cadastros, notas, caixa, contas, estoque e pedidos); escolher a próxima tela/área a cobrir.
+- **HEAD:** `d7e3304` (Compras: service de pedido de compra e testes). Árvore limpa.
+- Suíte desktop **231/231**; build desktop **0/0**; testes Android **5/5**.
+- Concluído nesta etapa: testes unitários das **notas fiscais** (`uNotasFiscaisTest`, 34), dos **cadastros** (`uGeograficoTest` 11 + `uCadastrosFase1Test` 23), a **correção do cadastro de produto** (§3.28), os testes do **caixa** (`uCaixaTest`, 17 — §3.29), as **contas a pagar/receber** (`uContasTest`, 16 — §3.30), o **estoque** (`uEstoqueTest`, 18 — §3.31), os **pedidos de venda** (`uPedidoVendaTest`, 25 — §3.32) e as **compras** (`uPedidoCompraTest`, 22 — §3.33).
+- Banco real conferido sem resíduos: 1 pedido de compra (`PC-TESTE-8`) e 1 item (pré-existentes), nenhuma pessoa/material de teste e nenhuma linha com empresa `999999`.
+- **Próximo passo:** cobrir o **orçamento** (`uFrmOrcamento.pas`), que grava `PEDIDO_VENDA` com `STATUS='O'` e converte para `'P'`; depois PDV, Movimento Financeiro, Inventário/Kardex, Consumo/Ficha/Bipagem/Cores e NFe.
 
 Comandos:
 
 - `Scripts\build_desktop.bat` → esperado 0/0.
-- `Scripts\build_tests.bat` + `Scripts\run_tests.bat` → esperado **209/209**.
+- `Scripts\build_tests.bat` + `Scripts\run_tests.bat` → esperado **231/231**.
 - `Scripts\run_tests_android.bat` → esperado **5/5**.
 - Banco: `Banco\dados.fdb` (SYSDBA/masterkey); Firebird 5 em `C:\Program Files\Firebird\Firebird_5_0`.
 
-Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md` e o §3.32 do `Documentacao\PLANO_E_LOG.md`.
+Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md` e o §3.33 do `Documentacao\PLANO_E_LOG.md`.
 
 ---
