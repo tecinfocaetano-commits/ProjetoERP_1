@@ -660,7 +660,7 @@ end;
 
 function TfrmNotaEntrada.SalvarCabecalho: Boolean;
 var
-  LQuery: TSQLQuery;
+  LDados: TNotaEntradaCabecalho;
   LCondId: Int64;
 begin
   Result := False;
@@ -682,86 +682,34 @@ begin
   if cmbCondicaoPagamento.ItemIndex >= 0 then
     LCondId := Int64(PtrInt(cmbCondicaoPagamento.Items.Objects[cmbCondicaoPagamento.ItemIndex]));
 
-  LQuery := TSQLQuery.Create(nil);
+  with LDados do
+  begin
+    FornecedorId := FFornecedorId;
+    Numero := Trim(edtNumero.Text);
+    Serie := Trim(edtSerie.Text);
+    Modelo := Trim(edtModelo.Text);
+    ChaveAcesso := Trim(edtChave.Text);
+    DataEmissao := StrToDateDef(edtDataEmissao.Text, Now);
+    DataEntrada := StrToDateDef(edtDataEntrada.Text, Now);
+    NaturezaOperacao := Trim(edtNatureza.Text);
+    Cfop := Trim(edtCfop.Text);
+    ValorFrete := StrToFloatDef(edtFrete.Text, 0);
+    ValorSeguro := StrToFloatDef(edtSeguro.Text, 0);
+    ValorOutras := StrToFloatDef(edtOutras.Text, 0);
+    ValorDesconto := StrToFloatDef(edtDesconto.Text, 0);
+    CondicaoPagamentoId := LCondId;
+  end;
+
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
-    if FNotaId = 0 then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO NOTA_ENTRADA (EMPRESA_ID, FORNECEDOR_ID, NUMERO, SERIE, MODELO, CHAVE_ACESSO, ' +
-        '  DATA_EMISSAO, DATA_ENTRADA, NATUREZA_OPERACAO, CFOP, VALOR_FRETE, VALOR_SEGURO, ' +
-        '  VALOR_OUTRAS, VALOR_DESCONTO, VALOR_PRODUTOS, VALOR_TOTAL, STATUS, ' +
-        '  CONDICAO_PAGAMENTO_ID, USUARIO_ID, DATA_CADASTRO) ' +
-        'VALUES (:EMP, :FORN, :NUM, :SERIE, :MODELO, :CHAVE, :DEMI, :DENT, :NAT, :CFOP, ' +
-        '  :FRETE, :SEGURO, :OUTRAS, :DESCONTO, 0, 0, ''A'', :COND, :USU, CURRENT_TIMESTAMP) ' +
-        'RETURNING ID';
-      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-      LQuery.ParamByName('FORN').AsLargeInt := FFornecedorId;
-      LQuery.ParamByName('NUM').AsString := Trim(edtNumero.Text);
-      LQuery.ParamByName('SERIE').AsString := Trim(edtSerie.Text);
-      LQuery.ParamByName('MODELO').AsString := Trim(edtModelo.Text);
-      LQuery.ParamByName('CHAVE').AsString := Trim(edtChave.Text);
-      LQuery.ParamByName('DEMI').AsDate := StrToDateDef(edtDataEmissao.Text, Now);
-      LQuery.ParamByName('DENT').AsDate := StrToDateDef(edtDataEntrada.Text, Now);
-      LQuery.ParamByName('NAT').AsString := Trim(edtNatureza.Text);
-      LQuery.ParamByName('CFOP').AsString := Trim(edtCfop.Text);
-      LQuery.ParamByName('FRETE').AsFloat := StrToFloatDef(edtFrete.Text, 0);
-      LQuery.ParamByName('SEGURO').AsFloat := StrToFloatDef(edtSeguro.Text, 0);
-      LQuery.ParamByName('OUTRAS').AsFloat := StrToFloatDef(edtOutras.Text, 0);
-      LQuery.ParamByName('DESCONTO').AsFloat := StrToFloatDef(edtDesconto.Text, 0);
-      if LCondId > 0 then
-        LQuery.ParamByName('COND').AsLargeInt := LCondId
-      else
-        LQuery.ParamByName('COND').Clear;
-      LQuery.ParamByName('USU').AsLargeInt := TSessao.GetInstance.UsuarioId;
-      LQuery.Open;
-      FNotaId := LQuery.FieldByName('ID').AsLargeInt;
-      LQuery.Close;
-    end
-    else
-    begin
-      LQuery.SQL.Text :=
-        'UPDATE NOTA_ENTRADA SET FORNECEDOR_ID = :FORN, NUMERO = :NUM, SERIE = :SERIE, ' +
-        '  MODELO = :MODELO, CHAVE_ACESSO = :CHAVE, DATA_EMISSAO = :DEMI, ' +
-        '  DATA_ENTRADA = :DENT, NATUREZA_OPERACAO = :NAT, CFOP = :CFOP, ' +
-        '  VALOR_FRETE = :FRETE, VALOR_SEGURO = :SEGURO, VALOR_OUTRAS = :OUTRAS, ' +
-        '  VALOR_DESCONTO = :DESCONTO, CONDICAO_PAGAMENTO_ID = :COND ' +
-        'WHERE ID = :ID';
-      LQuery.ParamByName('FORN').AsLargeInt := FFornecedorId;
-      LQuery.ParamByName('NUM').AsString := Trim(edtNumero.Text);
-      LQuery.ParamByName('SERIE').AsString := Trim(edtSerie.Text);
-      LQuery.ParamByName('MODELO').AsString := Trim(edtModelo.Text);
-      LQuery.ParamByName('CHAVE').AsString := Trim(edtChave.Text);
-      LQuery.ParamByName('DEMI').AsDate := StrToDateDef(edtDataEmissao.Text, Now);
-      LQuery.ParamByName('DENT').AsDate := StrToDateDef(edtDataEntrada.Text, Now);
-      LQuery.ParamByName('NAT').AsString := Trim(edtNatureza.Text);
-      LQuery.ParamByName('CFOP').AsString := Trim(edtCfop.Text);
-      LQuery.ParamByName('FRETE').AsFloat := StrToFloatDef(edtFrete.Text, 0);
-      LQuery.ParamByName('SEGURO').AsFloat := StrToFloatDef(edtSeguro.Text, 0);
-      LQuery.ParamByName('OUTRAS').AsFloat := StrToFloatDef(edtOutras.Text, 0);
-      LQuery.ParamByName('DESCONTO').AsFloat := StrToFloatDef(edtDesconto.Text, 0);
-      if LCondId > 0 then
-        LQuery.ParamByName('COND').AsLargeInt := LCondId
-      else
-        LQuery.ParamByName('COND').Clear;
-      LQuery.ParamByName('ID').AsLargeInt := FNotaId;
-      LQuery.ExecSQL;
-    end;
-
-    FService.RecalcularTotais(FNotaId);
-    FConexao.Confirmar;
+    FNotaId := FService.SalvarCabecalho(FNotaId, LDados);
     Result := True;
   except
     on E: Exception do
     begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao gravar a nota: ' + E.Message, mtError, [mbOK], 0);
+      Result := False;
     end;
   end;
-  LQuery.Free;
 end;
 
 procedure TfrmNotaEntrada.btnGravarClick(Sender: TObject);
@@ -786,90 +734,16 @@ end;
 
 function TfrmNotaEntrada.InserirItem(AProdutoId: Int64; const ADescricao: string;
   AQuantidade, AValorUnitario, ADesconto: Double): Boolean;
-var
-  LQuery: TSQLQuery;
-  LNcm, LCfop, LCst: string;
-  LAliq, LValorIcms: Double;
-  LProdutoFiscalId: Int64;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-
-    // Classificação fiscal herdada do PRODUTO_FISCAL (com fallback para os
-    // campos do próprio produto) - regra no service.
-    LProdutoFiscalId := 0;
-    LNcm := '';
-    LCfop := Trim(edtCfop.Text);
-    LCst := '';
-    LAliq := 0;
-    if AProdutoId > 0 then
-    begin
-      FService.CarregarFiscalDoProduto(AProdutoId, LProdutoFiscalId,
-        LNcm, LCfop, LCst, LAliq);
-      if LCfop = '' then
-        LCfop := Trim(edtCfop.Text);
-    end;
-
-    LValorIcms := (AQuantidade * AValorUnitario) * LAliq / 100;
-
-    FConexao.IniciarTransacao;
-
-    if FItemId = 0 then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO NOTA_ENTRADA_ITEM (NOTA_ENTRADA_ID, PRODUTO_ID, PRODUTO_FISCAL_ID, ' +
-        '  DESCRICAO, NCM, CFOP, CST_ICMS, ALIQ_ICMS, VALOR_ICMS, QUANTIDADE, VALOR_UNITARIO, ' +
-        '  VALOR_TOTAL, DESCONTO, ATUALIZA_ESTOQUE, ATUALIZA_CUSTO) ' +
-        'VALUES (:NOTA, :PROD, :PFISCAL, :DESC, :NCM, :CFOP, :CST, :ALIQ, :VICMS, :QTD, :VUN, ' +
-        '  :VTOT, :DESC2, ''S'', ''S'')';
-    end
-    else
-    begin
-      LQuery.SQL.Text :=
-        'UPDATE NOTA_ENTRADA_ITEM SET PRODUTO_ID = :PROD, PRODUTO_FISCAL_ID = :PFISCAL, ' +
-        '  DESCRICAO = :DESC, NCM = :NCM, ' +
-        '  CFOP = :CFOP, CST_ICMS = :CST, ALIQ_ICMS = :ALIQ, VALOR_ICMS = :VICMS, ' +
-        '  QUANTIDADE = :QTD, VALOR_UNITARIO = :VUN, VALOR_TOTAL = :VTOT, DESCONTO = :DESC2 ' +
-        'WHERE ID = :ID';
-      LQuery.ParamByName('ID').AsLargeInt := FItemId;
-    end;
-
-    if FItemId = 0 then
-      LQuery.ParamByName('NOTA').AsLargeInt := FNotaId;
-    if AProdutoId > 0 then
-      LQuery.ParamByName('PROD').AsLargeInt := AProdutoId
-    else
-      LQuery.ParamByName('PROD').Clear;
-    if LProdutoFiscalId > 0 then
-      LQuery.ParamByName('PFISCAL').AsLargeInt := LProdutoFiscalId
-    else
-      LQuery.ParamByName('PFISCAL').Clear;
-    LQuery.ParamByName('DESC').AsString := ADescricao;
-    LQuery.ParamByName('NCM').AsString := LNcm;
-    LQuery.ParamByName('CFOP').AsString := LCfop;
-    LQuery.ParamByName('CST').AsString := LCst;
-    LQuery.ParamByName('ALIQ').AsFloat := LAliq;
-    LQuery.ParamByName('VICMS').AsFloat := LValorIcms;
-    LQuery.ParamByName('QTD').AsFloat := AQuantidade;
-    LQuery.ParamByName('VUN').AsFloat := AValorUnitario;
-    LQuery.ParamByName('VTOT').AsFloat := AQuantidade * AValorUnitario;
-    LQuery.ParamByName('DESC2').AsFloat := ADesconto;
-    LQuery.ExecSQL;
-
-    FService.RecalcularTotais(FNotaId);
-    FConexao.Confirmar;
+    FItemId := FService.SalvarItem(FNotaId, FItemId, AProdutoId, ADescricao,
+      AQuantidade, AValorUnitario, ADesconto);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao gravar o item: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 procedure TfrmNotaEntrada.btnIncluirItemClick(Sender: TObject);
