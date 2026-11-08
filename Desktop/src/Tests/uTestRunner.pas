@@ -32,6 +32,7 @@ uses
   uPDVTest,
   uMovimentoFinanceiroTest,
   uInventarioTest,
+  uKardexTest,
   uConexao,
   uSessao;
 

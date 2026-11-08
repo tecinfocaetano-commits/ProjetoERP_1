@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls, DateUtils,
-  uConexao;
+  uConexao, uKardexService;
 
 type
   { TfrmKardex }
@@ -50,6 +50,7 @@ type
   private
     FConexao: TConexao;
     FQuery: TSQLQuery;
+    FService: TKardexService;
     FProdutoId: Int64;
     procedure CarregarKardex;
     procedure CarregarResumo;
@@ -66,22 +67,16 @@ procedure TfrmKardex.FormCreate(Sender: TObject);
 begin
   try
     FConexao := TConexao.GetInstance;
-    if FConexao = nil then
-      raise Exception.Create('FConexao não foi inicializado');
-
-    // Iniciar conexão com o banco
     if not FConexao.Conectado then
       FConexao.Conectar;
 
-    FQuery := TSQLQuery.Create(Self);
-    if FQuery = nil then
-      raise Exception.Create('FQuery não foi criado');
+    FService := TKardexService.Create;
 
+    FQuery := TSQLQuery.Create(Self);
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
     FProdutoId := 0;
 
-    // Criar DataSource1 se não existir
     if DataSource1 = nil then
       DataSource1 := TDataSource.Create(Self);
 
@@ -108,85 +103,43 @@ end;
 
 procedure TfrmKardex.btnBuscarClick(Sender: TObject);
 var
-  LQuery: TSQLQuery;
+  LProdutoId: Int64;
+  LDescricao: string;
+  LEstoqueAtual: Double;
 begin
   if Trim(edtProduto.Text) = '' then Exit;
 
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text :=
-      'SELECT P.ID, P.DESCRICAO, COALESCE(E.QUANTIDADE, 0) AS ESTOQUE_ATUAL ' +
-      'FROM PRODUTO P LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
-      'WHERE P.CODIGO = :COD OR P.CODIGO_BARRAS = :COD OR CAST(P.ID AS VARCHAR(20)) = :COD';
-    LQuery.ParamByName('COD').AsString := Trim(edtProduto.Text);
-    LQuery.Open;
-
-    if not LQuery.IsEmpty then
-    begin
-      FProdutoId := LQuery.FieldByName('ID').AsLargeInt;
-      lblProdutoNome.Caption := LQuery.FieldByName('DESCRICAO').AsString;
-      lblEstoqueAtual.Caption := 'Estoque Atual: ' +
-        FormatFloat('#,##0.0000', LQuery.FieldByName('ESTOQUE_ATUAL').AsFloat);
-      CarregarKardex;
-      CarregarResumo;
-    end
-    else
-    begin
-      MessageDlg('Produto não encontrado.', mtWarning, [mbOK], 0);
-      FProdutoId := 0;
-      lblProdutoNome.Caption := '';
-      lblEstoqueAtual.Caption := '';
-    end;
-  finally
-    LQuery.Free;
+  if FService.BuscarProduto(Trim(edtProduto.Text),
+    LProdutoId, LDescricao, LEstoqueAtual) then
+  begin
+    FProdutoId := LProdutoId;
+    lblProdutoNome.Caption := LDescricao;
+    lblEstoqueAtual.Caption := 'Estoque Atual: ' +
+      FormatFloat('#,##0.0000', LEstoqueAtual);
+    CarregarKardex;
+    CarregarResumo;
+  end
+  else
+  begin
+    MessageDlg('Produto não encontrado.', mtWarning, [mbOK], 0);
+    FProdutoId := 0;
+    lblProdutoNome.Caption := '';
+    lblEstoqueAtual.Caption := '';
   end;
 end;
 
 procedure TfrmKardex.CarregarKardex;
 var
   LDataInicio, LDataFim: TDateTime;
-  LSQL: string;
 begin
   try
     if FProdutoId <= 0 then Exit;
 
-    if FQuery = nil then
-      raise Exception.Create('FQuery não foi inicializado');
-
     LDataInicio := StrToDateDef(edtDataInicio.Text, Now);
     LDataFim := StrToDateDef(edtDataFim.Text, Now);
 
-    LSQL :=
-      'SELECT ME.DATA_MOVIMENTO, ' +
-      'CASE ME.TIPO WHEN ''E'' THEN ''Entrada'' WHEN ''S'' THEN ''Saída'' ' +
-      'WHEN ''A'' THEN ''Ajuste'' WHEN ''I'' THEN ''Inventário'' END AS TIPO, ' +
-      'ME.QUANTIDADE, ME.CUSTO_UNITARIO, ' +
-      '(ME.QUANTIDADE * ME.CUSTO_UNITARIO) AS VALOR_TOTAL, ' +
-      'ME.DOCUMENTO, ME.OBSERVACAO ' +
-      'FROM MOVIMENTO_ESTOQUE ME ' +
-      'WHERE ME.PRODUTO_ID = :PROD ' +
-      'AND ME.DATA_MOVIMENTO BETWEEN :DI AND :DF';
-
-    if Trim(edtPesquisa.Text) <> '' then
-      LSQL := LSQL + ' AND (UPPER(COALESCE(ME.DOCUMENTO, '''')) CONTAINING UPPER(:PESQ)' +
-                     ' OR UPPER(COALESCE(ME.OBSERVACAO, '''')) CONTAINING UPPER(:PESQ2))';
-
-    LSQL := LSQL + ' ORDER BY ME.DATA_MOVIMENTO';
-
-    if FQuery.Active then
-      FQuery.Close;
-    FQuery.SQL.Text := LSQL;
-    FQuery.ParamByName('PROD').AsLargeInt := FProdutoId;
-    FQuery.ParamByName('DI').AsDate := LDataInicio;
-    FQuery.ParamByName('DF').AsDate := LDataFim + 1;
-    if Trim(edtPesquisa.Text) <> '' then
-    begin
-      FQuery.ParamByName('PESQ').AsString := Trim(edtPesquisa.Text);
-      FQuery.ParamByName('PESQ2').AsString := Trim(edtPesquisa.Text);
-    end;
-    FQuery.Open;
+    FService.CarregarKardex(FQuery, FProdutoId, LDataInicio, LDataFim,
+      edtPesquisa.Text);
     DataSource1.DataSet := FQuery;
   except
     on E: Exception do
@@ -196,50 +149,19 @@ end;
 
 procedure TfrmKardex.CarregarResumo;
 var
-  LQuery: TSQLQuery;
   LDataInicio, LDataFim: TDateTime;
-  LSQL: string;
+  LResumo: TKardexResumo;
 begin
   try
-    if FConexao = nil then
-      raise Exception.Create('FConexao não foi inicializado');
-
     LDataInicio := StrToDateDef(edtDataInicio.Text, Now);
     LDataFim := StrToDateDef(edtDataFim.Text, Now);
 
-    LSQL :=
-      'SELECT ' +
-      'COALESCE(SUM(CASE WHEN TIPO IN (''E'',''A'') THEN QUANTIDADE ELSE 0 END), 0) AS ENTRADAS, ' +
-      'COALESCE(SUM(CASE WHEN TIPO = ''S'' THEN QUANTIDADE ELSE 0 END), 0) AS SAIDAS ' +
-      'FROM MOVIMENTO_ESTOQUE ' +
-      'WHERE PRODUTO_ID = :PROD AND DATA_MOVIMENTO BETWEEN :DI AND :DF';
+    FService.CarregarResumo(FProdutoId, LDataInicio, LDataFim,
+      edtPesquisa.Text, LResumo);
 
-    if Trim(edtPesquisa.Text) <> '' then
-      LSQL := LSQL + ' AND (UPPER(COALESCE(DOCUMENTO, '''')) CONTAINING UPPER(:PESQ)' +
-                     ' OR UPPER(COALESCE(OBSERVACAO, '''')) CONTAINING UPPER(:PESQ2))';
-
-    LQuery := TSQLQuery.Create(nil);
-    try
-      LQuery.DataBase := FConexao.Connection;
-      LQuery.Transaction := FConexao.Transaction;
-      LQuery.SQL.Text := LSQL;
-      LQuery.ParamByName('PROD').AsLargeInt := FProdutoId;
-      LQuery.ParamByName('DI').AsDate := LDataInicio;
-      LQuery.ParamByName('DF').AsDate := LDataFim + 1;
-      if Trim(edtPesquisa.Text) <> '' then
-      begin
-        LQuery.ParamByName('PESQ').AsString := Trim(edtPesquisa.Text);
-        LQuery.ParamByName('PESQ2').AsString := Trim(edtPesquisa.Text);
-      end;
-      LQuery.Open;
-
-      lblTotalEntradas.Caption := 'Entradas: ' + FormatFloat('#,##0.0000', LQuery.FieldByName('ENTRADAS').AsFloat);
-      lblTotalSaidas.Caption := 'Saídas: ' + FormatFloat('#,##0.0000', LQuery.FieldByName('SAIDAS').AsFloat);
-      lblSaldoFinal.Caption := 'Saldo: ' + FormatFloat('#,##0.0000',
-        LQuery.FieldByName('ENTRADAS').AsFloat - LQuery.FieldByName('SAIDAS').AsFloat);
-    finally
-      LQuery.Free;
-    end;
+    lblTotalEntradas.Caption := 'Entradas: ' + FormatFloat('#,##0.0000', LResumo.Entradas);
+    lblTotalSaidas.Caption := 'Saídas: ' + FormatFloat('#,##0.0000', LResumo.Saidas);
+    lblSaldoFinal.Caption := 'Saldo: ' + FormatFloat('#,##0.0000', LResumo.Saldo);
   except
     on E: Exception do
       MessageDlg('Erro ao carregar resumo: ' + E.Message, mtError, [mbOK], 0);
