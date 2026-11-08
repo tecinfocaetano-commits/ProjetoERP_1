@@ -1271,6 +1271,34 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Resultado:** suíte desktop **337/337** (antes 325), build **0 erros**.
 - **Commit:** `c57cb90`.
 
+### 3.41 Nota de Entrada — escrita movida para o Service (08/11)
+
+- **Problema:** `uFrmNotaEntrada` fazia INSERT/UPDATE direto em
+  `NOTA_ENTRADA` e `NOTA_ENTRADA_ITEM` no form, embora
+  `TNotaEntradaService` já existisse (totais/processar/cancelar). Update
+  do cabeçalho não validava empresa nem status; update do item não
+  conferia a nota-pai.
+- **Entrega:**
+  - `TNotaEntradaService.SalvarCabecalho(ANotaId, ADados)` — record
+    `TNotaEntradaCabecalho` na interface; insert com `RETURNING ID` ou
+    update com guarda `STATUS <> 'P'` + `EMPRESA_ID` (anti-IDOR);
+    `RegistrarAuditoria('NOTA_ENTRADA','I'/'U')`; `RecalcularTotais` na
+    mesma transação.
+  - `TNotaEntradaService.SalvarItem(ANotaId, AItemId, AProdutoId, ...)` —
+    classificação fiscal via `CarregarFiscalDoProduto`, VALOR_ICMS e
+    VALOR_TOTAL calculados no Service, update exige `NOTA_ENTRADA_ID`,
+    auditoria `NOTA_ENTRADA_ITEM`.
+  - Form delega; validações de tela (fornecedor/número preenchidos)
+    permanecem na UI antes da chamada.
+- **Varredura de telas:** produção (`uFrmConsumoMaterial`,
+  `uFrmFichaTecnica`, `uFrmBipagem`, `uFrmCoresProduto`) está 100%
+  delegada. Restam escrita direta em cadastros simples
+  (`uFrmCategorias`, `uFrmCidade`, `uFrmEstado`, `uFrmPais`,
+  `uFrmMaterial`, `uFrmProdutoFiscal`, `uFrmProdutos`, `uFrmUsuarios`) e
+  o UPDATE de senha do `uFrmLogin` — backlog em "Próximo passo".
+- **Resultado:** build **0 erros**, suíte **337/337**.
+- **Commit:** `6e6b707`.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)

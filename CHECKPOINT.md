@@ -27,7 +27,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `c57cb90` (Producao: suite do fluxo de negocio). Árvore: limpa.
+**HEAD:** `6e6b707` (NotaEntrada: cabecalho e itens gravados via Service).
+Árvore: limpa.
 Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
@@ -56,10 +57,13 @@ Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (
 - **Produção limpa:** `uFrmConsumoMaterial`, `uFrmFichaTecnica`,
   `uFrmBipagem`, `uFrmCoresProduto` não têm nenhum INSERT/UPDATE/DELETE —
   100% delegado a `TProducaoService`/`TCorService`.
-- **Escrita direta restante nas telas** (candidatas ao próximo marco):
-  - `uFrmNotaEntrada` — INSERT/UPDATE de `NOTA_ENTRADA` e
-    `NOTA_ENTRADA_ITEM` no form, embora `TNotaEntradaService` exista e já
-    seja usado para totais/processar/cancelar/excluir item;
+- **Nota de Entrada — RESOLVIDO (marco 3.41):** `SalvarCabecalho` e
+  `SalvarItem` criados em `TNotaEntradaService` (transação própria +
+  `RegistrarAuditoria`); o form só coleta campos e delega. Update do
+  cabeçalho ganhou guarda `STATUS <> 'P'` + `EMPRESA_ID` e update do item
+  exige `NOTA_ENTRADA_ID` (anti-IDOR). Build 0/0, suíte **337/337**.
+  Commit `6e6b707`.
+- **Escrita direta restante nas telas** (próximos candidatos):
   - cadastros simples que escrevem direto apesar de terem Service:
     `uFrmCategorias`, `uFrmCidade`, `uFrmEstado`, `uFrmPais`,
     `uFrmMaterial`, `uFrmProdutoFiscal`, `uFrmProdutos`, `uFrmUsuarios`
@@ -69,11 +73,12 @@ Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (
 
 ### Próximo passo (executável)
 
-1. **Nota de Entrada:** mover INSERT/UPDATE de cabeçalho e itens para o
-   `TNotaEntradaService` (mesma transação + auditoria), mantendo os calls
-   já existentes; cobrir com teste se faltar.
-2. Depois: cadastros simples (delegar ao Service existente) e o UPDATE de
-   senha do login, um marco por vez.
+1. **Cadastros simples:** delegar as escritas diretas ao Service já
+   existente — `uFrmCategorias`, `uFrmCidade`, `uFrmEstado`, `uFrmPais`,
+   `uFrmMaterial`, `uFrmProdutoFiscal`, `uFrmProdutos`, `uFrmUsuarios`
+   (CRUD puro; começar pelos geográficos, já testados). Um marco por vez.
+2. Depois: `uFrmLogin` (UPDATE de `USUARIO.SENHA`/`ULTIMO_ACESSO` —
+   avaliar método de Service para troca de senha com auditoria).
 3. Antes de qualquer commit: `Scripts\build_desktop.bat` (0/0) e
    `Scripts\run_tests.bat` (**337/337** ou mais); Android
    `Scripts\run_tests_android.bat` (**5/5**).
