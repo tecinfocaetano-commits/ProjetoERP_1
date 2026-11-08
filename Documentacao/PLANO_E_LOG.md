@@ -1165,6 +1165,80 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.36 Movimento Financeiro: Service e testes (08/11, concluído)
+
+- **Service (`uMovimentoFinanceiroService`):** regras de `uFrmMovimentoFinanceiro`
+  extraídas — validação de tipo/categoria/documento/valores, listagem por
+  período/status/texto **sempre no `EMPRESA_ID` da sessão**, gravação com
+  auditoria `INSERT`/`ALTERAR`/`EXCLUIR` na mesma transação e exclusão bloqueada
+  quando o registro é de outra empresa.
+- **Tela:** `uFrmMovimentoFinanceiro` passou a delegar ao Service; os filtros
+  de texto usam `CAST(... AS VARCHAR(...))` para evitar `string right
+  truncation` em campos `CHAR`/`VARCHAR` curtos.
+- **Testes:** `uMovimentoFinanceiroTest` — incluir/alterar/excluir na mesma
+  empresa, bloqueio de outra empresa (alterar/excluir), listagem com escopo,
+  filtros de pesquisa, ordenação `DATA DESC, ID DESC`, busca por ID e
+  validações de tipo/categoria/documento/valores. Registrado em
+  `uTestRunner.pas` e `Tests.lpi`.
+- **Commit:** ver `git log` (marco 3.36).
+
+### 3.37 Inventário: Service e testes (08/11, concluído)
+
+- **Service (`uInventarioService`):** `CarregarInventario` lista produtos
+  `ATIVO='A'` com `CONTROLA_ESTOQUE='S'` da empresa da sessão, com filtros de
+  texto (descrição/código), "apenas com estoque" e "abaixo do mínimo";
+  `ValorTotalEstoque` soma `ESTOQUE.QUANTIDADE * PRODUTO.PRECO_CUSTO`.
+- **Correção:** a query usava `P.CONTROLE_ESTOQUE` — coluna inexistente (o nome
+  real é `CONTROLA_ESTOQUE`); a tela de Inventário estava quebrada. Corrigido
+  no commit `079241a`.
+- **Tela:** `uFrmInventario` delega ao Service.
+- **Testes:** `uInventarioTest` — escopo de empresa, só `CONTROLA_ESTOQUE='S'`,
+  só `ATIVO='A'`, pesquisa por descrição/código, filtros de estoque/mínimo e
+  delta de `ValorTotalEstoque`.
+- **Commit:** ver `git log` (marco 3.37).
+
+### 3.38 Kardex: Service e testes (08/11, concluído)
+
+- **Service (`uKardexService`):** `BuscarProduto` por código/código de barras/
+  ID no escopo da empresa; `CarregarKardex` com período, documento/observação
+  (`CONTAINING` parametrizado); `CarregarResumo` (entradas `E`/`A`, saídas `S`,
+  saldo) via record `TKardexResumo`.
+- **Tela:** `uFrmKardex` delega ao Service.
+- **Testes:** `uKardexTest` — busca por código/barras/ID/não encontrado,
+  escopo de empresa, filtro de período, pesquisa por documento/observação,
+  resumo entradas/saídas/saldo, período vazio e outra empresa.
+- **Commit:** ver `git log` (marco 3.38).
+
+### 3.39 Testes MF/Inventário/Kardex no padrão da suíte + correções (08/11, concluído)
+
+- **Problema encontrado:** os 3 arquivos de teste criados nos marcos 3.36–3.38
+  estavam em **fpcunit** (`TTestCase`/`RegisterTest`) — o runner customizado
+  (`uAssert`/`TTestSuite`) nunca os executava, e eles faziam `DELETE` em
+  `PRODUTO`/`ESTOQUE`/`MOVIMENTO_ESTOQUE`/`MOVIMENTO_FINANCEIRO` da empresa de
+  teste inteira.
+- **Correção:** reescritos com `class procedure RunAllTests(ASuite)` +
+  `ASuite.AddResult`, dados com sufixo de timestamp e limpeza só dos IDs
+  criados no `finally`; registrados de fato no `uTestRunner.pas`. Suíte subiu
+  de 288 para **325** testes.
+- **Bugs revelados pelos testes (corrigidos em `079241a`):**
+  - `uInventarioService`: `CONTROLE_ESTOQUE` → `CONTROLA_ESTOQUE` (coluna
+    inexistente quebrava a listagem); `CAST` nos filtros de texto.
+  - `uKardexService`: `BETWEEN :DI AND :DF` → `>= :DI AND < :DF` (o fim
+    inclusivo vazava o dia seguinte); `CAST(... AS DOUBLE PRECISION)` em
+    `VALOR_TOTAL` e no resumo — **`SUM`/multiplicação de `NUMERIC(15,4)`
+    retornava NULL no Firebird 5** (mesmo comportamento do resumo financeiro
+    da API, §3.18).
+  - `uMovimentoFinanceiroService`: `CAST` em `PESQ3` (documento).
+  - `uFrmNFe.CarregarPedidos`: não filtrava `EMPRESA_ID` — agora
+    `PV.EMPRESA_ID = :EMP`.
+  - `TACBrHelper.GerarNFe`: pedido, sequência de `NUMERO_NFE` e `UPDATE`
+    passaram a respeitar `EMPRESA_ID`; join `PESSOA` por empresa; escrita em
+    transação com auditoria `LOG_SISTEMA`.
+- **Resultado:** suíte desktop **325/325**, build desktop **0/0**.
+- **Commit:** `079241a`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

@@ -27,31 +27,35 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `82d21e0` (Kardex: Service + testes). Árvore: limpa.
-Build: desktop **0/0** · suíte desktop **326/326** (317 + 9 novos) · testes Android **5/5** (inalterados).
+**HEAD:** `079241a` (Testes MF/Inventario/Kardex no padrao da suite +
+correcao escopo NFe e numericos). Árvore: limpa.
+Build: desktop **0/0** · suíte desktop **325/325** · testes Android **5/5** (inalterados).
 
-> Se `git log -1` mostrar um hash diferente de `0bff99d`, é porque o commit
-> que gravou este texto veio depois — o disco vence, como sempre.
+> Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — o Service do Kardex, a tela adaptada e os testes estão no
-  commit `82d21e0`. Banco conferido sem resíduos.
+- Nada — testes reescritos, correções de Service/NF-e e registro no
+  runner estão no commit `079241a`. Banco conferido sem resíduos.
+
+### O que fechou nesta sessão (marco 3.39)
+
+| Item | Entrega |
+|---|---|
+| **Testes MF/Inventário/Kardex** | Os 3 arquivos de teste criados antes estavam em **fpcunit** (nunca executados — o runner não os chamava) e faziam `DELETE` em `PRODUTO`/`ESTOQUE`/`MOVIMENTO_ESTOQUE`/`MOVIMENTO_FINANCEIRO` da empresa inteira. Reescritos no framework `uAssert` (`RunAllTests`/`AddResult`), com sufixo de timestamp e limpeza só dos IDs criados; registrados de fato no `uTestRunner.pas`. Suíte subiu de 288 para **325**. |
+| **Correções de Service achadas pelos testes** | `uInventarioService`: coluna `CONTROLE_ESTOQUE` não existe (é `CONTROLA_ESTOQUE`) — a tela de Inventário estava quebrada; `CAST` em `PESQ`/`FILTRO2` (string right truncation). `uKardexService`: período `BETWEEN` virou `>= :DI AND < :DF` (vazava o dia seguinte) e `CAST(... AS DOUBLE PRECISION)` em `VALOR_TOTAL` e no resumo — **multiplicação/soma de `NUMERIC(15,4)` retornava NULL no Firebird 5** (mesmo problema já visto no resumo financeiro da API, §3.18). `uMovimentoFinanceiroService`: `CAST` em `PESQ3` (documento). |
+| **NF-e / empresa** | `uFrmNFe.CarregarPedidos` não filtrava `EMPRESA_ID` — agora `PV.EMPRESA_ID = :EMP`. `TACBrHelper.GerarNFe`: pedido, sequencia de `NUMERO_NFE` e `UPDATE` passaram a respeitar a empresa; join `PESSOA` por empresa; escrita em transação com auditoria `LOG_SISTEMA`. |
 
 ### Próximo passo (executável)
 
-1. **Consumo/Ficha/Bipagem/Cores:** extrair regras para Service (validação
-   de produto/quantidade/data, estoque, movimento, custo médio), corrigir
-   filtros de empresa e cobrir com suíte nova, registrando em
-   `uTestRunner.pas` e `Tests.lpi`.
-2. Depois: **NFe**, uma por marco.
-3. Manter o padrão desta etapa: dados com timestamp, limpeza explícita no
-   `finally`, sem mock de banco.
-4. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
-   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **326/326** ou mais); se
-   a suíte cair, não commitar.
-5. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
-   (esperado **5/5**) e `Scripts\build_android.bat` (esperado `BUILD SUCCESSFUL`).
+1. **Consumo/Ficha/Bipagem/Cores:** os forms já delegam a
+   `TProducaoService`/`TCorService` e os Services já filtram
+   `EMPRESA_ID` — falta só cobrir com suíte de testes (ou revisar se
+   algum caminho ainda grava fora do Service).
+2. Depois: continuar backlog do `PLANO_E_LOG.md`, um marco por vez.
+3. Antes de qualquer commit: `Scripts\build_desktop.bat` (0/0) e
+   `Scripts\run_tests.bat` (**325/325** ou mais); Android
+   `Scripts\run_tests_android.bat` (**5/5**).
 
 ### O que fechou nesta sessão
 
