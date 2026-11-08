@@ -13,7 +13,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, Grids, DateUtils,
-  uConexao, uSessao, uNotaEntradaService;
+  uConexao, uSessao, uNotaEntradaService, uPedidoCompraService;
 
 type
   { TfrmCompras }
@@ -115,7 +115,10 @@ begin
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT ID, NOME FROM PESSOA WHERE TIPO = ''F'' ORDER BY NOME';
+    LQuery.SQL.Text :=
+      'SELECT ID, NOME FROM PESSOA ' +
+      'WHERE TIPO = ''F'' AND EMPRESA_ID = :EMP AND ATIVO = ''A'' ORDER BY NOME';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     while not LQuery.EOF do
     begin
@@ -148,28 +151,13 @@ end;
 
 function TfrmCompras.ProximoNumero: Integer;
 var
-  LQuery: TSQLQuery;
-  LNumero: Int64;
+  LPedido: TPedidoCompraService;
 begin
-  Result := 1;
-  LQuery := TSQLQuery.Create(nil);
+  LPedido := TPedidoCompraService.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    { NUMERO e texto (pode vir rotulado, ex.: 'PC-TESTE-8'): MAX(NUMERO)
-      compararia texto ('9' > '10') e AsInteger estouraria com rotulo.
-      Le os numeros e fica com o maior deles. }
-    LQuery.SQL.Text := 'SELECT NUMERO FROM PEDIDO_COMPRA';
-    LQuery.Open;
-    while not LQuery.EOF do
-    begin
-      LNumero := StrToInt64Def(Trim(LQuery.Fields[0].AsString), 0);
-      if LNumero >= Result then
-        Result := LNumero + 1;
-      LQuery.Next;
-    end;
+    Result := LPedido.ProximoNumero;
   finally
-    LQuery.Free;
+    LPedido.Free;
   end;
 end;
 
@@ -229,7 +217,7 @@ begin
   end;
 
   LVlr := StrToFloatDef(edtVlrUnit.Text, 0);
-  LTotal := LQtd * LVlr;
+  LTotal := TotalItemCompra(LQtd, LVlr, 0);
 
   LRow := sgItens.RowCount;
   sgItens.RowCount := LRow + 1;
@@ -270,15 +258,16 @@ begin
     LSub := LSub + StrToFloatDef(sgItens.Cells[4, I], 0);
 
   edtSubtotal.Text := FormatFloat('#,##0.00', LSub);
-  edtTotal.Text := FormatFloat('#,##0.00', LSub);
+  edtTotal.Text := FormatFloat('#,##0.00', TotalDoPedidoCompra(LSub, 0));
 end;
 
 function TfrmCompras.SalvarPedido: Boolean;
 var
-  LQuery: TSQLQuery;
-  I: Integer;
   LFornId: Int64;
   LStatus: string;
+  LItens: TItensCompraEntrada;
+  LService: TPedidoCompraService;
+  I: Integer;
 begin
   Result := False;
 
@@ -302,59 +291,34 @@ begin
     LStatus := 'ABERTO';
   end;
 
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-
-    FConexao.IniciarTransacao;
-
-    LQuery.SQL.Text :=
-      'INSERT INTO PEDIDO_COMPRA (EMPRESA_ID, FORNECEDOR_ID, NUMERO, DATA_EMISSAO, ' +
-      'DATA_ENTREGA, STATUS, SUBTOTAL, TOTAL, OBSERVACOES, USUARIO_ID) ' +
-      'VALUES (:EMP, :FORN, :NUM, :DEMI, :DENT, :STS, :SUB, :TOT, :OBS, :USR)';
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.ParamByName('FORN').AsLargeInt := LFornId;
-    LQuery.ParamByName('NUM').AsString := edtNumero.Text;
-    LQuery.ParamByName('DEMI').AsDate := StrToDateDef(edtDataEmissao.Text, Now);
-    LQuery.ParamByName('DENT').AsDate := StrToDateDef(edtDataEntrega.Text, Now + 7);
-    LQuery.ParamByName('STS').AsString := LStatus;
-    LQuery.ParamByName('SUB').AsFloat := StrToFloatDef(edtSubtotal.Text, 0);
-    LQuery.ParamByName('TOT').AsFloat := StrToFloatDef(edtTotal.Text, 0);
-    LQuery.ParamByName('OBS').AsString := mmoObs.Text;
-    LQuery.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    LQuery.ExecSQL;
-
-    LQuery.SQL.Text := 'SELECT GEN_ID(GEN_PEDIDO_COMPRA_ID, 0) FROM RDB$DATABASE';
-    LQuery.Open;
-    FPedidoId := LQuery.Fields[0].AsLargeInt;
-    if LQuery.Active then
-      LQuery.Close;
-
-    for I := 1 to sgItens.RowCount - 1 do
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO PEDIDO_COMPRA_ITEM (PEDIDO_COMPRA_ID, MATERIAL_ID, QUANTIDADE, ' +
-        'VALOR_UNITARIO, VALOR_TOTAL) ' +
-        'VALUES (:PC, :MAT, :QTD, :VLR, :TOT)';
-      LQuery.ParamByName('PC').AsLargeInt := FPedidoId;
-      LQuery.ParamByName('MAT').AsLargeInt := StrToInt64(sgItens.Cells[0, I]);
-      LQuery.ParamByName('QTD').AsFloat := StrToFloatDef(sgItens.Cells[2, I], 0);
-      LQuery.ParamByName('VLR').AsFloat := StrToFloatDef(sgItens.Cells[3, I], 0);
-      LQuery.ParamByName('TOT').AsFloat := StrToFloatDef(sgItens.Cells[4, I], 0);
-      LQuery.ExecSQL;
-    end;
-
-    FConexao.Confirmar;
-    Result := True;
-  except
-    on E: Exception do
-    begin
-      FConexao.Cancelar;
-      MessageDlg('Erro ao salvar pedido de compra: ' + E.Message, mtError, [mbOK], 0);
-    end;
+  { monta os itens do grid para o Service: a regra de total, validação
+    e gravação fica toda no TPedidoCompraService }
+  LItens := nil;
+  SetLength(LItens, sgItens.RowCount - 1);
+  for I := 1 to sgItens.RowCount - 1 do
+  begin
+    LItens[I - 1].MaterialId := StrToInt64Def(sgItens.Cells[0, I], 0);
+    LItens[I - 1].Quantidade := StrToFloatDef(sgItens.Cells[2, I], 0);
+    LItens[I - 1].ValorUnitario := StrToFloatDef(sgItens.Cells[3, I], 0);
+    LItens[I - 1].Desconto := 0;
   end;
-  LQuery.Free;
+
+  LService := TPedidoCompraService.Create;
+  try
+    try
+      FPedidoId := LService.SalvarPedido(LFornId, edtNumero.Text, LItens, 0,
+        mmoObs.Text, LStatus,
+        StrToDateDef(edtDataEmissao.Text, 0),
+        StrToDateDef(edtDataEntrega.Text, 0));
+      Result := True;
+    except
+      on E: Exception do
+        MessageDlg('Erro ao salvar pedido de compra: ' + E.Message, mtError,
+          [mbOK], 0);
+    end;
+  finally
+    LService.Free;
+  end;
 end;
 
 procedure TfrmCompras.btnSalvarClick(Sender: TObject);
