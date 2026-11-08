@@ -1,4 +1,4 @@
-# CHECKPOINT — último ponto de parada (07/11/2026)
+# CHECKPOINT — último ponto de parada (08/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **184/184**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **209/209**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
@@ -25,31 +25,30 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ---
 
-## Estado atual da sessão (07/11/2026)
+## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `2f0e3f7` (Estoque: service de movimentacao e testes). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md`, `PLANO_E_LOG.md` e `PROMPT_AMANHA.md`).
-Build: desktop **0/0** · suíte desktop **184/184** · testes Android **5/5** (inalterados nesta etapa).
+**HEAD:** `ff66e68` (Pedido de venda: service com regras, numeracao por empresa e testes). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md`, `PLANO_E_LOG.md` e `PROMPT_AMANHA.md`).
+Build: desktop **0/0** · suíte desktop **209/209** · testes Android **5/5** (inalterados nesta etapa).
 
-> Se `git log -1` mostrar um hash diferente de `2f0e3f7`, é porque o commit
+> Se `git log -1` mostrar um hash diferente de `ff66e68`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — o Service de estoque e os testes estão no commit `2f0e3f7`.
-  Banco conferido sem resíduos: 10 movimentos e 4 linhas de `ESTOQUE`
-  (as pré-existentes), nenhum produto de teste, nenhuma linha com empresa
-  `999999` e nenhum log `MOVIMENTO_ESTOQUE` sobrando.
+- Nada — o Service de pedido de venda e os testes estão no commit `ff66e68`.
+  Banco conferido sem resíduos: 4 pedidos e 6 itens (os pré-existentes),
+  nenhuma linha em `ITEM_PEDIDO_GRADE`, nenhum cliente/produto de teste e
+  nenhuma linha com empresa `999999`.
 
 ### Próximo passo (executável)
 
-1. **Etapa seguinte (a definir com o usuário):** testes de **pedidos de venda**
-   no desktop (`Views\uFrmPedidoVenda.pas`, 698 linhas: numeração, itens,
-   grades, totais e gravação de `PEDIDO_VENDA`/`ITEM_PEDIDO`). Verificar antes
-   se convém extrair as regras para um `uPedidoVendaService`.
+1. **Etapa seguinte (a definir com o usuário):** a suíte desktop das áreas já
+   cobertas fechou (cadastros, notas fiscais, caixa, contas a pagar/receber,
+   estoque e pedidos de venda). Escolher a próxima tela/área a cobrir.
 2. Manter o padrão desta etapa: dados com timestamp, limpeza explícita no
    `finally`, sem mock de banco.
 3. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
-   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **184/184**); se a suíte
+   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **209/209**); se a suíte
    cair, não commitar.
 4. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
    (esperado **5/5**) e `Scripts\build_android.bat` (esperado `BUILD SUCCESSFUL`).
@@ -58,6 +57,7 @@ Build: desktop **0/0** · suíte desktop **184/184** · testes Android **5/5** (
 
 | Item | Entrega |
 |---|---|
+| **Pedido de venda (Service + testes)** | `uPedidoVendaService` tirou as regras de `uFrmPedidoVenda`: numeração **por empresa** (maior `NUMERO` numérico + 1, ignorando textos), totais de item/pedido nunca negativos, gravação de cabeçalho e itens na **mesma transação** com `PRECO_UNITARIO` e `VALOR_UNITARIO`, CFOP padrão `5102`, `DATA_ENTREGA` opcional e auditoria `INSERT`; a quantidade do item com grade passa a ser a soma dos tamanhos e a grade efetiva entra na transação do pedido. `uPedidoVendaTest` com **25 testes** cobre totais, numeração, gravação, grade, desconto maior que o subtotal, data de entrega, campos opcionais nulos e todas as validações. Suíte **209/209**. Detalhes em `PLANO_E_LOG.md` §3.32 |
 | **Estoque (Service + testes)** | `uEstoqueService` tirou as regras de `uFrmMovEstoque`: registro com produto da empresa da sessão, tipo `E/S/A/I`, quantidade > 0, custo não negativo, limites de documento (50) e observação (255) e auditoria `INSERT`; a listagem passou a filtrar a empresa e usa `CAST` no texto (evita `string right truncation` em `CODIGO`/`DOCUMENTO`). `SaldoProduto` usa `CAST` no `SUM` (sem ele `AsFloat` volta 0). `uEstoqueTest` com **18 testes** cobre a trigger `TRG_MOVEST_AI` (E/A somam, S subtrai, I não altera), criação da linha de `ESTOQUE`, escopo da empresa e validações. Suíte **184/184**. Detalhes em `PLANO_E_LOG.md` §3.31 |
 | **Contas a pagar/receber (Service + testes)** | `uContasService` tirou as regras de dentro das telas: plano financeiro por tipo, criação com `FINANCEIRO_ID` obrigatório, baixa só de conta aberta, listagem por período/status/texto no escopo da empresa e auditoria `INSERT`/`BAIXA`. Corrigiu a inclusão de **conta a receber**, que não gravava `FINANCEIRO_ID` (`DM_ID NOT NULL`). `uContasTest` com **16 testes**. Suíte **166/166**. Detalhes em `PLANO_E_LOG.md` §3.30 |
 | **Testes unitários do caixa (desktop)** | `uCaixaTest` (17 testes) cobre `TCaixaService`: saldo por caixa (E−S; G/P fora do saldo), número como texto, usuário do `LEFT JOIN`, status/datas de fechamento, escopo da empresa, ordenação por ID decrescente, filtros por número/usuário/descrição/tipo e o resumo ENTRADAS/SAIDAS/SALDO, além das validações de query nula e caixa inválido. Suíte **150/150**. Revelou que o filtro por número estourava `string right truncation` acima de 20 caracteres — corrigido no Service. Detalhes em `PLANO_E_LOG.md` §3.29 |
@@ -132,7 +132,7 @@ Build: desktop **0/0** · suíte desktop **184/184** · testes Android **5/5** (
 
 ### Próximo passo (executável)
 
-**A definir com o usuário** — a suíte das notas fiscais fechou em 04/11
+**A definir com o usuário** — a suíte dos pedidos de venda fechou em 08/11
 (ver "Estado atual" no topo). Ao fechar cada marco: build 0/0, suíte verde,
 atualizar este checkpoint, `PLANO_E_LOG.md` e commitar.
 
@@ -717,14 +717,13 @@ em cópia. Build 0 erros · suíte **62/62**. Conteúdo:
 
 ## Para continuar (ao ligar o PC)
 
-0. **Próximo marco:** nenhum item aberto no backlog — D3 (`PESSOA`), os
-   filtros de Estoque/Financeiro e o botão "incluir cliente" no Android estão
-   concluídos (ver §3.19/§3.20 do `PLANO_E_LOG.md`). O próximo passo é o que
-   o usuário pedir.
+0. **Próximo marco:** a suíte desktop das áreas cobertas fechou (cadastros,
+   notas fiscais, caixa, contas, estoque e pedidos de venda). O próximo passo
+   é o que o usuário pedir.
 1. Firebird 5 ativo (serviço) — o banco é `Banco\DADOS.FDB`.
 2. Abrir o app: `Desktop\bin\ERP2026.exe` (login `admin` / `admin123`).
 3. Build: `Scripts\build_desktop.bat` (matar `ERP2026.exe` antes, se estiver aberto).
-4. Testes unit: `Scripts\run_tests.bat` → esperado **133/133**.
+4. Testes unit: `Scripts\run_tests.bat` → esperado **209/209**.
 5. Testes UI: `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\telas_todas_ui.ps1`
    → esperado **TELAS-DESKTOP-UI CONCLUIDO** (33/33); `... Scripts\testes\fase6_01.ps1`
    → esperado **FASE6-01 CONCLUIDO**; e

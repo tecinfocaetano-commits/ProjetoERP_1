@@ -2,7 +2,7 @@
 
 > Documento **vivo**: registra o planejamento, as decisões do usuário e o que já
 > foi executado. Atualizar a cada etapa concluída.
-> Última atualização: 02/11/2026
+> Última atualização: 08/11/2026
 
 ---
 
@@ -952,6 +952,55 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   pré-existentes), nenhum produto de teste, nenhuma linha com empresa `999999`
   e nenhum log `MOVIMENTO_ESTOQUE` sobrando.
 - **Commit:** `2f0e3f7` (Service + tela + testes); a documentação deste marco
+  vem no commit seguinte.
+
+---
+
+### 3.32 Pedido de venda: Service e testes (08/11, concluído)
+
+- **Refatoração:** as regras de `uFrmPedidoVenda` foram para
+  `Desktop\src\Services\uPedidoVendaService.pas`. A tela mantém os campos, os
+  combos, o grid de itens, o diálogo de grade e as mensagens; a regra de
+  negócio (numeração, totais, validação e gravação) ficou no Service.
+- **Service:**
+  - `ProximoNumero`: maior `NUMERO` **numérico** da empresa da sessão + 1.
+    `NUMERO` é `VARCHAR(20)`: valores como `PV-TESTE-5` são ignorados. Antes a
+    tela lia todos os pedidos, sem filtrar empresa;
+  - `TotalItemPedido`/`TotalDoPedidoVenda` (funções exportadas): item =
+    `quantidade * valor unitário - desconto` e pedido = `subtotal - desconto`,
+    ambos **nunca negativos**. A tela usa as mesmas funções no grid, então o
+    valor exibido e o gravado não divergem;
+  - `SubtotalDosItens`/`TotalDoPedido`: quando o item tem grade, a quantidade é
+    a **soma das quantidades por tamanho**;
+  - `SalvarPedido`: valida cliente ativo do tipo `C` da empresa, pelo menos um
+    item, produto da empresa, quantidade > 0, valor unitário e descontos não
+    negativos, CFOP até 5 caracteres (vazio usa `5102`), observações até 255 e
+    status de 1 caractere (`P` quando vazio); número vazio ou `'0'` usa
+    `ProximoNumero`; grava `DATA_ENTREGA` só quando informada e devolve o ID;
+  - **Transação única:** cabeçalho + itens + grade efetiva de cada item
+    (`ITEM_PEDIDO_GRADE`) entram na mesma transação, com auditoria `INSERT` em
+    `LOG_SISTEMA`. A grade usa `TGradeService.SalvarGradeItemPedido`, que não
+    commita no meio porque a transação já está aberta;
+  - **Correções em relação à tela antiga:** a numeração passou a ser por
+    empresa; `PRECO_UNITARIO` passou a ser gravado (antes só `VALOR_UNITARIO`);
+    o ID do pedido vem de `RETURNING ID` em vez de `GEN_ID(..., 0)`; e o item
+    não pode mais gravar total negativo.
+- **Testes:** `Desktop\src\Tests\uPedidoVendaTest.pas`, **25 testes**, cobrindo
+  totais (item/pedido e nunca negativo), subtotal/total com grade, gravação
+  completa (cabeçalho, itens, `PRECO_UNITARIO`/`VALOR_UNITARIO`, CFOP padrão,
+  auditoria), número automático (`''` e `'0'`), numeração ignorando texto e por
+  empresa, grade (quantidade = soma, linhas gravadas), múltiplos itens,
+  desconto maior que o subtotal, `DATA_ENTREGA`, forma/condição 0 e entrega
+  nulas, status padrão `P`, e as validações (cliente 0/inexistente/inativo/
+  fornecedor, sem itens, produto 0/inexistente/de outra empresa, quantidade,
+  valores negativos, CFOP, observações, número e status). Limpeza por sufixo
+  (grade → itens → pedidos → produtos → pessoas) + corte do `LOG_SISTEMA` no
+  topo capturado.
+- **Resultado:** suíte desktop **209/209** (antes **184/184**), build desktop
+  **0/0**. Banco conferido: 4 pedidos e 6 itens (os pré-existentes), nenhuma
+  linha em `ITEM_PEDIDO_GRADE`, nenhum cliente/produto de teste e nenhuma linha
+  com empresa `999999`.
+- **Commit:** `ff66e68` (Service + tela + testes); a documentação deste marco
   vem no commit seguinte.
 
 ---
