@@ -27,9 +27,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `079241a` (Testes MF/Inventario/Kardex no padrao da suite +
-correcao escopo NFe e numericos). Árvore: limpa.
-Build: desktop **0/0** · suíte desktop **325/325** · testes Android **5/5** (inalterados).
+**HEAD:** `c57cb90` (Producao: suite do fluxo de negocio). Árvore: limpa.
+Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
@@ -46,15 +45,21 @@ Build: desktop **0/0** · suíte desktop **325/325** · testes Android **5/5** (
 | **Correções de Service achadas pelos testes** | `uInventarioService`: coluna `CONTROLE_ESTOQUE` não existe (é `CONTROLA_ESTOQUE`) — a tela de Inventário estava quebrada; `CAST` em `PESQ`/`FILTRO2` (string right truncation). `uKardexService`: período `BETWEEN` virou `>= :DI AND < :DF` (vazava o dia seguinte) e `CAST(... AS DOUBLE PRECISION)` em `VALOR_TOTAL` e no resumo — **multiplicação/soma de `NUMERIC(15,4)` retornava NULL no Firebird 5** (mesmo problema já visto no resumo financeiro da API, §3.18). `uMovimentoFinanceiroService`: `CAST` em `PESQ3` (documento). |
 | **NF-e / empresa** | `uFrmNFe.CarregarPedidos` não filtrava `EMPRESA_ID` — agora `PV.EMPRESA_ID = :EMP`. `TACBrHelper.GerarNFe`: pedido, sequencia de `NUMERO_NFE` e `UPDATE` passaram a respeitar a empresa; join `PESSOA` por empresa; escrita em transação com auditoria `LOG_SISTEMA`. |
 
+### O que fechou nesta sessão (marco 3.40)
+
+| Item | Entrega |
+|---|---|
+| **Suíte do fluxo de produção** | `uProducaoFluxoTest` (12 testes) cobre o `TProducaoService` com banco real — antes só havia testes de estrutura/permissão/auditoria (`uProducaoTest`). Cobre: validações e upsert de `GravarFichaTecnica`, `CriarMapa` (pendente/parcial, status do pedido `P`→`E`, empresa herdada do pedido), `GerarTaloes` (`ITEM`/`UNIDADE`, código `T`+6 dígitos, transições `PENDENTE`→`EM_PRODUCAO`), `BiparTalao` (`INICIO`→`CONCLUSAO`, `DUPLICADO`/`INVALIDO`, mapa `CONCLUIDO` e pedido `D`), `CancelarMapa`/`CancelarTalao` e o ciclo de consumo (`GerarConsumoMaterial` planejado × produzido, ficha obrigatória, `QTD_PREVISTA` com perda, `QTD_REAL`, saldo insuficiente, movimentos `S`/`E` e estorno). Registrado no `uTestRunner`/`Tests.lpi`. Suíte **337/337**. Commit `c57cb90`. |
+
 ### Próximo passo (executável)
 
-1. **Consumo/Ficha/Bipagem/Cores:** os forms já delegam a
-   `TProducaoService`/`TCorService` e os Services já filtram
-   `EMPRESA_ID` — falta só cobrir com suíte de testes (ou revisar se
-   algum caminho ainda grava fora do Service).
-2. Depois: continuar backlog do `PLANO_E_LOG.md`, um marco por vez.
+1. Backlog restante do `PLANO_E_LOG.md` — revisar telas de produção
+   (`uFrmConsumoMaterial`, `uFrmFichaTecnica`, `uFrmBipagem`,
+   `uFrmCoresProduto`) para confirmar que 100% das regras passam pelo
+   Service (já delegam; falta só varredura fina de SQL direto na tela).
+2. Depois: continuar backlog, um marco por vez.
 3. Antes de qualquer commit: `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**325/325** ou mais); Android
+   `Scripts\run_tests.bat` (**337/337** ou mais); Android
    `Scripts\run_tests_android.bat` (**5/5**).
 
 ### O que fechou nesta sessão

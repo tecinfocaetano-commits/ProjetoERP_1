@@ -1239,6 +1239,40 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.40 Produção: suíte do fluxo de negócio (08/11, concluído)
+
+- **Lacuna:** `uProducaoTest` cobria estrutura/permissões/auditoria, mas o
+  fluxo de negócio do `TProducaoService` (ficha técnica → mapa → talões →
+  bipagem → consumo) não tinha nenhum teste.
+- **`uProducaoFluxoTest` (12 testes, banco real):**
+  - `TestFichaValidacoes`/`TestFichaGravarELer`: produto/base/itens
+    obrigatórios, material ≠ produto, quantidade/perda válidas, material
+    duplicado, leitura e upsert (mesmo ID, itens substituídos).
+  - `TestMapaValidacoes`/`TestMapaCriarParciais`/`TestMapaEscopoEmpresa`:
+    pedido cancelado/inexistente, quantidade zero/acima do pendente, item
+    de outro pedido, parcial (pendente zera), pedido `P`→`E` e mapa que
+    herda `EMPRESA_ID` do pedido (999999).
+  - `TestTaloesGerar`: modo `ITEM` (1 talão, qtd toda), `UNIDADE` (1 por
+    unidade), código `T`+6 dígitos, `GERADO`→item/mapa `EM_PRODUCAO`,
+    modo inválido e item já taloado.
+  - `TestBiparFluxoCompleto`: `INICIO`→`EM_PRODUCAO`, `CONCLUSAO`→
+    `CONCLUIDO`, mapa `CONCLUIDO`, pedido `D`, `DUPLICADO`, `INVALIDO`
+    (inexistente/vazio), `ProgressoMapa`.
+  - `TestCancelarMapaETalao`: motivo obrigatório, mapa sem concluídos
+    cancela (pedido volta `P`), mapa com talão concluído bloqueado,
+    talão `GERADO` cancela / já cancelado bloqueado.
+  - `TestConsumoSemFicha`/`TestConsumoPlanejadoSemProducao`/
+    `TestConsumoConfirmarEstornar`/`TestConsumoSemSaldo`: ficha
+    obrigatória nos dois modos, `PRODUZIDO` exige talões concluídos,
+    `PLANEJADO` funciona em mapa aberto, `QTD_PREVISTA` = base × consumo
+    × (1+perda%), substituição de consumo `PENDENTE`, `QTD_REAL` custom,
+    saldo insuficiente, movimentos `S`/`E`, `CONFIRMADO`→`ESTORNADO` e
+    re-geração após estorno.
+- **Resultado:** suíte desktop **337/337** (antes 325), build **0 erros**.
+- **Commit:** `c57cb90`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
