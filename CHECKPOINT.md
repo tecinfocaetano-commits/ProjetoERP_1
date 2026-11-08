@@ -27,32 +27,28 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `0bff99d` (PDV: service com venda, caixa e testes). Árvore: **limpa** no commit de código; este texto foi gravado no commit de docs seguinte (só `CHECKPOINT.md`, `PLANO_E_LOG.md` e `PROMPT_AMANHA.md`).
-Build: desktop **0/0** · suíte desktop **288/288** · testes Android **5/5** (inalterados nesta etapa).
+**HEAD:** `49f3a70` (Movimento Financeiro: Service + testes). Árvore: limpa.
+Build: desktop **0/0** · suíte desktop **308/308** (288 + 20 novos) · testes Android **5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente de `0bff99d`, é porque o commit
 > que gravou este texto veio depois — o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — o Service do PDV, a tela, o ajuste do caixa e os testes estão no
-  commit `0bff99d`. Banco conferido sem resíduos: nenhuma pessoa/produto de
-  teste, nenhum pedido com observação de teste, nenhum caixa do usuário
-  fictício `990001`, nenhum movimento desses caixas e nenhum
-  "Consumidor Final" criado pela suíte.
+- Nada — o Service do Movimento Financeiro, a tela adaptada e os testes estão no
+  commit `49f3a70`. Banco conferido sem resíduos.
 
 ### Próximo passo (executável)
 
-1. **Movimento Financeiro (`uFrmMovimentoFinanceiro.pas`):** próxima tela.
-   Extrair as regras para Service (validação de conta/plano, tipo
-   entrada/saída, valor, data e auditoria), corrigir filtros de empresa e
-   cobrir com uma suíte nova, registrando em `uTestRunner.pas` e `Tests.lpi`.
-2. Depois: **Inventário/Kardex** (`uFrmInventario.pas`/`uFrmKardex.pas`),
-   **Consumo/Ficha/Bipagem/Cores** e **NFe**, uma por marco.
+1. **Inventário/Kardex (`uFrmInventario.pas`/`uFrmKardex.pas`):** extrair
+   regras para Service (validação de produto/quantidade/data, estoque,
+   movimento, custo médio), corrigir filtros de empresa e cobrir com suíte
+   nova, registrando em `uTestRunner.pas` e `Tests.lpi`.
+2. Depois: **Consumo/Ficha/Bipagem/Cores** e **NFe**, uma por marco.
 3. Manter o padrão desta etapa: dados com timestamp, limpeza explícita no
    `finally`, sem mock de banco.
 4. Antes de qualquer commit do desktop, rodar `Scripts\build_desktop.bat`
-   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **288/288** ou mais); se
+   (esperado 0/0) e `Scripts\run_tests.bat` (esperado **308/308** ou mais); se
    a suíte cair, não commitar.
 5. Antes de commit do Android, rodar `Scripts\run_tests_android.bat`
    (esperado **5/5**) e `Scripts\build_android.bat` (esperado `BUILD SUCCESSFUL`).
