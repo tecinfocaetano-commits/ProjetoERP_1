@@ -29,16 +29,24 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `1098221` (Telas: filtro de empresa tambem na leitura
-por ID) + commit de docs. Árvore: limpa.
-Build: desktop **0/0** · suíte desktop **349/349** · testes Android
-**5/5** (inalterados).
+**HEAD:** `2417241` (API: filtro de empresa na 2a leitura de preco
+de orcamento) + commit de docs. Árvore: limpa.
+Build: desktop **0/0** · suíte desktop **349/349** · API compilada
+(`Scripts\build_api.bat`) · testes Android **5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.51 — auditoria da API)
+
+Varredura de `API\src\Rotas`: todas as consultas já filtram
+`EMPRESA_ID` do JWT; única correção — segunda passada de
+`uRotasOrcamentos` agora filtra empresa ao rebuscar `PRECO_VENDA`
+(commit `2417241`). Itens de `ITEM_PEDIDO` seguros via validação do
+cabeçalho pai.
 
 ### O que fechou nesta sessão (marco 3.50)
 

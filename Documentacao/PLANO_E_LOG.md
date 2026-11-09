@@ -1465,6 +1465,24 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.51 Auditoria da API — isolamento de empresa nas rotas (08/11)
+
+- **Varredura:** todos os `SELECT`/`INSERT`/`UPDATE`/`DELETE` de
+  `API\src\Rotas` conferidos. Listagens, detalhes, escritas e
+  validações de cliente/produto/fornecedor já usam
+  `EMPRESA_ID = :EMP` derivado do JWT (`DadosDoToken`); queries de
+  itens (`ITEM_PEDIDO`) ficam seguras porque o cabeçalho pai é
+  validado antes (NotFound se fora da empresa). O `UPDATE` de senha
+  em `uRotasLogin` é auto-referente (ID do próprio usuário
+  autenticado).
+- **Correção:** a segunda passada da criação de orçamento rebuscava
+  `PRECO_VENDA` sem `EMPRESA_ID` — a primeira passada já validava o
+  produto, mas o filtro foi adicionado por consistência.
+- **Resultado:** API compilada (`Scripts\build_api.bat`), commit
+  `2417241`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
