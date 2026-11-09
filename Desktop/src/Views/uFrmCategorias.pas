@@ -12,7 +12,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uSessao;
+  uFrmCadastroBase, uConexao, uSessao,
+  uCategoriaService, uCategoria;
 
 type
   { TfrmCategorias }
@@ -24,6 +25,8 @@ type
     lblStatus: TLabel;
     cmbStatus: TComboBox;
     procedure FormCreate(Sender: TObject);
+  public
+    destructor Destroy; override;
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -35,6 +38,7 @@ type
     function Excluir: Boolean; override;
   private
     FQuery: TSQLQuery;
+    FService: TCategoriaService;
     procedure ConfigurarGrid;
   end;
 
@@ -46,6 +50,12 @@ implementation
 {$R *.lfm}
 
 { TfrmCategorias }
+
+destructor TfrmCategorias.Destroy;
+begin
+  FreeAndNil(FService);
+  inherited Destroy;
+end;
 
 procedure TfrmCategorias.FormCreate(Sender: TObject);
 begin
@@ -60,6 +70,7 @@ begin
     FQuery := TSQLQuery.Create(Self);
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
+    FService := TCategoriaService.Create;
 
     // Criar DataSource1 se não existir
     if DataSource1 = nil then
@@ -172,72 +183,44 @@ end;
 
 function TfrmCategorias.Salvar: Boolean;
 var
-  LQuery: TSQLQuery;
+  LCategoria: TCategoria;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
+  LCategoria := TCategoria.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
     if FEstado = efInserindo then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO CATEGORIA (EMPRESA_ID, NOME, DESCRICAO, ATIVO) ' +
-        'VALUES (:EMP, :NOME, :DESC, :ATIVO)';
-      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    end
+      LCategoria.Id := 0
     else
-    begin
-      LQuery.SQL.Text :=
-        'UPDATE CATEGORIA SET NOME = :NOME, DESCRICAO = :DESC, ATIVO = :ATIVO WHERE ID = :ID';
-      LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    end;
-
-    LQuery.ParamByName('NOME').AsString := edtNome.Text;
-    LQuery.ParamByName('DESC').AsString := edtDescricao.Text;
+      LCategoria.Id := FIdSelecionado;
+    LCategoria.Nome := Trim(edtNome.Text);
+    LCategoria.Descricao := Trim(edtDescricao.Text);
     if cmbStatus.ItemIndex = 0 then
-      LQuery.ParamByName('ATIVO').AsString := 'A'
+      LCategoria.Ativo := 'A'
     else
-      LQuery.ParamByName('ATIVO').AsString := 'I';
+      LCategoria.Ativo := 'I';
 
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    if LCategoria.Id = 0 then
+      LCategoria.Id := FService.Inserir(LCategoria)
+    else
+      FService.Atualizar(LCategoria);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao salvar: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
+  LCategoria.Free;
 end;
 
 function TfrmCategorias.Excluir: Boolean;
-var
-  LQuery: TSQLQuery;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text := 'DELETE FROM CATEGORIA WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    FService.Excluir(FIdSelecionado);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao excluir: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 end.

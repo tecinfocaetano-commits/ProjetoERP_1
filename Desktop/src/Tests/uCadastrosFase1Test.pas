@@ -9,8 +9,10 @@ unit uCadastrosFase1Test;
     - TCorService: CRUD, unicidade por produto e auditoria;
     - TMaterialService: CRUD, código único/opcional, pesquisa e
       auditoria;
-    - TProdutoFiscalService: CRUD, código único/opcional, pesquisa
-      e auditoria;
+    - TProdutoFiscalService: CRUD, código único/opcional, pesquisa,
+      TIPO/VALOR (serviço/outro) e auditoria;
+    - TCategoriaService: CRUD, nome único e auditoria (tabela global,
+      sem EMPRESA_ID);
     - TGradeService: CRUD com tamanhos, validações, bloqueio de
       exclusão de grade vinculada a produto, configuração USA_GRADE
       e auditoria;
@@ -25,8 +27,9 @@ interface
 
 uses
   Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao,
-  uCor, uMaterial, uProdutoFiscal, uGrade,
-  uCorService, uMaterialService, uProdutoFiscalService, uGradeService;
+  uCor, uMaterial, uProdutoFiscal, uGrade, uCategoria,
+  uCorService, uMaterialService, uProdutoFiscalService, uGradeService,
+  uCategoriaService;
 
 type
   { TCadastrosFase1Test }
@@ -49,6 +52,7 @@ var
   LMaterialService: TMaterialService;
   LProdutoFiscalService: TProdutoFiscalService;
   LGradeService: TGradeService;
+  LCategoriaService: TCategoriaService;
   LSufixo: string;
   LTopoLog: Int64;
 
@@ -880,6 +884,266 @@ var
     end;
   end;
 
+  procedure TestProdutoFiscalTipoValor;
+  var
+    LProduto, LLido: TProdutoFiscal;
+    LId: Int64;
+    LDescricao: string;
+  begin
+    LDescricao := 'PRODUTO FISCAL TIPO ' + LSufixo;
+    LProduto := TProdutoFiscal.Create;
+    LId := 0;
+    try
+      try
+        LProduto.EmpresaId := LSessao.EmpresaId;
+        LProduto.Descricao := LDescricao;
+        LProduto.Ativo := 'A';
+        { TIPO vazio deve gravar NULL (o CHECK só aceita 'S'/'O') }
+        LProduto.Tipo := '';
+        LProduto.Valor := 250.75;
+        LId := LProdutoFiscalService.Inserir(LProduto);
+        AssertTrue(LId > 0, 'o INSERT deve devolver o ID');
+
+        LLido := LProdutoFiscalService.BuscarPorId(LId);
+        try
+          AssertNotNull(LLido, 'BuscarPorId deve achar o produto fiscal');
+          AssertEquals('', LLido.Tipo, 'TIPO vazio deve voltar como vazio');
+          AssertTrue(Abs(LLido.Valor - 250.75) < 0.0001,
+            'o VALOR deve voltar do banco');
+        finally
+          LLido.Free;
+        end;
+
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'SELECT COUNT(*) FROM PRODUTO_FISCAL ' +
+          'WHERE ID = :ID AND TIPO IS NULL';
+        LQuery.ParamByName('ID').AsLargeInt := LId;
+        LQuery.Open;
+        AssertEquals('1', IntToStr(LQuery.Fields[0].AsInteger),
+          'TIPO vazio deve estar NULL no banco');
+        LQuery.Close;
+
+        { serviço: TIPO = 'S' }
+        LProduto.Id := LId;
+        LProduto.Tipo := 'S';
+        LProduto.Valor := 99.9;
+        AssertTrue(LProdutoFiscalService.Atualizar(LProduto),
+          'Atualizar deve retornar True');
+
+        LLido := LProdutoFiscalService.BuscarPorId(LId);
+        try
+          AssertEquals('S', LLido.Tipo, 'o UPDATE deve gravar TIPO = S');
+          AssertTrue(Abs(LLido.Valor - 99.9) < 0.0001,
+            'o UPDATE deve gravar o VALOR');
+        finally
+          LLido.Free;
+        end;
+
+        { voltar a NULL pelo update }
+        LProduto.Tipo := '';
+        AssertTrue(LProdutoFiscalService.Atualizar(LProduto),
+          'Atualizar com TIPO vazio deve retornar True');
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'SELECT COUNT(*) FROM PRODUTO_FISCAL ' +
+          'WHERE ID = :ID AND TIPO IS NULL';
+        LQuery.ParamByName('ID').AsLargeInt := LId;
+        LQuery.Open;
+        AssertEquals('1', IntToStr(LQuery.Fields[0].AsInteger),
+          'TIPO vazio no UPDATE deve gravar NULL');
+        LQuery.Close;
+
+        AssertTrue(LProdutoFiscalService.Excluir(LId),
+          'Excluir deve retornar True');
+        LId := 0;
+
+        ASuite.AddResult('TestProdutoFiscalTipoValor', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestProdutoFiscalTipoValor', False, E.Message);
+      end;
+    finally
+      if LId > 0 then
+        try
+          LProdutoFiscalService.Excluir(LId);
+        except
+        end;
+      LProduto.Free;
+    end;
+  end;
+
+  procedure TestCategoriaCicloCompleto;
+  var
+    LCategoria, LLido: TCategoria;
+    LId: Int64;
+    LNome: string;
+  begin
+    LNome := 'CATEGORIA TESTE ' + LSufixo;
+    LCategoria := TCategoria.Create;
+    LId := 0;
+    try
+      try
+        LCategoria.Nome := LNome;
+        LCategoria.Descricao := 'categoria criada pelo teste';
+        LCategoria.Ativo := 'A';
+        LId := LCategoriaService.Inserir(LCategoria);
+
+        AssertTrue(LId > 0, 'o INSERT da categoria deve devolver o ID');
+        AssertEquals('1', IntToStr(ContarPorId('CATEGORIA', LId)),
+          'a categoria deve existir no banco');
+
+        LLido := LCategoriaService.BuscarPorId(LId);
+        try
+          AssertNotNull(LLido, 'BuscarPorId deve achar a categoria');
+          AssertEquals(LNome, LLido.Nome, 'o nome deve voltar do banco');
+          AssertEquals('categoria criada pelo teste', LLido.Descricao,
+            'a descrição deve voltar do banco');
+          AssertEquals('A', LLido.Ativo, 'o ATIVO deve voltar do banco');
+        finally
+          LLido.Free;
+        end;
+
+        LLista := LCategoriaService.BuscarTodos;
+        try
+          AssertTrue(AchouNaLista(LLista, LId),
+            'BuscarTodos deve listar a categoria');
+        finally
+          LLista.Close;
+        end;
+
+        LLista := LCategoriaService.Pesquisar(LowerCase(LNome));
+        try
+          AssertTrue(AchouNaLista(LLista, LId),
+            'Pesquisar deve achar pelo nome sem diferenciar caixa');
+        finally
+          LLista.Close;
+        end;
+
+        LCategoria.Id := LId;
+        LCategoria.Nome := LNome + ' II';
+        LCategoria.Descricao := 'categoria atualizada';
+        LCategoria.Ativo := 'I';
+        AssertTrue(LCategoriaService.Atualizar(LCategoria),
+          'Atualizar deve retornar True');
+
+        LLido := LCategoriaService.BuscarPorId(LId);
+        try
+          AssertEquals(LNome + ' II', LLido.Nome,
+            'o UPDATE deve gravar o nome');
+          AssertEquals('categoria atualizada', LLido.Descricao,
+            'o UPDATE deve gravar a descrição');
+          AssertEquals('I', LLido.Ativo, 'o UPDATE deve gravar o ATIVO');
+        finally
+          LLido.Free;
+        end;
+
+        AssertTrue(LCategoriaService.Excluir(LId),
+          'Excluir deve retornar True');
+        AssertNil(LCategoriaService.BuscarPorId(LId),
+          'a categoria excluída não deve ser encontrada');
+        AssertEquals('0', IntToStr(ContarPorId('CATEGORIA', LId)),
+          'a categoria deve sumir do banco');
+
+        AssertTrue(ContarLog('CATEGORIA', LId) >= 3,
+          'INSERIR, ATUALIZAR e EXCLUIR devem gerar auditoria');
+        LId := 0;
+
+        ASuite.AddResult('TestCategoriaCicloCompleto', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestCategoriaCicloCompleto', False, E.Message);
+      end;
+    finally
+      if LId > 0 then
+        try
+          LCategoriaService.Excluir(LId);
+        except
+        end;
+      LCategoria.Free;
+    end;
+  end;
+
+  procedure TestCategoriaSemNome;
+  var
+    LCategoria: TCategoria;
+    LAntes, LDepois: Integer;
+    LDeu: Boolean;
+  begin
+    LCategoria := TCategoria.Create;
+    try
+      try
+        LAntes := ContarTotal('CATEGORIA');
+        LCategoria.Nome := '';
+        LCategoria.Ativo := 'A';
+        LDeu := False;
+        try
+          LCategoriaService.Inserir(LCategoria);
+        except
+          on E: Exception do
+            LDeu := True;
+        end;
+        LDepois := ContarTotal('CATEGORIA');
+        AssertTrue(LDeu, 'categoria sem nome deve ser recusada');
+        AssertEquals(IntToStr(LAntes), IntToStr(LDepois),
+          'nenhuma categoria deve ser gravada');
+        ASuite.AddResult('TestCategoriaSemNome', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestCategoriaSemNome', False, E.Message);
+      end;
+    finally
+      LCategoria.Free;
+    end;
+  end;
+
+  procedure TestCategoriaNomeDuplicado;
+  var
+    LPrimeira, LSegunda: TCategoria;
+    LId: Int64;
+    LNome: string;
+    LDeu: Boolean;
+  begin
+    LNome := 'CATEGORIA DUPLICADA ' + LSufixo;
+    LPrimeira := TCategoria.Create;
+    LSegunda := TCategoria.Create;
+    LId := 0;
+    try
+      try
+        LPrimeira.Nome := LNome;
+        LPrimeira.Ativo := 'A';
+        LId := LCategoriaService.Inserir(LPrimeira);
+        AssertTrue(LId > 0, 'a primeira categoria deve ser criada');
+
+        { a comparação do Service é UPPER(NOME): minúsculas também colidem }
+        LSegunda.Nome := LowerCase(LNome);
+        LSegunda.Ativo := 'A';
+        LDeu := False;
+        try
+          LCategoriaService.Inserir(LSegunda);
+        except
+          on E: Exception do
+            LDeu := True;
+        end;
+        AssertTrue(LDeu, 'nome de categoria repetido deve ser recusado');
+        AssertEquals('1', IntToStr(ContarPorCampo('CATEGORIA', 'NOME', LNome)),
+          'deve existir apenas a primeira categoria');
+        ASuite.AddResult('TestCategoriaNomeDuplicado', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestCategoriaNomeDuplicado', False, E.Message);
+      end;
+    finally
+      if LId > 0 then
+        try
+          LCategoriaService.Excluir(LId);
+        except
+        end;
+      LSegunda.Free;
+      LPrimeira.Free;
+    end;
+  end;
+
   procedure TestGradeCicloCompleto;
   var
     LGrade, LLido: TGrade;
@@ -1434,10 +1698,15 @@ var
       LQuery.ExecSQL;
 
       LQuery.Close;
+      LQuery.SQL.Text := 'DELETE FROM CATEGORIA WHERE NOME LIKE :M';
+      LQuery.ParamByName('M').AsString := LMascara;
+      LQuery.ExecSQL;
+
+      LQuery.Close;
       LQuery.SQL.Text :=
         'DELETE FROM LOG_SISTEMA WHERE ID > :TOPO ' +
         'AND TABELA IN (''COR'', ''MATERIAL'', ''PRODUTO_FISCAL'', ' +
-        '''GRADE'', ''CONFIGURACAO'', ''PRODUTO'')';
+        '''GRADE'', ''CONFIGURACAO'', ''PRODUTO'', ''CATEGORIA'')';
       LQuery.ParamByName('TOPO').AsLargeInt := LTopoLog;
       LQuery.ExecSQL;
 
@@ -1456,6 +1725,7 @@ begin
   LMaterialService := TMaterialService.Create;
   LProdutoFiscalService := TProdutoFiscalService.Create;
   LGradeService := TGradeService.Create;
+  LCategoriaService := TCategoriaService.Create;
   LSufixo := FormatDateTime('yyyymmddhhnnsszzz', Now);
   try
     LQuery.DataBase := LConexao.Connection;
@@ -1485,6 +1755,10 @@ begin
     TestProdutoFiscalSemDescricao;
     TestProdutoFiscalCodigoDuplicado;
     TestProdutoFiscalCodigoVazioPermitido;
+    TestProdutoFiscalTipoValor;
+    TestCategoriaCicloCompleto;
+    TestCategoriaSemNome;
+    TestCategoriaNomeDuplicado;
     TestGradeCicloCompleto;
     TestGradeSemNome;
     TestGradeTipoInvalido;
@@ -1498,6 +1772,7 @@ begin
     TestTiposGrade;
   finally
     LimparSobraPorSufixo;
+    LCategoriaService.Free;
     LGradeService.Free;
     LProdutoFiscalService.Free;
     LMaterialService.Free;
