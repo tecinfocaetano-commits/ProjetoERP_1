@@ -1318,6 +1318,29 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   `uGeograficoTest`, que já exercitava os Services).
 - **Commit:** `70e946c`.
 
+### 3.43 Cadastros — Material, Produto Fiscal e Categoria via Service (08/11)
+
+- **Material/Produto Fiscal (trabalho já em andamento, commitado):**
+  `uFrmMaterial` e `uFrmProdutoFiscal` delegam INSERT/UPDATE/DELETE a
+  `TMaterialService`/`TProdutoFiscalService`; `TProdutoFiscal` ganhou
+  `Tipo`/`Valor` (colunas de `PRODUTO_FISCAL` da migração 014 que o
+  model/service não gravavam); `TRepositoryBase` ganhou
+  `InserirParamN`/`AtualizarParamN` + `AplicarParamsN` para gravar
+  NULL em parâmetro (TIPO vazio → NULL, pois o CHECK só aceita 'S'/'O').
+- **Categoria:** `uFrmCategorias` inseria `EMPRESA_ID`, coluna que
+  **não existe** em `CATEGORIA` no banco real (tabela global, como as
+  geográficas) — o INSERT falhava com "column unknown". Criado
+  `TCategoriaService` (`uCategoriaService.pas`): nome obrigatório,
+  nome único global case-insensitive, `LogOperacao` em I/U/D;
+  form delega escrita e o INSERT passa a funcionar sem EMPRESA_ID.
+- **Testes:** `uCadastrosFase1Test` ganhou `TestProdutoFiscalTipoValor`
+  (TIPO ''→NULL e 'S' no insert/update, VALOR) e 3 de Categoria
+  (ciclo completo, sem nome, nome duplicado).
+- **Migração 019:** `USUARIO.TELEFONE` (a tela de usuários já usava a
+  coluna, que não existia) — commitada; já estava aplicada no banco.
+- **Resultado:** build **0 erros/0 warnings**, suíte **341/341**.
+- **Commits:** `a62868a`, `7e8d706` e o commit deste marco.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)

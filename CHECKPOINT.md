@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **288/288**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **341/341**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
@@ -27,30 +27,25 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `70e946c` (Geograficos: forms delegam escrita aos Services).
-Árvore: limpa.
-Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (inalterados).
+**HEAD:** `0b1eb2d` (Categorias: form delega escrita ao novo
+TCategoriaService) + commit de docs. Árvore: limpa.
+Build: desktop **0/0** · suíte desktop **341/341** · testes Android
+**5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada — testes reescritos, correções de Service/NF-e e registro no
-  runner estão no commit `079241a`. Banco conferido sem resíduos.
+- Nada.
 
-### O que fechou nesta sessão (marco 3.39)
-
-| Item | Entrega |
-|---|---|
-| **Testes MF/Inventário/Kardex** | Os 3 arquivos de teste criados antes estavam em **fpcunit** (nunca executados — o runner não os chamava) e faziam `DELETE` em `PRODUTO`/`ESTOQUE`/`MOVIMENTO_ESTOQUE`/`MOVIMENTO_FINANCEIRO` da empresa inteira. Reescritos no framework `uAssert` (`RunAllTests`/`AddResult`), com sufixo de timestamp e limpeza só dos IDs criados; registrados de fato no `uTestRunner.pas`. Suíte subiu de 288 para **325**. |
-| **Correções de Service achadas pelos testes** | `uInventarioService`: coluna `CONTROLE_ESTOQUE` não existe (é `CONTROLA_ESTOQUE`) — a tela de Inventário estava quebrada; `CAST` em `PESQ`/`FILTRO2` (string right truncation). `uKardexService`: período `BETWEEN` virou `>= :DI AND < :DF` (vazava o dia seguinte) e `CAST(... AS DOUBLE PRECISION)` em `VALOR_TOTAL` e no resumo — **multiplicação/soma de `NUMERIC(15,4)` retornava NULL no Firebird 5** (mesmo problema já visto no resumo financeiro da API, §3.18). `uMovimentoFinanceiroService`: `CAST` em `PESQ3` (documento). |
-| **NF-e / empresa** | `uFrmNFe.CarregarPedidos` não filtrava `EMPRESA_ID` — agora `PV.EMPRESA_ID = :EMP`. `TACBrHelper.GerarNFe`: pedido, sequencia de `NUMERO_NFE` e `UPDATE` passaram a respeitar a empresa; join `PESSOA` por empresa; escrita em transação com auditoria `LOG_SISTEMA`. |
-
-### O que fechou nesta sessão (marco 3.40)
+### O que fechou nesta sessão (marco 3.43)
 
 | Item | Entrega |
 |---|---|
-| **Suíte do fluxo de produção** | `uProducaoFluxoTest` (12 testes) cobre o `TProducaoService` com banco real — antes só havia testes de estrutura/permissão/auditoria (`uProducaoTest`). Cobre: validações e upsert de `GravarFichaTecnica`, `CriarMapa` (pendente/parcial, status do pedido `P`→`E`, empresa herdada do pedido), `GerarTaloes` (`ITEM`/`UNIDADE`, código `T`+6 dígitos, transições `PENDENTE`→`EM_PRODUCAO`), `BiparTalao` (`INICIO`→`CONCLUSAO`, `DUPLICADO`/`INVALIDO`, mapa `CONCLUIDO` e pedido `D`), `CancelarMapa`/`CancelarTalao` e o ciclo de consumo (`GerarConsumoMaterial` planejado × produzido, ficha obrigatória, `QTD_PREVISTA` com perda, `QTD_REAL`, saldo insuficiente, movimentos `S`/`E` e estorno). Registrado no `uTestRunner`/`Tests.lpi`. Suíte **337/337**. Commit `c57cb90`. |
+| **Material + Produto Fiscal via Service** | Trabalho encontrado não commitado na árvore; revisado, build 0/0 e suíte verde. `uFrmMaterial`/`uFrmProdutoFiscal` sem INSERT/UPDATE/DELETE. `TProdutoFiscal` ganhou `Tipo`/`Valor` (colunas da migração 014); `TRepositoryBase` ganhou `InserirParamN`/`AtualizarParamN`/`AplicarParamsN` (parâmetro gravado como NULL — TIPO vazio → NULL pois o CHECK só aceita 'S'/'O'). Commit `a62868a`. |
+| **Categoria via Service (novo)** | `uFrmCategorias` inseria `EMPRESA_ID`, coluna **inexistente** em `CATEGORIA` (tabela global, sem empresa — INSERT falhava com "column unknown"). Criado `TCategoriaService` (`Desktop\src\Services\uCategoriaService.pas`): nome obrigatório, nome único global case-insensitive, `LogOperacao` I/U/D, `Pesquisar` com CAST+CONTAINING. Unit registrada no `ERP2026.lpi`. Commit `0b1eb2d`. |
+| **Migração 019** | `USUARIO.TELEFONE` — a tela de usuários já lia/grava a coluna, que não existia. SQL + rollback commitados (`7e8d706`); já aplicada no banco real. |
+| **Testes** | `uCadastrosFase1Test` +4: `TestProdutoFiscalTipoValor` (TIPO ''→NULL / 'S' em insert e update, VALOR), `TestCategoriaCicloCompleto`, `TestCategoriaSemNome`, `TestCategoriaNomeDuplicado`. Suíte **341/341**. |
 
 ### Varredura de telas (08/11) — resultado
 
@@ -70,25 +65,45 @@ Build: desktop **0/0** · suíte desktop **337/337** · testes Android **5/5** (
   `ATIVO`/`CEP_PADRAO`, auditar via `LogOperacao` e validar filhos no
   delete (país→estados, estado→cidades). Build 0/0, suíte **337/337**.
   Commit `70e946c`.
+- **Material/ProdutoFiscal/Categoria — RESOLVIDO (marco 3.43):**
+  ver tabela acima. Commits `a62868a`, `7e8d706`, `0b1eb2d`.
 - **Escrita direta restante nas telas** (próximos candidatos):
   - cadastros simples que escrevem direto apesar de terem Service:
-    `uFrmCategorias`, `uFrmCidade`, `uFrmEstado`, `uFrmPais`,
-    `uFrmMaterial`, `uFrmProdutoFiscal`, `uFrmProdutos`, `uFrmUsuarios`
-    (CRUD puro — menor risco, mas fura a regra "negócio no Service");
+    `uFrmProdutos`, `uFrmUsuarios` (CRUD puro — menor risco, mas fura
+    a regra "negócio no Service");
+    - `uFrmUsuarios` já tem a coluna `USUARIO.TELEFONE` (migração 019),
+      mas ainda não existe `uUsuarioService` — criar no mesmo padrão;
   - `uFrmLogin` — UPDATE de `USUARIO.SENHA`/`ULTIMO_ACESSO` (troca de
     senha na tela; avaliar se vira método de Service).
 
 ### Próximo passo (executável)
 
-1. **Cadastros simples restantes:** delegar as escritas diretas ao
-   Service já existente — `uFrmCategorias`, `uFrmMaterial`,
-   `uFrmProdutoFiscal`, `uFrmProdutos`, `uFrmUsuarios` (CRUD puro;
-   geográficos já migrados no marco 3.42). Um marco por vez.
-2. Depois: `uFrmLogin` (UPDATE de `USUARIO.SENHA`/`ULTIMO_ACESSO` —
-   avaliar método de Service para troca de senha com auditoria).
-3. Antes de qualquer commit: `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**337/337** ou mais); Android
+1. **`uFrmProdutos`:** delegar INSERT/UPDATE/DELETE de `PRODUTO` ao
+   Service (não existe `uProdutoService` — criar no padrão de
+   `uMaterialService`, com `CATEGORIA_ID`/`UNIDADE_ID` obrigatórios —
+   `DM_ID NOT NULL` — e escopo `EMPRESA_ID`). Um marco por vez.
+2. **`uFrmUsuarios`:** criar `uUsuarioService` e delegar o CRUD
+   (inclui `TELEFONE`, já migrado); cuidado com `SENHA` (hash?) e com
+   não permitir que um usuário se tranque fora.
+3. **`uFrmLogin`:** UPDATE de `USUARIO.SENHA`/`ULTIMO_ACESSO` — avaliar
+   método de Service para troca de senha com auditoria.
+4. Antes de qualquer commit: `Scripts\build_desktop.bat` (0/0) e
+   `Scripts\run_tests.bat` (**341/341** ou mais); Android
    `Scripts\run_tests_android.bat` (**5/5**).
+
+### O que fechou nesta sessão (marco 3.39)
+
+| Item | Entrega |
+|---|---|
+| **Testes MF/Inventário/Kardex** | Os 3 arquivos de teste criados antes estavam em **fpcunit** (nunca executados — o runner não os chamava) e faziam `DELETE` em `PRODUTO`/`ESTOQUE`/`MOVIMENTO_ESTOQUE`/`MOVIMENTO_FINANCEIRO` da empresa inteira. Reescritos no framework `uAssert` (`RunAllTests`/`AddResult`), com sufixo de timestamp e limpeza só dos IDs criados; registrados de fato no `uTestRunner.pas`. Suíte subiu de 288 para **325**. |
+| **Correções de Service achadas pelos testes** | `uInventarioService`: coluna `CONTROLE_ESTOQUE` não existe (é `CONTROLA_ESTOQUE`) — a tela de Inventário estava quebrada; `CAST` em `PESQ`/`FILTRO2` (string right truncation). `uKardexService`: período `BETWEEN` virou `>= :DI AND < :DF` (vazava o dia seguinte) e `CAST(... AS DOUBLE PRECISION)` em `VALOR_TOTAL` e no resumo — **multiplicação/soma de `NUMERIC(15,4)` retornava NULL no Firebird 5** (mesmo problema já visto no resumo financeiro da API, §3.18). `uMovimentoFinanceiroService`: `CAST` em `PESQ3` (documento). |
+| **NF-e / empresa** | `uFrmNFe.CarregarPedidos` não filtrava `EMPRESA_ID` — agora `PV.EMPRESA_ID = :EMP`. `TACBrHelper.GerarNFe`: pedido, sequencia de `NUMERO_NFE` e `UPDATE` passaram a respeitar a empresa; join `PESSOA` por empresa; escrita em transação com auditoria `LOG_SISTEMA`. |
+
+### O que fechou nesta sessão (marco 3.40)
+
+| Item | Entrega |
+|---|---|
+| **Suíte do fluxo de produção** | `uProducaoFluxoTest` (12 testes) cobre o `TProducaoService` com banco real — antes só havia testes de estrutura/permissão/auditoria (`uProducaoTest`). Cobre: validações e upsert de `GravarFichaTecnica`, `CriarMapa` (pendente/parcial, status do pedido `P`→`E`, empresa herdada do pedido), `GerarTaloes` (`ITEM`/`UNIDADE`, código `T`+6 dígitos, transições `PENDENTE`→`EM_PRODUCAO`), `BiparTalao` (`INICIO`→`CONCLUSAO`, `DUPLICADO`/`INVALIDO`, mapa `CONCLUIDO` e pedido `D`), `CancelarMapa`/`CancelarTalao` e o ciclo de consumo (`GerarConsumoMaterial` planejado × produzido, ficha obrigatória, `QTD_PREVISTA` com perda, `QTD_REAL`, saldo insuficiente, movimentos `S`/`E` e estorno). Registrado no `uTestRunner`/`Tests.lpi`. Suíte **337/337**. Commit `c57cb90`. |
 
 ### O que fechou nesta sessão
 
