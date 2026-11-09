@@ -29,8 +29,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `759fae7` (Consultas: escopo de EMPRESA_ID em
-Pesquisar e CarregarDados) + commit de docs. Árvore: limpa.
+**HEAD:** `2b588d1` (Services: guarda de EMPRESA_ID nas escritas
+por ID e numeracao da nota de saida) + commit de docs. Árvore: limpa.
 Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 **5/5** (inalterados).
 
@@ -39,6 +39,13 @@ Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.48)
+
+| Item | Entrega |
+|---|---|
+| **Guarda de empresa nas escritas** | `Atualizar`/`Excluir` de `TProdutoService`, `TMaterialService`, `TProdutoFiscalService`, `TUsuarioService` e `TPessoaService` não verificavam a empresa do registro — ID de outra empresa podia ser alterado/excluído. Cada service ganhou `GarantirDaEmpresa` (ou `AND EMPRESA_ID = :EMP` no UPDATE/DELETE do Pessoa). `TGradeService`: `Atualizar`/`Excluir` com guarda, contagens de `PRODUTO` filtradas por empresa, `GradeDoProduto` e `DefinirGradeDoProduto` com `EMPRESA_ID = :EMP` (produto **e** grade validados). Commit `2b588d1`. |
+| **Numeração da nota de saída** | `TNotaSaidaService.ProximoNumero` fazia `MAX(NUMERO)` sobre **todas** as empresas — agora `WHERE EMPRESA_ID = :EMP` (mesmo padrão de Pedido/PedidoCompra/PDV). |
 
 ### O que fechou nesta sessão (marco 3.47)
 

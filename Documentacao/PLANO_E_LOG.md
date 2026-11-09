@@ -1411,6 +1411,24 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Resultado:** build **0 erros / 0 warnings**, suíte **349/349**.
 - **Commit:** `759fae7`.
 
+### 3.48 Services — guarda de EMPRESA_ID nas escritas por ID (08/11)
+
+- **Problema:** `Atualizar`/`Excluir` dos services de cadastro
+  gravavam `WHERE ID = :ID` sem verificar a empresa — um ID de
+  outra empresa podia ser alterado ou excluído (IDOR
+  multiempresa). O `TNotaSaidaService.ProximoNumero` calculava
+  `MAX(NUMERO)` sobre todas as empresas.
+- **Entrega:** `GarantirDaEmpresa(AId)` privado em
+  `TProdutoService`, `TMaterialService`, `TProdutoFiscalService` e
+  `TUsuarioService` (chamado em `Atualizar`/`Excluir`);
+  `TPessoaService` ganhou `AND EMPRESA_ID = :EMP` no SELECT de
+  tipo e no UPDATE, e verificação de posse no `Excluir`;
+  `TGradeService` validou empresa em `Atualizar`, `Excluir`,
+  `GradeDoProduto` e `DefinirGradeDoProduto` (produto e grade).
+  `ProximoNumero` da nota de saída filtra `EMPRESA_ID = :EMP`.
+- **Resultado:** build **0 erros / 0 warnings**, suíte **349/349**.
+- **Commit:** `2b588d1`.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)
