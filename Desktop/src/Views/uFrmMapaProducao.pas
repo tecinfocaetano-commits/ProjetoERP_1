@@ -1110,8 +1110,9 @@ begin
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT NUMERO FROM MAPA_PRODUCAO WHERE ID = :ID';
+    LQuery.SQL.Text := 'SELECT NUMERO FROM MAPA_PRODUCAO WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := AMapaId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := LQuery.FieldByName('NUMERO').AsInteger;

@@ -182,8 +182,9 @@ begin
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
     LQuery.SQL.Text :=
-      'SELECT NOME, COALESCE(HEX, '''') AS HEX, ATIVO FROM COR WHERE ID = :ID';
+      'SELECT NOME, COALESCE(HEX, '''') AS HEX, ATIVO FROM COR WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := FCorId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
     begin

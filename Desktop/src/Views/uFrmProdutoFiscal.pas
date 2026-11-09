@@ -247,8 +247,9 @@ begin
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT * FROM PRODUTO_FISCAL WHERE ID = :ID';
+    LQuery.SQL.Text := 'SELECT * FROM PRODUTO_FISCAL WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
 
     if not LQuery.IsEmpty then
