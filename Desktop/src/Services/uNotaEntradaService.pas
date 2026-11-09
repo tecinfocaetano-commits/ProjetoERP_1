@@ -54,6 +54,10 @@ type
     function  LerSaldoMaterial(AEmpresaId, AMaterialId: Int64;
       out AQuantidade: Double): Boolean;
     function  GarantirFinanceiro(const ATipo, ADescricao: string): Int64;
+    procedure GarantirDaEmpresa(const ATabela: string; AId: Int64;
+      const AMensagem: string);
+    procedure GarantirDaEmpresaSql(const ASQL: string; AId: Int64;
+      const AMensagem: string);
     procedure GerarContasPagar(ANotaId: Int64);
   public
     constructor Create;
@@ -91,7 +95,7 @@ type
 implementation
 
 uses
-  Math, DateUtils, StrUtils, uSessao, uAuditoria;
+  Math, DateUtils, StrUtils, uSessao, uAuditoria, uServiceBase;
 
 type
   TItemNota = record
@@ -157,6 +161,8 @@ function TNotaEntradaService.QuantidadeItens(ANotaId: Int64): Integer;
 var
   LQuery: TSQLQuery;
 begin
+  GarantirDaEmpresa('NOTA_ENTRADA', ANotaId,
+    'Nota de entrada não encontrada para a empresa atual.');
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text :=
@@ -174,6 +180,8 @@ var
   LQuery: TSQLQuery;
 begin
   Result := '';
+  GarantirDaEmpresa('NOTA_ENTRADA', ANotaId,
+    'Nota de entrada não encontrada para a empresa atual.');
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text :=
@@ -204,6 +212,8 @@ begin
   AAliqIcms := 0;
   if AProdutoId <= 0 then
     Exit;
+  GarantirDaEmpresa('PRODUTO', AProdutoId,
+    'Produto não encontrado para a empresa atual.');
 
   LQuery := NovaConsulta;
   try
@@ -235,6 +245,8 @@ var
   LQuery: TSQLQuery;
   LProdutos, LDesconto: Double;
 begin
+  GarantirDaEmpresa('NOTA_ENTRADA', ANotaId,
+    'Nota de entrada não encontrada para a empresa atual.');
   LQuery := NovaConsulta;
   try
     // ATENÇÃO: o SQLDB (Firebird) não lê corretamente expressões monetárias
@@ -275,6 +287,8 @@ begin
     raise ENotaEntrada.Create('Informe o fornecedor.');
   if Trim(ADados.Numero) = '' then
     raise ENotaEntrada.Create('Informe o número do documento.');
+  GarantirDaEmpresa('NOTA_ENTRADA', ANotaId,
+    'Nota de entrada não encontrada para a empresa atual.');
 
   Result := ANotaId;
   FConexao.IniciarTransacao;
@@ -383,6 +397,8 @@ var
 begin
   if ANotaId <= 0 then
     raise ENotaEntrada.Create('Salve o cabeçalho da nota antes dos itens.');
+  GarantirDaEmpresa('NOTA_ENTRADA', ANotaId,
+    'Nota de entrada não encontrada para a empresa atual.');
   if AQuantidade <= 0 then
     raise ENotaEntrada.Create('Informe uma quantidade maior que zero.');
 
@@ -538,7 +554,25 @@ end;
 procedure TNotaEntradaService.ExcluirItem(AItemId: Int64);
 var
   LQuery: TSQLQuery;
+  LNotaId: Int64;
 begin
+  LQuery := NovaConsulta;
+  try
+    { o item só pode ser excluído se a nota for da empresa da sessão }
+    LQuery.SQL.Text :=
+      'SELECT NOTA_ENTRADA_ID FROM NOTA_ENTRADA_ITEM WHERE ID = :ID';
+    LQuery.ParamByName('ID').AsLargeInt := AItemId;
+    LQuery.Open;
+    if LQuery.IsEmpty then
+      raise ENotaEntrada.Create('Item de nota não encontrado.');
+    LNotaId := LQuery.FieldByName('NOTA_ENTRADA_ID').AsLargeInt;
+    LQuery.Close;
+  finally
+    LQuery.Free;
+  end;
+  GarantirDaEmpresa('NOTA_ENTRADA', LNotaId,
+    'Nota de entrada não encontrada para a empresa atual.');
+
   FConexao.IniciarTransacao;
   LQuery := NovaConsulta;
   try
@@ -565,6 +599,8 @@ var
   LFinanceiroId: Int64;
   LNumero: string;
 begin
+  GarantirDaEmpresa('NOTA_ENTRADA', ANotaId,
+    'Nota de entrada não encontrada para a empresa atual.');
   LCab := NovaConsulta;
   LTot := NovaConsulta;
   try
@@ -656,6 +692,8 @@ var
   LAtualEstoque, LAtualCusto: Boolean;
   LReg: TSQLQuery;
 begin
+  GarantirDaEmpresa('NOTA_ENTRADA', ANotaId,
+    'Nota de entrada não encontrada para a empresa atual.');
   FConexao.IniciarTransacao;
   LCab := NovaConsulta;
   LReg := NovaConsulta;
@@ -878,6 +916,8 @@ var
   LQtdItens: Integer;
 begin
   Result := 0;
+  GarantirDaEmpresa('PEDIDO_COMPRA', APedidoCompraId,
+    'Pedido de compra não encontrado para a empresa atual.');
   FConexao.IniciarTransacao;
   LPed   := NovaConsulta;
   LItens := NovaConsulta;
@@ -1061,6 +1101,8 @@ var
   LQuery: TSQLQuery;
   LStatus: string;
 begin
+  GarantirDaEmpresa('NOTA_ENTRADA', ANotaId,
+    'Nota de entrada não encontrada para a empresa atual.');
   FConexao.IniciarTransacao;
   LQuery := NovaConsulta;
   try
@@ -1089,6 +1131,20 @@ begin
     raise;
   end;
   LQuery.Free;
+end;
+
+procedure TNotaEntradaService.GarantirDaEmpresa(const ATabela: string;
+  AId: Int64; const AMensagem: string);
+begin
+  GarantirEmpresaBanco(FConexao,
+    Format('SELECT EMPRESA_ID FROM %s WHERE ID = :ID', [ATabela]),
+    AId, AMensagem);
+end;
+
+procedure TNotaEntradaService.GarantirDaEmpresaSql(const ASQL: string;
+  AId: Int64; const AMensagem: string);
+begin
+  GarantirEmpresaBanco(FConexao, ASQL, AId, AMensagem);
 end;
 
 end.

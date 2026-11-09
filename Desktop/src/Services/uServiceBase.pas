@@ -11,7 +11,7 @@ unit uServiceBase;
 interface
 
 uses
-  Classes, SysUtils, uRepositoryBase, uConexao;
+  Classes, SysUtils, SQLDB, uRepositoryBase, uConexao, uSessao;
 
 type
   { TServiceBase - Lógica de negócio base }
@@ -25,12 +25,26 @@ type
 
     procedure ValidarCampoObrigatorio(const AValor, ACampo: string);
     procedure ValidarId(AId: Int64; const AEntidade: string);
+    { garante que o registro pertence à empresa da sessão;
+      ATabela é nome interno de tabela (nunca entrada do usuário) }
+    procedure GarantirDaEmpresa(const ATabela: string; AId: Int64;
+      const AMensagem: string);
+    { mesma garantia para consultas com JOIN: ASQL deve retornar a
+      coluna EMPRESA_ID e usar :ID como parâmetro do registro }
+    procedure GarantirDaEmpresaSql(const ASQL: string; AId: Int64;
+      const AMensagem: string);
     procedure LogOperacao(const ATabela, AOperacao: string; ARegistroId: Int64;
       const ADadosAnteriores: string = ''; const ADadosNovos: string = '');
   public
     constructor Create(ARepository: TRepositoryBase);
     destructor Destroy; override;
   end;
+
+{ Garantia de isolamento multiempresa reutilizável por services que
+  não herdam de TServiceBase. ASQL deve retornar a coluna EMPRESA_ID
+  e usar :ID como parâmetro do registro. }
+procedure GarantirEmpresaBanco(AConexao: TConexao; const ASQL: string;
+  AId: Int64; const AMensagem: string);
 
 implementation
 
@@ -64,6 +78,43 @@ begin
     raise Exception.CreateFmt('%s: ID inválido (%d).', [AEntidade, AId]);
   if not FRepository.Existe(AId) then
     raise Exception.CreateFmt('%s com ID %d não encontrado.', [AEntidade, AId]);
+end;
+
+procedure GarantirEmpresaBanco(AConexao: TConexao; const ASQL: string;
+  AId: Int64; const AMensagem: string);
+var
+  LQuery: TSQLQuery;
+begin
+  if AId <= 0 then
+    Exit; // registro novo: a empresa vem da sessão no INSERT
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := AConexao.Connection;
+    LQuery.Transaction := AConexao.Transaction;
+    LQuery.SQL.Text := ASQL;
+    LQuery.ParamByName('ID').AsLargeInt := AId;
+    LQuery.Open;
+    if LQuery.IsEmpty or
+       (LQuery.FieldByName('EMPRESA_ID').AsLargeInt <>
+        TSessao.GetInstance.EmpresaId) then
+      raise Exception.Create(AMensagem);
+  finally
+    LQuery.Free;
+  end;
+end;
+
+procedure TServiceBase.GarantirDaEmpresa(const ATabela: string; AId: Int64;
+  const AMensagem: string);
+begin
+  GarantirEmpresaBanco(FConexao,
+    Format('SELECT EMPRESA_ID FROM %s WHERE ID = :ID', [ATabela]),
+    AId, AMensagem);
+end;
+
+procedure TServiceBase.GarantirDaEmpresaSql(const ASQL: string; AId: Int64;
+  const AMensagem: string);
+begin
+  GarantirEmpresaBanco(FConexao, ASQL, AId, AMensagem);
 end;
 
 procedure TServiceBase.LogOperacao(const ATabela, AOperacao: string;

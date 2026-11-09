@@ -38,6 +38,10 @@ type
     function  NovaConsulta: TSQLQuery;
     function  LerSaldo(AEmpresaId, AProdutoId: Int64; out AQuantidade: Double): Boolean;
     function  GarantirFinanceiro(const ATipo, ADescricao: string): Int64;
+    procedure GarantirDaEmpresa(const ATabela: string; AId: Int64;
+      const AMensagem: string);
+    procedure GarantirDaEmpresaSql(const ASQL: string; AId: Int64;
+      const AMensagem: string);
     function  ProximoNumero: Integer;
     function  CustoUnitario(AEmpresaId, AProdutoId: Int64): Double;
     function  StatusDaNota(ANotaId: Int64): string;
@@ -67,7 +71,7 @@ type
 implementation
 
 uses
-  Math, DateUtils, uSessao;
+  Math, DateUtils, uSessao, uServiceBase;
 
 type
   TItemSaida = record
@@ -205,6 +209,8 @@ var
   LQuery: TSQLQuery;
 begin
   Result := '';
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text := 'SELECT STATUS FROM NOTA_SAIDA WHERE ID = :ID';
@@ -222,6 +228,8 @@ var
   LQuery: TSQLQuery;
 begin
   Result := 0;
+  GarantirDaEmpresa('PEDIDO_VENDA', APedidoId,
+    'Pedido de venda não encontrado para a empresa atual.');
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text :=
@@ -245,6 +253,8 @@ var
   LDataEmissao: TDate;
   LQtd, LVun, LAliq, LVicms, LVTotal: Double;
 begin
+  GarantirDaEmpresa('PEDIDO_VENDA', APedidoId,
+    'Pedido de venda não encontrado para a empresa atual.');
   FConexao.IniciarTransacao;
   LPed := NovaConsulta;
   LNota := NovaConsulta;
@@ -395,6 +405,8 @@ function TNotaSaidaService.QuantidadeItens(ANotaId: Int64): Integer;
 var
   LQuery: TSQLQuery;
 begin
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text :=
@@ -412,6 +424,8 @@ var
   LQuery: TSQLQuery;
 begin
   Result := '';
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text :=
@@ -439,6 +453,8 @@ begin
   ADescricao := '';
   ADisponivel := 0;
   ASolicitado := 0;
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
 
   LQuery := NovaConsulta;
   try
@@ -478,6 +494,8 @@ var
   LQuery: TSQLQuery;
   LProdutos, LDesconto, LFrete, LSeguro, LOutras, LIcms, LTotal: Double;
 begin
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
   LQuery := NovaConsulta;
   try
     // Soma dos itens
@@ -535,6 +553,8 @@ var
 begin
   if AClienteId <= 0 then
     raise ENotaSaida.Create('Informe o cliente da nota de saída.');
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
 
   FConexao.IniciarTransacao;
   LQuery := NovaConsulta;
@@ -663,6 +683,8 @@ var
   LCNF: Int64;
 begin
   Result := '';
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text :=
@@ -711,6 +733,8 @@ var
   // ERP2026.lpr) e enviada por AsString, como os demais textos do sistema.
   LDescricao: string;
 begin
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
   LCab := NovaConsulta;
   LTot := NovaConsulta;
   try
@@ -801,6 +825,8 @@ var
   LDataSaida: TDate;
   LQuantidade, LSaldo, LCusto: Double;
 begin
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
   FConexao.IniciarTransacao;
   LCab := NovaConsulta;
   LReg := NovaConsulta;
@@ -957,6 +983,8 @@ var
   LEmpresaId, LPedidoId, LUsuarioId: Int64;
   LQuantidade, LCusto: Double;
 begin
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
   FConexao.IniciarTransacao;
   LCab := NovaConsulta;
   LReg := NovaConsulta;
@@ -1052,7 +1080,25 @@ end;
 procedure TNotaSaidaService.ExcluirItem(AItemId: Int64);
 var
   LQuery: TSQLQuery;
+  LNotaId: Int64;
 begin
+  LQuery := NovaConsulta;
+  try
+    { o item só pode ser excluído se a nota for da empresa da sessão }
+    LQuery.SQL.Text :=
+      'SELECT NOTA_SAIDA_ID FROM NOTA_SAIDA_ITEM WHERE ID = :ID';
+    LQuery.ParamByName('ID').AsLargeInt := AItemId;
+    LQuery.Open;
+    if LQuery.IsEmpty then
+      raise ENotaSaida.Create('Item de nota de saída não encontrado.');
+    LNotaId := LQuery.FieldByName('NOTA_SAIDA_ID').AsLargeInt;
+    LQuery.Close;
+  finally
+    LQuery.Free;
+  end;
+  GarantirDaEmpresa('NOTA_SAIDA', LNotaId,
+    'Nota de saída não encontrada para a empresa atual.');
+
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text := 'DELETE FROM NOTA_SAIDA_ITEM WHERE ID = :ID';
@@ -1088,6 +1134,8 @@ begin
   LFmt.ThousandSeparator := #0;
 
   Result := '';
+  GarantirDaEmpresa('NOTA_SAIDA', ANotaId,
+    'Nota de saída não encontrada para a empresa atual.');
   LXml := TStringList.Create;
   LCab := NovaConsulta;
   LItens := NovaConsulta;
@@ -1231,6 +1279,20 @@ begin
     LItens.Free;
     LXml.Free;
   end;
+end;
+
+procedure TNotaSaidaService.GarantirDaEmpresa(const ATabela: string;
+  AId: Int64; const AMensagem: string);
+begin
+  GarantirEmpresaBanco(FConexao,
+    Format('SELECT EMPRESA_ID FROM %s WHERE ID = :ID', [ATabela]),
+    AId, AMensagem);
+end;
+
+procedure TNotaSaidaService.GarantirDaEmpresaSql(const ASQL: string;
+  AId: Int64; const AMensagem: string);
+begin
+  GarantirEmpresaBanco(FConexao, ASQL, AId, AMensagem);
 end;
 
 end.
