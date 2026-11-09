@@ -29,8 +29,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `2b588d1` (Services: guarda de EMPRESA_ID nas escritas
-por ID e numeracao da nota de saida) + commit de docs. Árvore: limpa.
+**HEAD:** `41719b9` (Telas: escopo de EMPRESA_ID nas listagens e
+buscas de notas/pedidos/pessoas) + commit de docs. Árvore: limpa.
 Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 **5/5** (inalterados).
 
@@ -39,6 +39,12 @@ Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.49)
+
+| Item | Entrega |
+|---|---|
+| **Escopo de empresa nas telas** | Varredura completa dos `SELECT` de `Desktop\src\Views` e `Desktop\src\Services`: listagens de pedidos (`uFrmListaPedidos`, `uFrmMapaProducao`, `uFrmNotaSaida`), notas de entrada/saída (lista + abertura por ID), buscas de cliente/fornecedor (`uFrmNotaEntrada`, `uFrmNotaSaida`, `uFrmPedidoVenda`) não filtravam `EMPRESA_ID` — todos ganharam `:EMP` da sessão. Consultas por ID de item (`NOTA_*_ID`, `MAPA_*`, `TALAO`) permanecem escopadas pelo registro pai já validado. Commit `41719b9`. |
 
 ### O que fechou nesta sessão (marco 3.48)
 

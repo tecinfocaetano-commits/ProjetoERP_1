@@ -1429,6 +1429,23 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Resultado:** build **0 erros / 0 warnings**, suíte **349/349**.
 - **Commit:** `2b588d1`.
 
+### 3.49 Telas — escopo de EMPRESA_ID nas listagens e buscas (08/11)
+
+- **Varredura:** todos os `SELECT` de `Desktop\src\Views` e
+  `Desktop\src\Services` foram revisados quanto a `EMPRESA_ID`.
+- **Corrigido:** listagens de pedidos sem filtro de empresa em
+  `uFrmListaPedidos`, `uFrmMapaProducao` e `uFrmNotaSaida`; listas e
+  abertura de nota em `uFrmNotaEntrada`/`uFrmNotaSaida`; buscas de
+  cliente/fornecedor por texto, CNPJ e nome (inclusive o lookup de
+  fornecedor do XML) em `uFrmNotaEntrada`, `uFrmNotaSaida` e
+  `uFrmPedidoVenda` (combo de clientes). Todas passaram a usar
+  `EMPRESA_ID = :EMP` com `TSessao`.
+- **Mantido propositalmente:** consultas por ID de item
+  (`NOTA_*_ID`, `MAPA_PRODUCAO_ID`, `TALAO`) — o pai já é validado
+  pela empresa antes; `CATEGORIA`/geográficos são globais.
+- **Resultado:** build **0 erros / 0 warnings**, suíte **349/349**.
+- **Commit:** `41719b9`.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)
