@@ -131,6 +131,15 @@ object frmListaPedidos: TfrmListaPedidos
       OnClick = btnMapaProducaoClick
       TabOrder = 2
     end
+    object btnImprimir: TBitBtn
+      Left = 435
+      Height = 32
+      Top = 4
+      Width = 100
+      Caption = 'Imprimir'
+      OnClick = btnImprimirClick
+      TabOrder = 3
+    end
     object btnFechar: TBitBtn
       Left = 750
       Height = 32
@@ -138,7 +147,7 @@ object frmListaPedidos: TfrmListaPedidos
       Width = 90
       Caption = 'Fechar'
       OnClick = btnFecharClick
-      TabOrder = 3
+      TabOrder = 4
     end
   end
   object dbGrid: TDBGrid
