@@ -11,7 +11,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, Buttons, SQLDB, uConexao, uSessao, uSenhaHash;
+  ExtCtrls, Buttons, SQLDB, uConexao, uSessao, uSenhaHash,
+  uUsuarioService, uUsuario;
 
 type
   { TfrmLogin }
@@ -123,11 +124,8 @@ end;
 function TfrmLogin.Autenticar(const ALogin, ASenha: string): Boolean;
 var
   LConexao: TConexao;
-  LQuery: TSQLQuery;
-  LSenhaGuardada: string;
-  LId: Int64;
-  LEmpresaId, LGrupoId: Int64;
-  LNome, LLogin, LAdmin: string;
+  LService: TUsuarioService;
+  LUsuario: TUsuario;
 begin
   Result := False;
   LConexao := TConexao.GetInstance;
@@ -142,60 +140,35 @@ begin
     end;
   end;
 
-  LQuery := TSQLQuery.Create(nil);
+  { autenticação e atualização de último acesso ficam no Service;
+    a senha não entra no WHERE: o banco guarda SHA-256 e a comparação
+    é feita em código (uSenhaHash) — aceita senha legada em texto
+    puro, migrada para hash no RegistrarAcesso }
+  LService := TUsuarioService.Create;
   try
-    LQuery.DataBase := LConexao.Connection;
-    LQuery.Transaction := LConexao.Transaction;
-    { a senha não entra mais no WHERE: o banco guarda SHA-256 e a
-      comparação é feita em código (uSenhaHash) — assim o login
-      também aceita senha legada em texto puro (migração) }
-    LQuery.SQL.Text :=
-      'SELECT U.ID, U.EMPRESA_ID, U.GRUPO_ID, U.NOME, U.LOGIN, U.ADMINISTRADOR, U.ATIVO, U.SENHA ' +
-      'FROM USUARIO U ' +
-      'WHERE U.LOGIN = :LOGIN AND U.ATIVO = ''A''';
-    LQuery.ParamByName('LOGIN').AsString := ALogin;
-    LQuery.Open;
+    LUsuario := LService.BuscarPorLogin(ALogin);
+    try
+      if LUsuario = nil then
+        Exit;
+      if not SenhaConfere(ASenha, LUsuario.Senha) then
+        Exit;
 
-    if LQuery.IsEmpty then
-      Exit;
+      TSessao.GetInstance.Logar(
+        LUsuario.Id,
+        LUsuario.EmpresaId,
+        LUsuario.GrupoId,
+        LUsuario.Nome,
+        LUsuario.Login,
+        LUsuario.Administrador
+      );
 
-    LSenhaGuardada := LQuery.FieldByName('SENHA').AsString;
-    if not SenhaConfere(ASenha, LSenhaGuardada) then
-      Exit;
-
-    LId := LQuery.FieldByName('ID').AsLargeInt;
-    LEmpresaId := LQuery.FieldByName('EMPRESA_ID').AsLargeInt;
-    LGrupoId := LQuery.FieldByName('GRUPO_ID').AsLargeInt;
-    LNome := LQuery.FieldByName('NOME').AsString;
-    LLogin := LQuery.FieldByName('LOGIN').AsString;
-    LAdmin := LQuery.FieldByName('ADMINISTRADOR').AsString;
-
-    TSessao.GetInstance.Logar(
-      LId,
-      LEmpresaId,
-      LGrupoId,
-      LNome,
-      LLogin,
-      LAdmin = 'S'
-    );
-
-    // Atualizar último acesso (+ migração da senha legada para SHA-256)
-    LQuery.Close;
-    if PrecisaMigrarSenha(LSenhaGuardada) then
-      LQuery.SQL.Text :=
-        'UPDATE USUARIO SET SENHA = :SENHA, ULTIMO_ACESSO = CURRENT_TIMESTAMP WHERE ID = :ID'
-    else
-      LQuery.SQL.Text :=
-        'UPDATE USUARIO SET ULTIMO_ACESSO = CURRENT_TIMESTAMP WHERE ID = :ID';
-    if PrecisaMigrarSenha(LSenhaGuardada) then
-      LQuery.ParamByName('SENHA').AsString := HashSenha(ASenha);
-    LQuery.ParamByName('ID').AsLargeInt := LId;
-    LQuery.ExecSQL;
-    LConexao.Confirmar;
-
-    Result := True;
+      LService.RegistrarAcesso(LUsuario.Id, ASenha, LUsuario.Senha);
+      Result := True;
+    finally
+      LUsuario.Free;
+    end;
   finally
-    LQuery.Free;
+    LService.Free;
   end;
 end;
 
