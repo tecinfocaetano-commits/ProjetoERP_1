@@ -1391,6 +1391,26 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Resultado:** build **0 erros**, suíte **349/349**.
 - **Commit:** `a13f106`.
 
+### 3.47 Consultas — escopo de EMPRESA_ID (08/11)
+
+- **Problema:** os `Pesquisar` de `TMaterialService`,
+  `TProdutoFiscalService` e `TProdutoService` e os `CarregarDados`
+  de `uFrmMaterial`, `uFrmProdutoFiscal`, `uFrmProdutos` e
+  `uFrmUsuarios` não filtravam `EMPRESA_ID` — as listagens e as
+  buscas mostravam registros de todas as empresas.
+- **Entrega:** predicado `EMPRESA_ID = :EMP` parametrizado
+  (`TSessao.GetInstance.EmpresaId`) nos 3 services e nas 4 telas.
+  `CATEGORIA` e as tabelas geográficas permanecem globais (sem
+  `EMPRESA_ID`). Os lookups de produto/material nas telas de
+  Compras (MATERIAL por ID), Movimento de Estoque, Nota de
+  Entrada (3 consultas de PRODUTO), Pedido de Venda e Ficha
+  Técnica (combo de produtos) também passaram a filtrar a
+  empresa da sessão.
+- **Extra:** destructors de `uFrmMaterial`/`uFrmProdutoFiscal`
+  movidos de `private` para `public` (warnings 3019 do FPC).
+- **Resultado:** build **0 erros / 0 warnings**, suíte **349/349**.
+- **Commit:** `759fae7`.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)

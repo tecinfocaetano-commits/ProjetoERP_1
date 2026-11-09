@@ -27,8 +27,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `a13f106` (Login: autenticacao delegada ao
-TUsuarioService) + commit de docs. Árvore: limpa.
+**HEAD:** `759fae7` (Consultas: escopo de EMPRESA_ID em
+Pesquisar e CarregarDados) + commit de docs. Árvore: limpa.
 Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 **5/5** (inalterados).
 
@@ -37,6 +37,12 @@ Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.47)
+
+| Item | Entrega |
+|---|---|
+| **Escopo de empresa nas consultas** | `Pesquisar` de `TMaterialService`/`TProdutoFiscalService`/`TProdutoService` e `CarregarDados` de `uFrmMaterial`/`uFrmProdutoFiscal`/`uFrmProdutos`/`uFrmUsuarios` listavam registros de **todas** as empresas. Todos ganharam `EMPRESA_ID = :EMP` (`TSessao.GetInstance.EmpresaId`, parametrizado). `CATEGORIA`/geográficos permanecem globais (sem `EMPRESA_ID`). Lookups de produto/material nas telas de Compras, Movimento de Estoque, Nota de Entrada, Pedido de Venda e Ficha Técnica também filtrados. Destructors movidos para `public` (warnings 3019). Commit `759fae7`. |
 
 ### O que fechou nesta sessão (marcos 3.44–3.46)
 
