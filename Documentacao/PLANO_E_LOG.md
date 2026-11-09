@@ -1341,6 +1341,56 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Resultado:** build **0 erros/0 warnings**, suíte **341/341**.
 - **Commits:** `a62868a`, `7e8d706` e o commit deste marco.
 
+### 3.44 Produto — escrita delegada ao novo TProdutoService (08/11)
+
+- **Entrega:** `uProdutoService.pas` criado (não existia): validação de
+  descrição, `CATEGORIA_ID`/`UNIDADE_ID` > 0 (`DM_ID` = `BIGINT NOT
+  NULL`) e `PRECO_VENDA` > 0; grava o mesmo conjunto de colunas que a
+  tela + `GRADE_ID` anulável via `InserirParamN`/`AtualizarParamN`
+  (0 → NULL); `LogOperacao` I/U/D; `Pesquisar` com CAST+CONTAINING.
+  Model `TProduto` ganhou `GradeId` e `ProdutoFiscalId`. Form delega
+  Salvar/Excluir; `FProdutoService` liberado no `FormDestroy`.
+- **Testes:** `uCadastrosFase1Test` +4 (`TestProdutoCicloCompleto` —
+  inclui GRADE_ID NULL→valor, `TestProdutoSemDescricao`,
+  `TestProdutoSemCategoria`, `TestProdutoPrecoVendaZero`).
+- **Resultado:** build **0 erros**, suíte **345/345**.
+- **Commit:** `69b6e71`.
+
+### 3.45 Usuário — escrita delegada ao novo TUsuarioService (08/11)
+
+- **Entrega:** `uUsuarioService.pas` criado. Senha chega em texto puro
+  e é gravada como **SHA-256** no Service (`HashSenha`); no update,
+  senha vazia mantém a atual. Login único por empresa
+  (case-insensitive). **`GRUPO_ID` passou a ser gravado** — a tela já
+  tinha o combo e o model o campo, mas o INSERT/UPDATE antigo não
+  gravava a coluna; como `DM_ID` é `NOT NULL`, o cadastro de usuário
+  falhava no banco (mesmo bug do `EMPRESA_ID` em CATEGORIA). Service
+  exige grupo > 0 e a tela ganhou a mesma validação + reseleção do
+  grupo em `PreencherCampos`. `TELEFONE` incluído (migração 019).
+  Auto-exclusão bloqueada no Service (além da tela). `LogOperacao`
+  I/U/D. Model `TUsuario` ganhou `Telefone`.
+- **Extra para o login:** `BuscarPorLogin` (LOGIN + ATIVO='A', traz o
+  hash) e `RegistrarAcesso` (ULTIMO_ACESSO + migração de senha legada
+  para hash, auditada só quando migra).
+- **Testes:** `uCadastrosFase1Test` +4 (`TestUsuarioCicloCompleto` —
+  hash SHA-256 no banco, `SenhaConfere`, senha vazia mantém hash,
+  senha nova troca hash; `TestUsuarioLoginDuplicado`,
+  `TestUsuarioSenhaCurta`, `TestUsuarioSemNome`).
+- **Resultado:** build **0 erros**, suíte **349/349**.
+- **Commit:** `c7e67b9`.
+
+### 3.46 Login — autenticação delegada ao Service (08/11)
+
+- **Entrega:** `uFrmLogin.Autenticar` não tem mais SQL: usa
+  `TUsuarioService.BuscarPorLogin` + `SenhaConfere` (uSenhaHash) +
+  `RegistrarAcesso` (ULTIMO_ACESSO e migração de senha legada).
+  Comportamento idêntico ao anterior.
+- **Varredura final:** `grep -iE "insert into|update |delete from"`
+  em `Desktop\src\Views\*.pas` → **zero ocorrências**. Toda escrita
+  de tela passa por Service.
+- **Resultado:** build **0 erros**, suíte **349/349**.
+- **Commit:** `a13f106`.
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)

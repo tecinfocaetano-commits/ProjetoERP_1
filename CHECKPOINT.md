@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **341/341**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **349/349**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
@@ -27,9 +27,9 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `0b1eb2d` (Categorias: form delega escrita ao novo
-TCategoriaService) + commit de docs. Árvore: limpa.
-Build: desktop **0/0** · suíte desktop **341/341** · testes Android
+**HEAD:** `a13f106` (Login: autenticacao delegada ao
+TUsuarioService) + commit de docs. Árvore: limpa.
+Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 **5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
@@ -37,6 +37,15 @@ Build: desktop **0/0** · suíte desktop **341/341** · testes Android
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marcos 3.44–3.46)
+
+| Item | Entrega |
+|---|---|
+| **Produto via Service** | `uProdutoService` criado; `uFrmProdutos` sem INSERT/UPDATE/DELETE. Model ganhou `GradeId`/`ProdutoFiscalId`; `GRADE_ID` 0 → NULL via `InserirParamN`. Valida descrição, categoria/unidade (>0, `DM_ID` NOT NULL) e preço de venda > 0. +4 testes. Commit `69b6e71`. |
+| **Usuário via Service** | `uUsuarioService` criado; `uFrmUsuarios` sem SQL. Senha hasheada no Service (SHA-256); **`GRUPO_ID` agora gravado** (a tela tinha o combo mas o INSERT/UPDATE antigo não gravava a coluna — `DM_ID` NOT NULL, cadastro quebrava); login único por empresa; telefone; auto-exclusão bloqueada no Service. +4 testes. Commit `c7e67b9`. |
+| **Login via Service** | `uFrmLogin.Autenticar` usa `BuscarPorLogin` + `SenhaConfere` + `RegistrarAcesso` (último acesso + migração de senha legada). Commit `a13f106`. |
+| **Varredura final** | Nenhuma tela (`Desktop\src\Views\*.pas`) tem mais INSERT/UPDATE/DELETE — **toda escrita passa por Service**. Suíte **349/349**. |
 
 ### O que fechou nesta sessão (marco 3.43)
 
@@ -67,28 +76,18 @@ Build: desktop **0/0** · suíte desktop **341/341** · testes Android
   Commit `70e946c`.
 - **Material/ProdutoFiscal/Categoria — RESOLVIDO (marco 3.43):**
   ver tabela acima. Commits `a62868a`, `7e8d706`, `0b1eb2d`.
-- **Escrita direta restante nas telas** (próximos candidatos):
-  - cadastros simples que escrevem direto apesar de terem Service:
-    `uFrmProdutos`, `uFrmUsuarios` (CRUD puro — menor risco, mas fura
-    a regra "negócio no Service");
-    - `uFrmUsuarios` já tem a coluna `USUARIO.TELEFONE` (migração 019),
-      mas ainda não existe `uUsuarioService` — criar no mesmo padrão;
-  - `uFrmLogin` — UPDATE de `USUARIO.SENHA`/`ULTIMO_ACESSO` (troca de
-    senha na tela; avaliar se vira método de Service).
+- **Escrita direta nas telas — ZERADA (08/11):** `grep -iE
+  "insert into|update |delete from"` em `Desktop\src\Views\*.pas`
+  não retorna nada. Cadastros (Categorias, Material, Produto Fiscal,
+  Produtos, Usuários), geográficos, Nota de Entrada e Login estão
+  todos delegados aos Services. Marcos 3.41–3.46.
 
 ### Próximo passo (executável)
 
-1. **`uFrmProdutos`:** delegar INSERT/UPDATE/DELETE de `PRODUTO` ao
-   Service (não existe `uProdutoService` — criar no padrão de
-   `uMaterialService`, com `CATEGORIA_ID`/`UNIDADE_ID` obrigatórios —
-   `DM_ID NOT NULL` — e escopo `EMPRESA_ID`). Um marco por vez.
-2. **`uFrmUsuarios`:** criar `uUsuarioService` e delegar o CRUD
-   (inclui `TELEFONE`, já migrado); cuidado com `SENHA` (hash?) e com
-   não permitir que um usuário se tranque fora.
-3. **`uFrmLogin`:** UPDATE de `USUARIO.SENHA`/`ULTIMO_ACESSO` — avaliar
-   método de Service para troca de senha com auditoria.
-4. Antes de qualquer commit: `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**341/341** ou mais); Android
+1. **A definir com o usuário** — a fila de "cadastros simples + login"
+   fechou em 08/11 (ver "Estado atual" no topo e `PLANO_E_LOG.md`
+   §3.41–§3.46). Antes de qualquer commit: `Scripts\build_desktop.bat`
+   (0/0) e `Scripts\run_tests.bat` (**349/349** ou mais); Android
    `Scripts\run_tests_android.bat` (**5/5**).
 
 ### O que fechou nesta sessão (marco 3.39)
