@@ -119,10 +119,12 @@ public class OrcamentosActivity extends BaseListaActivity {
             return;
         }
 
+        String detalhes = texto + detalhesItens(orcamento);
+
         if (orcamento.idServidor == null || !orcamento.sincronizado) {
             new AlertDialog.Builder(this)
                     .setTitle("Orçamento")
-                    .setMessage(texto + "\n\nEste orçamento ainda não foi enviado ao servidor."
+                    .setMessage(detalhes + "\n\nEste orçamento ainda não foi enviado ao servidor."
                             + "\nSincronize para poder converter em pedido.")
                     .setNegativeButton("Fechar", null)
                     .setPositiveButton("Sincronizar", (dialog, which) -> sincronizar(true))
@@ -133,10 +135,32 @@ public class OrcamentosActivity extends BaseListaActivity {
         final long idServidor = orcamento.idServidor;
         new AlertDialog.Builder(this)
                 .setTitle("Orçamento")
-                .setMessage(texto + "\n\nDeseja converter este orçamento em pedido?")
+                .setMessage(detalhes + "\n\nDeseja converter este orçamento em pedido?")
                 .setNegativeButton("Fechar", null)
                 .setPositiveButton("Converter", (dialog, which) -> converter(idServidor))
                 .show();
+    }
+
+    /** Lista os itens do orçamento para o diálogo de detalhes. */
+    private String detalhesItens(OrcamentoLocal orcamento) {
+        List<OrcamentoItemLocal> itens;
+        try {
+            itens = BancoLocal.get(this).listarItens(orcamento.id);
+        } catch (Exception e) {
+            return "";
+        }
+        if (itens == null || itens.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("\n\nItens:");
+        for (OrcamentoItemLocal item : itens) {
+            String nome = item.descricao == null || item.descricao.isEmpty()
+                    ? "Produto " + item.produtoId : item.descricao;
+            sb.append("\n- ").append(nome)
+                    .append("  x").append(Fmt.quantidade(item.quantidade))
+                    .append("  ").append(Fmt.moeda(item.total));
+        }
+        return sb.toString();
     }
 
     private void sincronizar(final boolean mostrarResultado) {

@@ -29,16 +29,24 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** commit de docs do marco 3.52 (auditoria Android +
-varredura final de Services). Árvore: limpa.
+**HEAD:** commit de docs do marco 3.53 (relatório + melhorias de
+tela + Android). Árvore: limpa.
 Build: desktop **0/0** · suíte desktop **349/349** · API compilada
-(`Scripts\build_api.bat`) · testes Android **5/5** (inalterados).
+(`Scripts\build_api.bat`) · testes Android **OK**.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.53)
+
+| Item | Entrega |
+|---|---|
+| **Relatório LazReport** | Botão "Imprimir" em `uFrmListaPedidos` + `relatorios\pedidos_venda.lrf`; mesmo filtro da grade com `EMPRESA_ID`. Commits `5525e4f`. |
+| **Melhoria de tela** | `uFrmPedidoDetalhe` (somente leitura) substitui o `MessageDlg` provisório do botão Visualizar. Commit `d2dae8c`. |
+| **Android** | Diálogo do orçamento lista os itens (off-line). |
 
 ### O que fechou nesta sessão (marco 3.52 — auditoria Android + Services)
 

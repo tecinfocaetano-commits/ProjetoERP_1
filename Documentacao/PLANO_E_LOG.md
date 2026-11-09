@@ -1505,6 +1505,31 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.53 Relatório LazReport + melhorias de tela + Android (08/11)
+
+- **Relatório de pedidos:** `uFrmListaPedidos` ganhou botão
+  "Imprimir" e o modelo `Desktop\relatorios\pedidos_venda.lrf`
+  (lista número/emissão/cliente/status/total). A query do relatório
+  (`qryPedidosRel` + `frDBPedidos`) repete o filtro da grade —
+  período, status e `EMPRESA_ID` da sessão — e adiciona
+  `DATA_EMISSAO_STR` formatada dd/mm/yyyy. Filtro da grade
+  refatorado em `SqlPedidos`/`VincularParamsPedidos` (sem
+  duplicação). Commit `5525e4f`.
+- **Visualização de pedido:** o botão "Visualizar" da lista era um
+  `MessageDlg` provisório (TODO). Novo `uFrmPedidoDetalhe`
+  (somente leitura): cabeçalho com número, cliente, emissão,
+  entrega, status, subtotal/desconto/total e observações + grade
+  de itens; consulta filtra `EMPRESA_ID` da sessão. Commit
+  `d2dae8c`.
+- **Android:** o diálogo de detalhe do orçamento em
+  `OrcamentosActivity` agora lista os itens (descrição, quantidade
+  e total) antes de oferecer sincronizar/converter — funciona
+  off-line sobre o cache local.
+- **Resultado:** build desktop 0 erros, suíte **349/349**,
+  testes Android OK.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
