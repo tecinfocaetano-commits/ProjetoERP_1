@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils,
-  uConexao, uFrmPedidoVenda, uPedidoStatus, uPermissao, uFrmMapaProducao;
+  uConexao, uSessao, uFrmPedidoVenda, uPedidoStatus, uPermissao, uFrmMapaProducao;
 
 type
   { TfrmListaPedidos }
@@ -114,7 +114,7 @@ begin
     SqlCaseStatusPedido('PV.STATUS') + ' AS STATUS_DESC ' +
     'FROM PEDIDO_VENDA PV ' +
     'JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
-    'WHERE PV.DATA_EMISSAO BETWEEN :DI AND :DF';
+    'WHERE PV.DATA_EMISSAO BETWEEN :DI AND :DF AND PV.EMPRESA_ID = :EMP';
 
   if cmbStatusFiltro.ItemIndex > 0 then
   begin
@@ -131,6 +131,7 @@ begin
   FQuery.SQL.Text := LSQL;
   FQuery.ParamByName('DI').AsDate := StrToDateDef(edtDataInicio.Text, Now);
   FQuery.ParamByName('DF').AsDate := StrToDateDef(edtDataFim.Text, Now) + 1;
+  FQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   if cmbStatusFiltro.ItemIndex > 0 then
     FQuery.ParamByName('STATUS').AsString := LStatus;
   FQuery.Open;

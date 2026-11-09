@@ -523,13 +523,14 @@ begin
     '  COALESCE(C.NOME, ''(sem cliente)'') AS CLIENTE, ' +
     '  ' + SqlCaseStatusPedido('PV.STATUS') + ' AS STATUS_DESC ' +
     'FROM PEDIDO_VENDA PV LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
-    'WHERE PV.STATUS IN (''P'', ''A'', ''E'') ' +
+    'WHERE PV.STATUS IN (''P'', ''A'', ''E'') AND PV.EMPRESA_ID = :EMP ' +
     '  AND EXISTS (SELECT 1 FROM ITEM_PEDIDO I WHERE I.PEDIDO_VENDA_ID = PV.ID ' +
     '        AND I.QUANTIDADE > COALESCE((SELECT SUM(MI.QUANTIDADE) ' +
     '              FROM MAPA_PRODUCAO_ITEM MI ' +
     '                JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
     '              WHERE MI.ITEM_PEDIDO_ID = I.ID AND M.STATUS <> ''CANCELADO''), 0)) ' +
     'ORDER BY PV.ID DESC';
+  FPedidos.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   FPedidos.Open;
 
   if FItensPedido.Active then

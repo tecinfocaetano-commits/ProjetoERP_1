@@ -248,7 +248,7 @@ begin
     '  CASE N.STATUS WHEN ''A'' THEN ''Aberta'' WHEN ''P'' THEN ''Faturada'' ' +
     '       WHEN ''C'' THEN ''Cancelada'' ELSE N.STATUS END AS STATUS_DESC ' +
     'FROM NOTA_SAIDA N LEFT JOIN PESSOA C ON C.ID = N.CLIENTE_ID AND C.TIPO = ''C'' ' +
-    'WHERE N.DATA_SAIDA BETWEEN :DI AND :DF';
+    'WHERE N.DATA_SAIDA BETWEEN :DI AND :DF AND N.EMPRESA_ID = :EMP';
 
   case cmbFiltroStatus.ItemIndex of
     1: LStatus := 'A';
@@ -264,6 +264,7 @@ begin
 
   FNotas.ParamByName('DI').AsDate := StrToDateDef(edtFiltroDe.Text, IncMonth(Now, -3));
   FNotas.ParamByName('DF').AsDate := StrToDateDef(edtFiltroAte.Text, Now) + 1;
+  FNotas.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   if LStatus <> '' then
     FNotas.ParamByName('STATUS').AsString := LStatus;
   FNotas.Open;
@@ -283,10 +284,11 @@ begin
     'FROM PEDIDO_VENDA PV ' +
     '  LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
     '  LEFT JOIN CONDICAO_PAGAMENTO CP ON CP.ID = PV.CONDICAO_PAGAMENTO_ID ' +
-    'WHERE PV.STATUS IN (''P'', ''A'') ' +
+    'WHERE PV.STATUS IN (''P'', ''A'') AND PV.EMPRESA_ID = :EMP ' +
     '  AND NOT EXISTS (SELECT 1 FROM NOTA_SAIDA NS ' +
     '                  WHERE NS.PEDIDO_VENDA_ID = PV.ID AND NS.STATUS <> ''C'') ' +
     'ORDER BY PV.ID DESC';
+  FPedidos.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   FPedidos.Open;
 end;
 
@@ -471,8 +473,9 @@ begin
       'FROM NOTA_SAIDA N ' +
       '  LEFT JOIN PESSOA C ON C.ID = N.CLIENTE_ID AND C.TIPO = ''C'' ' +
       '  LEFT JOIN PEDIDO_VENDA PV ON PV.ID = N.PEDIDO_VENDA_ID ' +
-      'WHERE N.ID = :ID';
+      'WHERE N.ID = :ID AND N.EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := ANotaId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
     begin
@@ -628,8 +631,9 @@ begin
       // CAST obrigatório: sem ele o Firebird infere o parâmetro como CHAR(1)
       '      REPLACE(REPLACE(REPLACE(CAST(:T AS VARCHAR(40)), ''.'', ''''), ''/'', ''''), ''-'', '''') ' +
       '   OR UPPER(NOME) STARTING WITH UPPER(:T)) ' +
-      'ORDER BY ID';
+      'AND EMPRESA_ID = :EMP ORDER BY ID';
     LQuery.ParamByName('T').AsString := LTexto;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
     begin

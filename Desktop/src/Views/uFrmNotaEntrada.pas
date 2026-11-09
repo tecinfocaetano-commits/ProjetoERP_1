@@ -353,7 +353,7 @@ begin
     '  CASE N.STATUS WHEN ''A'' THEN ''Aberta'' WHEN ''P'' THEN ''Processada'' ' +
     '       WHEN ''C'' THEN ''Cancelada'' ELSE N.STATUS END AS STATUS_DESC ' +
     'FROM NOTA_ENTRADA N LEFT JOIN PESSOA F ON F.ID = N.FORNECEDOR_ID AND F.TIPO = ''F'' ' +
-    'WHERE N.DATA_ENTRADA BETWEEN :DI AND :DF';
+    'WHERE N.DATA_ENTRADA BETWEEN :DI AND :DF AND N.EMPRESA_ID = :EMP';
 
   case cmbFiltroStatus.ItemIndex of
     1: LStatus := 'A';
@@ -369,6 +369,7 @@ begin
 
   FNotas.ParamByName('DI').AsDate := StrToDateDef(edtFiltroDe.Text, IncMonth(Now, -3));
   FNotas.ParamByName('DF').AsDate := StrToDateDef(edtFiltroAte.Text, Now) + 1;
+  FNotas.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   if LStatus <> '' then
     FNotas.ParamByName('STATUS').AsString := LStatus;
   FNotas.Open;
@@ -564,8 +565,9 @@ begin
     LQuery.SQL.Text :=
       'SELECT N.*, COALESCE(F.NOME_FANTASIA, F.NOME, '''') AS FORNECEDOR_NOME ' +
       'FROM NOTA_ENTRADA N LEFT JOIN PESSOA F ON F.ID = N.FORNECEDOR_ID AND F.TIPO = ''F'' ' +
-      'WHERE N.ID = :ID';
+      'WHERE N.ID = :ID AND N.EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := ANotaId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
     begin
@@ -640,8 +642,9 @@ begin
       // (ver comentário em ImportarXML)
       '      REPLACE(REPLACE(REPLACE(CAST(:T AS VARCHAR(40)), ''.'', ''''), ''/'', ''''), ''-'', '''') ' +
       '   OR UPPER(COALESCE(NOME_FANTASIA, NOME)) STARTING WITH UPPER(:T)) ' +
-      'ORDER BY ID';
+      'AND EMPRESA_ID = :EMP ORDER BY ID';
     LQuery.ParamByName('T').AsString := LTexto;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
     begin
@@ -1058,8 +1061,9 @@ begin
       // CAST obrigatório: sem ele o Firebird infere o parâmetro como CHAR(1)
       // dentro do REPLACE aninhado e o Execute falha com "string right truncation"
       'REPLACE(REPLACE(REPLACE(CAST(:DOC AS VARCHAR(40)), ''.'', ''''), ''/'', ''''), ''-'', '''') ' +
-      'ORDER BY ID';
+      'AND EMPRESA_ID = :EMP ORDER BY ID';
     LQuery.ParamByName('DOC').AsString := Trim(TagTexto(LBloco, 'CNPJ'));
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       LFornecId := LQuery.FieldByName('ID').AsLargeInt;
@@ -1069,10 +1073,11 @@ begin
     begin
       // Tenta pelo nome (razão social / fantasia)
       LQuery.SQL.Text :=
-        'SELECT FIRST 1 ID FROM PESSOA WHERE TIPO = ''F'' AND ' +
+        'SELECT FIRST 1 ID FROM PESSOA WHERE TIPO = ''F'' AND EMPRESA_ID = :EMP AND ' +
         '(UPPER(COALESCE(NOME, NOME_FANTASIA)) = UPPER(:NOME) ' +
         'OR UPPER(COALESCE(NOME_FANTASIA, NOME)) = UPPER(:NOME)) ORDER BY ID';
       LQuery.ParamByName('NOME').AsString := Trim(LNome);
+      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQuery.Open;
       if not LQuery.IsEmpty then
         LFornecId := LQuery.FieldByName('ID').AsLargeInt;
