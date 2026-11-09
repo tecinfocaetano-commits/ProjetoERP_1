@@ -21,7 +21,9 @@
 
 Regras do projeto: português; regra de negócio em Services; SQL sempre
 parametrizado; transação + auditoria (`LogOperacao`); LazReport apenas;
-Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`.
+Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
+**todo commit de marco deve ser seguido de `git push`** para `origin`
+(GitHub privado — `tecinfocaetano-commits/ProjetoERP_1`).
 
 ---
 

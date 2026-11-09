@@ -51,9 +51,13 @@ Regras do bloco:
 5. Executar o "Próximo passo".
 6. Só considerar pronto com **build 0/0** e **suíte 65/65**.
 7. Atualizar `CHECKPOINT.md` + `PLANO_E_LOG.md` e **commitar**.
+8. **Dar `git push`** para o `origin` (GitHub privado) — commit sem push
+   não está salvo de verdade; faça push a cada marco commitado.
 
 ## Regras do projeto (não negociáveis)
 
+- **Nunca commite sem push:** todo commit de marco deve ser seguido de
+  `git push` para `origin` (`https://github.com/tecinfocaetano-commits/ProjetoERP_1.git`).
 - **Português** em código, mensagens, commits e documentação.
 - **Regra de negócio em Services** (`Desktop\src\Services`); a tela só monta e
   valida campos.
