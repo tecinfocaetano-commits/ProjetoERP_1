@@ -1,0 +1,146 @@
+object frmPedidoDetalhe: TfrmPedidoDetalhe
+  Left = 300
+  Height = 480
+  Top = 200
+  Width = 760
+  Caption = 'Pedido de Venda'
+  ClientHeight = 480
+  ClientWidth = 760
+  OnCreate = FormCreate
+  PixelsPerInch = 96
+  TextHeight = 13
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 36
+    Top = 0
+    Width = 760
+    Align = alTop
+    BevelOuter = bvNone
+    ParentColor = True
+    object lblTitulo: TLabel
+      Left = 10
+      Height = 20
+      Top = 8
+      Width = 130
+      Caption = 'Detalhe do Pedido'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -14
+      Font.Name = 'Arial'
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 40
+    Top = 440
+    Width = 760
+    Align = alBottom
+    BevelOuter = bvNone
+    ParentColor = True
+    object btnFechar: TBitBtn
+      Left = 660
+      Height = 32
+      Top = 4
+      Width = 90
+      Caption = 'Fechar'
+      OnClick = btnFecharClick
+      TabOrder = 0
+    end
+  end
+  object pnlDados: TPanel
+    Left = 0
+    Height = 110
+    Top = 36
+    Width = 760
+    Align = alTop
+    BevelOuter = bvLowered
+    ParentColor = True
+    object lblNumValor: TLabel
+      Left = 10
+      Height = 14
+      Top = 8
+      Width = 200
+      Caption = '-'
+    end
+    object lblClienteValor: TLabel
+      Left = 10
+      Height = 14
+      Top = 28
+      Width = 500
+      Caption = '-'
+    end
+    object lblEmissaoValor: TLabel
+      Left = 10
+      Height = 14
+      Top = 48
+      Width = 200
+      Caption = '-'
+    end
+    object lblStatusValor: TLabel
+      Left = 220
+      Height = 14
+      Top = 48
+      Width = 120
+      Caption = '-'
+    end
+    object lblSubtotalValor: TLabel
+      Left = 360
+      Height = 14
+      Top = 48
+      Width = 120
+      Caption = '-'
+    end
+    object lblDescontoValor: TLabel
+      Left = 490
+      Height = 14
+      Top = 48
+      Width = 120
+      Caption = '-'
+    end
+    object lblTotalValor: TLabel
+      Left = 620
+      Height = 14
+      Top = 48
+      Width = 130
+      Caption = '-'
+    end
+    object lblObsValor: TLabel
+      Left = 10
+      Height = 14
+      Top = 86
+      Width = 740
+      Caption = '-'
+    end
+  end
+  object pnlGrade: TPanel
+    Left = 0
+    Height = 294
+    Top = 146
+    Width = 760
+    Align = alClient
+    BevelOuter = bvNone
+    ParentColor = True
+    object dbGridItens: TDBGrid
+      Left = 0
+      Height = 294
+      Top = 0
+      Width = 760
+      Align = alClient
+      DataSource = DataSourceItens
+      Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
+      ReadOnly = True
+      TabOrder = 0
+      TitleFont.Charset = DEFAULT_CHARSET
+      TitleFont.Color = clWindowText
+      TitleFont.Height = -11
+      TitleFont.Name = 'Tahoma'
+      TitleFont.Style = []
+    end
+  end
+  object DataSourceItens: TDataSource
+    Left = 680
+    Top = 440
+  end
+end

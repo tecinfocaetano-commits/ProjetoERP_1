@@ -13,7 +13,8 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils,
   LR_Class, LR_DBSet,
-  uConexao, uSessao, uFrmPedidoVenda, uPedidoStatus, uPermissao, uFrmMapaProducao;
+  uConexao, uSessao, uFrmPedidoVenda, uPedidoStatus, uPermissao, uFrmMapaProducao,
+  uFrmPedidoDetalhe;
 
 type
   { TfrmListaPedidos }
@@ -194,14 +195,17 @@ begin
 end;
 
 procedure TfrmListaPedidos.btnVisualizarClick(Sender: TObject);
+var
+  LForm: TfrmPedidoDetalhe;
 begin
   if FQuery.IsEmpty then Exit;
-  // TODO: Abrir pedido para visualização/edição
-  MessageDlg('Pedido Nº ' + FQuery.FieldByName('NUMERO').AsString + #13#10 +
-    'Cliente: ' + FQuery.FieldByName('CLIENTE').AsString + #13#10 +
-    'Total: R$ ' + FormatFloat('#,##0.00', FQuery.FieldByName('TOTAL').AsFloat) + #13#10 +
-    'Status: ' + FQuery.FieldByName('STATUS_DESC').AsString,
-    mtInformation, [mbOK], 0);
+  LForm := TfrmPedidoDetalhe.Create(Application);
+  try
+    LForm.PedidoId := FQuery.FieldByName('ID').AsLargeInt;
+    LForm.ShowModal;
+  finally
+    LForm.Free;
+  end;
 end;
 
 procedure TfrmListaPedidos.btnMapaProducaoClick(Sender: TObject);
