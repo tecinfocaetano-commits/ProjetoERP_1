@@ -29,8 +29,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `7114bab` + commit de docs (Services: GarantirDaEmpresa
-nas notas de entrada/saida + Cor). Árvore: limpa.
+**HEAD:** `1098221` (Telas: filtro de empresa tambem na leitura
+por ID) + commit de docs. Árvore: limpa.
 Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 **5/5** (inalterados).
 
@@ -44,7 +44,8 @@ Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 
 | Item | Entrega |
 |---|---|
-| **Guarda de empresa nos services de nota** | `uServiceBase` ganhou `GarantirEmpresaBanco` (função reutilizável para services que não herdam da base) + métodos `GarantirDaEmpresa`/`GarantirDaEmpresaSql`. `TNotaEntradaService` e `TNotaSaidaService` validam empresa em todos os métodos públicos por ID (cabeçalho, itens via pai, processar/faturar/cancelar, contas, XML); `CriarDoPedidoCompra`/`CriarDoPedido` validam o pedido. `TCorService` ganhou `GarantirDaEmpresa` em Atualizar/Excluir. `TProducaoService` **mantém desenho próprio** (deriva `EMPRESA_ID` do registro pai — `TestMapaEscopoEmpresa`). Commits `7114bab` + Cor. |
+| **Guarda de empresa nos services de nota** | `uServiceBase` ganhou `GarantirEmpresaBanco` (função reutilizável para services que não herdam da base) + métodos `GarantirDaEmpresa`/`GarantirDaEmpresaSql`. `TNotaEntradaService` e `TNotaSaidaService` validam empresa em todos os métodos públicos por ID (cabeçalho, itens via pai, processar/faturar/cancelar, contas, XML); `CriarDoPedidoCompra`/`CriarDoPedido` validam o pedido. `TCorService` ganhou `GarantirDaEmpresa` em Atualizar/Excluir. `TProducaoService` **mantém desenho próprio** (deriva `EMPRESA_ID` do registro pai — `TestMapaEscopoEmpresa`). Commits `7114bab` + `839fefd`. |
+| **Leitura por ID nas telas** | `PreencherCampos`/`NumeroDoMapa` de Material, Produto Fiscal, Produtos, Usuários, Cores do Produto e Mapa de Produção passaram a filtrar `EMPRESA_ID = :EMP`. Globais mantidos: CATEGORIA, CONDICAO_PAGAMENTO, FORMA_PAGAMENTO, geográficos, GRUPO/PERMISSAO. Commit `1098221`. |
 
 ### O que fechou nesta sessão (marco 3.49)
 
