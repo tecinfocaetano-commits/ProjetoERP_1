@@ -1483,6 +1483,28 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.52 Auditoria Android + varredura final de Services (08/11)
+
+- **Android:** `BancoLocal` filtra `empresa` em **todas** as queries
+  (clientes, produtos, orçamentos/itens, vendas, estoque, contas a
+  receber/pagar, outbox); `ErpDbHelper` tem coluna `empresa` em toda
+  tabela de negócio com índices compostos; a troca de empresa chama
+  `Sessao.encerrar` (token JWT descartado → novo login na empresa).
+  Configuração de URL/código é por empresa (D9).
+- **Desktop — Services restantes:** `uEstoqueService`,
+  `uInventarioService`, `uKardexService`, `uContasService`,
+  `uMovimentoFinanceiroService`, `uCaixaService`, `uPDVService`,
+  `uPedidoVendaService`, `uPedidoCompraService`, `uOrcamentoService`
+  conferidos — escritas validam empresa antes do UPDATE/DELETE por
+  ID; `uPermissaoService` é global por desenho (GRUPO/PERMISSAO).
+- **Convenção confirmada:** `(EMPRESA_ID = :EMP OR EMPRESA_ID IS NULL)`
+  em CONFIGURACAO e CAIXA = herança de padrão global / caixas
+  legados — deliberado, não é vazamento.
+- **Resultado:** nenhum defeito novo; baseline mantido (desktop
+  349/349, Android 5/5, API compilada).
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

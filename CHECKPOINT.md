@@ -29,8 +29,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `2417241` (API: filtro de empresa na 2a leitura de preco
-de orcamento) + commit de docs. Árvore: limpa.
+**HEAD:** commit de docs do marco 3.52 (auditoria Android +
+varredura final de Services). Árvore: limpa.
 Build: desktop **0/0** · suíte desktop **349/349** · API compilada
 (`Scripts\build_api.bat`) · testes Android **5/5** (inalterados).
 
@@ -39,6 +39,16 @@ Build: desktop **0/0** · suíte desktop **349/349** · API compilada
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.52 — auditoria Android + Services)
+
+Android já era isolado por empresa (coluna `empresa` em todas as
+tabelas locais, `empresaAtual()` em toda query, token descartado na
+troca de empresa). Varredura final dos Services de estoque,
+financeiro, PDV, pedidos e configuração: nenhuma escrita por ID sem
+validação de empresa. Padrão `(EMPRESA_ID = :EMP OR EMPRESA_ID IS
+NULL)` em CONFIGURACAO/CAIXA confirmado como deliberado (padrão
+global/legado). Nenhum defeito novo.
 
 ### O que fechou nesta sessão (marco 3.51 — auditoria da API)
 
