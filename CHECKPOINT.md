@@ -29,8 +29,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (08/11/2026)
 
-**HEAD:** `41719b9` (Telas: escopo de EMPRESA_ID nas listagens e
-buscas de notas/pedidos/pessoas) + commit de docs. Árvore: limpa.
+**HEAD:** `7114bab` + commit de docs (Services: GarantirDaEmpresa
+nas notas de entrada/saida + Cor). Árvore: limpa.
 Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 **5/5** (inalterados).
 
@@ -39,6 +39,12 @@ Build: desktop **0/0** · suíte desktop **349/349** · testes Android
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.50)
+
+| Item | Entrega |
+|---|---|
+| **Guarda de empresa nos services de nota** | `uServiceBase` ganhou `GarantirEmpresaBanco` (função reutilizável para services que não herdam da base) + métodos `GarantirDaEmpresa`/`GarantirDaEmpresaSql`. `TNotaEntradaService` e `TNotaSaidaService` validam empresa em todos os métodos públicos por ID (cabeçalho, itens via pai, processar/faturar/cancelar, contas, XML); `CriarDoPedidoCompra`/`CriarDoPedido` validam o pedido. `TCorService` ganhou `GarantirDaEmpresa` em Atualizar/Excluir. `TProducaoService` **mantém desenho próprio** (deriva `EMPRESA_ID` do registro pai — `TestMapaEscopoEmpresa`). Commits `7114bab` + Cor. |
 
 ### O que fechou nesta sessão (marco 3.49)
 

@@ -21,6 +21,7 @@ type
     function NomeExiste(AProdutoId: Int64; const ANome: string;
       AExcluirId: Int64 = 0): Boolean;
     procedure Validar(AObj: TCor);
+    procedure GarantirDaEmpresa(AId: Int64);
   public
     constructor Create;
     destructor Destroy; override;
@@ -136,11 +137,29 @@ begin
   LogOperacao('COR', 'I', Result);
 end;
 
+procedure TCorService.GarantirDaEmpresa(AId: Int64);
+var
+  LQuery: TSQLQuery;
+begin
+  { escrita por ID só vale para registro da empresa da sessão }
+  LQuery := FRepo.BuscarPorId(AId);
+  try
+    if LQuery.IsEmpty or
+       (LQuery.FieldByName('EMPRESA_ID').AsLargeInt <>
+        TSessao.GetInstance.EmpresaId) then
+      raise Exception.Create('Cor não encontrada para a empresa atual.');
+  finally
+    if LQuery.Active then
+      LQuery.Close;
+  end;
+end;
+
 function TCorService.Atualizar(AObj: TCor): Boolean;
 const
   CAMPOS_PARAM = 'NOME = :NOM, HEX = :HEX, ATIVO = :ATIVO';
 begin
   ValidarId(AObj.Id, 'Cor');
+  GarantirDaEmpresa(AObj.Id);
   Validar(AObj);
 
   Result := FRepo.AtualizarParam(
@@ -154,6 +173,7 @@ end;
 function TCorService.Excluir(AId: Int64): Boolean;
 begin
   ValidarId(AId, 'Cor');
+  GarantirDaEmpresa(AId);
   Result := FRepo.Excluir(AId);
   LogOperacao('COR', 'D', AId);
 end;

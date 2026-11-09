@@ -1446,6 +1446,23 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Resultado:** build **0 erros / 0 warnings**, suíte **349/349**.
 - **Commit:** `41719b9`.
 
+### 3.50 Services — GarantirDaEmpresa nas notas e Cor (08/11)
+
+- **Entrega:** `uServiceBase` expõe `GarantirEmpresaBanco`
+  (função standalone para services sem herança) e os métodos
+  `GarantirDaEmpresa`/`GarantirDaEmpresaSql`. `TNotaEntradaService`
+  e `TNotaSaidaService` passaram a validar a empresa da sessão em
+  todos os pontos de entrada por ID — incluindo itens resolvidos
+  pelo registro pai. `CriarDoPedidoCompra`/`CriarDoPedido` validam
+  o pedido antes de gerar a nota. `TCorService` ganhou a mesma
+  guarda em `Atualizar`/`Excluir`.
+- **Exceção deliberada:** `TProducaoService` deriva `EMPRESA_ID` do
+  registro pai (mapa/talão/consumo) em vez da sessão — comportamento
+  coberto por `TestMapaEscopoEmpresa`; guards de sessão foram
+  revertidos lá.
+- **Resultado:** build **0 erros**, suíte **349/349**.
+- **Commits:** `7114bab` (+ Cor).
+
 ---
 
 ## 4. Convenções e avisos (não reabrir)
