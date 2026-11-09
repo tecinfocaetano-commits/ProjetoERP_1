@@ -178,8 +178,9 @@ begin
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT ID, DESCRICAO, PRECO_CUSTO FROM MATERIAL WHERE ID = :ID';
+    LQuery.SQL.Text := 'SELECT ID, DESCRICAO, PRECO_CUSTO FROM MATERIAL WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := LId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
     begin

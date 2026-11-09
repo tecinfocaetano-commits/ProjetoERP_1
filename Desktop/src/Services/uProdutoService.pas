@@ -207,10 +207,12 @@ begin
   { CAST + CONTAINING: o termo pode ser maior que CODIGO/CODIGO_BARRAS
     e o CONTAINING direto estoura com "string right truncation". }
   Result := FRepo.BuscarTodosParam(
+    'EMPRESA_ID = :EMP AND ' +
     '(UPPER(CAST(DESCRICAO AS VARCHAR(1000))) CONTAINING UPPER(:T) OR ' +
     'UPPER(CAST(CODIGO AS VARCHAR(200))) CONTAINING UPPER(:T) OR ' +
     'UPPER(CAST(CODIGO_BARRAS AS VARCHAR(200))) CONTAINING UPPER(:T))',
-    ['T'], [ATermo],
+    ['EMP', 'T'],
+    [IntToStr(TSessao.GetInstance.EmpresaId), ATermo],
     'DESCRICAO');
 end;
 

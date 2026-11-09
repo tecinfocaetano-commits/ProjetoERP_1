@@ -299,14 +299,15 @@ procedure TfrmProdutos.CarregarDados(const AFiltro: string);
 var
   LSQL: string;
 begin
-  LSQL := 'SELECT ID, CODIGO, DESCRICAO, PRECO_VENDA, NCM, ATIVO FROM PRODUTO';
+  LSQL := 'SELECT ID, CODIGO, DESCRICAO, PRECO_VENDA, NCM, ATIVO FROM PRODUTO WHERE EMPRESA_ID = :EMP';
   if AFiltro <> '' then
-    LSQL := LSQL + ' WHERE UPPER(DESCRICAO) CONTAINING UPPER(:FILTRO) OR CODIGO CONTAINING :FILTRO2 OR CODIGO_BARRAS CONTAINING :FILTRO3';
+    LSQL := LSQL + ' AND (UPPER(DESCRICAO) CONTAINING UPPER(:FILTRO) OR CODIGO CONTAINING :FILTRO2 OR CODIGO_BARRAS CONTAINING :FILTRO3)';
   LSQL := LSQL + ' ORDER BY DESCRICAO';
 
   if FQuery.Active then
     FQuery.Close;
   FQuery.SQL.Text := LSQL;
+  FQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   if AFiltro <> '' then
   begin
     FQuery.ParamByName('FILTRO').AsString := AFiltro;

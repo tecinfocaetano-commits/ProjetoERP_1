@@ -39,6 +39,8 @@ type
     lblObservacoes: TLabel;
     mmoObservacoes: TMemo;
     procedure FormCreate(Sender: TObject);
+  public
+    destructor Destroy; override;
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -51,7 +53,6 @@ type
   private
     FQuery: TSQLQuery;
     FService: TMaterialService;
-    destructor Destroy; override;
     procedure ConfigurarGrid;
     procedure CarregarProdutosFiscais;
     procedure CarregarUnidades;
@@ -131,7 +132,8 @@ begin
   try
     LQuery.DataBase := FConexao.Connection;
     LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT ID, DESCRICAO FROM PRODUTO_FISCAL WHERE ATIVO = ''A'' ORDER BY DESCRICAO';
+    LQuery.SQL.Text := 'SELECT ID, DESCRICAO FROM PRODUTO_FISCAL WHERE ATIVO = ''A'' AND EMPRESA_ID = :EMP ORDER BY DESCRICAO';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     while not LQuery.EOF do
     begin
@@ -192,14 +194,15 @@ procedure TfrmMaterial.CarregarDados(const AFiltro: string);
 var
   LSQL: string;
 begin
-  LSQL := 'SELECT ID, CODIGO, DESCRICAO, PRECO_CUSTO, CONTROLA_ESTOQUE, ATIVO FROM MATERIAL';
+  LSQL := 'SELECT ID, CODIGO, DESCRICAO, PRECO_CUSTO, CONTROLA_ESTOQUE, ATIVO FROM MATERIAL WHERE EMPRESA_ID = :EMP';
   if AFiltro <> '' then
-    LSQL := LSQL + ' WHERE UPPER(DESCRICAO) CONTAINING UPPER(:FILTRO) OR CODIGO CONTAINING :FILTRO2 OR CODIGO_BARRAS CONTAINING :FILTRO3';
+    LSQL := LSQL + ' AND (UPPER(DESCRICAO) CONTAINING UPPER(:FILTRO) OR CODIGO CONTAINING :FILTRO2 OR CODIGO_BARRAS CONTAINING :FILTRO3)';
   LSQL := LSQL + ' ORDER BY DESCRICAO';
 
   if FQuery.Active then
     FQuery.Close;
   FQuery.SQL.Text := LSQL;
+  FQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   if AFiltro <> '' then
   begin
     FQuery.ParamByName('FILTRO').AsString := AFiltro;

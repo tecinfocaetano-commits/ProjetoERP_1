@@ -784,9 +784,10 @@ begin
     LQuery.Transaction := FConexao.Transaction;
     LQuery.SQL.Text :=
       'SELECT FIRST 1 ID, CODIGO, DESCRICAO, COALESCE(PRECO_CUSTO, 0) AS CUSTO FROM PRODUTO ' +
-      'WHERE CODIGO = :T OR CODIGO_BARRAS = :T OR CAST(ID AS VARCHAR(20)) = :T ' +
-      '   OR UPPER(DESCRICAO) STARTING WITH UPPER(:T) ORDER BY ID';
+      'WHERE (CODIGO = :T OR CODIGO_BARRAS = :T OR CAST(ID AS VARCHAR(20)) = :T ' +
+      '   OR UPPER(DESCRICAO) STARTING WITH UPPER(:T)) AND EMPRESA_ID = :EMP ORDER BY ID';
     LQuery.ParamByName('T').AsString := LTexto;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
     begin
@@ -1123,16 +1124,18 @@ begin
       LQuery.DataBase := FConexao.Connection;
       LQuery.Transaction := FConexao.Transaction;
       LQuery.SQL.Text :=
-        'SELECT FIRST 1 ID FROM PRODUTO WHERE CODIGO = :C OR CODIGO_BARRAS = :C ORDER BY ID';
+        'SELECT FIRST 1 ID FROM PRODUTO WHERE (CODIGO = :C OR CODIGO_BARRAS = :C) AND EMPRESA_ID = :EMP ORDER BY ID';
       LQuery.ParamByName('C').AsString := Trim(TagTexto(LProd, 'cProd'));
+      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQuery.Open;
       if not LQuery.IsEmpty then
         LProdId := LQuery.FieldByName('ID').AsLargeInt;
       LQuery.Close;
       if (LProdId = 0) and (Trim(TagTexto(LProd, 'cEAN')) <> '') then
       begin
-        LQuery.SQL.Text := 'SELECT FIRST 1 ID FROM PRODUTO WHERE CODIGO_BARRAS = :C ORDER BY ID';
+        LQuery.SQL.Text := 'SELECT FIRST 1 ID FROM PRODUTO WHERE CODIGO_BARRAS = :C AND EMPRESA_ID = :EMP ORDER BY ID';
         LQuery.ParamByName('C').AsString := Trim(TagTexto(LProd, 'cEAN'));
+        LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
         LQuery.Open;
         if not LQuery.IsEmpty then
           LProdId := LQuery.FieldByName('ID').AsLargeInt;

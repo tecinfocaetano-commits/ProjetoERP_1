@@ -62,6 +62,8 @@ type
     lblObservacoes: TLabel;
     mmoObservacoes: TMemo;
     procedure FormCreate(Sender: TObject);
+  public
+    destructor Destroy; override;
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -74,7 +76,6 @@ type
   private
     FQuery: TSQLQuery;
     FService: TProdutoFiscalService;
-    destructor Destroy; override;
     procedure ConfigurarGrid;
     function TipoSelecionado: string;      // '', 'S' ou 'O'
     procedure SelecionarTipo(const ATipo: string);
@@ -173,14 +174,15 @@ procedure TfrmProdutoFiscal.CarregarDados(const AFiltro: string);
 var
   LSQL: string;
 begin
-  LSQL := 'SELECT ID, CODIGO, DESCRICAO, TIPO, VALOR, NCM, CFOP, ALIQ_ICMS, ATIVO FROM PRODUTO_FISCAL';
+  LSQL := 'SELECT ID, CODIGO, DESCRICAO, TIPO, VALOR, NCM, CFOP, ALIQ_ICMS, ATIVO FROM PRODUTO_FISCAL WHERE EMPRESA_ID = :EMP';
   if AFiltro <> '' then
-    LSQL := LSQL + ' WHERE UPPER(DESCRICAO) CONTAINING UPPER(:FILTRO) OR CODIGO CONTAINING :FILTRO2 OR NCM CONTAINING :FILTRO3';
+    LSQL := LSQL + ' AND (UPPER(DESCRICAO) CONTAINING UPPER(:FILTRO) OR CODIGO CONTAINING :FILTRO2 OR NCM CONTAINING :FILTRO3)';
   LSQL := LSQL + ' ORDER BY DESCRICAO';
 
   if FQuery.Active then
     FQuery.Close;
   FQuery.SQL.Text := LSQL;
+  FQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   if AFiltro <> '' then
   begin
     FQuery.ParamByName('FILTRO').AsString := AFiltro;

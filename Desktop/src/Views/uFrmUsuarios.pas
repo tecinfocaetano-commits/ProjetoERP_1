@@ -150,14 +150,15 @@ procedure TfrmUsuarios.CarregarDados(const AFiltro: string);
 var
   LSQL: string;
 begin
-  LSQL := 'SELECT ID, NOME, LOGIN, EMAIL, ADMINISTRADOR, ATIVO FROM USUARIO';
+  LSQL := 'SELECT ID, NOME, LOGIN, EMAIL, ADMINISTRADOR, ATIVO FROM USUARIO WHERE EMPRESA_ID = :EMP';
   if AFiltro <> '' then
-    LSQL := LSQL + ' WHERE UPPER(NOME) CONTAINING UPPER(:FILTRO) OR UPPER(LOGIN) CONTAINING UPPER(:FILTRO2)';
+    LSQL := LSQL + ' AND (UPPER(NOME) CONTAINING UPPER(:FILTRO) OR UPPER(LOGIN) CONTAINING UPPER(:FILTRO2))';
   LSQL := LSQL + ' ORDER BY NOME';
 
   if FQuery.Active then
     FQuery.Close;
   FQuery.SQL.Text := LSQL;
+  FQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   if AFiltro <> '' then
   begin
     FQuery.ParamByName('FILTRO').AsString := AFiltro;

@@ -133,8 +133,9 @@ begin
       LQry.SQL.Text :=
         'SELECT P.ID, P.CODIGO, P.DESCRICAO ' +
         'FROM PRODUTO P ' +
-        'WHERE P.ATIVO = ''A'' ' +
+        'WHERE P.ATIVO = ''A'' AND P.EMPRESA_ID = :EMP ' +
         'ORDER BY P.CODIGO';
+      LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQry.Open;
       while not LQry.EOF do
       begin

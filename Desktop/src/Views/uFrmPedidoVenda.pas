@@ -415,8 +415,10 @@ begin
     LQuery.Transaction := FConexao.Transaction;
     LQuery.SQL.Text :=
       'SELECT ID, DESCRICAO, PRECO_VENDA, CFOP_VENDA FROM PRODUTO ' +
-      'WHERE (CODIGO = :COD OR CODIGO_BARRAS = :COD OR CAST(ID AS VARCHAR(20)) = :COD) AND ATIVO = ''A''';
+      'WHERE (CODIGO = :COD OR CODIGO_BARRAS = :COD OR CAST(ID AS VARCHAR(20)) = :COD) AND ATIVO = ''A'' ' +
+      'AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('COD').AsString := Trim(edtProduto.Text);
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
     begin
