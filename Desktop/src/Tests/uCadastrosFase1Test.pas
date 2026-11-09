@@ -15,6 +15,9 @@ unit uCadastrosFase1Test;
       sem EMPRESA_ID);
     - TProdutoService: CRUD com categoria/unidade obrigatórias, preço
       de venda > 0, GRADE_ID anulável e auditoria;
+    - TUsuarioService: CRUD com login único por empresa, senha
+      SHA-256 (vazia no update mantém a atual), GRUPO_ID, bloqueio
+      de auto-exclusão e auditoria;
     - TGradeService: CRUD com tamanhos, validações, bloqueio de
       exclusão de grade vinculada a produto, configuração USA_GRADE
       e auditoria;
@@ -31,7 +34,8 @@ uses
   Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao,
   uCor, uMaterial, uProdutoFiscal, uGrade, uCategoria, uProduto,
   uCorService, uMaterialService, uProdutoFiscalService, uGradeService,
-  uCategoriaService, uProdutoService;
+  uCategoriaService, uProdutoService, uUsuario, uUsuarioService,
+  uSenhaHash;
 
 type
   { TCadastrosFase1Test }
@@ -56,6 +60,7 @@ var
   LGradeService: TGradeService;
   LCategoriaService: TCategoriaService;
   LProdutoService: TProdutoService;
+  LUsuarioService: TUsuarioService;
   LSufixo: string;
   LTopoLog: Int64;
 
@@ -1417,6 +1422,235 @@ var
     end;
   end;
 
+  procedure TestUsuarioCicloCompleto;
+  var
+    LUsuario, LLido: TUsuario;
+    LId: Int64;
+    LNome, LLogin: string;
+    LHashGuardado: string;
+  begin
+    LNome := 'USUARIO TESTE ' + LSufixo;
+    LLogin := 'ut' + Copy(LSufixo, 1, 12);
+    LUsuario := TUsuario.Create;
+    LId := 0;
+    try
+      try
+        LUsuario.EmpresaId := LSessao.EmpresaId;
+        LUsuario.GrupoId := PrimeiroId('GRUPO');
+        AssertTrue(LUsuario.GrupoId > 0, 'o banco precisa de um grupo');
+        LUsuario.Nome := LNome;
+        LUsuario.Login := LLogin;
+        LUsuario.Email := 'teste@exemplo.com';
+        LUsuario.Telefone := '11999990000';
+        LUsuario.Administrador := False;
+        LUsuario.Ativo := 'A';
+        LId := LUsuarioService.Inserir(LUsuario, 'teste123');
+
+        AssertTrue(LId > 0, 'o INSERT do usuário deve devolver o ID');
+        AssertEquals('1', IntToStr(ContarPorId('USUARIO', LId)),
+          'o usuário deve existir no banco');
+
+        { a senha deve estar gravada como hash SHA-256, nunca texto }
+        LQuery.Close;
+        LQuery.SQL.Text := 'SELECT SENHA FROM USUARIO WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LId;
+        LQuery.Open;
+        LHashGuardado := LQuery.FieldByName('SENHA').AsString;
+        LQuery.Close;
+        AssertTrue(EhHashSHA256(LHashGuardado),
+          'a senha deve ser gravada como SHA-256');
+        AssertTrue(SenhaConfere('teste123', LHashGuardado),
+          'a senha digitada deve conferir com o hash');
+        AssertFalse(SenhaConfere('errada', LHashGuardado),
+          'senha errada não pode conferir');
+
+        LLido := LUsuarioService.BuscarPorId(LId);
+        try
+          AssertNotNull(LLido, 'BuscarPorId deve achar o usuário');
+          AssertEquals(LNome, LLido.Nome, 'o nome deve voltar do banco');
+          AssertEquals(LLogin, LLido.Login, 'o login deve voltar');
+          AssertEquals('11999990000', LLido.Telefone,
+            'o telefone deve voltar do banco');
+        finally
+          LLido.Free;
+        end;
+
+        { update sem senha mantém o hash atual }
+        LUsuario.Id := LId;
+        LUsuario.Nome := LNome + ' II';
+        AssertTrue(LUsuarioService.Atualizar(LUsuario, ''),
+          'Atualizar sem senha deve retornar True');
+        LQuery.Close;
+        LQuery.SQL.Text := 'SELECT SENHA FROM USUARIO WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LId;
+        LQuery.Open;
+        AssertEquals(LHashGuardado, LQuery.FieldByName('SENHA').AsString,
+          'senha vazia no update deve manter o hash');
+        LQuery.Close;
+
+        { update com senha nova troca o hash }
+        AssertTrue(LUsuarioService.Atualizar(LUsuario, 'nova456'),
+          'Atualizar com senha deve retornar True');
+        LQuery.Close;
+        LQuery.SQL.Text := 'SELECT SENHA FROM USUARIO WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LId;
+        LQuery.Open;
+        LHashGuardado := LQuery.FieldByName('SENHA').AsString;
+        LQuery.Close;
+        AssertTrue(SenhaConfere('nova456', LHashGuardado),
+          'a senha nova deve conferir');
+        AssertFalse(SenhaConfere('teste123', LHashGuardado),
+          'a senha antiga não pode mais conferir');
+
+        AssertTrue(LUsuarioService.Excluir(LId), 'Excluir deve retornar True');
+        AssertNil(LUsuarioService.BuscarPorId(LId),
+          'o usuário excluído não deve ser encontrado');
+        AssertEquals('0', IntToStr(ContarPorId('USUARIO', LId)),
+          'o usuário deve sumir do banco');
+
+        AssertTrue(ContarLog('USUARIO', LId) >= 2,
+          'INSERIR, ATUALIZAR e EXCLUIR devem gerar auditoria');
+        LId := 0;
+
+        ASuite.AddResult('TestUsuarioCicloCompleto', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestUsuarioCicloCompleto', False, E.Message);
+      end;
+    finally
+      if LId > 0 then
+        try
+          LUsuarioService.Excluir(LId);
+        except
+        end;
+      LUsuario.Free;
+    end;
+  end;
+
+  procedure TestUsuarioLoginDuplicado;
+  var
+    LPrimeiro, LSegundo: TUsuario;
+    LId: Int64;
+    LLogin: string;
+    LDeu: Boolean;
+  begin
+    LLogin := 'dup' + Copy(LSufixo, 1, 12);
+    LPrimeiro := TUsuario.Create;
+    LSegundo := TUsuario.Create;
+    LId := 0;
+    try
+      try
+        LPrimeiro.EmpresaId := LSessao.EmpresaId;
+        LPrimeiro.GrupoId := PrimeiroId('GRUPO');
+        LPrimeiro.Nome := 'USUARIO DUPLICADO A ' + LSufixo;
+        LPrimeiro.Login := LLogin;
+        LPrimeiro.Ativo := 'A';
+        LId := LUsuarioService.Inserir(LPrimeiro, 'teste123');
+        AssertTrue(LId > 0, 'o primeiro usuário deve ser criado');
+
+        LSegundo.EmpresaId := LSessao.EmpresaId;
+        LSegundo.GrupoId := PrimeiroId('GRUPO');
+        LSegundo.Nome := 'USUARIO DUPLICADO B ' + LSufixo;
+        LSegundo.Login := UpperCase(LLogin);
+        LSegundo.Ativo := 'A';
+        LDeu := False;
+        try
+          LUsuarioService.Inserir(LSegundo, 'teste123');
+        except
+          on E: Exception do
+            LDeu := True;
+        end;
+        AssertTrue(LDeu, 'login repetido na empresa deve ser recusado');
+        AssertEquals('1', IntToStr(ContarPorCampo('USUARIO', 'LOGIN', LLogin)),
+          'deve existir apenas o primeiro usuário');
+        ASuite.AddResult('TestUsuarioLoginDuplicado', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestUsuarioLoginDuplicado', False, E.Message);
+      end;
+    finally
+      if LId > 0 then
+        try
+          LUsuarioService.Excluir(LId);
+        except
+        end;
+      LSegundo.Free;
+      LPrimeiro.Free;
+    end;
+  end;
+
+  procedure TestUsuarioSenhaCurta;
+  var
+    LUsuario: TUsuario;
+    LAntes, LDepois: Integer;
+    LDeu: Boolean;
+  begin
+    LUsuario := TUsuario.Create;
+    try
+      try
+        LAntes := ContarTotal('USUARIO');
+        LUsuario.EmpresaId := LSessao.EmpresaId;
+        LUsuario.GrupoId := PrimeiroId('GRUPO');
+        LUsuario.Nome := 'USUARIO SENHA CURTA ' + LSufixo;
+        LUsuario.Login := 'sc' + Copy(LSufixo, 1, 12);
+        LUsuario.Ativo := 'A';
+        LDeu := False;
+        try
+          LUsuarioService.Inserir(LUsuario, '123');
+        except
+          on E: Exception do
+            LDeu := True;
+        end;
+        LDepois := ContarTotal('USUARIO');
+        AssertTrue(LDeu, 'senha com menos de 6 caracteres deve ser recusada');
+        AssertEquals(IntToStr(LAntes), IntToStr(LDepois),
+          'nenhum usuário deve ser gravado');
+        ASuite.AddResult('TestUsuarioSenhaCurta', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestUsuarioSenhaCurta', False, E.Message);
+      end;
+    finally
+      LUsuario.Free;
+    end;
+  end;
+
+  procedure TestUsuarioSemNome;
+  var
+    LUsuario: TUsuario;
+    LAntes, LDepois: Integer;
+    LDeu: Boolean;
+  begin
+    LUsuario := TUsuario.Create;
+    try
+      try
+        LAntes := ContarTotal('USUARIO');
+        LUsuario.EmpresaId := LSessao.EmpresaId;
+        LUsuario.GrupoId := PrimeiroId('GRUPO');
+        LUsuario.Nome := '';
+        LUsuario.Login := 'sn' + Copy(LSufixo, 1, 12);
+        LUsuario.Ativo := 'A';
+        LDeu := False;
+        try
+          LUsuarioService.Inserir(LUsuario, 'teste123');
+        except
+          on E: Exception do
+            LDeu := True;
+        end;
+        LDepois := ContarTotal('USUARIO');
+        AssertTrue(LDeu, 'usuário sem nome deve ser recusado');
+        AssertEquals(IntToStr(LAntes), IntToStr(LDepois),
+          'nenhum usuário deve ser gravado');
+        ASuite.AddResult('TestUsuarioSemNome', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestUsuarioSemNome', False, E.Message);
+      end;
+    finally
+      LUsuario.Free;
+    end;
+  end;
+
   procedure TestGradeCicloCompleto;
   var
     LGrade, LLido: TGrade;
@@ -1981,10 +2215,16 @@ var
       LQuery.ExecSQL;
 
       LQuery.Close;
+      LQuery.SQL.Text := 'DELETE FROM USUARIO WHERE NOME LIKE :M';
+      LQuery.ParamByName('M').AsString := LMascara;
+      LQuery.ExecSQL;
+
+      LQuery.Close;
       LQuery.SQL.Text :=
         'DELETE FROM LOG_SISTEMA WHERE ID > :TOPO ' +
         'AND TABELA IN (''COR'', ''MATERIAL'', ''PRODUTO_FISCAL'', ' +
-        '''GRADE'', ''CONFIGURACAO'', ''PRODUTO'', ''CATEGORIA'')';
+        '''GRADE'', ''CONFIGURACAO'', ''PRODUTO'', ''CATEGORIA'', ' +
+        '''USUARIO'')';
       LQuery.ParamByName('TOPO').AsLargeInt := LTopoLog;
       LQuery.ExecSQL;
 
@@ -2005,6 +2245,7 @@ begin
   LGradeService := TGradeService.Create;
   LCategoriaService := TCategoriaService.Create;
   LProdutoService := TProdutoService.Create;
+  LUsuarioService := TUsuarioService.Create;
   LSufixo := FormatDateTime('yyyymmddhhnnsszzz', Now);
   try
     LQuery.DataBase := LConexao.Connection;
@@ -2042,6 +2283,10 @@ begin
     TestProdutoSemDescricao;
     TestProdutoSemCategoria;
     TestProdutoPrecoVendaZero;
+    TestUsuarioCicloCompleto;
+    TestUsuarioLoginDuplicado;
+    TestUsuarioSenhaCurta;
+    TestUsuarioSemNome;
     TestGradeCicloCompleto;
     TestGradeSemNome;
     TestGradeTipoInvalido;
@@ -2055,6 +2300,7 @@ begin
     TestTiposGrade;
   finally
     LimparSobraPorSufixo;
+    LUsuarioService.Free;
     LProdutoService.Free;
     LCategoriaService.Free;
     LGradeService.Free;

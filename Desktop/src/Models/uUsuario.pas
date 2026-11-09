@@ -21,6 +21,7 @@ type
     FLogin: string;
     FSenha: string;
     FEmail: string;
+    FTelefone: string;
     FGrupoId: Int64;
     FAtivo: Char;
     FAdministrador: Boolean;
@@ -32,6 +33,7 @@ type
     property Login: string read FLogin write FLogin;
     property Senha: string read FSenha write FSenha;
     property Email: string read FEmail write FEmail;
+    property Telefone: string read FTelefone write FTelefone;
     property GrupoId: Int64 read FGrupoId write FGrupoId;
     property Ativo: Char read FAtivo write FAtivo;
     property Administrador: Boolean read FAdministrador write FAdministrador;
@@ -49,6 +51,7 @@ begin
   FLogin := '';
   FSenha := '';
   FEmail := '';
+  FTelefone := '';
   FGrupoId := 0;
   FAtivo := 'A';
   FAdministrador := False;

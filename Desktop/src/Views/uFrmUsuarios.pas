@@ -12,7 +12,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uSessao, uSenhaHash;
+  uFrmCadastroBase, uConexao, uSessao,
+  uUsuarioService, uUsuario;
 
 type
   { TfrmUsuarios }
@@ -35,6 +36,8 @@ type
     lblStatus: TLabel;
     cmbStatus: TComboBox;
     procedure FormCreate(Sender: TObject);
+  public
+    destructor Destroy; override;
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -46,6 +49,7 @@ type
     function Excluir: Boolean; override;
   private
     FQuery: TSQLQuery;
+    FService: TUsuarioService;
     procedure CarregarGrupos;
     procedure ConfigurarGrid;
   end;
@@ -58,6 +62,12 @@ implementation
 {$R *.lfm}
 
 { TfrmUsuarios }
+
+destructor TfrmUsuarios.Destroy;
+begin
+  FreeAndNil(FService);
+  inherited Destroy;
+end;
 
 procedure TfrmUsuarios.FormCreate(Sender: TObject);
 begin
@@ -72,6 +82,7 @@ begin
     FQuery := TSQLQuery.Create(Self);
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
+    FService := TUsuarioService.Create;
 
     // Criar DataSource1 se não existir
     if DataSource1 = nil then
@@ -185,6 +196,8 @@ end;
 procedure TfrmUsuarios.PreencherCampos;
 var
   LQuery: TSQLQuery;
+  LGrupoId: Int64;
+  I: Integer;
 begin
   LQuery := TSQLQuery.Create(nil);
   try
@@ -207,6 +220,20 @@ begin
         cmbStatus.ItemIndex := 0
       else
         cmbStatus.ItemIndex := 1;
+
+      cmbGrupo.ItemIndex := 0;
+      if (LQuery.FindField('GRUPO_ID') <> nil) and
+         (not LQuery.FieldByName('GRUPO_ID').IsNull) then
+      begin
+        LGrupoId := LQuery.FieldByName('GRUPO_ID').AsLargeInt;
+        for I := 1 to cmbGrupo.Items.Count - 1 do
+          if (cmbGrupo.Items.Objects[I] <> nil) and
+             (PtrInt(cmbGrupo.Items.Objects[I]) = LGrupoId) then
+          begin
+            cmbGrupo.ItemIndex := I;
+            Break;
+          end;
+      end;
     end;
   finally
     LQuery.Free;
@@ -232,6 +259,14 @@ begin
   begin
     MessageDlg('O campo Login é obrigatório.', mtWarning, [mbOK], 0);
     edtLogin.SetFocus;
+    Exit;
+  end;
+
+  if (cmbGrupo.ItemIndex <= 0) or
+     (cmbGrupo.Items.Objects[cmbGrupo.ItemIndex] = nil) then
+  begin
+    MessageDlg('Selecione o Grupo do usuário.', mtWarning, [mbOK], 0);
+    cmbGrupo.SetFocus;
     Exit;
   end;
 
@@ -262,73 +297,50 @@ end;
 
 function TfrmUsuarios.Salvar: Boolean;
 var
-  LQuery: TSQLQuery;
-  LAdmin: string;
+  LUsuario: TUsuario;
 begin
   Result := False;
-  if chkAdministrador.Checked then LAdmin := 'S' else LAdmin := 'N';
-
-  LQuery := TSQLQuery.Create(nil);
+  LUsuario := TUsuario.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
     if FEstado = efInserindo then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO USUARIO (EMPRESA_ID, NOME, LOGIN, SENHA, EMAIL, TELEFONE, ' +
-        'ADMINISTRADOR, ATIVO) VALUES (:EMP, :NOME, :LOGIN, :SENHA, :EMAIL, ' +
-        ':TEL, :ADMIN, :ATIVO)';
-      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-      LQuery.ParamByName('SENHA').AsString := HashSenha(edtSenha.Text);
-    end
+      LUsuario.Id := 0
     else
-    begin
-      if edtSenha.Text <> '' then
-      begin
-        LQuery.SQL.Text :=
-          'UPDATE USUARIO SET NOME = :NOME, LOGIN = :LOGIN, SENHA = :SENHA, ' +
-          'EMAIL = :EMAIL, TELEFONE = :TEL, ADMINISTRADOR = :ADMIN, ATIVO = :ATIVO ' +
-          'WHERE ID = :ID';
-        LQuery.ParamByName('SENHA').AsString := HashSenha(edtSenha.Text);
-      end
-      else
-      begin
-        LQuery.SQL.Text :=
-          'UPDATE USUARIO SET NOME = :NOME, LOGIN = :LOGIN, EMAIL = :EMAIL, ' +
-          'TELEFONE = :TEL, ADMINISTRADOR = :ADMIN, ATIVO = :ATIVO WHERE ID = :ID';
-      end;
-      LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    end;
-
-    LQuery.ParamByName('NOME').AsString := edtNome.Text;
-    LQuery.ParamByName('LOGIN').AsString := edtLogin.Text;
-    LQuery.ParamByName('EMAIL').AsString := edtEmail.Text;
-    LQuery.ParamByName('TEL').AsString := edtTelefone.Text;
-    LQuery.ParamByName('ADMIN').AsString := LAdmin;
-
+      LUsuario.Id := FIdSelecionado;
+    LUsuario.EmpresaId := TSessao.GetInstance.EmpresaId;
+    LUsuario.Nome := Trim(edtNome.Text);
+    LUsuario.Login := Trim(edtLogin.Text);
+    LUsuario.Email := Trim(edtEmail.Text);
+    LUsuario.Telefone := Trim(edtTelefone.Text);
+    if chkAdministrador.Checked then
+      LUsuario.Administrador := True
+    else
+      LUsuario.Administrador := False;
     if cmbStatus.ItemIndex = 0 then
-      LQuery.ParamByName('ATIVO').AsString := 'A'
+      LUsuario.Ativo := 'A'
     else
-      LQuery.ParamByName('ATIVO').AsString := 'I';
+      LUsuario.Ativo := 'I';
 
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    if (cmbGrupo.ItemIndex > 0) and
+       (cmbGrupo.Items.Objects[cmbGrupo.ItemIndex] <> nil) then
+      LUsuario.GrupoId := PtrInt(cmbGrupo.Items.Objects[cmbGrupo.ItemIndex])
+    else
+      LUsuario.GrupoId := 0;
+
+    { a senha chega em texto puro e o Service grava o hash SHA-256;
+      vazia na edição = manter a senha atual }
+    if LUsuario.Id = 0 then
+      LUsuario.Id := FService.Inserir(LUsuario, edtSenha.Text)
+    else
+      FService.Atualizar(LUsuario, edtSenha.Text);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao salvar: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
+  LUsuario.Free;
 end;
 
 function TfrmUsuarios.Excluir: Boolean;
-var
-  LQuery: TSQLQuery;
 begin
   Result := False;
 
@@ -338,24 +350,13 @@ begin
     Exit;
   end;
 
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text := 'DELETE FROM USUARIO WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    FService.Excluir(FIdSelecionado);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao excluir: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 end.
