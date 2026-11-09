@@ -17,7 +17,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uSessao;
+  uFrmCadastroBase, uConexao, uSessao,
+  uProdutoFiscalService, uProdutoFiscal;
 
 type
   { TfrmProdutoFiscal }
@@ -72,6 +73,8 @@ type
     function Excluir: Boolean; override;
   private
     FQuery: TSQLQuery;
+    FService: TProdutoFiscalService;
+    destructor Destroy; override;
     procedure ConfigurarGrid;
     function TipoSelecionado: string;      // '', 'S' ou 'O'
     procedure SelecionarTipo(const ATipo: string);
@@ -86,6 +89,12 @@ implementation
 
 { TfrmProdutoFiscal }
 
+destructor TfrmProdutoFiscal.Destroy;
+begin
+  FreeAndNil(FService);
+  inherited Destroy;
+end;
+
 procedure TfrmProdutoFiscal.FormCreate(Sender: TObject);
 begin
   try
@@ -96,6 +105,7 @@ begin
     FQuery := TSQLQuery.Create(Self);
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
+    FService := TProdutoFiscalService.Create;
 
     if DataSource1 = nil then
       DataSource1 := TDataSource.Create(Self);
@@ -292,102 +302,61 @@ end;
 
 function TfrmProdutoFiscal.Salvar: Boolean;
 var
-  LQuery: TSQLQuery;
+  LFiscal: TProdutoFiscal;
 begin
   Result := False;
-
-  LQuery := TSQLQuery.Create(nil);
+  LFiscal := TProdutoFiscal.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
     if FEstado = efInserindo then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO PRODUTO_FISCAL (EMPRESA_ID, CODIGO, DESCRICAO, NCM, CEST, CFOP, ' +
-        'CFOP_VENDA, CFOP_COMPRA, CST_ICMS, CST_PIS, CST_COFINS, ALIQ_ICMS, ' +
-        'ALIQ_PIS, ALIQ_COFINS, PESO_LIQUIDO, PESO_BRUTO, TIPO, VALOR, ATIVO, OBSERVACOES) ' +
-        'VALUES (:EMP, :COD, :DESC, :NCM, :CEST, :CFOP, :CFOPV, :CFOPC, :CSTI, ' +
-        ':CSTP, :CSTC, :ALII, :ALIP, :ALIC, :PESOL, :PESOB, :TIPO, :VALOR, :ATIVO, :OBS)';
-      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    end
+      LFiscal.Id := 0
     else
-    begin
-      LQuery.SQL.Text :=
-        'UPDATE PRODUTO_FISCAL SET CODIGO = :COD, DESCRICAO = :DESC, NCM = :NCM, ' +
-        'CEST = :CEST, CFOP = :CFOP, CFOP_VENDA = :CFOPV, CFOP_COMPRA = :CFOPC, ' +
-        'CST_ICMS = :CSTI, CST_PIS = :CSTP, CST_COFINS = :CSTC, ALIQ_ICMS = :ALII, ' +
-        'ALIQ_PIS = :ALIP, ALIQ_COFINS = :ALIC, PESO_LIQUIDO = :PESOL, ' +
-        'PESO_BRUTO = :PESOB, TIPO = :TIPO, VALOR = :VALOR, ATIVO = :ATIVO, ' +
-        'OBSERVACOES = :OBS WHERE ID = :ID';
-      LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    end;
-
-    LQuery.ParamByName('COD').AsString := edtCodigo.Text;
-    LQuery.ParamByName('DESC').AsString := edtDescricao.Text;
-    LQuery.ParamByName('NCM').AsString := edtNcm.Text;
-    LQuery.ParamByName('CEST').AsString := edtCest.Text;
-    LQuery.ParamByName('CFOP').AsString := edtCfop.Text;
-    LQuery.ParamByName('CFOPV').AsString := edtCfopVenda.Text;
-    LQuery.ParamByName('CFOPC').AsString := edtCfopCompra.Text;
-    LQuery.ParamByName('CSTI').AsString := edtCstIcms.Text;
-    LQuery.ParamByName('CSTP').AsString := edtCstPis.Text;
-    LQuery.ParamByName('CSTC').AsString := edtCstCofins.Text;
-    LQuery.ParamByName('ALII').AsFloat := StrToFloatDef(edtAliqIcms.Text, 0);
-    LQuery.ParamByName('ALIP').AsFloat := StrToFloatDef(edtAliqPis.Text, 0);
-    LQuery.ParamByName('ALIC').AsFloat := StrToFloatDef(edtAliqCofins.Text, 0);
-    LQuery.ParamByName('PESOL').AsFloat := StrToFloatDef(edtPesoLiquido.Text, 0);
-    LQuery.ParamByName('PESOB').AsFloat := StrToFloatDef(edtPesoBruto.Text, 0);
-
-    if TipoSelecionado = '' then
-      LQuery.ParamByName('TIPO').Clear
-    else
-      LQuery.ParamByName('TIPO').AsString := TipoSelecionado;
-    LQuery.ParamByName('VALOR').AsFloat := StrToFloatDef(edtValor.Text, 0);
-    LQuery.ParamByName('OBS').AsString := mmoObservacoes.Text;
-
+      LFiscal.Id := FIdSelecionado;
+    LFiscal.EmpresaId := TSessao.GetInstance.EmpresaId;
+    LFiscal.Codigo := Trim(edtCodigo.Text);
+    LFiscal.Descricao := Trim(edtDescricao.Text);
+    LFiscal.Ncm := Trim(edtNcm.Text);
+    LFiscal.Cest := Trim(edtCest.Text);
+    LFiscal.Cfop := Trim(edtCfop.Text);
+    LFiscal.CfopVenda := Trim(edtCfopVenda.Text);
+    LFiscal.CfopCompra := Trim(edtCfopCompra.Text);
+    LFiscal.CstIcms := Trim(edtCstIcms.Text);
+    LFiscal.CstPis := Trim(edtCstPis.Text);
+    LFiscal.CstCofins := Trim(edtCstCofins.Text);
+    LFiscal.AliqIcms := StrToFloatDef(edtAliqIcms.Text, 0);
+    LFiscal.AliqPis := StrToFloatDef(edtAliqPis.Text, 0);
+    LFiscal.AliqCofins := StrToFloatDef(edtAliqCofins.Text, 0);
+    LFiscal.PesoLiquido := StrToFloatDef(edtPesoLiquido.Text, 0);
+    LFiscal.PesoBruto := StrToFloatDef(edtPesoBruto.Text, 0);
+    LFiscal.Tipo := TipoSelecionado;
+    LFiscal.Valor := StrToFloatDef(edtValor.Text, 0);
+    LFiscal.Observacoes := mmoObservacoes.Text;
     if cmbStatus.ItemIndex = 0 then
-      LQuery.ParamByName('ATIVO').AsString := 'A'
+      LFiscal.Ativo := 'A'
     else
-      LQuery.ParamByName('ATIVO').AsString := 'I';
+      LFiscal.Ativo := 'I';
 
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    if LFiscal.Id = 0 then
+      LFiscal.Id := FService.Inserir(LFiscal)
+    else
+      FService.Atualizar(LFiscal);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao salvar: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
+  LFiscal.Free;
 end;
 
 function TfrmProdutoFiscal.Excluir: Boolean;
-var
-  LQuery: TSQLQuery;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text := 'DELETE FROM PRODUTO_FISCAL WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    FService.Excluir(FIdSelecionado);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao excluir: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 end.

@@ -111,6 +111,13 @@ begin
       Result.AliqCofins := LQuery.FieldByName('ALIQ_COFINS').AsFloat;
       Result.PesoLiquido := LQuery.FieldByName('PESO_LIQUIDO').AsFloat;
       Result.PesoBruto := LQuery.FieldByName('PESO_BRUTO').AsFloat;
+      if (LQuery.FindField('TIPO') <> nil) and
+         (not LQuery.FieldByName('TIPO').IsNull) then
+        Result.Tipo := Trim(LQuery.FieldByName('TIPO').AsString)
+      else
+        Result.Tipo := '';
+      if LQuery.FindField('VALOR') <> nil then
+        Result.Valor := LQuery.FieldByName('VALOR').AsFloat;
       Result.Ativo := LQuery.FieldByName('ATIVO').AsString[1];
       Result.Observacoes := LQuery.FieldByName('OBSERVACOES').AsString;
     end;
@@ -133,26 +140,36 @@ function TProdutoFiscalService.Inserir(AObj: TProdutoFiscal): Int64;
 const
   CAMPOS = 'EMPRESA_ID, CODIGO, DESCRICAO, NCM, CEST, CFOP, CFOP_VENDA, ' +
            'CFOP_COMPRA, CST_ICMS, CST_PIS, CST_COFINS, ALIQ_ICMS, ' +
-           'ALIQ_PIS, ALIQ_COFINS, PESO_LIQUIDO, PESO_BRUTO, ATIVO, ' +
-           'OBSERVACOES';
+           'ALIQ_PIS, ALIQ_COFINS, PESO_LIQUIDO, PESO_BRUTO, TIPO, VALOR, ' +
+           'ATIVO, OBSERVACOES';
   VALORES_PARAM = ':EMP, :COD, :DESC, :NCM, :CEST, :CFOP, :CFOPV, ' +
                   ':CFOPC, :CSTI, :CSTP, :CSTC, :ALII, ' +
-                  ':ALIP, :ALIC, :PESOL, :PESOB, :ATIVO, ' +
+                  ':ALIP, :ALIC, :PESOL, :PESOB, :TIPO, :VALOR, :ATIVO, ' +
                   ':OBS';
+var
+  LNulls: array of string;
 begin
   Validar(AObj);
-  Result := FRepo.InserirParam(
+  { TIPO é anulável e o CHECK só aceita 'S'/'O' — string vazia vira NULL }
+  if Trim(AObj.Tipo) = '' then
+  begin
+    SetLength(LNulls, 1);
+    LNulls[0] := 'TIPO';
+  end;
+  Result := FRepo.InserirParamN(
     CAMPOS, VALORES_PARAM,
     ['EMP', 'COD', 'DESC', 'NCM', 'CEST', 'CFOP', 'CFOPV',
      'CFOPC', 'CSTI', 'CSTP', 'CSTC', 'ALII',
-     'ALIP', 'ALIC', 'PESOL', 'PESOB', 'ATIVO',
+     'ALIP', 'ALIC', 'PESOL', 'PESOB', 'TIPO', 'VALOR', 'ATIVO',
      'OBS'],
     [IntToStr(AObj.EmpresaId), AObj.Codigo, AObj.Descricao, AObj.Ncm,
      AObj.Cest, AObj.Cfop, AObj.CfopVenda, AObj.CfopCompra,
      AObj.CstIcms, AObj.CstPis, AObj.CstCofins, FloatToStr(AObj.AliqIcms),
      FloatToStr(AObj.AliqPis), FloatToStr(AObj.AliqCofins),
-     FloatToStr(AObj.PesoLiquido), FloatToStr(AObj.PesoBruto), AObj.Ativo,
-     AObj.Observacoes]);
+     FloatToStr(AObj.PesoLiquido), FloatToStr(AObj.PesoBruto), AObj.Tipo,
+     FloatToStr(AObj.Valor), AObj.Ativo,
+     AObj.Observacoes],
+    LNulls);
 
   LogOperacao('PRODUTO_FISCAL', 'I', Result);
 end;
@@ -165,23 +182,32 @@ const
                  'CST_PIS = :CSTP, CST_COFINS = :CSTC, ' +
                  'ALIQ_ICMS = :ALII, ALIQ_PIS = :ALIP, ' +
                  'ALIQ_COFINS = :ALIC, PESO_LIQUIDO = :PESOL, ' +
-                 'PESO_BRUTO = :PESOB, ATIVO = :ATIVO, ' +
-                 'OBSERVACOES = :OBS';
+                 'PESO_BRUTO = :PESOB, TIPO = :TIPO, VALOR = :VALOR, ' +
+                 'ATIVO = :ATIVO, OBSERVACOES = :OBS';
+var
+  LNulls: array of string;
 begin
   ValidarId(AObj.Id, 'Produto Fiscal');
   Validar(AObj);
+  if Trim(AObj.Tipo) = '' then
+  begin
+    SetLength(LNulls, 1);
+    LNulls[0] := 'TIPO';
+  end;
 
-  Result := FRepo.AtualizarParam(
+  Result := FRepo.AtualizarParamN(
     AObj.Id, CAMPOS_PARAM,
     ['COD', 'DESC', 'NCM', 'CEST', 'CFOP', 'CFOPV',
      'CFOPC', 'CSTI', 'CSTP', 'CSTC', 'ALII',
-     'ALIP', 'ALIC', 'PESOL', 'PESOB', 'ATIVO',
+     'ALIP', 'ALIC', 'PESOL', 'PESOB', 'TIPO', 'VALOR', 'ATIVO',
      'OBS'],
     [AObj.Codigo, AObj.Descricao, AObj.Ncm, AObj.Cest, AObj.Cfop,
      AObj.CfopVenda, AObj.CfopCompra, AObj.CstIcms, AObj.CstPis,
      AObj.CstCofins, FloatToStr(AObj.AliqIcms), FloatToStr(AObj.AliqPis),
      FloatToStr(AObj.AliqCofins), FloatToStr(AObj.PesoLiquido),
-     FloatToStr(AObj.PesoBruto), AObj.Ativo, AObj.Observacoes]);
+     FloatToStr(AObj.PesoBruto), AObj.Tipo, FloatToStr(AObj.Valor),
+     AObj.Ativo, AObj.Observacoes],
+    LNulls);
 
   LogOperacao('PRODUTO_FISCAL', 'U', AObj.Id);
 end;

@@ -29,6 +29,8 @@ type
     procedure ExecutarQuery;
     function ExecutarScalar(const ASQL: string): Variant;
     procedure AplicarParams(const ANomes, AValores: array of string);
+    procedure AplicarParamsN(const ANomes, AValores,
+      ANulos: array of string);
   public
     constructor Create(const ATableName: string);
     destructor Destroy; override;
@@ -50,6 +52,12 @@ type
       const ANomes, AValores: array of string): Int64;
     function AtualizarParam(AId: Int64; const ACamposParam: string;
       const ANomes, AValores: array of string): Boolean;
+    { Variantes que aceitam ANulos: nomes de parâmetros gravados como
+      NULL (para colunas anuláveis com CHECK que rejeita string vazia). }
+    function InserirParamN(const ACampos, AValoresParam: string;
+      const ANomes, AValores, ANulos: array of string): Int64;
+    function AtualizarParamN(AId: Int64; const ACamposParam: string;
+      const ANomes, AValores, ANulos: array of string): Boolean;
     function BuscarTodosParam(const ACondicaoParam: string;
       const ANomes, AValores: array of string;
       const AOrdem: string = 'ID'): TSQLQuery;
@@ -192,6 +200,32 @@ begin
     FQuery.ParamByName(ANomes[I]).AsString := AValores[I];
 end;
 
+procedure TRepositoryBase.AplicarParamsN(const ANomes, AValores,
+  ANulos: array of string);
+var
+  I, J: Integer;
+  LEhNulo: Boolean;
+begin
+  if Length(ANomes) <> Length(AValores) then
+    raise Exception.CreateFmt(
+      'AplicarParamsN: %d nomes para %d valores.', [Length(ANomes), Length(AValores)]);
+  for I := 0 to High(ANomes) do
+  begin
+    LEhNulo := False;
+    if Length(ANulos) > 0 then
+      for J := 0 to High(ANulos) do
+        if ANulos[J] = ANomes[I] then
+        begin
+          LEhNulo := True;
+          Break;
+        end;
+    if LEhNulo then
+      FQuery.ParamByName(ANomes[I]).Clear
+    else
+      FQuery.ParamByName(ANomes[I]).AsString := AValores[I];
+  end;
+end;
+
 function TRepositoryBase.InserirParam(const ACampos, AValoresParam: string;
   const ANomes, AValores: array of string): Int64;
 begin
@@ -205,12 +239,37 @@ begin
     Format('SELECT GEN_ID(GEN_%s_ID, 0) FROM RDB$DATABASE', [FTableName])));
 end;
 
+function TRepositoryBase.InserirParamN(const ACampos, AValoresParam: string;
+  const ANomes, AValores, ANulos: array of string): Int64;
+begin
+  PrepararQuery(Format('INSERT INTO %s (%s) VALUES (%s)',
+    [FTableName, ACampos, AValoresParam]));
+  AplicarParamsN(ANomes, AValores, ANulos);
+  ExecutarQuery;
+  FConexao.Confirmar;
+
+  Result := Int64(ExecutarScalar(
+    Format('SELECT GEN_ID(GEN_%s_ID, 0) FROM RDB$DATABASE', [FTableName])));
+end;
+
 function TRepositoryBase.AtualizarParam(AId: Int64; const ACamposParam: string;
   const ANomes, AValores: array of string): Boolean;
 begin
   PrepararQuery(Format('UPDATE %s SET %s WHERE ID = :ID',
     [FTableName, ACamposParam]));
   AplicarParams(ANomes, AValores);
+  FQuery.ParamByName('ID').AsLargeInt := AId;
+  ExecutarQuery;
+  FConexao.Confirmar;
+  Result := True;
+end;
+
+function TRepositoryBase.AtualizarParamN(AId: Int64; const ACamposParam: string;
+  const ANomes, AValores, ANulos: array of string): Boolean;
+begin
+  PrepararQuery(Format('UPDATE %s SET %s WHERE ID = :ID',
+    [FTableName, ACamposParam]));
+  AplicarParamsN(ANomes, AValores, ANulos);
   FQuery.ParamByName('ID').AsLargeInt := AId;
   ExecutarQuery;
   FConexao.Confirmar;

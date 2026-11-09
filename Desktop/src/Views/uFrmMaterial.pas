@@ -13,7 +13,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uSessao;
+  uFrmCadastroBase, uConexao, uSessao,
+  uMaterialService, uMaterial;
 
 type
   { TfrmMaterial }
@@ -49,6 +50,8 @@ type
     function Excluir: Boolean; override;
   private
     FQuery: TSQLQuery;
+    FService: TMaterialService;
+    destructor Destroy; override;
     procedure ConfigurarGrid;
     procedure CarregarProdutosFiscais;
     procedure CarregarUnidades;
@@ -65,6 +68,12 @@ implementation
 
 { TfrmMaterial }
 
+destructor TfrmMaterial.Destroy;
+begin
+  FreeAndNil(FService);
+  inherited Destroy;
+end;
+
 procedure TfrmMaterial.FormCreate(Sender: TObject);
 begin
   try
@@ -75,6 +84,7 @@ begin
     FQuery := TSQLQuery.Create(Self);
     FQuery.DataBase := FConexao.Connection;
     FQuery.Transaction := FConexao.Transaction;
+    FService := TMaterialService.Create;
 
     if DataSource1 = nil then
       DataSource1 := TDataSource.Create(Self);
@@ -284,89 +294,52 @@ end;
 
 function TfrmMaterial.Salvar: Boolean;
 var
-  LQuery: TSQLQuery;
-  LCtrl: string;
+  LMaterial: TMaterial;
 begin
   Result := False;
-  if chkControlaEstoque.Checked then LCtrl := 'S' else LCtrl := 'N';
-
-  LQuery := TSQLQuery.Create(nil);
+  LMaterial := TMaterial.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
     if FEstado = efInserindo then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO MATERIAL (EMPRESA_ID, PRODUTO_FISCAL_ID, UNIDADE_ID, CODIGO, ' +
-        'CODIGO_BARRAS, DESCRICAO, PRECO_CUSTO, CONTROLA_ESTOQUE, ESTOQUE_MINIMO, ' +
-        'ATIVO, OBSERVACOES) ' +
-        'VALUES (:EMP, :PFISCAL, :UNID, :COD, :BAR, :DESC, :CUSTO, :CTRL, :MIN, ' +
-        ':ATIVO, :OBS)';
-      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    end
+      LMaterial.Id := 0
     else
-    begin
-      LQuery.SQL.Text :=
-        'UPDATE MATERIAL SET PRODUTO_FISCAL_ID = :PFISCAL, UNIDADE_ID = :UNID, ' +
-        'CODIGO = :COD, CODIGO_BARRAS = :BAR, DESCRICAO = :DESC, PRECO_CUSTO = :CUSTO, ' +
-        'CONTROLA_ESTOQUE = :CTRL, ESTOQUE_MINIMO = :MIN, ATIVO = :ATIVO, ' +
-        'OBSERVACOES = :OBS WHERE ID = :ID';
-      LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    end;
-
-    LQuery.ParamByName('PFISCAL').AsLargeInt := IdDoItemSelecionado(cmbProdutoFiscal);
-    LQuery.ParamByName('UNID').AsLargeInt := IdDoItemSelecionado(cmbUnidade);
-    LQuery.ParamByName('COD').AsString := edtCodigo.Text;
-    LQuery.ParamByName('BAR').AsString := edtCodigoBarras.Text;
-    LQuery.ParamByName('DESC').AsString := edtDescricao.Text;
-    LQuery.ParamByName('CUSTO').AsFloat := StrToFloatDef(edtPrecoCusto.Text, 0);
-    LQuery.ParamByName('CTRL').AsString := LCtrl;
-    LQuery.ParamByName('MIN').AsFloat := StrToFloatDef(edtEstoqueMin.Text, 0);
-    LQuery.ParamByName('OBS').AsString := mmoObservacoes.Text;
-
+      LMaterial.Id := FIdSelecionado;
+    LMaterial.EmpresaId := TSessao.GetInstance.EmpresaId;
+    LMaterial.ProdutoFiscalId := IdDoItemSelecionado(cmbProdutoFiscal);
+    LMaterial.UnidadeId := IdDoItemSelecionado(cmbUnidade);
+    LMaterial.Codigo := Trim(edtCodigo.Text);
+    LMaterial.CodigoBarras := Trim(edtCodigoBarras.Text);
+    LMaterial.Descricao := Trim(edtDescricao.Text);
+    LMaterial.PrecoCusto := StrToFloatDef(edtPrecoCusto.Text, 0);
+    LMaterial.ControlaEstoque := chkControlaEstoque.Checked;
+    LMaterial.EstoqueMinimo := StrToFloatDef(edtEstoqueMin.Text, 0);
+    LMaterial.Observacoes := mmoObservacoes.Text;
     if cmbStatus.ItemIndex = 0 then
-      LQuery.ParamByName('ATIVO').AsString := 'A'
+      LMaterial.Ativo := 'A'
     else
-      LQuery.ParamByName('ATIVO').AsString := 'I';
+      LMaterial.Ativo := 'I';
 
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    if LMaterial.Id = 0 then
+      LMaterial.Id := FService.Inserir(LMaterial)
+    else
+      FService.Atualizar(LMaterial);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao salvar: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
+  LMaterial.Free;
 end;
 
 function TfrmMaterial.Excluir: Boolean;
-var
-  LQuery: TSQLQuery;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text := 'DELETE FROM MATERIAL WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    FService.Excluir(FIdSelecionado);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao excluir: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 end.

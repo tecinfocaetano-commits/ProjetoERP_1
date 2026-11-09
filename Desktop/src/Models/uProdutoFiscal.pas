@@ -32,6 +32,8 @@ type
     FAliqCofins: Double;
     FPesoLiquido: Double;
     FPesoBruto: Double;
+    FTipo: string;   // '', 'S' (serviço) ou 'O' (outro); '' grava NULL
+    FValor: Double;
     FAtivo: Char;
     FObservacoes: string;
   public
@@ -52,6 +54,8 @@ type
     property AliqCofins: Double read FAliqCofins write FAliqCofins;
     property PesoLiquido: Double read FPesoLiquido write FPesoLiquido;
     property PesoBruto: Double read FPesoBruto write FPesoBruto;
+    property Tipo: string read FTipo write FTipo;
+    property Valor: Double read FValor write FValor;
     property Ativo: Char read FAtivo write FAtivo;
     property Observacoes: string read FObservacoes write FObservacoes;
   end;
@@ -64,6 +68,7 @@ constructor TProdutoFiscal.Create;
 begin
   inherited Create;
   FAtivo := 'A';
+  FTipo := '';
   FAliqIcms := 0;
   FAliqPis := 0;
   FAliqCofins := 0;
