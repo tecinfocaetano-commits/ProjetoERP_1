@@ -20,6 +20,7 @@ type
     FRepo: TRepositoryBase;
     function CodigoExiste(const ACodigo: string; AExcluirId: Int64 = 0): Boolean;
     procedure Validar(AObj: TMaterial);
+    procedure GarantirDaEmpresa(AId: Int64);
   public
     constructor Create;
     destructor Destroy; override;
@@ -148,6 +149,23 @@ begin
   LogOperacao('MATERIAL', 'I', Result);
 end;
 
+procedure TMaterialService.GarantirDaEmpresa(AId: Int64);
+var
+  LQuery: TSQLQuery;
+begin
+  { escrita/leitura por ID só vale para registro da empresa da sessão }
+  LQuery := FRepo.BuscarPorId(AId);
+  try
+    if LQuery.IsEmpty or
+       (LQuery.FieldByName('EMPRESA_ID').AsLargeInt <>
+        TSessao.GetInstance.EmpresaId) then
+      raise Exception.Create('Material não encontrado para a empresa atual.');
+  finally
+    if LQuery.Active then
+      LQuery.Close;
+  end;
+end;
+
 function TMaterialService.Atualizar(AObj: TMaterial): Boolean;
 const
   CAMPOS_PARAM = 'PRODUTO_FISCAL_ID = :PFISCAL, UNIDADE_ID = :UNID, ' +
@@ -159,6 +177,7 @@ var
   LCtrl: string;
 begin
   ValidarId(AObj.Id, 'Material');
+  GarantirDaEmpresa(AObj.Id);
   Validar(AObj);
   if AObj.ControlaEstoque then LCtrl := 'S' else LCtrl := 'N';
 
@@ -177,6 +196,7 @@ end;
 function TMaterialService.Excluir(AId: Int64): Boolean;
 begin
   ValidarId(AId, 'Material');
+  GarantirDaEmpresa(AId);
   Result := FRepo.Excluir(AId);
   LogOperacao('MATERIAL', 'D', AId);
 end;

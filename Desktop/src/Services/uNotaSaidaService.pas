@@ -190,7 +190,8 @@ begin
     LQuery.SQL.Text :=
       'SELECT COALESCE(MAX(CASE WHEN NUMERO SIMILAR TO ''[0-9]+'' ' +
       '                         THEN CAST(NUMERO AS INTEGER) ELSE 0 END), 0) + 1 AS PROX ' +
-      'FROM NOTA_SAIDA';
+      'FROM NOTA_SAIDA WHERE EMPRESA_ID = :EMP';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := LQuery.FieldByName('PROX').AsInteger;

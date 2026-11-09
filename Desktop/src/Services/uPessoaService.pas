@@ -284,11 +284,12 @@ begin
   try
     LQuery.DataBase := Conexao.Connection;
     LQuery.Transaction := Conexao.Transaction;
-    LQuery.SQL.Text := 'SELECT TIPO FROM PESSOA WHERE ID = :ID';
+    LQuery.SQL.Text := 'SELECT TIPO FROM PESSOA WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := AObj.Id;
+    LQuery.ParamByName('EMP').AsLargeInt := AObj.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
-      raise Exception.Create('Pessoa não encontrada.');
+      raise Exception.Create('Pessoa não encontrada para a empresa atual.');
     LTipoAtual := LQuery.FieldByName('TIPO').AsString[1];
   finally
     LQuery.Free;
@@ -312,7 +313,7 @@ begin
       'BAIRRO = :BAIRRO, CIDADE = :CIDADE, CIDADE_ID = :CIDADE_ID, UF = :UF, ' +
       'CEP = :CEP, TELEFONE = :TELEFONE, CELULAR = :CELULAR, EMAIL = :EMAIL, ' +
       'CONTATO = :CONTATO, DATA_NASCIMENTO = :DATA_NASC, LIMITE_CREDITO = :LIMITE, ' +
-      'OBSERVACOES = :OBS, ATIVO = :ATIVO WHERE ID = :ID';
+      'OBSERVACOES = :OBS, ATIVO = :ATIVO WHERE ID = :ID AND EMPRESA_ID = :EMP';
     PreencherParametros(LQuery, AObj, LTipo);
     LQuery.ParamByName('ID').AsLargeInt := AObj.Id;
     LQuery.ExecSQL;
@@ -376,6 +377,23 @@ var
 
 begin
   ValidarId(AId, 'Pessoa');
+
+  { a pessoa precisa ser da empresa da sessão (isolamento multiempresa) }
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := Conexao.Connection;
+    LQuery.Transaction := Conexao.Transaction;
+    LQuery.SQL.Text :=
+      'SELECT EMPRESA_ID FROM PESSOA WHERE ID = :ID';
+    LQuery.ParamByName('ID').AsLargeInt := AId;
+    LQuery.Open;
+    if LQuery.IsEmpty or
+       (LQuery.FieldByName('EMPRESA_ID').AsLargeInt <>
+        TSessao.GetInstance.EmpresaId) then
+      raise Exception.Create('Pessoa não encontrada para a empresa atual.');
+  finally
+    LQuery.Free;
+  end;
 
   // Bloquear exclusão se houver referência em qualquer coluna CLIENTE_ID/FORNECEDOR_ID.
   LQuery := TSQLQuery.Create(nil);

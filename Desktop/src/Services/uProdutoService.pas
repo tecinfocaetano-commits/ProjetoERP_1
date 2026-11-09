@@ -22,6 +22,7 @@ type
   private
     FRepo: TRepositoryBase;
     procedure Validar(AObj: TProduto);
+    procedure GarantirDaEmpresa(AId: Int64);
   public
     constructor Create;
     destructor Destroy; override;
@@ -156,6 +157,23 @@ begin
   LogOperacao('PRODUTO', 'I', Result);
 end;
 
+procedure TProdutoService.GarantirDaEmpresa(AId: Int64);
+var
+  LQuery: TSQLQuery;
+begin
+  { escrita/leitura por ID só vale para registro da empresa da sessão }
+  LQuery := FRepo.BuscarPorId(AId);
+  try
+    if LQuery.IsEmpty or
+       (LQuery.FieldByName('EMPRESA_ID').AsLargeInt <>
+        TSessao.GetInstance.EmpresaId) then
+      raise Exception.Create('Produto não encontrado para a empresa atual.');
+  finally
+    if LQuery.Active then
+      LQuery.Close;
+  end;
+end;
+
 function TProdutoService.Atualizar(AObj: TProduto): Boolean;
 const
   CAMPOS_PARAM = 'CATEGORIA_ID = :CAT, UNIDADE_ID = :UNID, ' +
@@ -171,6 +189,7 @@ var
   LCtrl: string;
 begin
   ValidarId(AObj.Id, 'Produto');
+  GarantirDaEmpresa(AObj.Id);
   Validar(AObj);
   if AObj.ControlaEstoque then LCtrl := 'S' else LCtrl := 'N';
   if AObj.GradeId <= 0 then
@@ -198,6 +217,7 @@ end;
 function TProdutoService.Excluir(AId: Int64): Boolean;
 begin
   ValidarId(AId, 'Produto');
+  GarantirDaEmpresa(AId);
   Result := FRepo.Excluir(AId);
   LogOperacao('PRODUTO', 'D', AId);
 end;

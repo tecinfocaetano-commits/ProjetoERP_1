@@ -32,6 +32,7 @@ type
     FRepo: TRepositoryBase;
 
     function NovaConsulta: TSQLQuery;
+    procedure GarantirDaEmpresa(AId: Int64; const AMensagem: string);
     procedure Validar(AObj: TGrade);
     procedure ValidarTamanhos(const ATamanhos: TGradeTamanhos;
       AExigirPeloMenosUm: Boolean);
@@ -98,6 +99,25 @@ begin
   Result := TSQLQuery.Create(nil);
   Result.DataBase := Conexao.Connection;
   Result.Transaction := Conexao.Transaction;
+end;
+
+procedure TGradeService.GarantirDaEmpresa(AId: Int64; const AMensagem: string);
+var
+  LQuery: TSQLQuery;
+begin
+  { escrita por ID só vale para grade da empresa da sessão }
+  LQuery := NovaConsulta;
+  try
+    LQuery.SQL.Text := 'SELECT EMPRESA_ID FROM GRADE WHERE ID = :ID';
+    LQuery.ParamByName('ID').AsLargeInt := AId;
+    LQuery.Open;
+    if LQuery.IsEmpty or
+       (LQuery.FieldByName('EMPRESA_ID').AsLargeInt <>
+        TSessao.GetInstance.EmpresaId) then
+      raise Exception.Create(AMensagem);
+  finally
+    LQuery.Free;
+  end;
 end;
 
 procedure TGradeService.ValidarTamanhos(const ATamanhos: TGradeTamanhos;
@@ -309,6 +329,7 @@ var
 begin
   Validar(AObj);
   ValidarId(AObj.Id, 'Grade');
+  GarantirDaEmpresa(AObj.Id, 'Grade não encontrada para a empresa atual.');
   Result := False;
   Conexao.IniciarTransacao;
   LQuery := NovaConsulta;
@@ -346,12 +367,14 @@ var
   LUsos: Int64;
 begin
   ValidarId(AId, 'Grade');
+  GarantirDaEmpresa(AId, 'Grade não encontrada para a empresa atual.');
   Result := False;
   LQuery := NovaConsulta;
   try
     { grade padrão de produto não pode ser excluída (referência lógica) }
-    LQuery.SQL.Text := 'SELECT COUNT(*) FROM PRODUTO WHERE GRADE_ID = :ID';
+    LQuery.SQL.Text := 'SELECT COUNT(*) FROM PRODUTO WHERE GRADE_ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := AId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     LUsos := LQuery.Fields[0].AsLargeInt;
     LQuery.Close;
@@ -673,8 +696,9 @@ begin
   Result := 0;
   LQuery := NovaConsulta;
   try
-    LQuery.SQL.Text := 'SELECT GRADE_ID FROM PRODUTO WHERE ID = :ID';
+    LQuery.SQL.Text := 'SELECT GRADE_ID FROM PRODUTO WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := AProdutoId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if (not LQuery.IsEmpty) and (not LQuery.FieldByName('GRADE_ID').IsNull) then
       Result := LQuery.FieldByName('GRADE_ID').AsLargeInt;
@@ -696,20 +720,35 @@ begin
   LQuery := NovaConsulta;
   try
     try
-      LQuery.SQL.Text := 'SELECT COUNT(*) FROM PRODUTO WHERE ID = :ID';
+      LQuery.SQL.Text := 'SELECT COUNT(*) FROM PRODUTO WHERE ID = :ID AND EMPRESA_ID = :EMP';
       LQuery.ParamByName('ID').AsLargeInt := AProdutoId;
+      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQuery.Open;
       if LQuery.Fields[0].AsLargeInt = 0 then
         raise Exception.CreateFmt(
           'Produto com ID %d não encontrado.', [AProdutoId]);
       LQuery.Close;
 
-      LQuery.SQL.Text := 'UPDATE PRODUTO SET GRADE_ID = :GRADE WHERE ID = :ID';
+      if AGradeId > 0 then
+      begin
+        LQuery.SQL.Text :=
+          'SELECT COUNT(*) FROM GRADE WHERE ID = :ID AND EMPRESA_ID = :EMP';
+        LQuery.ParamByName('ID').AsLargeInt := AGradeId;
+        LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+        LQuery.Open;
+        if LQuery.Fields[0].AsLargeInt = 0 then
+          raise Exception.CreateFmt(
+            'Grade com ID %d não encontrada para a empresa atual.', [AGradeId]);
+        LQuery.Close;
+      end;
+
+      LQuery.SQL.Text := 'UPDATE PRODUTO SET GRADE_ID = :GRADE WHERE ID = :ID AND EMPRESA_ID = :EMP';
       if AGradeId > 0 then
         LQuery.ParamByName('GRADE').AsLargeInt := AGradeId
       else
         LQuery.ParamByName('GRADE').Clear;
       LQuery.ParamByName('ID').AsLargeInt := AProdutoId;
+      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQuery.ExecSQL;
       Conexao.Confirmar;
       LogOperacao('PRODUTO', 'ATUALIZAR', AProdutoId, '',

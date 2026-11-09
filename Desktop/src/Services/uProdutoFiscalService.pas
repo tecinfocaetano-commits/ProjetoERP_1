@@ -20,6 +20,7 @@ type
     FRepo: TRepositoryBase;
     function CodigoExiste(const ACodigo: string; AExcluirId: Int64 = 0): Boolean;
     procedure Validar(AObj: TProdutoFiscal);
+    procedure GarantirDaEmpresa(AId: Int64);
   public
     constructor Create;
     destructor Destroy; override;
@@ -174,6 +175,23 @@ begin
   LogOperacao('PRODUTO_FISCAL', 'I', Result);
 end;
 
+procedure TProdutoFiscalService.GarantirDaEmpresa(AId: Int64);
+var
+  LQuery: TSQLQuery;
+begin
+  { escrita/leitura por ID só vale para registro da empresa da sessão }
+  LQuery := FRepo.BuscarPorId(AId);
+  try
+    if LQuery.IsEmpty or
+       (LQuery.FieldByName('EMPRESA_ID').AsLargeInt <>
+        TSessao.GetInstance.EmpresaId) then
+      raise Exception.Create('Produto Fiscal não encontrado para a empresa atual.');
+  finally
+    if LQuery.Active then
+      LQuery.Close;
+  end;
+end;
+
 function TProdutoFiscalService.Atualizar(AObj: TProdutoFiscal): Boolean;
 const
   CAMPOS_PARAM = 'CODIGO = :COD, DESCRICAO = :DESC, NCM = :NCM, ' +
@@ -188,6 +206,7 @@ var
   LNulls: array of string;
 begin
   ValidarId(AObj.Id, 'Produto Fiscal');
+  GarantirDaEmpresa(AObj.Id);
   Validar(AObj);
   if Trim(AObj.Tipo) = '' then
   begin
@@ -215,6 +234,7 @@ end;
 function TProdutoFiscalService.Excluir(AId: Int64): Boolean;
 begin
   ValidarId(AId, 'Produto Fiscal');
+  GarantirDaEmpresa(AId);
   Result := FRepo.Excluir(AId);
   LogOperacao('PRODUTO_FISCAL', 'D', AId);
 end;

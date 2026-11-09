@@ -27,6 +27,7 @@ type
     function LoginExiste(const ALogin: string; AExcluirId: Int64 = 0): Boolean;
     procedure Validar(AObj: TUsuario; const ASenhaTexto: string;
       AInserindo: Boolean);
+    procedure GarantirDaEmpresa(AId: Int64);
   public
     constructor Create;
     destructor Destroy; override;
@@ -208,6 +209,23 @@ begin
   LogOperacao('USUARIO', 'I', Result);
 end;
 
+procedure TUsuarioService.GarantirDaEmpresa(AId: Int64);
+var
+  LQuery: TSQLQuery;
+begin
+  { escrita/leitura por ID só vale para registro da empresa da sessão }
+  LQuery := FRepo.BuscarPorId(AId);
+  try
+    if LQuery.IsEmpty or
+       (LQuery.FieldByName('EMPRESA_ID').AsLargeInt <>
+        TSessao.GetInstance.EmpresaId) then
+      raise Exception.Create('Usuário não encontrado para a empresa atual.');
+  finally
+    if LQuery.Active then
+      LQuery.Close;
+  end;
+end;
+
 function TUsuarioService.Atualizar(AObj: TUsuario;
   const ASenhaTexto: string): Boolean;
 const
@@ -224,6 +242,7 @@ var
   LAdmin: string;
 begin
   ValidarId(AObj.Id, 'Usuário');
+  GarantirDaEmpresa(AObj.Id);
   Validar(AObj, ASenhaTexto, False);
   if AObj.Administrador then LAdmin := 'S' else LAdmin := 'N';
 
@@ -254,6 +273,7 @@ end;
 function TUsuarioService.Excluir(AId: Int64): Boolean;
 begin
   ValidarId(AId, 'Usuário');
+  GarantirDaEmpresa(AId);
   { ninguém exclui o próprio usuário logado (regra também checada
     na tela; aqui é a garantia no Service) }
   if AId = TSessao.GetInstance.UsuarioId then
