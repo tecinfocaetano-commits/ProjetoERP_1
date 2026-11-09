@@ -12,7 +12,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls,
-  uFrmCadastroBase, uConexao, uSessao, uGradeService, uFrmCoresProduto;
+  uFrmCadastroBase, uConexao, uSessao, uGradeService, uFrmCoresProduto,
+  uProdutoService, uProduto;
 
 type
   { TfrmProdutos }
@@ -71,6 +72,7 @@ type
   private
     FQuery: TSQLQuery;
     FGradeService: TGradeService;
+    FProdutoService: TProdutoService;
     procedure ConfigurarGrid;
     procedure CarregarCategorias;
     procedure CarregarUnidades;
@@ -103,6 +105,7 @@ begin
     FQuery.Transaction := FConexao.Transaction;
 
     FGradeService := TGradeService.Create;
+    FProdutoService := TProdutoService.Create;
 
     // Criar DataSource1 se não existir
     if DataSource1 = nil then
@@ -136,6 +139,7 @@ end;
 
 procedure TfrmProdutos.FormDestroy(Sender: TObject);
 begin
+  FreeAndNil(FProdutoService);
   FreeAndNil(FGradeService);
   inherited;
 end;
@@ -480,120 +484,81 @@ end;
 
 function TfrmProdutos.Salvar: Boolean;
 var
-  LQuery: TSQLQuery;
-  LControla: string;
+  LProduto: TProduto;
 begin
   Result := False;
-  if chkControlaEstoque.Checked then LControla := 'S' else LControla := 'N';
-
-  LQuery := TSQLQuery.Create(nil);
+  LProduto := TProduto.Create;
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-
     if FEstado = efInserindo then
-    begin
-      LQuery.SQL.Text :=
-        'INSERT INTO PRODUTO (EMPRESA_ID, CATEGORIA_ID, UNIDADE_ID, CODIGO, ' +
-        'CODIGO_BARRAS, DESCRICAO, DESCRICAO_PDV, ' +
-        'NCM, CEST, CFOP_VENDA, PRECO_CUSTO, PRECO_VENDA, MARGEM_LUCRO, ' +
-        'ESTOQUE_MINIMO, ESTOQUE_MAXIMO, CONTROLA_ESTOQUE, ATIVO, OBSERVACOES, GRADE_ID) ' +
-        'VALUES (:EMP, :CAT, :UNID, :COD, :BAR, :DESC, :PDV, :NCM, :CEST, :CFOP, ' +
-        ':CUSTO, :VENDA, :MARGEM, :MIN, :MAX, :CTRL, :ATIVO, :OBS, :GRADE)';
-      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    end
+      LProduto.Id := 0
     else
-    begin
-      LQuery.SQL.Text :=
-        'UPDATE PRODUTO SET CATEGORIA_ID = :CAT, UNIDADE_ID = :UNID, ' +
-        'CODIGO = :COD, CODIGO_BARRAS = :BAR, DESCRICAO = :DESC, ' +
-        'DESCRICAO_PDV = :PDV, NCM = :NCM, CEST = :CEST, CFOP_VENDA = :CFOP, ' +
-        'PRECO_CUSTO = :CUSTO, PRECO_VENDA = :VENDA, MARGEM_LUCRO = :MARGEM, ' +
-        'ESTOQUE_MINIMO = :MIN, ESTOQUE_MAXIMO = :MAX, CONTROLA_ESTOQUE = :CTRL, ' +
-        'ATIVO = :ATIVO, OBSERVACOES = :OBS, GRADE_ID = :GRADE WHERE ID = :ID';
-      LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    end;
-
-    LQuery.ParamByName('COD').AsString := edtCodigo.Text;
-    LQuery.ParamByName('BAR').AsString := edtCodigoBarras.Text;
-    LQuery.ParamByName('DESC').AsString := edtDescricao.Text;
-    LQuery.ParamByName('PDV').AsString := edtDescricaoPDV.Text;
-    LQuery.ParamByName('NCM').AsString := edtNcm.Text;
-    LQuery.ParamByName('CEST').AsString := edtCest.Text;
-    LQuery.ParamByName('CFOP').AsString := edtCfopVenda.Text;
-    LQuery.ParamByName('CUSTO').AsFloat := StrToFloatDef(edtPrecoCusto.Text, 0);
-    LQuery.ParamByName('VENDA').AsFloat := StrToFloatDef(edtPrecoVenda.Text, 0);
-    LQuery.ParamByName('MARGEM').AsFloat := StrToFloatDef(edtMargemLucro.Text, 0);
-    LQuery.ParamByName('MIN').AsFloat := StrToFloatDef(edtEstoqueMin.Text, 0);
-    LQuery.ParamByName('MAX').AsFloat := StrToFloatDef(edtEstoqueMax.Text, 0);
-    LQuery.ParamByName('CTRL').AsString := LControla;
-    LQuery.ParamByName('OBS').AsString := mmoObservacoes.Text;
+      LProduto.Id := FIdSelecionado;
+    LProduto.EmpresaId := TSessao.GetInstance.EmpresaId;
 
     { categoria e unidade sao obrigatorias (dominio DM_ID NOT NULL) }
     if (cmbCategoria.ItemIndex > 0) and
        (cmbCategoria.Items.Objects[cmbCategoria.ItemIndex] <> nil) then
-      LQuery.ParamByName('CAT').AsLargeInt :=
+      LProduto.CategoriaId :=
         PtrInt(cmbCategoria.Items.Objects[cmbCategoria.ItemIndex])
     else
-      LQuery.ParamByName('CAT').Clear;
+      LProduto.CategoriaId := 0;
 
     if (cmbUnidade.ItemIndex > 0) and
        (cmbUnidade.Items.Objects[cmbUnidade.ItemIndex] <> nil) then
-      LQuery.ParamByName('UNID').AsLargeInt :=
+      LProduto.UnidadeId :=
         PtrInt(cmbUnidade.Items.Objects[cmbUnidade.ItemIndex])
     else
-      LQuery.ParamByName('UNID').Clear;
-
-    if cmbStatus.ItemIndex = 0 then
-      LQuery.ParamByName('ATIVO').AsString := 'A'
-    else
-      LQuery.ParamByName('ATIVO').AsString := 'I';
+      LProduto.UnidadeId := 0;
 
     { grade padrao do produto (usada para preencher a grade no pedido) }
     if (cmbGrade.ItemIndex > 0) and
        (cmbGrade.Items.Objects[cmbGrade.ItemIndex] <> nil) then
-      LQuery.ParamByName('GRADE').AsLargeInt :=
+      LProduto.GradeId :=
         PtrInt(cmbGrade.Items.Objects[cmbGrade.ItemIndex])
     else
-      LQuery.ParamByName('GRADE').Clear;
+      LProduto.GradeId := 0;
 
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    LProduto.Codigo := Trim(edtCodigo.Text);
+    LProduto.CodigoBarras := Trim(edtCodigoBarras.Text);
+    LProduto.Descricao := Trim(edtDescricao.Text);
+    LProduto.DescricaoPDV := Trim(edtDescricaoPDV.Text);
+    LProduto.Ncm := Trim(edtNcm.Text);
+    LProduto.Cest := Trim(edtCest.Text);
+    LProduto.CfopVenda := Trim(edtCfopVenda.Text);
+    LProduto.PrecoCusto := StrToFloatDef(edtPrecoCusto.Text, 0);
+    LProduto.PrecoVenda := StrToFloatDef(edtPrecoVenda.Text, 0);
+    LProduto.MargemLucro := StrToFloatDef(edtMargemLucro.Text, 0);
+    LProduto.EstoqueMinimo := StrToFloatDef(edtEstoqueMin.Text, 0);
+    LProduto.EstoqueMaximo := StrToFloatDef(edtEstoqueMax.Text, 0);
+    LProduto.ControlaEstoque := chkControlaEstoque.Checked;
+    LProduto.Observacoes := mmoObservacoes.Text;
+    if cmbStatus.ItemIndex = 0 then
+      LProduto.Ativo := 'A'
+    else
+      LProduto.Ativo := 'I';
+
+    if LProduto.Id = 0 then
+      LProduto.Id := FProdutoService.Inserir(LProduto)
+    else
+      FProdutoService.Atualizar(LProduto);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao salvar: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
+  LProduto.Free;
 end;
 
 function TfrmProdutos.Excluir: Boolean;
-var
-  LQuery: TSQLQuery;
 begin
   Result := False;
-  LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    FConexao.IniciarTransacao;
-    LQuery.SQL.Text := 'DELETE FROM PRODUTO WHERE ID = :ID';
-    LQuery.ParamByName('ID').AsLargeInt := FIdSelecionado;
-    LQuery.ExecSQL;
-    FConexao.Confirmar;
+    FProdutoService.Excluir(FIdSelecionado);
     Result := True;
   except
     on E: Exception do
-    begin
-      FConexao.Cancelar;
       MessageDlg('Erro ao excluir: ' + E.Message, mtError, [mbOK], 0);
-    end;
   end;
-  LQuery.Free;
 end;
 
 end.

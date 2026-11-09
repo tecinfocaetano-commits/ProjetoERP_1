@@ -145,6 +145,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src/Services/uProdutoService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/Services/uPaisService.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

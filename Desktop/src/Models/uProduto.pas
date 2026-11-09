@@ -44,6 +44,8 @@ type
     FAtivo: Char;
     FImagem: string;
     FObservacoes: string;
+    FGradeId: Int64;
+    FProdutoFiscalId: Int64;
   public
     constructor Create; override;
 
@@ -75,6 +77,8 @@ type
     property Ativo: Char read FAtivo write FAtivo;
     property Imagem: string read FImagem write FImagem;
     property Observacoes: string read FObservacoes write FObservacoes;
+    property GradeId: Int64 read FGradeId write FGradeId;
+    property ProdutoFiscalId: Int64 read FProdutoFiscalId write FProdutoFiscalId;
   end;
 
 implementation
@@ -92,6 +96,8 @@ begin
   FPrecoCusto := 0;
   FPrecoVenda := 0;
   FMargemLucro := 0;
+  FGradeId := 0;
+  FProdutoFiscalId := 0;
 end;
 
 end.

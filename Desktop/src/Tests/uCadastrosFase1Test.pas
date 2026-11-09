@@ -13,6 +13,8 @@ unit uCadastrosFase1Test;
       TIPO/VALOR (serviço/outro) e auditoria;
     - TCategoriaService: CRUD, nome único e auditoria (tabela global,
       sem EMPRESA_ID);
+    - TProdutoService: CRUD com categoria/unidade obrigatórias, preço
+      de venda > 0, GRADE_ID anulável e auditoria;
     - TGradeService: CRUD com tamanhos, validações, bloqueio de
       exclusão de grade vinculada a produto, configuração USA_GRADE
       e auditoria;
@@ -27,9 +29,9 @@ interface
 
 uses
   Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao,
-  uCor, uMaterial, uProdutoFiscal, uGrade, uCategoria,
+  uCor, uMaterial, uProdutoFiscal, uGrade, uCategoria, uProduto,
   uCorService, uMaterialService, uProdutoFiscalService, uGradeService,
-  uCategoriaService;
+  uCategoriaService, uProdutoService;
 
 type
   { TCadastrosFase1Test }
@@ -53,6 +55,7 @@ var
   LProdutoFiscalService: TProdutoFiscalService;
   LGradeService: TGradeService;
   LCategoriaService: TCategoriaService;
+  LProdutoService: TProdutoService;
   LSufixo: string;
   LTopoLog: Int64;
 
@@ -134,6 +137,17 @@ var
     LQuery.ParamByName('TOPO').AsLargeInt := LTopoLog;
     LQuery.Open;
     Result := LQuery.Fields[0].AsInteger;
+    LQuery.Close;
+  end;
+
+  function PrimeiroId(const ATabela: string): Int64;
+  begin
+    Result := 0;
+    LQuery.Close;
+    LQuery.SQL.Text := 'SELECT FIRST 1 ID FROM ' + ATabela;
+    LQuery.Open;
+    if not LQuery.IsEmpty then
+      Result := LQuery.FieldByName('ID').AsLargeInt;
     LQuery.Close;
   end;
 
@@ -1144,6 +1158,265 @@ var
     end;
   end;
 
+  procedure TestProdutoCicloCompleto;
+  var
+    LProduto, LLido: TProduto;
+    LId: Int64;
+    LDescricao, LCodigo: string;
+    LCategoriaId, LUnidadeId, LGradeId: Int64;
+  begin
+    LDescricao := 'PRODUTO TESTE ' + LSufixo;
+    LCodigo := 'PROD' + Copy(LSufixo, 1, 10);
+    LCategoriaId := PrimeiroId('CATEGORIA');
+    LUnidadeId := PrimeiroId('UNIDADE');
+    LGradeId := PrimeiroId('GRADE');
+    LProduto := TProduto.Create;
+    LId := 0;
+    try
+      try
+        AssertTrue(LCategoriaId > 0, 'o banco precisa de uma categoria');
+        AssertTrue(LUnidadeId > 0, 'o banco precisa de uma unidade');
+
+        LProduto.EmpresaId := LSessao.EmpresaId;
+        LProduto.CategoriaId := LCategoriaId;
+        LProduto.UnidadeId := LUnidadeId;
+        LProduto.Codigo := LCodigo;
+        LProduto.CodigoBarras := '789' + Copy(LSufixo, 1, 8);
+        LProduto.Descricao := LDescricao;
+        LProduto.DescricaoPDV := 'PRODUTO PDV ' + LSufixo;
+        LProduto.Ncm := '61091000';
+        LProduto.Cest := '2100100';
+        LProduto.CfopVenda := '5102';
+        LProduto.PrecoCusto := 10.5;
+        LProduto.PrecoVenda := 25.9;
+        LProduto.MargemLucro := 50;
+        LProduto.EstoqueMinimo := 2;
+        LProduto.EstoqueMaximo := 100;
+        LProduto.ControlaEstoque := True;
+        LProduto.Ativo := 'A';
+        LProduto.Observacoes := 'produto criado pelo teste';
+        { GradeId = 0 deve gravar NULL ("sem grade padrão") }
+        LId := LProdutoService.Inserir(LProduto);
+
+        AssertTrue(LId > 0, 'o INSERT do produto deve devolver o ID');
+        AssertEquals('1', IntToStr(ContarPorId('PRODUTO', LId)),
+          'o produto deve existir no banco');
+
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'SELECT COUNT(*) FROM PRODUTO ' +
+          'WHERE ID = :ID AND GRADE_ID IS NULL';
+        LQuery.ParamByName('ID').AsLargeInt := LId;
+        LQuery.Open;
+        AssertEquals('1', IntToStr(LQuery.Fields[0].AsInteger),
+          'GRADE_ID 0 deve gravar NULL no banco');
+        LQuery.Close;
+
+        LLido := LProdutoService.BuscarPorId(LId);
+        try
+          AssertNotNull(LLido, 'BuscarPorId deve achar o produto');
+          AssertEquals(IntToStr(LCategoriaId), IntToStr(LLido.CategoriaId),
+            'a categoria deve voltar do banco');
+          AssertEquals(IntToStr(LUnidadeId), IntToStr(LLido.UnidadeId),
+            'a unidade deve voltar do banco');
+          AssertEquals(LCodigo, LLido.Codigo, 'o código deve voltar');
+          AssertEquals(LDescricao, LLido.Descricao,
+            'a descrição deve voltar do banco');
+          AssertEquals('PRODUTO PDV ' + LSufixo, LLido.DescricaoPDV,
+            'a descrição do PDV deve voltar do banco');
+          AssertTrue(Abs(LLido.PrecoVenda - 25.9) < 0.0001,
+            'o preço de venda deve voltar do banco');
+          AssertTrue(LLido.ControlaEstoque,
+            'CONTROLA_ESTOQUE = S deve voltar como True');
+          AssertEquals('0', IntToStr(LLido.GradeId),
+            'GRADE_ID NULL deve voltar como 0');
+        finally
+          LLido.Free;
+        end;
+
+        LLista := LProdutoService.Pesquisar(LCodigo);
+        try
+          AssertTrue(AchouNaLista(LLista, LId),
+            'Pesquisar deve achar pelo código');
+        finally
+          LLista.Close;
+        end;
+
+        LLista := LProdutoService.Pesquisar(LowerCase(LDescricao));
+        try
+          AssertTrue(AchouNaLista(LLista, LId),
+            'Pesquisar deve achar pela descrição sem diferenciar caixa');
+        finally
+          LLista.Close;
+        end;
+
+        LLista := LProdutoService.BuscarTodos;
+        try
+          AssertTrue(AchouNaLista(LLista, LId),
+            'BuscarTodos deve listar o produto da empresa');
+        finally
+          LLista.Close;
+        end;
+
+        LProduto.Id := LId;
+        LProduto.Descricao := LDescricao + ' II';
+        LProduto.PrecoVenda := 30;
+        LProduto.Ativo := 'I';
+        if LGradeId > 0 then
+          LProduto.GradeId := LGradeId;
+        AssertTrue(LProdutoService.Atualizar(LProduto),
+          'Atualizar deve retornar True');
+
+        LLido := LProdutoService.BuscarPorId(LId);
+        try
+          AssertEquals(LDescricao + ' II', LLido.Descricao,
+            'o UPDATE deve gravar a descrição');
+          AssertTrue(Abs(LLido.PrecoVenda - 30) < 0.0001,
+            'o UPDATE deve gravar o preço de venda');
+          AssertEquals('I', LLido.Ativo, 'o UPDATE deve gravar o ATIVO');
+          if LGradeId > 0 then
+            AssertEquals(IntToStr(LGradeId), IntToStr(LLido.GradeId),
+              'o UPDATE deve gravar a grade padrão');
+        finally
+          LLido.Free;
+        end;
+
+        AssertTrue(LProdutoService.Excluir(LId), 'Excluir deve retornar True');
+        AssertNil(LProdutoService.BuscarPorId(LId),
+          'o produto excluído não deve ser encontrado');
+        AssertEquals('0', IntToStr(ContarPorId('PRODUTO', LId)),
+          'o produto deve sumir do banco');
+
+        AssertTrue(ContarLog('PRODUTO', LId) >= 3,
+          'INSERIR, ATUALIZAR e EXCLUIR devem gerar auditoria');
+        LId := 0;
+
+        ASuite.AddResult('TestProdutoCicloCompleto', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestProdutoCicloCompleto', False, E.Message);
+      end;
+    finally
+      if LId > 0 then
+        try
+          LProdutoService.Excluir(LId);
+        except
+        end;
+      LProduto.Free;
+    end;
+  end;
+
+  procedure TestProdutoSemDescricao;
+  var
+    LProduto: TProduto;
+    LAntes, LDepois: Integer;
+    LDeu: Boolean;
+  begin
+    LProduto := TProduto.Create;
+    try
+      try
+        LAntes := ContarTotal('PRODUTO');
+        LProduto.EmpresaId := LSessao.EmpresaId;
+        LProduto.CategoriaId := PrimeiroId('CATEGORIA');
+        LProduto.UnidadeId := PrimeiroId('UNIDADE');
+        LProduto.Descricao := '';
+        LProduto.PrecoVenda := 10;
+        LProduto.Ativo := 'A';
+        LDeu := False;
+        try
+          LProdutoService.Inserir(LProduto);
+        except
+          on E: Exception do
+            LDeu := True;
+        end;
+        LDepois := ContarTotal('PRODUTO');
+        AssertTrue(LDeu, 'produto sem descrição deve ser recusado');
+        AssertEquals(IntToStr(LAntes), IntToStr(LDepois),
+          'nenhum produto deve ser gravado');
+        ASuite.AddResult('TestProdutoSemDescricao', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestProdutoSemDescricao', False, E.Message);
+      end;
+    finally
+      LProduto.Free;
+    end;
+  end;
+
+  procedure TestProdutoSemCategoria;
+  var
+    LProduto: TProduto;
+    LAntes, LDepois: Integer;
+    LDeu: Boolean;
+  begin
+    LProduto := TProduto.Create;
+    try
+      try
+        LAntes := ContarTotal('PRODUTO');
+        LProduto.EmpresaId := LSessao.EmpresaId;
+        LProduto.CategoriaId := 0;
+        LProduto.UnidadeId := PrimeiroId('UNIDADE');
+        LProduto.Descricao := 'PRODUTO SEM CATEGORIA ' + LSufixo;
+        LProduto.PrecoVenda := 10;
+        LProduto.Ativo := 'A';
+        LDeu := False;
+        try
+          LProdutoService.Inserir(LProduto);
+        except
+          on E: Exception do
+            LDeu := True;
+        end;
+        LDepois := ContarTotal('PRODUTO');
+        AssertTrue(LDeu, 'produto sem categoria deve ser recusado');
+        AssertEquals(IntToStr(LAntes), IntToStr(LDepois),
+          'nenhum produto deve ser gravado');
+        ASuite.AddResult('TestProdutoSemCategoria', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestProdutoSemCategoria', False, E.Message);
+      end;
+    finally
+      LProduto.Free;
+    end;
+  end;
+
+  procedure TestProdutoPrecoVendaZero;
+  var
+    LProduto: TProduto;
+    LAntes, LDepois: Integer;
+    LDeu: Boolean;
+  begin
+    LProduto := TProduto.Create;
+    try
+      try
+        LAntes := ContarTotal('PRODUTO');
+        LProduto.EmpresaId := LSessao.EmpresaId;
+        LProduto.CategoriaId := PrimeiroId('CATEGORIA');
+        LProduto.UnidadeId := PrimeiroId('UNIDADE');
+        LProduto.Descricao := 'PRODUTO PRECO ZERO ' + LSufixo;
+        LProduto.PrecoVenda := 0;
+        LProduto.Ativo := 'A';
+        LDeu := False;
+        try
+          LProdutoService.Inserir(LProduto);
+        except
+          on E: Exception do
+            LDeu := True;
+        end;
+        LDepois := ContarTotal('PRODUTO');
+        AssertTrue(LDeu, 'produto com preço de venda zero deve ser recusado');
+        AssertEquals(IntToStr(LAntes), IntToStr(LDepois),
+          'nenhum produto deve ser gravado');
+        ASuite.AddResult('TestProdutoPrecoVendaZero', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestProdutoPrecoVendaZero', False, E.Message);
+      end;
+    finally
+      LProduto.Free;
+    end;
+  end;
+
   procedure TestGradeCicloCompleto;
   var
     LGrade, LLido: TGrade;
@@ -1703,6 +1976,11 @@ var
       LQuery.ExecSQL;
 
       LQuery.Close;
+      LQuery.SQL.Text := 'DELETE FROM PRODUTO WHERE DESCRICAO LIKE :M';
+      LQuery.ParamByName('M').AsString := LMascara;
+      LQuery.ExecSQL;
+
+      LQuery.Close;
       LQuery.SQL.Text :=
         'DELETE FROM LOG_SISTEMA WHERE ID > :TOPO ' +
         'AND TABELA IN (''COR'', ''MATERIAL'', ''PRODUTO_FISCAL'', ' +
@@ -1726,6 +2004,7 @@ begin
   LProdutoFiscalService := TProdutoFiscalService.Create;
   LGradeService := TGradeService.Create;
   LCategoriaService := TCategoriaService.Create;
+  LProdutoService := TProdutoService.Create;
   LSufixo := FormatDateTime('yyyymmddhhnnsszzz', Now);
   try
     LQuery.DataBase := LConexao.Connection;
@@ -1759,6 +2038,10 @@ begin
     TestCategoriaCicloCompleto;
     TestCategoriaSemNome;
     TestCategoriaNomeDuplicado;
+    TestProdutoCicloCompleto;
+    TestProdutoSemDescricao;
+    TestProdutoSemCategoria;
+    TestProdutoPrecoVendaZero;
     TestGradeCicloCompleto;
     TestGradeSemNome;
     TestGradeTipoInvalido;
@@ -1772,6 +2055,7 @@ begin
     TestTiposGrade;
   finally
     LimparSobraPorSufixo;
+    LProdutoService.Free;
     LCategoriaService.Free;
     LGradeService.Free;
     LProdutoFiscalService.Free;
