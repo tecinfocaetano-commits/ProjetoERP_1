@@ -459,8 +459,9 @@ begin
           LDescontoItem := LItem.Get('desconto', Double(0));
 
           LQuery.SQL.Text :=
-            'SELECT PRECO_VENDA FROM PRODUTO WHERE ID = :ID';
+            'SELECT PRECO_VENDA FROM PRODUTO WHERE ID = :ID AND EMPRESA_ID = :EMP';
           LQuery.ParamByName('ID').AsLargeInt := LProdutoId;
+          LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
           LQuery.Open;
           if LItem.Find('valor_unitario') = nil then
             LValorUnitario := LQuery.FieldByName('PRECO_VENDA').AsFloat
