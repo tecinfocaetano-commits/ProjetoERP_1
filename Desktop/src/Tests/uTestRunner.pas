@@ -34,6 +34,7 @@ uses
   uInventarioTest,
   uKardexTest,
   uProducaoFluxoTest,
+  uNFeTest,
   uConexao,
   uSessao;
 
@@ -150,6 +151,10 @@ begin
 
     // Executar testes do Fluxo de Produção (08/11/2026)
     TProducaoFluxoTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes da NF-e (09/11/2026)
+    TNFeTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais
