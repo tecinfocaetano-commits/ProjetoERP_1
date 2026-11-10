@@ -1,4 +1,4 @@
-# CHECKPOINT — último ponto de parada (08/11/2026)
+# CHECKPOINT — último ponto de parada (09/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **349/349**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **366/366**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
@@ -27,18 +27,24 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ---
 
-## Estado atual da sessão (08/11/2026)
+## Estado atual da sessão (09/11/2026)
 
-**HEAD:** commit de docs do marco 3.53 (relatório + melhorias de
-tela + Android). Árvore: limpa.
-Build: desktop **0/0** · suíte desktop **349/349** · API compilada
-(`Scripts\build_api.bat`) · testes Android **OK**.
+**HEAD:** `162be42` — "Testes: suite da NF-e (ACBrHelper) com banco real".
+Árvore: limpa. Build: desktop **0/0** · suíte desktop **366/366** ·
+API compilada (`Scripts\build_api.bat`) · testes Android **5/5**
+(inalterados).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.54 — testes da NF-e)
+
+| Item | Entrega |
+|---|---|
+| **Suíte da NF-e** | `uNFeTest` (17 testes, banco real) cobre `TACBrHelper`: configuração (certificado/senha/UF/ambiente), emissão simulada (exige certificado e senha, só pedido da empresa, grava `NUMERO_NFE`/`CHAVE_NFE` e audita `PEDIDO_VENDA`/`NFE`), numeração `MAX(NUMERO_NFE)` por empresa, NFC-e, consulta, cancelamento (justificativa ≥15) e manifestação. Registrada no `uTestRunner`/`Tests.lpi`. Suíte **366/366**. Commit `162be42`. |
 
 ### O que fechou nesta sessão (marco 3.53)
 
@@ -138,11 +144,15 @@ cabeçalho pai.
 
 ### Próximo passo (executável)
 
-1. **A definir com o usuário** — a fila de "cadastros simples + login"
-   fechou em 08/11 (ver "Estado atual" no topo e `PLANO_E_LOG.md`
-   §3.41–§3.46). Antes de qualquer commit: `Scripts\build_desktop.bat`
-   (0/0) e `Scripts\run_tests.bat` (**349/349** ou mais); Android
+1. **A definir com o usuário** — o backlog documentado (§2 do
+   `PLANO_E_LOG.md`) e a fila de testes desktop estão concluídos
+   (**366/366**). Antes de qualquer commit: `Scripts\build_desktop.bat`
+   (0/0) e `Scripts\run_tests.bat` (**366/366** ou mais); Android
    `Scripts\run_tests_android.bat` (**5/5**).
+2. **Integração real da NF-e (ACBr/SEFAZ)** é o único item fiscal ainda
+   simulado: os blocos de integração estão comentados em
+   `uACBrHelper.pas`. Instalar o ACBr exige aviso prévio ao usuário,
+   conforme regra do projeto.
 
 ### O que fechou nesta sessão (marco 3.39)
 

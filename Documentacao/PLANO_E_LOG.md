@@ -2,7 +2,7 @@
 
 > Documento **vivo**: registra o planejamento, as decisões do usuário e o que já
 > foi executado. Atualizar a cada etapa concluída.
-> Última atualização: 08/11/2026
+> Última atualização: 09/11/2026
 
 ---
 
@@ -1527,6 +1527,32 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   off-line sobre o cache local.
 - **Resultado:** build desktop 0 erros, suíte **349/349**,
   testes Android OK.
+
+---
+
+### 3.54 Testes da NF-e (ACBrHelper) (09/11)
+
+- **Problema:** `uACBrHelper` concentra as regras da tela `uFrmNFe`
+  (emissão simulada, numeração por empresa, gravação de
+  `NUMERO_NFE`/`CHAVE_NFE` e auditoria), mas só `ImportarXML` tinha
+  teste (dentro de `uProducaoTest`).
+- **Entrega:** `uNFeTest` (17 testes, banco real) cobre:
+  - configuração: padrão homologação/'SP'; certificado, senha, UF e
+    ambiente gravados por `Configurar`;
+  - emissão: exige certificado e senha; recusa pedido inexistente e de
+    outra empresa; calcula `MAX(NUMERO_NFE)` da empresa da sessão + 1
+    (ignorando outras empresas); grava número/chave apenas no pedido
+    informado; audita em `LOG_SISTEMA` (`PEDIDO_VENDA`/`NFE`, com o
+    usuário da sessão e a chave gerada);
+  - NFC-e: mesma emissão com natureza "VENDA AO CONSUMIDOR";
+  - consulta, cancelamento e manifestação: exigem configuração;
+    justificativa de cancelamento com no mínimo 15 caracteres.
+- **Resultado:** suíte **366/366**; build desktop 0/0; banco conferido
+  sem resíduos (pessoas/pedidos/logs dos testes).
+- **Commit:** `162be42`.
+- **Nota:** a integração real com ACBr/SEFAZ continua desligada (blocos
+  comentados no helper). Instalar o ACBr exige aviso prévio ao usuário,
+  conforme regra do projeto.
 
 ---
 
