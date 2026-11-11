@@ -35,8 +35,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (10/11/2026)
 
-**HEAD:** `3a475cf` — "NFe: validacao em lote no CLI (--validar-nfe=todos)" (o
-commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
+**HEAD:** `90e583c` — "NFe: cenario fiscal de teste completo" (o commit de
+docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
 suíte desktop **366/366** · API compilada (`Scripts\build_api.bat`) · testes
 Android **5/5** (inalterados).
 
@@ -45,6 +45,15 @@ Android **5/5** (inalterados).
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.58 — cenário fiscal de teste completo)
+
+| Item | Entrega |
+|---|---|
+| **Script idempotente** | `Scripts\preparar_cenario_fiscal.sql` cria ou reutiliza cliente, produto fiscal, produto, pedido e item completos na empresa 1, com marcadores fixos (CPF `529.982.247-25`, `CEN-FISCAL`, `CEN-FISCAL-01`); rodar de novo devolve o mesmo pedido e não duplica. |
+| **Cenário** | Cliente em MG (`RG_IE='ISENTO'`, endereço completo); `PRODUTO_FISCAL` com NCM `61091000`, CEST `2806300`, CFOP `6102`, CST 00/01/01 e alíquotas 12/1,65/7,6; produto a R$ 50,00; pedido `CEN-FISCAL-01` com 2 × R$ 50,00 = R$ 100,00. Exercita operação interestadual sem tocar no produto 1 nem nos pedidos legados. |
+| **Resultado** | Pedido **3581**: `Scripts\validar_nfe.bat 3581` → `OK` (XML assinado/validado localmente); `... todos` → **2 OK, 3 ERRO** (1003 e 3581 OK; 997/998/1000 seguem legados incompletos). `NUMERO_NFE`/`CHAVE_NFE` do 3581 permanecem nulos. |
+| **Teste ajustado** | `TestIntegridade018` exigia exatamente 9 clientes/2 fornecedores globais; agora exige **ao menos** esses totais, tolerando dados reais persistentes. Demais checagens (órfãos e tabelas antigas) inalteradas. Build **0/0** e suíte **366/366**. Commit `90e583c`. |
 
 ### O que fechou nesta sessão (marco 3.57 — validação da NF-e em lote)
 
@@ -193,11 +202,11 @@ cabeçalho pai.
    `Scripts\preparar_acbr.bat` e usar um certificado A1 válido com a
    senha na tela. Sem certificado, mantenha **Modo simulado** marcado.
    NFC-e real também exige `IdCSC`/`CSC`.
-3. **Pedidos legados 997/998/1000** não têm cadastro fiscal completo
-   (cliente sem `NUMERO`/`BAIRRO`; alguns produtos sem NCM/CFOP/CST) e
-   falham na validação em lote. Decidir com o usuário entre corrigir
-   esses cadastros ou criar um cenário fiscal novo (pedido/produto/
-   cliente próprios), sem alterar o produto 1 usado pelos testes.
+3. **Cenário fiscal de teste** criado no marco 3.58
+   (`Scripts\preparar_cenario_fiscal.sql`, pedido 3581). Use os pedidos
+   **1003** e **3581** para validar; os legados 997/998/1000 continuam
+   fora do cenário fiscal (cliente sem `NUMERO`/`BAIRRO`), sem plano de
+   correção até que o usuário peça.
 4. **Opcional:** fazer `EmitirReal` acumular todos os campos fiscais
    faltantes (empresa + cliente + produtos) antes de levantar a
    exceção, em vez de parar no primeiro grupo.

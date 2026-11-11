@@ -1664,6 +1664,37 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.58 Cenário fiscal de teste completo (10/11)
+
+- **Objetivo:** ter mais de um pedido válido na validação em lote e
+  exercitar uma operação interestadual, sem tocar nos pedidos legados
+  nem no produto 1 usado pela suíte.
+- **Script:** `Scripts\preparar_cenario_fiscal.sql` (idempotente, via
+  `EXECUTE BLOCK`) cria ou reutiliza, na empresa 1:
+  - cliente `Cliente Cenario Fiscal` (CPF `529.982.247-25`, MG,
+    `RG_IE='ISENTO'`, endereço completo, `CIDADE_ID` de Belo Horizonte);
+  - `PRODUTO_FISCAL` `CEN-FISCAL` (NCM `61091000`, CEST `2806300`,
+    CFOP/CFOP_VENDA `6102`, CST ICMS/PIS/COFINS `00`/`01`/`01`,
+    alíquotas 12/1,65/7,6, pesos);
+  - `PRODUTO` `CEN-FISCAL-01` (R$ 50,00, unidade `UN`, categoria
+    `Geral`, sem controle de estoque);
+  - `PEDIDO_VENDA` `CEN-FISCAL-01` (2 × R$ 50,00 = R$ 100,00, forma
+    Dinheiro) e o respectivo `ITEM_PEDIDO`.
+- **Marcadores fixos:** CPF, `CODIGO` e `NUMERO` acima; rodar o script
+  de novo devolve o mesmo pedido (3581) e não duplica registros.
+- **Resultado:** `Scripts\validar_nfe.bat 3581` → `OK` (XML assinado e
+  validado localmente, sem SEFAZ); `... todos` → **2 OK, 3 ERRO**
+  (1003 e 3581 OK; 997/998/1000 continuam legados incompletos).
+  `NUMERO_NFE`/`CHAVE_NFE` do 3581 permanecem nulos.
+- **Teste ajustado:** `TestIntegridade018` exigia exatamente 9 clientes
+  e 2 fornecedores globais; com o cenário persistente passou a exigir
+  **ao menos** esses totais (as checagens de órfãos e de tabelas
+  antigas continuam iguais).
+- **Validação:** build desktop **0/0**; suíte **366/366**.
+- **Commit:** `90e583c`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
