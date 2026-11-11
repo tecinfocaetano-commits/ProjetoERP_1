@@ -17,6 +17,11 @@
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
    (deve dar **366/366**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
+4.1. Para validar o XML da NF-e **sem SEFAZ**:
+   `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
+   (uma vez, gera `C:\certificados\teste.pfx`) e `Scripts\validar_nfe.bat 1003`.
+   O resultado fica em `Desktop\bin\nfe\validacao_1003.txt`; nada é enviado
+   à SEFAZ.
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
 Regras do projeto: português; regra de negócio em Services; SQL sempre
@@ -29,16 +34,28 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (10/11/2026)
 
-**HEAD:** `eceb35c` — "NFe: integracao real com ACBr (modo simulado preservado)".
-Árvore: limpa (o commit de docs deste marco vem logo acima). Build: desktop
-**0/0** · suíte desktop **366/366** · API compilada
-(`Scripts\build_api.bat`) · testes Android **5/5** (inalterados).
+**HEAD:** `9937966` — "NFe: CLI de validacao retorna 0/1/2 ao shell" (o commit
+de docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
+suíte desktop **366/366** · API compilada (`Scripts\build_api.bat`) · testes
+Android **5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.56 — validação local da NF-e)
+
+| Item | Entrega |
+|---|---|
+| **Validação sem SEFAZ** | `uACBrHelper.ValidarNFe(APedidoId)` chama `EmitirReal(..., ASomenteValidar=True)`, que monta o XML, assina (se houver certificado), valida contra os schemas e **não envia nada**. `ConfigurarACBr(AExigirCertificado)` permite validar sem A1. Sem certificado, os dados fiscais são conferidos e a mensagem explica que o schema exige `Signature`. |
+| **CLI** | `ERP2026.exe --validar-nfe=<id> [--cert=<pfx>] [--senha=<senha>]` grava `Desktop\bin\nfe\validacao_<id>.txt` e retorna **0** (ok), **1** (erro) ou **2** (uso). Aceita `ERP_NFE_CERT`/`ERP_NFE_SENHA`; `Scripts\validar_nfe.bat` embrulha a chamada e mostra o resultado. |
+| **Tela** | Botão **Validar dados** em `uFrmNFe` pede certificado/senha, mostra número, série e chave e avisa que nada foi enviado à SEFAZ. |
+| **Certificado de teste** | `Scripts\gerar_certificado_teste.ps1` gera PFX autoassinado (CNPJ no subject; padrão `00000000000191`/`teste123`) só para validação local; **não vale para a SEFAZ**. |
+| **Dados de homologação** | `Scripts\preparar_dados_nfe.sql` preenche só campos vazios da `EMPRESA` id 1 (CNPJ de teste) e usa `CRT=3` (Regime Normal) para combinar com o CST 00 do produto. Pedido 1003, cliente 1340 e produto 1066 já estavam completos. |
+| **Correções de mapeamento** | `dEmi := Now` (antes `Date`, gerava `dhEmi` 00:00:00) e `indIEDest=inIsento`/`IE='ISENTO'` quando a IE do cliente é ISENTO (antes caía em não contribuinte). |
+| **Resultado** | Build desktop **0/0**; suíte **366/366**; `Scripts\validar_nfe.bat 1003` retornou `OK` (XML assinado e validado localmente) e o pedido 1003 permaneceu com `NUMERO_NFE=4` (validação não persiste). Commits `81f63ab` (código/scripts) e `9937966` (código de saída do CLI). |
 
 ### O que fechou nesta sessão (marco 3.55 — integração real da NF-e)
 

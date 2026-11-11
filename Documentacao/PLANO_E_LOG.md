@@ -1600,6 +1600,42 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.56 Validação local da NF-e (10/11)
+
+- **Objetivo:** conferir o XML da NF-e antes de emitir de verdade, sem
+  certificado A1 e sem enviar à SEFAZ.
+- **Helper:** `ValidarNFe(APedidoId)` chama
+  `EmitirReal(..., ASomenteValidar=True)`; nesse modo o helper monta o
+  XML, assina se houver certificado e valida contra os schemas, mas
+  **não envia** e **não persiste** nada. `ConfigurarACBr(AExigirCertificado)`
+  permite configurar o ACBr sem PFX. Sem certificado, os dados fiscais
+  são conferidos e a mensagem explica que o schema 4.00 exige
+  `Signature`.
+- **CLI:** `ERP2026.exe --validar-nfe=<id> [--cert=<pfx>] [--senha=<senha>]`
+  grava `Desktop\bin\nfe\validacao_<id>.txt` e retorna 0/1/2. Aceita
+  `ERP_NFE_CERT`/`ERP_NFE_SENHA`. Em app GUI o `WriteLn` pode falhar;
+  o CLI usa `ExitProcess` para devolver o código correto.
+- **Tela:** botão **Validar dados** em `uFrmNFe`, com prompt de
+  certificado/senha e aviso de que nada foi enviado.
+- **Certificado de teste:** `Scripts\gerar_certificado_teste.ps1` cria
+  um PFX autoassinado com CNPJ no subject (padrão `00000000000191` /
+  `teste123`), só para validação local; não vale para a SEFAZ.
+- **Dados de homologação:** `Scripts\preparar_dados_nfe.sql` preenche
+  apenas campos vazios da `EMPRESA` id 1 (CNPJ de teste) e define
+  `CRT=3` (Regime Normal), coerente com o CST 00 do produto 1066.
+  Pedido 1003, cliente 1340 e produto fiscal 2 já estavam completos.
+- **Correções:** `dEmi := Now` (antes `Date`, gerava `dhEmi` 00:00:00)
+  e `indIEDest=inIsento`/`IE='ISENTO'` para cliente com IE ISENTO.
+- **Validação executada:** `Scripts\validar_nfe.bat 1003` → `OK`, XML
+  assinado e validado localmente; `1000` → erro claro de dados do
+  destinatário (`NUMERO`, `BAIRRO`). O pedido 1003 continuou com
+  `NUMERO_NFE=4` (nada persistido). Build desktop **0/0**; suíte
+  **366/366**.
+- **Commits:** `81f63ab` (código/scripts) e `9937966` (código de saída
+  do CLI).
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
