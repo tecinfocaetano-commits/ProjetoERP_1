@@ -17,7 +17,7 @@ uses
   Windows,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, Controls, SysUtils,
+  Forms, Controls, Classes, SysUtils, SQLDB,
   // Config
   uConexao,
   uSessao,
@@ -150,28 +150,119 @@ begin
   end;
 end;
 
+{ Valida todos os pedidos da empresa e grava um relatório único.
+  Cada pedido é validado isoladamente: um erro não interrompe os
+  demais. }
+procedure ValidarTodosNFe(const ABase: string; AHelper: TACBrHelper;
+  out AOk: Boolean; out AErro: string);
+var
+  LQuery: TSQLQuery;
+  LIds, LRelatorio: TStringList;
+  LIndice, LOkCount, LErroCount: Integer;
+  LId: Int64;
+  LNumero: string;
+  LDados: TACBrDadosNFe;
+  LCaminho: string;
+begin
+  AOk := False;
+  AErro := '';
+  LCaminho := ABase + 'nfe' + PathDelim + 'validacao_todos.txt';
+
+  LQuery := TSQLQuery.Create(nil);
+  LIds := TStringList.Create;
+  LRelatorio := TStringList.Create;
+  try
+    LQuery.DataBase := TConexao.GetInstance.Connection;
+    LQuery.Transaction := TConexao.GetInstance.Transaction;
+    LQuery.SQL.Text :=
+      'SELECT ID, NUMERO FROM PEDIDO_VENDA WHERE EMPRESA_ID = :EMP ' +
+      'ORDER BY ID';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.Open;
+    while not LQuery.EOF do
+    begin
+      LIds.Add(IntToStr(LQuery.FieldByName('ID').AsLargeInt) + '=' +
+        LQuery.FieldByName('NUMERO').AsString);
+      LQuery.Next;
+    end;
+    LQuery.Close;
+
+    LRelatorio.Add('VALIDACAO DA NF-e - TODOS OS PEDIDOS');
+    LRelatorio.Add('Empresa: ' + IntToStr(TSessao.GetInstance.EmpresaId));
+    LRelatorio.Add('Data: ' + FormatDateTime('dd/mm/yyyy hh:nn:ss', Now));
+    LRelatorio.Add('');
+
+    LOkCount := 0;
+    LErroCount := 0;
+    for LIndice := 0 to LIds.Count - 1 do
+    begin
+      LId := StrToInt64Def(
+        Copy(LIds[LIndice], 1, Pos('=', LIds[LIndice]) - 1), 0);
+      LNumero := Copy(LIds[LIndice], Pos('=', LIds[LIndice]) + 1, MaxInt);
+      try
+        LDados := AHelper.ValidarNFe(LId);
+        Inc(LOkCount);
+        LRelatorio.Add(Format(
+          'Pedido %d (%s): OK - Numero=%d Serie=%d Chave=%s',
+          [LId, LNumero, LDados.Numero, LDados.Serie, LDados.ChaveAcesso]));
+      except
+        on E: Exception do
+        begin
+          Inc(LErroCount);
+          LRelatorio.Add(Format('Pedido %d (%s): ERRO - %s',
+            [LId, LNumero, E.Message]));
+        end;
+      end;
+    end;
+
+    LRelatorio.Add('');
+    LRelatorio.Add(Format('Resumo: %d OK, %d ERRO', [LOkCount, LErroCount]));
+    LRelatorio.SaveToFile(LCaminho);
+
+    AOk := LErroCount = 0;
+    if not AOk then
+      AErro := Format('%d pedido(s) com erro; veja %s',
+        [LErroCount, LCaminho]);
+  finally
+    LQuery.Free;
+    LIds.Free;
+    LRelatorio.Free;
+  end;
+end;
+
 procedure ValidarNFePorLinhaDeComando(const AArg: string);
 const
   PREFIXO = '--validar-nfe=';
 var
+  LValor: string;
   LId: Int64;
+  LTodos: Boolean;
   LHelper: TACBrHelper;
   LDados: TACBrDadosNFe;
   LArquivo: TextFile;
   LCaminho, LBase, LErro: string;
   LOk: Boolean;
 begin
-  LId := StrToInt64Def(Copy(AArg, Length(PREFIXO) + 1, MaxInt), 0);
-  if LId <= 0 then
+  LValor := Copy(AArg, Length(PREFIXO) + 1, MaxInt);
+  LTodos := SameText(LValor, 'todos');
+  LId := 0;
+  if not LTodos then
   begin
-    EscreverConsole('Uso: ERP2026.exe --validar-nfe=<id do pedido> ' +
-      '[--cert=<pfx>] [--senha=<senha>]');
-    Finalizar(2);
+    LId := StrToInt64Def(LValor, 0);
+    if LId <= 0 then
+    begin
+      EscreverConsole('Uso: ERP2026.exe --validar-nfe=<id do pedido|todos> ' +
+        '[--cert=<pfx>] [--senha=<senha>]');
+      Finalizar(2);
+    end;
   end;
 
   LBase := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
   ForceDirectories(LBase + 'nfe');
-  LCaminho := LBase + 'nfe' + PathDelim + 'validacao_' + IntToStr(LId) + '.txt';
+  if LTodos then
+    LCaminho := LBase + 'nfe' + PathDelim + 'validacao_todos.txt'
+  else
+    LCaminho := LBase + 'nfe' + PathDelim + 'validacao_' + IntToStr(LId) + '.txt';
   LOk := False;
   LErro := '';
 
@@ -187,19 +278,24 @@ begin
         ParametroOuAmbiente('--cert=', 'ERP_NFE_CERT'),
         ParametroOuAmbiente('--senha=', 'ERP_NFE_SENHA'),
         'SP', 2);
-      LDados := LHelper.ValidarNFe(LId);
-      LOk := True;
+      if LTodos then
+        ValidarTodosNFe(LBase, LHelper, LOk, LErro)
+      else
+      begin
+        LDados := LHelper.ValidarNFe(LId);
+        LOk := True;
 
-      AssignFile(LArquivo, LCaminho);
-      Rewrite(LArquivo);
-      try
-        WriteLn(LArquivo, 'OK');
-        WriteLn(LArquivo, 'Numero=' + IntToStr(LDados.Numero));
-        WriteLn(LArquivo, 'Serie=' + IntToStr(LDados.Serie));
-        WriteLn(LArquivo, 'Chave=' + LDados.ChaveAcesso);
-        WriteLn(LArquivo, 'Motivo=' + LDados.Motivo);
-      finally
-        CloseFile(LArquivo);
+        AssignFile(LArquivo, LCaminho);
+        Rewrite(LArquivo);
+        try
+          WriteLn(LArquivo, 'OK');
+          WriteLn(LArquivo, 'Numero=' + IntToStr(LDados.Numero));
+          WriteLn(LArquivo, 'Serie=' + IntToStr(LDados.Serie));
+          WriteLn(LArquivo, 'Chave=' + LDados.ChaveAcesso);
+          WriteLn(LArquivo, 'Motivo=' + LDados.Motivo);
+        finally
+          CloseFile(LArquivo);
+        end;
       end;
     except
       on E: Exception do

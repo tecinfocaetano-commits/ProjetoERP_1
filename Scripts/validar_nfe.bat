@@ -4,6 +4,7 @@ REM ERP 2026 - Validacao local do XML da NF-e (sem SEFAZ)
 REM
 REM Uso:
 REM   Scripts\validar_nfe.bat 1003
+REM   Scripts\validar_nfe.bat todos
 REM   Scripts\validar_nfe.bat 1003 C:\certificados\teste.pfx teste123
 REM
 REM Sem argumentos de certificado, usa ERP_NFE_CERT/ERP_NFE_SENHA
@@ -17,7 +18,7 @@ set EXE=%~dp0..\Desktop\bin\ERP2026.exe
 set RESULTADO=%~dp0..\Desktop\bin\nfe\validacao_%~1.txt
 
 if "%~1"=="" (
-  echo Uso: %~nx0 ^<id do pedido^> [certificado.pfx] [senha]
+  echo Uso: %~nx0 ^<id do pedido^|todos^> [certificado.pfx] [senha]
   exit /b 2
 )
 
@@ -40,10 +41,11 @@ if not exist "%CERT%" (
 )
 
 "%EXE%" --validar-nfe=%~1 --cert="%CERT%" --senha="%SENHA%"
+set RC=%ERRORLEVEL%
 
 if exist "%RESULTADO%" (
   echo.
   type "%RESULTADO%"
 )
 
-endlocal
+exit /b %RC%
