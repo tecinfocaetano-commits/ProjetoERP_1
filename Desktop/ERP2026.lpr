@@ -13,6 +13,9 @@ uses
   {$IFDEF UNIX}
   cthreads,
   {$ENDIF}
+  {$IFDEF MSWINDOWS}
+  Windows,
+  {$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, Controls, SysUtils,
   // Config
@@ -124,6 +127,29 @@ begin
   Result := GetEnvironmentVariable(AVariavel);
 end;
 
+{ Encerra o processo devolvendo o código ao shell. No Windows, o Halt
+  da LCL pode terminar com 217 (exceção não tratada na finalização),
+  mesmo quando a validação deu certo; por isso usamos ExitProcess. }
+procedure Finalizar(const ACodigo: Integer);
+begin
+{$IFDEF MSWINDOWS}
+  ExitProcess(ACodigo);
+{$ELSE}
+  ExitCode := ACodigo;
+  Halt;
+{$ENDIF}
+end;
+
+{ Em aplicativo GUI o stdout pode não existir; uma falha no WriteLn
+  não pode impedir o encerramento com o código correto. }
+procedure EscreverConsole(const ATexto: string);
+begin
+  try
+    WriteLn(ATexto);
+  except
+  end;
+end;
+
 procedure ValidarNFePorLinhaDeComando(const AArg: string);
 const
   PREFIXO = '--validar-nfe=';
@@ -138,9 +164,9 @@ begin
   LId := StrToInt64Def(Copy(AArg, Length(PREFIXO) + 1, MaxInt), 0);
   if LId <= 0 then
   begin
-    WriteLn('Uso: ERP2026.exe --validar-nfe=<id do pedido> ' +
+    EscreverConsole('Uso: ERP2026.exe --validar-nfe=<id do pedido> ' +
       '[--cert=<pfx>] [--senha=<senha>]');
-    Halt(2);
+    Finalizar(2);
   end;
 
   LBase := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
@@ -189,20 +215,31 @@ begin
       end;
     end;
   finally
-    LHelper.Free;
-    TSessao.GetInstance.Deslogar;
-    TConexao.GetInstance.Desconectar;
+    { O resultado já foi gravado; falhas na finalização do ACBr/LCL não
+      podem mudar o código de saída da validação. }
+    try
+      LHelper.Free;
+    except
+    end;
+    try
+      TSessao.GetInstance.Deslogar;
+    except
+    end;
+    try
+      TConexao.GetInstance.Desconectar;
+    except
+    end;
   end;
 
   if LOk then
   begin
-    WriteLn('OK: XML valido. Veja ' + LCaminho);
-    Halt(0);
+    EscreverConsole('OK: XML valido. Veja ' + LCaminho);
+    Finalizar(0);
   end
   else
   begin
-    WriteLn('ERRO: ' + LErro);
-    Halt(1);
+    EscreverConsole('ERRO: ' + LErro);
+    Finalizar(1);
   end;
 end;
 
