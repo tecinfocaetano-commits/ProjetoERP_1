@@ -1550,9 +1550,53 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Resultado:** suíte **366/366**; build desktop 0/0; banco conferido
   sem resíduos (pessoas/pedidos/logs dos testes).
 - **Commit:** `162be42`.
-- **Nota:** a integração real com ACBr/SEFAZ continua desligada (blocos
-  comentados no helper). Instalar o ACBr exige aviso prévio ao usuário,
-  conforme regra do projeto.
+- **Nota:** na época, a integração real com ACBr/SEFAZ ainda estava
+  desligada (blocos comentados no helper); foi implementada no marco
+  **3.55** (§3.55).
+
+---
+
+### 3.55 Integração real da NF-e com ACBr (10/11)
+
+- **Objetivo:** emitir NF-e/NFC-e de verdade pelo ACBr, mantendo a
+  emissão simulada que os testes usam.
+- **ACBr:** clone em `C:\ACBr`; pacotes `ideintf`, `laz_synapse`,
+  `PCNComum`, `ACBrComum`, `ACBrOpenSSL`, `ACBrDiversos`, `ACBrTCP`,
+  `ACBrSerial`, `ACBr_Integrador`, `ACBrDFeComum` e `ACBr_NFe`
+  compilados com `lazbuild`; `ACBr_NFe` registrado no Lazarus.
+- **Projeto:** `Desktop\ERP2026.lpi` passou a exigir `ACBr_NFe` e a
+  definir `-dACBR`; `Desktop\Tests.lpi` continua **sem** ACBr e ganhou
+  saída própria (`lib/tests/$(TargetCPU)-$(TargetOS)`) para não
+  reaproveitar o `.ppu` compilado com ACBr pelo desktop.
+- **`uACBrHelper`:**
+  - `ModoSimulado` (padrão `True`) preserva `GerarSimulada` e os 17
+    testes; `CaminhoSchemas`, `CaminhoSalvar`, `IdCSC` e `CSC` são
+    novas propriedades.
+  - `EmitirReal` (sob `{$IFDEF ACBR}`) lê empresa, cliente, itens,
+    pagamento e cidade IBGE; valida NCM (8), CFOP (4), CST/CSOSN,
+    CPF/CNPJ, CEP e dados do emitente; calcula ICMS/PIS/COFINS e
+    totais; envia com `Enviar(1, False, True)`; aceita `cStat` 100/150
+    e só então grava `NUMERO_NFE`/`CHAVE_NFE` e audita.
+  - `ITEM_PEDIDO.VALOR_TOTAL` já é líquido de desconto: o helper
+    reconstrói `vProd` bruto (`VALOR_TOTAL + DESCONTO`) e envia
+    `vDesc` separado, evitando descontar duas vezes.
+  - `ConsultarReal`, `CancelarReal` (protocolo obtido por consulta,
+    `teCancelamento`, `cStat` 135/155) e `ManifestarReal`
+    (210200/210210/210220/210240) usam a chave de 44 dígitos.
+  - `ImportarXML` só confirma/desfaz a transação se foi ele quem a
+    abriu.
+- **Tela `uFrmNFe`:** checkbox `chkSimulado` (desmarcado = modo real),
+  UF lida de `EMPRESA`, paths `bin\schemas`/`bin\nfe`, senha do
+  certificado por `InputQuery`, `ConfigurarACBrReal`, status textual e
+  `FormDestroy` liberando o helper. Em simulação, certificado/senha
+  fictícios satisfazem `ValidarConfiguracao`.
+- **Recursos:** `Scripts\preparar_acbr.bat` copia os schemas da NF-e e
+  as DLLs x86 (OpenSSL 3.1.3 e LibXml2) para `Desktop\bin`; `*.dll` e
+  `Desktop\bin` são ignorados pelo git.
+- **Resultado:** build desktop **0/0**; suíte **366/366**; banco sem
+  resíduos. A emissão real contra a SEFAZ não foi exercitada por falta
+  de certificado A1 válido e de dados fiscais completos no banco.
+- **Commit:** `eceb35c`.
 
 ---
 

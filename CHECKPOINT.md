@@ -1,4 +1,4 @@
-# CHECKPOINT — último ponto de parada (09/11/2026)
+# CHECKPOINT — último ponto de parada (10/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -27,18 +27,28 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ---
 
-## Estado atual da sessão (09/11/2026)
+## Estado atual da sessão (10/11/2026)
 
-**HEAD:** `162be42` — "Testes: suite da NF-e (ACBrHelper) com banco real".
-Árvore: limpa. Build: desktop **0/0** · suíte desktop **366/366** ·
-API compilada (`Scripts\build_api.bat`) · testes Android **5/5**
-(inalterados).
+**HEAD:** `eceb35c` — "NFe: integracao real com ACBr (modo simulado preservado)".
+Árvore: limpa (o commit de docs deste marco vem logo acima). Build: desktop
+**0/0** · suíte desktop **366/366** · API compilada
+(`Scripts\build_api.bat`) · testes Android **5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.55 — integração real da NF-e)
+
+| Item | Entrega |
+|---|---|
+| **ACBr instalado** | Clone em `C:\ACBr`; pacotes `ideintf`, `laz_synapse`, `PCNComum`, `ACBrComum`, `ACBrOpenSSL`, `ACBrDiversos`, `ACBrTCP`, `ACBrSerial`, `ACBr_Integrador`, `ACBrDFeComum` e `ACBr_NFe` compilados com `lazbuild`; `ACBr_NFe` registrado no Lazarus. |
+| **Helper real** | `uACBrHelper` ganhou `ModoSimulado` (padrão `True`, preserva os testes), `CaminhoSchemas`, `CaminhoSalvar`, `IdCSC`/`CSC` e, sob `{$IFDEF ACBR}`, `EmitirReal`/`ConsultarReal`/`CancelarReal`/`ManifestarReal`. Emissão mapeia empresa/cliente/itens (NCM, CEST, CFOP, CST/CSOSN, alíquotas, pesos, unidade, cidade IBGE), valida dados fiscais com mensagens claras, calcula ICMS/PIS/COFINS e totais, envia síncrono (`Enviar(1, False, True)`) e só persiste/audita após autorização (`cStat` 100/150). Consulta/cancelamento/manifestação usam a chave de 44 dígitos e o protocolo obtido na consulta. |
+| **Tela** | `uFrmNFe` ganhou `chkSimulado` (desmarcado = modo real), UF lida de `EMPRESA`, paths `bin\schemas`/`bin\nfe`, senha do certificado via `InputQuery` e `FormDestroy` com `FreeAndNil(FACBr)`. Em simulação, passa certificado/senha fictícios para satisfazer `ValidarConfiguracao`. |
+| **Projeto/recursos** | `ERP2026.lpi` com `ACBr_NFe` em `RequiredPackages` e `-dACBR`; `Tests.lpi` sem ACBr e com saída própria (`lib/tests/...`) para não reutilizar o `.ppu` do desktop. `Scripts\preparar_acbr.bat` copia schemas (`C:\ACBr\Exemplos\ACBrDFe\Schemas\NFe`) e DLLs x86 (OpenSSL/LibXml2) para `Desktop\bin`. |
+| **Validação** | Build desktop **0/0**, suíte **366/366**, banco sem resíduos. Emissão real contra a SEFAZ depende de certificado A1 válido e de dados fiscais/endereço preenchidos em `EMPRESA`, `PESSOA` e `PRODUTO`/`PRODUTO_FISCAL`. |
 
 ### O que fechou nesta sessão (marco 3.54 — testes da NF-e)
 
@@ -149,10 +159,12 @@ cabeçalho pai.
    (**366/366**). Antes de qualquer commit: `Scripts\build_desktop.bat`
    (0/0) e `Scripts\run_tests.bat` (**366/366** ou mais); Android
    `Scripts\run_tests_android.bat` (**5/5**).
-2. **Integração real da NF-e (ACBr/SEFAZ)** é o único item fiscal ainda
-   simulado: os blocos de integração estão comentados em
-   `uACBrHelper.pas`. Instalar o ACBr exige aviso prévio ao usuário,
-   conforme regra do projeto.
+2. **NF-e real (ACBr/SEFAZ)** implementada no código (marco 3.55). Para
+   emitir de verdade: preencher os dados fiscais/endereço de `EMPRESA`,
+   do cliente (`PESSOA`) e dos produtos (`PRODUTO`/`PRODUTO_FISCAL`),
+   rodar `Scripts\preparar_acbr.bat` e usar um certificado A1 válido
+   com a senha na tela. Sem certificado, mantenha **Modo simulado**
+   marcado. NFC-e real também exige `IdCSC`/`CSC`.
 
 ### O que fechou nesta sessão (marco 3.39)
 
