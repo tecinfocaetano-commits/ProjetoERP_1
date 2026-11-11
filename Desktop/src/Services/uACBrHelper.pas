@@ -58,9 +58,9 @@ type
     function GerarSimulada(APedidoId: Int64; const ANatureza: string): TACBrDadosNFe;
 {$IFDEF ACBR}
     function GetACBrNFe: TACBrNFe;
-    procedure ConfigurarACBr;
+    procedure ConfigurarACBr(AExigirCertificado: Boolean = True);
     function EmitirReal(APedidoId: Int64; const ANatureza: string;
-      AModelo: Integer): TACBrDadosNFe;
+      AModelo: Integer; ASomenteValidar: Boolean = False): TACBrDadosNFe;
     function ConsultarReal(const AChave: string): TACBrDadosNFe;
     function CancelarReal(const AChave, AJustificativa: string): Boolean;
     function ManifestarReal(const AChave: string;
@@ -75,6 +75,11 @@ type
 
     function GerarNFe(APedidoId: Int64): TACBrDadosNFe;
     function GerarNFCe(APedidoId: Int64): TACBrDadosNFe;
+    { Monta o XML e valida contra os schemas sem enviar à SEFAZ. Com
+      certificado configurado, assina e valida o XML completo; sem
+      certificado, confere apenas os dados fiscais. Útil antes da
+      emissão real. }
+    function ValidarNFe(APedidoId: Int64): TACBrDadosNFe;
     function ConsultarNFe(const AChave: string): TACBrDadosNFe;
     function CancelarNFe(const AChave, AJustificativa: string): Boolean;
     function ImportarXML(const ACaminhoXML: string): Int64;
@@ -364,6 +369,18 @@ begin
   end;
 end;
 
+function TACBrHelper.ValidarNFe(APedidoId: Int64): TACBrDadosNFe;
+begin
+{$IFDEF ACBR}
+  { não envia nada e não exige certificado: só monta o XML e valida
+    contra os schemas da NF-e }
+  Result := EmitirReal(APedidoId, 'VENDA', 55, True);
+{$ELSE}
+  raise Exception.Create(
+    'Validação local indisponível: recompile o aplicativo com o ACBr (-dACBR).');
+{$ENDIF}
+end;
+
 function TACBrHelper.ConsultarNFe(const AChave: string): TACBrDadosNFe;
 begin
   ValidarConfiguracao;
@@ -461,7 +478,7 @@ begin
   Result := FACBrNFe;
 end;
 
-procedure TACBrHelper.ConfigurarACBr;
+procedure TACBrHelper.ConfigurarACBr(AExigirCertificado: Boolean);
 var
   LNFe: TACBrNFe;
 begin
@@ -470,7 +487,7 @@ begin
       'Pasta de schemas da NF-e não encontrada: ' + FCaminhoSchemas +
       '. Execute Scripts\preparar_acbr.bat.');
 
-  if not FileExists(FCaminhoCertificado) then
+  if AExigirCertificado and (not FileExists(FCaminhoCertificado)) then
     raise Exception.Create(
       'Certificado digital não encontrado: ' + FCaminhoCertificado);
 
@@ -497,7 +514,7 @@ begin
 end;
 
 function TACBrHelper.EmitirReal(APedidoId: Int64; const ANatureza: string;
-  AModelo: Integer): TACBrDadosNFe;
+  AModelo: Integer; ASomenteValidar: Boolean): TACBrDadosNFe;
 var
   LConexao: TConexao;
   LQuery, LItens, LCidade: TSQLQuery;
@@ -545,8 +562,9 @@ var
   LCStat: Integer;
   LMotivo: string;
 begin
-  ValidarConfiguracao;
-  ConfigurarACBr;
+  if not ASomenteValidar then
+    ValidarConfiguracao;
+  ConfigurarACBr(not ASomenteValidar);
   LNFe := GetACBrNFe;
 
   LConexao := TConexao.GetInstance;
@@ -774,7 +792,7 @@ begin
       modelo := AModelo;
       serie := LSerie;
       nNF := LNumero;
-      dEmi := Date;
+      dEmi := Now;
       tpNF := tnSaida;
       if LCliUF = LEmpUF then
         idDest := doInterna
@@ -835,10 +853,15 @@ begin
     begin
       CNPJCPF := LCliDoc;
       xNome := Copy(LCliNome, 1, 60);
-      if (LCliIE = '') or (UpperCase(LCliIE) = 'ISENTO') then
+      if LCliIE = '' then
       begin
         indIEDest := inNaoContribuinte;
         IE := '';
+      end
+      else if UpperCase(LCliIE) = 'ISENTO' then
+      begin
+        indIEDest := inIsento;
+        IE := 'ISENTO';
       end
       else
       begin
@@ -1172,6 +1195,55 @@ begin
       LNFe.Configuracoes.Geral.ModeloDF := moNFe;
 
     LNFe.Configuracoes.WebServices.UF := LEmpUF;
+
+    // ---------------- Validação local (sem SEFAZ) ----------------
+    // O schema da NF-e 4.00 exige a tag Signature; sem um certificado
+    // (mesmo autoassinado de teste) só é possível conferir os dados,
+    // não o XML completo.
+    if ASomenteValidar then
+    begin
+      LNota.GerarXML;
+
+      if (FCaminhoCertificado <> '') and
+         FileExists(FCaminhoCertificado) and
+         (FSenhaCertificado <> '') then
+      begin
+        try
+          LNota.Assinar;
+          LNota.Validar;
+        except
+          on E: Exception do
+            raise Exception.Create('XML da NF-e inválido: ' + E.Message);
+        end;
+
+        Result.XML := LNota.XMLAssinado;
+        Result.Motivo :=
+          'XML assinado e validado localmente (não enviado à SEFAZ)';
+      end
+      else
+      begin
+        try
+          LNota.Validar;
+        except
+          on E: Exception do
+            raise Exception.Create(
+              'Dados fiscais conferidos, mas o XML não pôde ser validado: ' +
+              'o schema exige assinatura. Informe um certificado ' +
+              '(pode ser autoassinado de teste) para validar o XML completo. ' +
+              E.Message);
+        end;
+
+        Result.XML := LNota.XMLOriginal;
+        Result.Motivo :=
+          'Dados fiscais conferidos; XML sem assinatura não validado no schema';
+      end;
+
+      Result.ChaveAcesso := LNota.NumID;
+      Result.Protocolo := '';
+      Result.cStat := 0;
+      Result.Status := ansPendente;
+      Exit;
+    end;
 
     // ---------------- Envio ----------------
     try

@@ -173,6 +173,14 @@ object frmNFe: TfrmNFe
       Caption = 'Importar XML'
       OnClick = btnImportarXMLClick
     end
+    object btnValidar: TBitBtn
+      Left = 476
+      Height = 32
+      Top = 4
+      Width = 110
+      Caption = 'Validar dados'
+      OnClick = btnValidarClick
+    end
     object btnFechar: TBitBtn
       Left = 800
       Height = 32

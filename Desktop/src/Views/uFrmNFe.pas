@@ -25,6 +25,7 @@ type
     btnFiltrar: TBitBtn;
     pnlBotoes: TPanel;
     btnEmitirNFe: TBitBtn;
+    btnValidar: TBitBtn;
     btnConsultar: TBitBtn;
     btnCancelar: TBitBtn;
     btnImportarXML: TBitBtn;
@@ -43,6 +44,7 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure btnFiltrarClick(Sender: TObject);
     procedure btnEmitirNFeClick(Sender: TObject);
+    procedure btnValidarClick(Sender: TObject);
     procedure btnConsultarClick(Sender: TObject);
     procedure btnCancelarClick(Sender: TObject);
     procedure btnImportarXMLClick(Sender: TObject);
@@ -202,6 +204,45 @@ begin
   except
     on E: Exception do
       MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+procedure TfrmNFe.btnValidarClick(Sender: TObject);
+var
+  LDados: TACBrDadosNFe;
+  LSenha: string;
+begin
+  if FQuery.IsEmpty then
+    Exit;
+
+  if Trim(edtCertificado.Text) = '' then
+  begin
+    MessageDlg(
+      'Selecione um certificado (.pfx/.p12) para validar o XML completo.' +
+      #13#10 + 'Um certificado autoassinado de teste serve: nada será ' +
+      'enviado à SEFAZ.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  if not InputQuery('Validação local da NF-e', 'Senha do certificado:',
+    LSenha) then
+    Exit;
+
+  try
+    ConfigurarACBrReal(LSenha);
+    LDados := FACBr.ValidarNFe(FQuery.FieldByName('ID').AsLargeInt);
+
+    MessageDlg(
+      'XML da NF-e válido!' + #13#10 +
+      'Número: ' + IntToStr(LDados.Numero) + #13#10 +
+      'Série: ' + IntToStr(LDados.Serie) + #13#10 +
+      'Chave: ' + LDados.ChaveAcesso + #13#10#13#10 +
+      'Nada foi enviado à SEFAZ. O XML está em bin\nfe.',
+      mtInformation, [mbOK], 0);
+  except
+    on E: Exception do
+      MessageDlg('Validação falhou: ' + E.Message, mtError, [mbOK], 0);
   end;
 end;
 
