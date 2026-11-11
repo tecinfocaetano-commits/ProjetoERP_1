@@ -1636,6 +1636,34 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.57 Validação da NF-e em lote (10/11)
+
+- **Objetivo:** conferir todos os pedidos da empresa de uma vez, sem
+  parar no primeiro erro, para mapear o que falta no cadastro fiscal.
+- **CLI:** `--validar-nfe=todos` percorre os pedidos da empresa em
+  ordem de ID e chama `ValidarNFe` isoladamente para cada um. Um erro
+  em um pedido não interrompe os demais. O relatório único sai em
+  `Desktop\bin\nfe\validacao_todos.txt`, com cabeçalho (empresa/data),
+  uma linha por pedido (OK com número/série/chave ou ERRO com a
+  mensagem) e o resumo `N OK, M ERRO`.
+- **Exit code:** o modo lote retorna **0** somente se todos os pedidos
+  passarem; qualquer erro retorna **1**. Uso inválido continua **2**.
+- **Wrapper:** `Scripts\validar_nfe.bat` aceita `todos`, calcula o
+  caminho do relatório a partir do argumento e agora propaga o
+  `ERRORLEVEL` do executável com `exit /b %RC%` (antes o `endlocal`
+  descartava o código).
+- **Resultado no banco atual:** **1 OK, 3 ERRO**.
+  - 1003 (`PV-TESTE-5`): OK, XML assinado e validado localmente.
+  - 997 (`PED-001`): destinatário sem `NUMERO`.
+  - 998 (`PED-002`) e 1000 (`1`): destinatário sem `NUMERO` e `BAIRRO`.
+  São pedidos legados com cadastro incompleto; não servem de cenário
+  fiscal. A validação não persiste nada (`NUMERO_NFE` inalterado).
+- **Validação:** build desktop **0/0**; suíte **366/366**;
+  `Scripts\validar_nfe.bat 1003` → exit 0 e `... todos` → exit 1.
+- **Commit:** `3a475cf`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

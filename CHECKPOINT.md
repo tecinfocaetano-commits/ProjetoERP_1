@@ -19,9 +19,10 @@
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
-   (uma vez, gera `C:\certificados\teste.pfx`) e `Scripts\validar_nfe.bat 1003`.
-   O resultado fica em `Desktop\bin\nfe\validacao_1003.txt`; nada é enviado
-   à SEFAZ.
+   (uma vez, gera `C:\certificados\teste.pfx`) e `Scripts\validar_nfe.bat 1003`
+   (ou `Scripts\validar_nfe.bat todos` para todos os pedidos).
+   O resultado fica em `Desktop\bin\nfe\validacao_1003.txt` (ou
+   `validacao_todos.txt`); nada é enviado à SEFAZ.
 5. Executar o **Próximo passo** e atualizar este arquivo ao fechar cada marco.
 
 Regras do projeto: português; regra de negócio em Services; SQL sempre
@@ -34,8 +35,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (10/11/2026)
 
-**HEAD:** `9937966` — "NFe: CLI de validacao retorna 0/1/2 ao shell" (o commit
-de docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
+**HEAD:** `3a475cf` — "NFe: validacao em lote no CLI (--validar-nfe=todos)" (o
+commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
 suíte desktop **366/366** · API compilada (`Scripts\build_api.bat`) · testes
 Android **5/5** (inalterados).
 
@@ -44,6 +45,15 @@ Android **5/5** (inalterados).
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.57 — validação da NF-e em lote)
+
+| Item | Entrega |
+|---|---|
+| **CLI em lote** | `--validar-nfe=todos` percorre os pedidos da empresa em ordem de ID, valida cada um isoladamente (um erro não interrompe os demais) e grava um relatório único em `Desktop\bin\nfe\validacao_todos.txt` com cabeçalho, linha por pedido (OK com número/série/chave ou ERRO com a mensagem) e o resumo `N OK, M ERRO`. |
+| **Exit code** | O modo lote retorna **0** só se todos passarem e **1** se houver qualquer erro; uso inválido continua **2**. |
+| **Wrapper** | `Scripts\validar_nfe.bat` aceita `todos` e agora propaga o `ERRORLEVEL` com `exit /b %RC%` (antes o `endlocal` descartava o código). |
+| **Resultado** | **1 OK, 3 ERRO**: 1003 OK; 997 sem `NUMERO`; 998 e 1000 sem `NUMERO`/`BAIRRO`. São pedidos legados com cadastro incompleto, fora do cenário fiscal; nada é persistido. Build **0/0** e suíte **366/366**. Commit `3a475cf`. |
 
 ### O que fechou nesta sessão (marco 3.56 — validação local da NF-e)
 
@@ -176,12 +186,21 @@ cabeçalho pai.
    (**366/366**). Antes de qualquer commit: `Scripts\build_desktop.bat`
    (0/0) e `Scripts\run_tests.bat` (**366/366** ou mais); Android
    `Scripts\run_tests_android.bat` (**5/5**).
-2. **NF-e real (ACBr/SEFAZ)** implementada no código (marco 3.55). Para
-   emitir de verdade: preencher os dados fiscais/endereço de `EMPRESA`,
-   do cliente (`PESSOA`) e dos produtos (`PRODUTO`/`PRODUTO_FISCAL`),
-   rodar `Scripts\preparar_acbr.bat` e usar um certificado A1 válido
-   com a senha na tela. Sem certificado, mantenha **Modo simulado**
-   marcado. NFC-e real também exige `IdCSC`/`CSC`.
+2. **NF-e real (ACBr/SEFAZ)** implementada no código (marco 3.55) e com
+   validação local em lote (marco 3.57). Para emitir de verdade:
+   preencher os dados fiscais/endereço de `EMPRESA`, do cliente
+   (`PESSOA`) e dos produtos (`PRODUTO`/`PRODUTO_FISCAL`), rodar
+   `Scripts\preparar_acbr.bat` e usar um certificado A1 válido com a
+   senha na tela. Sem certificado, mantenha **Modo simulado** marcado.
+   NFC-e real também exige `IdCSC`/`CSC`.
+3. **Pedidos legados 997/998/1000** não têm cadastro fiscal completo
+   (cliente sem `NUMERO`/`BAIRRO`; alguns produtos sem NCM/CFOP/CST) e
+   falham na validação em lote. Decidir com o usuário entre corrigir
+   esses cadastros ou criar um cenário fiscal novo (pedido/produto/
+   cliente próprios), sem alterar o produto 1 usado pelos testes.
+4. **Opcional:** fazer `EmitirReal` acumular todos os campos fiscais
+   faltantes (empresa + cliente + produtos) antes de levantar a
+   exceção, em vez de parar no primeiro grupo.
 
 ### O que fechou nesta sessão (marco 3.39)
 
