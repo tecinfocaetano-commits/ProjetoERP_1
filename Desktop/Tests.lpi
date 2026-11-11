@@ -172,7 +172,7 @@
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
       <OtherUnitFiles Value="src;src/Config;src/Models;src/Repositories;src/Services;src/Utils;src/Tests"/>
-      <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+      <UnitOutputDirectory Value="lib/tests/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>
 </CONFIG>

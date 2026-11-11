@@ -66,6 +66,9 @@
       <Item>
         <PackageName Value="lr_pdfexport"/>
       </Item>
+      <Item>
+        <PackageName Value="ACBr_NFe"/>
+      </Item>
     </RequiredPackages>
     <Units>
       <Unit>
@@ -419,6 +422,9 @@
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
+    <Other>
+      <CustomOptions Value="-dACBR"/>
+    </Other>
     <Target>
       <Filename Value="bin/ERP2026"/>
     </Target>

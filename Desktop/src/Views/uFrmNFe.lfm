@@ -6,6 +6,7 @@ object frmNFe: TfrmNFe
   Caption = 'NF-e / NFC-e - Notas Fiscais Eletrônicas'
   Position = poScreenCenter
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
   LCLVersion = '3.0.0.0'
   object pnlTopo: TPanel
     Left = 0
@@ -77,6 +78,14 @@ object frmNFe: TfrmNFe
       Width = 30
       Caption = '...'
       OnClick = btnSelecionarCertClick
+    end
+    object chkSimulado: TCheckBox
+      Left = 690
+      Height = 25
+      Top = 5
+      Width = 140
+      Caption = 'Modo simulado'
+      TabOrder = 2
     end
   end
   object pnlFiltro: TPanel
