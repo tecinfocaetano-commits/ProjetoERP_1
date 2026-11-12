@@ -10,15 +10,17 @@ Regras: responder em português; terminar toda resposta com exatamente 3 linhas 
 
 Estado em 11/11/2026:
 
-- **HEAD:** `66efaa7` (Banco: scripts de backup e restauracao). Árvore limpa após o commit de docs.
+- **HEAD:** `0e0d245` (Config: banco e JWT por variaveis de ambiente). Árvore limpa após o commit de docs.
 - Suíte desktop **366/366**; build desktop **0/0**; testes Android **5/5** (inalterados).
-- Concluído nesta etapa: **backup e restauração do banco** (marco 3.59, §3.59): `Scripts\backup_banco.bat` (gbak -b -g, arquivo com timestamp em `Backups/`) e `Scripts\restaurar_banco.bat` (gbak -c, destino novo por padrão, `forcar` para sobrescrever). Testado com backup de 362.496 bytes e restauração em `%TEMP%` (5 pedidos). Antes disso fecharam o **cenário fiscal de teste** (3.58), a **validação em lote** (3.57), a **validação local** (3.56) e a **integração ACBr** (3.55).
+- Concluído nesta etapa: **configuração por ambiente** (marco 3.60, §3.60): Desktop/API leem `ERP_DB_HOST/PATH/USER/PASSWORD/PORT` (sem `ERP_DB_PATH`, usam `<pasta do exe>\..\..\Banco\dados.fdb`); a API lê `ERP_JWT_SECRET` e `ERP_JWT_EXPIRACAO_HORAS` e, em produção (`ERP_AMBIENTE=producao` ou `ERP_PRODUCAO=1`), não sobe com o segredo padrão. Ver `Documentacao\CONFIGURACAO_AMBIENTE.md`. Antes disso fecharam o **backup/restauração** (3.59), o **cenário fiscal de teste** (3.58), a **validação em lote** (3.57), a **validação local** (3.56) e a **integração ACBr** (3.55).
 - Banco real conferido sem resíduos; a validação não persiste `NUMERO_NFE`/`CHAVE_NFE`.
-- **Próximo passo:** levantar as lacunas de produção para comércio/indústria (fiscal, segurança/HTTPS, relatórios, manual, deploy e monitoramento) e priorizar com o usuário. Usar os pedidos **1003** e **3581** na validação local; legados 997/998/1000 ficam fora do cenário fiscal. Quando houver certificado **A1 válido**, desmarcar **Simulado** e emitir em homologação.
+- **Auditorias de completude concluídas** (desktop e API/Android/banco): 40 itens priorizados. Ordem: fiscal F1/F2/F3; acesso T1/T2/T3/T4 e F7; API D3, F4+D9, D4, D7/D8, F6/F9; gestão F5/F6/F9, F4/F13, F7/F15.
+- **Próximo passo:** atacar o primeiro bloco do roadmap — importação real de XML (F1), materialização de `NOTA_SAIDA`/estoque/financeiro após autorizar (F2) e DANFE/NFC-e (F3) — mantendo build 0/0 e suíte 366/366. Usar os pedidos **1003** e **3581** na validação local; legados 997/998/1000 ficam fora do cenário fiscal.
 
 Comandos:
 
 - `Scripts\build_desktop.bat` → esperado 0/0.
+- `Scripts\build_api.bat` → compila `API\bin\ERP2026API.exe`.
 - `Scripts\build_tests.bat` + `Scripts\run_tests.bat` → esperado **366/366**.
 - `Scripts\run_tests_android.bat` → esperado **5/5**.
 - `Scripts\preparar_acbr.bat` → copia schemas/DLLs para `Desktop\bin`.
@@ -29,7 +31,8 @@ Comandos:
 - `Scripts\backup_banco.bat [pasta]` → backup gbak em `Backups\DADOS_AAAAMMDD_HHMMSS.fbk`.
 - `Scripts\restaurar_banco.bat <arquivo.fbk> [destino.fdb] [forcar]` → restaura um banco novo.
 - Banco: `Banco\dados.fdb` (SYSDBA/masterkey); Firebird 5 em `C:\Program Files\Firebird\Firebird_5_0`.
+- Configuração de produção (banco/JWT): ver `Documentacao\CONFIGURACAO_AMBIENTE.md`.
 
-Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md` e o §3.59 do `Documentacao\PLANO_E_LOG.md`.
+Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md` e o §3.60 do `Documentacao\PLANO_E_LOG.md`.
 
 ---

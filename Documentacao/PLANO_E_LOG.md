@@ -1718,6 +1718,31 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.60 Configuração por ambiente: banco e JWT (11/11)
+
+- **Objetivo:** tirar do binário o caminho do banco, as credenciais e o
+  segredo JWT — pré-requisito para rodar em qualquer servidor sem
+  recompilar (itens D1/D2 da auditoria de API/Android/banco).
+- **Banco (Desktop e API):** `uConexao` lê `ERP_DB_HOST`, `ERP_DB_PATH`,
+  `ERP_DB_USER`, `ERP_DB_PASSWORD` e `ERP_DB_PORT`. Sem `ERP_DB_PATH`, o
+  padrão é `<pasta do exe>\..\..\Banco\dados.fdb`; `Conectar` passou a
+  usar os campos `Host/User/Password/Port` em vez de valores fixos.
+- **JWT (API):** segredo em `ERP_JWT_SECRET` (mínimo de 32 caracteres) e
+  validade em `ERP_JWT_EXPIRACAO_HORAS` (1..720, padrão 8). Em produção
+  (`ERP_AMBIENTE=producao` ou `ERP_PRODUCAO=1`) a API se recusa a subir
+  com o segredo padrão de desenvolvimento, imprime o erro e sai com
+  código 2. Em desenvolvimento, avisa uma vez no `stderr`.
+- **Documentação:** `Documentacao\CONFIGURACAO_AMBIENTE.md` lista todas
+  as variáveis (banco, JWT, pool da API, NF-e e backup) e traz um
+  exemplo de configuração de produção no Windows.
+- **Validação:** API compila (`Scripts\build_api.bat`); desktop compila
+  **0/0**; suíte desktop **366/366**. Testado em execução: conexão padrão
+  resolveu `Banco\dados.fdb`; `ERP_DB_PATH` inválido derrubou só a
+  conexão; produção sem segredo saiu com código 2 e com segredo subiu.
+- **Commit:** (este marco).
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

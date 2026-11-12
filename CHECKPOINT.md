@@ -35,7 +35,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (11/11/2026)
 
-**HEAD:** `66efaa7` — "Banco: scripts de backup e restauracao (gbak)" (o
+**HEAD:** `0e0d245` — "Config: banco e JWT por variaveis de ambiente" (o
 commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
 **0/0** · suíte desktop **366/366** · API compilada (`Scripts\build_api.bat`) ·
 testes Android **5/5** (inalterados).
@@ -45,6 +45,15 @@ testes Android **5/5** (inalterados).
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.60 — configuração por ambiente)
+
+| Item | Entrega |
+|---|---|
+| **Banco (Desktop/API)** | `uConexao` lê `ERP_DB_HOST`, `ERP_DB_PATH`, `ERP_DB_USER`, `ERP_DB_PASSWORD`, `ERP_DB_PORT`; `Conectar` usa os campos em vez de valores fixos. Sem `ERP_DB_PATH`, usa `<pasta do exe>\..\..\Banco\dados.fdb`. |
+| **JWT (API)** | `ERP_JWT_SECRET` (mín. 32 chars) e `ERP_JWT_EXPIRACAO_HORAS` (1..720, padrão 8). Em produção (`ERP_AMBIENTE=producao`/`ERP_PRODUCAO=1`) a API não sobe com o segredo padrão: erro claro e saída com código 2. Em dev, aviso único no `stderr`. |
+| **Documentação** | `Documentacao\CONFIGURACAO_AMBIENTE.md` com todas as variáveis e exemplo de produção. |
+| **Teste** | Conexão padrão resolveu `Banco\dados.fdb`; `ERP_DB_PATH` inválido derrubou só a conexão; produção sem segredo saiu com código 2 e com segredo subiu. Build desktop 0/0 e suíte 366/366. Commit `0e0d245`. |
 
 ### O que fechou nesta sessão (marco 3.59 — backup e restauração do banco)
 
@@ -199,11 +208,11 @@ cabeçalho pai.
 
 ### Próximo passo (executável)
 
-1. **A definir com o usuário** — o backlog documentado (§2 do
-   `PLANO_E_LOG.md`) e a fila de testes desktop estão concluídos
-   (**366/366**). Antes de qualquer commit: `Scripts\build_desktop.bat`
-   (0/0) e `Scripts\run_tests.bat` (**366/366** ou mais); Android
-   `Scripts\run_tests_android.bat` (**5/5**).
+1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
+   `Scripts\run_tests.bat` (**366/366** ou mais); API
+   `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
+   (**5/5**). Configuração de banco/JWT por ambiente já está no marco
+   3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
 2. **NF-e real (ACBr/SEFAZ)** implementada no código (marco 3.55) e com
    validação local em lote (marco 3.57). Para emitir de verdade:
    preencher os dados fiscais/endereço de `EMPRESA`, do cliente
@@ -219,10 +228,22 @@ cabeçalho pai.
 4. **Operação em produção:** rotina de backup/restauração entregue no
    marco 3.59 (`Scripts\backup_banco.bat` e `restaurar_banco.bat`).
    Agendar o backup diário e testar a restauração periodicamente.
-5. **Completude para comércio/indústria:** levantar com o usuário as
-   lacunas de produção (fiscal, segurança/HTTPS, relatórios, manual,
-   deploy e monitoramento) e priorizar. Auditoria de completude em
-   andamento.
+5. **Roadmap de produção (auditorias de 11/11):** as duas auditorias
+   (desktop e API/Android/banco) retornaram 40 itens priorizados. Ordem
+   acordada para atacar:
+   - **Fiscal (maior risco):** F1 (importação de XML real), F2
+     (materializar `NOTA_SAIDA`, estoque e financeiro após autorizar) e
+     F3 (DANFE/NFC-e/manifestação/CC-e/inutilização).
+   - **Acesso e empresa:** T1 (permissões em todas as telas), T2 (remover
+     `admin`/`admin123` do login), T3/T4 (login e consultas por
+     `EMPRESA_ID`), F7 (login da API desambiguado por empresa).
+   - **API:** D3 (linkar `Desktop\src\Services` no build), F4+D9 (ID na
+     resposta + índices únicos), D4 (auditoria `LOG_SISTEMA`), D7/D8
+     (schema reproduzível e `SET NAMES UTF8`), F6/F9 (paginação e erros
+     visíveis).
+   - **Gestão:** F5/F6/F9 (ciclo de vida de pedidos e financeiro com baixa
+     parcial), F4/F13 (cadastros estruturantes e fiscal do produto), F7/F15
+     (relatórios/exportação e backup pela aplicação).
 6. **Opcional:** fazer `EmitirReal` acumular todos os campos fiscais
    faltantes (empresa + cliente + produtos) antes de levantar a
    exceção, em vez de parar no primeiro grupo.
