@@ -1695,6 +1695,29 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.59 Backup e restauração do banco (11/11)
+
+- **Objetivo:** dar rotina segura de backup/restore para operação em
+  produção, sem depender de cópia manual do `.FDB`.
+- **Backup:** `Scripts\backup_banco.bat [pasta]` usa `gbak -b -g` e
+  grava `DADOS_AAAAMMDD_HHMMSS.fbk` em `Backups\` (padrão) ou na pasta
+  informada. Não apaga backups antigos; a retenção fica com o operador.
+- **Restauração:** `Scripts\restaurar_banco.bat <arquivo.fbk>
+  [destino.fdb] [forcar]` restaura com `gbak -c`. Por segurança, o
+  destino padrão é `Banco\DADOS_RESTAURADO.FDB` e um arquivo existente
+  só é sobrescrito com o argumento `forcar`.
+- **Configuração:** usuário, senha e pasta do Firebird vêm de
+  `ERP_DB_USER`, `ERP_DB_PASSWORD` e `ERP_FB_BIN`; sem variáveis, usa
+  `SYSDBA`/`masterkey` e `C:\Program Files\Firebird\Firebird_5_0`.
+- **Teste executado:** backup gerou um `.fbk` de 362.496 bytes;
+  restauração em `%TEMP%\erp_restore_test.fdb` concluiu e o banco
+  restaurado respondeu `SELECT COUNT(*) FROM PEDIDO_VENDA` = 5. O
+  arquivo temporário foi removido.
+- **Git:** `Backups/` e `*.fbk` entram no `.gitignore`.
+- **Commit:** `66efaa7`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

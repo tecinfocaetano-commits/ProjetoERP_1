@@ -1,4 +1,4 @@
-# CHECKPOINT — último ponto de parada (10/11/2026)
+# CHECKPOINT - último ponto de parada (11/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -33,18 +33,27 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ---
 
-## Estado atual da sessão (10/11/2026)
+## Estado atual da sessão (11/11/2026)
 
-**HEAD:** `90e583c` — "NFe: cenario fiscal de teste completo" (o commit de
-docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
-suíte desktop **366/366** · API compilada (`Scripts\build_api.bat`) · testes
-Android **5/5** (inalterados).
+**HEAD:** `66efaa7` — "Banco: scripts de backup e restauracao (gbak)" (o
+commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
+**0/0** · suíte desktop **366/366** · API compilada (`Scripts\build_api.bat`) ·
+testes Android **5/5** (inalterados).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.59 — backup e restauração do banco)
+
+| Item | Entrega |
+|---|---|
+| **Backup** | `Scripts\backup_banco.bat [pasta]` usa `gbak -b -g` e grava `DADOS_AAAAMMDD_HHMMSS.fbk` em `Backups\` (ou pasta informada), sem apagar backups antigos. |
+| **Restauração** | `Scripts\restaurar_banco.bat <arquivo.fbk> [destino.fdb] [forcar]` usa `gbak -c`; destino padrão `Banco\DADOS_RESTAURADO.FDB` e só sobrescreve com `forcar`. |
+| **Configuração** | `ERP_DB_USER`, `ERP_DB_PASSWORD` e `ERP_FB_BIN`; padrões `SYSDBA`/`masterkey` e `C:\Program Files\Firebird\Firebird_5_0`. |
+| **Teste** | Backup de 362.496 bytes; restauração em `%TEMP%` concluída; banco restaurado respondeu 5 pedidos; temporário removido. `Backups/` e `*.fbk` no `.gitignore`. Commit `66efaa7`. |
 
 ### O que fechou nesta sessão (marco 3.58 — cenário fiscal de teste completo)
 
@@ -207,7 +216,14 @@ cabeçalho pai.
    **1003** e **3581** para validar; os legados 997/998/1000 continuam
    fora do cenário fiscal (cliente sem `NUMERO`/`BAIRRO`), sem plano de
    correção até que o usuário peça.
-4. **Opcional:** fazer `EmitirReal` acumular todos os campos fiscais
+4. **Operação em produção:** rotina de backup/restauração entregue no
+   marco 3.59 (`Scripts\backup_banco.bat` e `restaurar_banco.bat`).
+   Agendar o backup diário e testar a restauração periodicamente.
+5. **Completude para comércio/indústria:** levantar com o usuário as
+   lacunas de produção (fiscal, segurança/HTTPS, relatórios, manual,
+   deploy e monitoramento) e priorizar. Auditoria de completude em
+   andamento.
+6. **Opcional:** fazer `EmitirReal` acumular todos os campos fiscais
    faltantes (empresa + cliente + produtos) antes de levantar a
    exceção, em vez de parar no primeiro grupo.
 
