@@ -16,6 +16,10 @@ Desktop/src/Views/backup/
 Banco/DADOS.FDB
 *.FDB
 
+# ---- Backups do banco ----
+Backups/
+*.fbk
+
 # ---- Android / Gradle ----
 Android/android/.gradle/
 Android/android/build/
