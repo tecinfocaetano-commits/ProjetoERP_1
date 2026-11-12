@@ -114,6 +114,32 @@ const
   POOL_ESPERA_MS = 20;
 
 { ------------------------------------------------------------
+  Configuracao do banco (variaveis de ambiente)
+  ------------------------------------------------------------
+  ERP_DB_HOST, ERP_DB_PATH, ERP_DB_USER, ERP_DB_PASSWORD, ERP_DB_PORT.
+  Sem ERP_DB_PATH, usa <pasta do exe>\..\..\Banco\dados.fdb, que e o
+  mesmo banco do desktop sem depender do caminho absoluto da maquina
+  de desenvolvimento. }
+
+function ValorAmbiente(const ANome, APadrao: string): string;
+var
+  LValor: string;
+begin
+  LValor := Trim(SysUtils.GetEnvironmentVariable(ANome));
+  if LValor = '' then
+    Result := APadrao
+  else
+    Result := LValor;
+end;
+
+function CaminhoPadraoBanco: string;
+begin
+  Result := ExpandFileName(
+    IncludeTrailingPathDelimiter(ExtractFileDir(ParamStr(0))) +
+    '..' + PathDelim + '..' + PathDelim + 'Banco' + PathDelim + 'dados.fdb');
+end;
+
+{ ------------------------------------------------------------
   Tamanho do pool (ERP_API_POOL, com limites de seguranca)
   ------------------------------------------------------------ }
 
@@ -184,11 +210,11 @@ begin
   Transaction.Params.Add('nowait');
   Connection.Transaction := Transaction;
   Transaction.DataBase := Connection;
-  Host := 'localhost';
-  Database := 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\dados.fdb';
-  User := 'SYSDBA';
-  Password := 'masterkey';
-  Port := 3050;
+  Host := ValorAmbiente('ERP_DB_HOST', '');
+  Database := ValorAmbiente('ERP_DB_PATH', CaminhoPadraoBanco);
+  User := ValorAmbiente('ERP_DB_USER', 'SYSDBA');
+  Password := ValorAmbiente('ERP_DB_PASSWORD', 'masterkey');
+  Port := StrToIntDef(ValorAmbiente('ERP_DB_PORT', '3050'), 3050);
 end;
 
 class function TConexao.GetInstance: TConexao;
@@ -220,10 +246,11 @@ procedure TConexao.Conectar;
 begin
   if not Connection.Connected then
   begin
-    Connection.HostName := '';
+    Connection.HostName := Host;
     Connection.DatabaseName := Database;
-    Connection.UserName := 'SYSDBA';
-    Connection.Password := 'masterkey';
+    Connection.UserName := User;
+    Connection.Password := Password;
+    Connection.Port := Port;
     Connection.LoginPrompt := False;
     // IMPORTANTE (API): NAO definir CharSet='UTF8'.
     // Com CharSet=UTF8 o FPC converte o texto para o codepage do sistema (CP1252),

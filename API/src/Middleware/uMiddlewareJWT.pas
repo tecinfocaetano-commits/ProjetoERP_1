@@ -13,8 +13,19 @@ uses
   SysUtils, Classes, fpjson, jsonparser, base64, DateUtils, Horse, uHMAC;
 
 const
-  JWT_SECRET = 'ERP2026_SECRET_KEY_CHANGE_IN_PRODUCTION';
-  JWT_EXPIRATION_HOURS = 8;
+  { Usado apenas em desenvolvimento. Em producao (ERP_AMBIENTE=producao
+    ou ERP_PRODUCAO=1) a API se recusa a subir sem ERP_JWT_SECRET. }
+  JWT_SECRET_PADRAO_DEV = 'ERP2026_SECRET_KEY_CHANGE_IN_PRODUCTION';
+  JWT_EXPIRACAO_PADRAO_HORAS = 8;
+  JWT_TAMANHO_MINIMO_SEGREDO = 32;
+
+{ Segredo efetivo: ERP_JWT_SECRET ou o padrao de desenvolvimento. }
+function SegredoJWT: string;
+{ Horas de validade do token: ERP_JWT_EXPIRACAO_HORAS (padrao 8). }
+function HorasExpiracaoJWT: Integer;
+{ Chamado na inicializacao: em producao, aborta se o segredo estiver
+  ausente/fraco; em desenvolvimento, apenas avisa uma vez. }
+procedure ValidarConfiguracaoJWT;
 
 function GerarToken(AUsuarioId: Int64; const ANome, ALogin: string; AEmpresaId: Int64): string;
 function ValidarToken(const AToken: string): Boolean;
@@ -26,6 +37,64 @@ procedure DadosDoToken(Req: THorseRequest; out AUsuarioId, AEmpresaId: Int64);
 procedure MiddlewareJWT(Req: THorseRequest; Res: THorseResponse; Next: TNextProc);
 
 implementation
+
+var
+  { Garante que o aviso de desenvolvimento apareca uma unica vez. }
+  JAvisouSegredoDev: Boolean = False;
+
+function AmbienteProducao: Boolean;
+var
+  LAmbiente, LFlag: string;
+begin
+  LAmbiente := LowerCase(Trim(GetEnvironmentVariable('ERP_AMBIENTE')));
+  LFlag := Trim(GetEnvironmentVariable('ERP_PRODUCAO'));
+  Result := (LAmbiente = 'producao') or (LAmbiente = 'production') or
+            (LFlag = '1');
+end;
+
+function SegredoJWT: string;
+begin
+  Result := Trim(GetEnvironmentVariable('ERP_JWT_SECRET'));
+  if Result = '' then
+    Result := JWT_SECRET_PADRAO_DEV;
+end;
+
+function HorasExpiracaoJWT: Integer;
+var
+  LValor: string;
+begin
+  Result := JWT_EXPIRACAO_PADRAO_HORAS;
+  LValor := Trim(GetEnvironmentVariable('ERP_JWT_EXPIRACAO_HORAS'));
+  if LValor <> '' then
+    Result := StrToIntDef(LValor, JWT_EXPIRACAO_PADRAO_HORAS);
+  { Evita token eterno por valor absurdo ou negativo. }
+  if Result < 1 then
+    Result := 1;
+  if Result > 24 * 30 then
+    Result := 24 * 30;
+end;
+
+procedure ValidarConfiguracaoJWT;
+var
+  LSegredo: string;
+begin
+  LSegredo := SegredoJWT;
+  if AmbienteProducao then
+  begin
+    if (LSegredo = JWT_SECRET_PADRAO_DEV) or
+       (Length(LSegredo) < JWT_TAMANHO_MINIMO_SEGREDO) then
+      raise Exception.Create(
+        'Configuracao insegura: em producao defina ERP_JWT_SECRET com ao ' +
+        'menos ' + IntToStr(JWT_TAMANHO_MINIMO_SEGREDO) + ' caracteres. ' +
+        'A API nao pode iniciar com o segredo padrao de desenvolvimento.');
+  end
+  else if (not JAvisouSegredoDev) and (LSegredo = JWT_SECRET_PADRAO_DEV) then
+  begin
+    JAvisouSegredoDev := True;
+    WriteLn(ErrOutput, 'AVISO: ERP_JWT_SECRET nao definido; usando o segredo ' +
+      'padrao de desenvolvimento. Defina a variavel antes de publicar.');
+  end;
+end;
 
 function Base64URLEncode(const AData: string): string;
 begin
@@ -51,7 +120,7 @@ end;
   32 bytes é o que a RFC 7519 manda codificar em Base64URL. }
 function Assinar(const ADados: string): string;
 begin
-  Result := Base64URLEncode(HMAC_SHA256_Raw(ADados, JWT_SECRET));
+  Result := Base64URLEncode(HMAC_SHA256_Raw(ADados, SegredoJWT));
 end;
 
 { Comparação de assinatura em tempo constante: percorre todos os
@@ -93,7 +162,7 @@ begin
     LPayloadJSON.Add('login', ALogin);
     LPayloadJSON.Add('empresa_id', AEmpresaId);
     LPayloadJSON.Add('iat', DateTimeToUnix(Now));
-    LPayloadJSON.Add('exp', DateTimeToUnix(IncHour(Now, JWT_EXPIRATION_HOURS)));
+    LPayloadJSON.Add('exp', DateTimeToUnix(IncHour(Now, HorasExpiracaoJWT)));
     LPayload := Base64URLEncode(LPayloadJSON.AsJSON);
   finally
     LPayloadJSON.Free;

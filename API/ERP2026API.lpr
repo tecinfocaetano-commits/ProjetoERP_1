@@ -23,6 +23,17 @@ uses
   uRotasFinanceiro;
 
 begin
+  // Em producao, recusa subir com o segredo JWT padrao de desenvolvimento.
+  try
+    ValidarConfiguracaoJWT;
+  except
+    on E: Exception do
+    begin
+      WriteLn(ErrOutput, 'ERRO de configuracao: ', E.Message);
+      Halt(2);
+    end;
+  end;
+
   // Middleware global
   THorse.Use(@MiddlewareCORS);
 
