@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **367/367**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **368/368**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
@@ -35,9 +35,9 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (14/11/2026)
 
-**HEAD:** `1cec868` — "Login: sem credenciais padrao e desambiguado por
-empresa" (o commit de docs deste marco vem logo acima). Árvore: limpa.
-Build: desktop **0/0** · suíte desktop **367/367** · API compilada
+**HEAD:** `0c539c3` — "NF-e: importacao real de XML vira Service" (o
+commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
+**0/0** · suíte desktop **368/368** · API compilada
 (`Scripts\build_api.bat`) · testes Android **OK**
 (`Scripts\run_tests_android.bat`).
 
@@ -46,6 +46,15 @@ Build: desktop **0/0** · suíte desktop **367/367** · API compilada
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.63 — importação real de XML)
+
+| Item | Entrega |
+|---|---|
+| **Service (F1)** | `uNFeXmlService` lê o XML sem fcl-xml (BOM/namespace/entidades), localiza fornecedor por CNPJ e produto por código, grava a nota via `TNotaEntradaService` e recusa chave repetida; falha no meio remove a nota parcial. |
+| **Fiscal** | `SalvarItem` aceita NCM/CFOP/CST do documento, que prevalecem sobre o cadastro. |
+| **Telas** | `uFrmNotaEntrada.ImportarXML` e `TACBrHelper.ImportarXML` usam o Service; a View perdeu os auxiliares de tag. |
+| **Teste** | `TestNFeImportarXmlNotaEntrada` (XML prefixado, entidades, fiscal, auditoria e duplicidade) e `TestImportarXmlRecusaInvalido`. Suíte **368/368**. Commit `0c539c3`. |
 
 ### O que fechou nesta sessão (marco 3.62 — login por empresa)
 
@@ -228,7 +237,7 @@ cabeçalho pai.
 ### Próximo passo (executável)
 
 1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**367/367** ou mais); API
+   `Scripts\run_tests.bat` (**368/368** ou mais); API
    `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
    (**5/5**). Configuração de banco/JWT por ambiente já está no marco
    3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
@@ -250,12 +259,11 @@ cabeçalho pai.
 5. **Roadmap de produção (auditorias de 11/11):** as duas auditorias
    (desktop e API/Android/banco) retornaram 40 itens priorizados. Ordem
    acordada para atacar:
-   - **Fiscal (maior risco):** F1 (importação de XML real), F2
-     (materializar `NOTA_SAIDA`, estoque e financeiro após autorizar) e
-     F3 (DANFE/NFC-e/manifestação/CC-e/inutilização).
-   - **Acesso e empresa:** T1 (permissões em todas as telas), T2 (remover
-     `admin`/`admin123` do login), T3/T4 (login e consultas por
-     `EMPRESA_ID`), F7 (login da API desambiguado por empresa).
+   - **Fiscal (maior risco):** F1 fechado no marco 3.63 (importação real
+     de XML). Faltam F2 (materializar `NOTA_SAIDA`, estoque e financeiro
+     após autorizar) e F3 (DANFE/NFC-e/manifestação/CC-e/inutilização).
+   - **Acesso e empresa:** T1 (permissões em todas as telas) e T4
+     (consultas por `EMPRESA_ID`). T2/T3/F7 (login) fechados no marco 3.62.
    - **API:** D3 (linkar `Desktop\src\Services` no build), F4+D9 (ID na
      resposta + índices únicos), D4 (auditoria `LOG_SISTEMA`), D7/D8
      (schema reproduzível e `SET NAMES UTF8`), F6/F9 (paginação e erros

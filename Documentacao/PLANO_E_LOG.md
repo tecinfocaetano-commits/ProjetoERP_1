@@ -1788,6 +1788,40 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.63 Importação real de XML de NF-e (14/11)
+
+- **Objetivo:** fechar F1 (o `TACBrHelper.ImportarXML` só auditava; a
+  leitura real vivia na tela de nota de entrada).
+- **Service novo:** `Desktop\src\Services\uNFeXmlService.pas`.
+  `TNFeXmlParser` lê o XML sem fcl-xml, remove BOM/prefixo de namespace
+  (`nfe:`, `ns2:`), decodifica entidades (`&amp;` etc.) e devolve
+  `TNFeXml` (chave, número, série, modelo, emissão, natureza, emitente,
+  totais e itens com NCM/CFOP/CST/quantidade/valor/desconto).
+  `TNFeImportService.Importar` grava a nota de entrada:
+  - fornecedor por CNPJ (somente dígitos) e, na falta, pelo nome;
+  - produto por `CODIGO`/`CODIGO_BARRAS` (`cProd`/`cEAN`);
+  - item sem produto fica gravado e é contado para vínculo manual;
+  - chave de acesso repetida na empresa é recusada;
+  - falha no meio da importação remove a nota parcial;
+  - `XML_ARQUIVO` guarda o nome do arquivo e a auditoria
+    `XML_FISCAL/IMPORTACAO_XML` cita chave, itens e itens sem produto.
+- **Fiscal:** `TNotaEntradaService.SalvarItem` ganhou parâmetros opcionais
+  `ANcm`, `ACfop`, `ACstIcms` e `AAliqIcms`; a importação usa os dados do
+  documento do fornecedor, que prevalecem sobre o cadastro.
+- **Telas:** `uFrmNotaEntrada.ImportarXML` agora só chama o Service e
+  abre a nota criada (os auxiliares de tag saíram da View).
+  `TACBrHelper.ImportarXML` virou fachada para o mesmo Service e devolve
+  o ID da nota.
+- **Testes:** `TestNFeImportarXmlNotaEntrada` monta um XML prefixado
+  (`nfe:`) com fornecedor/produto temporários, confere cabeçalho, item
+  (NCM/CFOP/CST e `&amp;` decodificado), auditoria e recusa da mesma
+  chave; `TestImportarXmlRecusaInvalido` (antigo
+  `TestImportarXmlGravaAuditoria`) confere arquivo inexistente e XML sem
+  `infNFe`, sem gravar auditoria. Suíte desktop **368/368**.
+- **Commit:** `0c539c3`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
