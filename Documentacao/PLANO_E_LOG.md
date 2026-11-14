@@ -1764,6 +1764,30 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.62 Login sem credenciais padrão e por empresa (14/11)
+
+- **Objetivo:** fechar T2 (credenciais pré-preenchidas), T3 (login sem
+  escopo de empresa) e F7 (API escolhia a empresa silenciosamente).
+- **Desktop (T2):** `uFrmLogin.FormShow` não preenche mais
+  `admin`/`admin123`; o operador digita usuário e senha.
+- **Desktop (T3):** `TUsuarioService.BuscarPorLogin` ganhou
+  `AEmpresaId` opcional. Sem ele, se o mesmo login existir em mais de
+  uma empresa, levanta `ELoginAmbiguo` com os códigos encontrados em vez
+  de escolher a primeira linha. A tela pede o código da empresa e
+  repete a busca.
+- **API (F7):** `POST /api/login` aceita `empresa_id` (número ou
+  string). Sem ele, login repetido em empresas diferentes devolve
+  **400** com a lista; com ele, a consulta filtra `U.EMPRESA_ID`.
+- **Teste:** novo `TestLoginAmbiguoPorEmpresa` cria o mesmo login em duas
+  empresas, confere o `ELoginAmbiguo`, confere a busca com empresa e
+  limpa os usuários no `finally`. Suíte desktop **367/367**.
+- **Validação manual:** API respondeu 200 sem `empresa_id` (banco com
+  uma empresa), 200 com `empresa_id=1`/`"1"` e 401 com `999`; com duas
+  empresas temporárias, 400 listando `(1, 2)` e 200 em cada empresa.
+- **Commit:** `1cec868`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

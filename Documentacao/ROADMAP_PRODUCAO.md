@@ -23,10 +23,7 @@ polimento/dívida.
 | # | Prior. | Item | Onde |
 |---|---|---|---|
 | T1 | A | Permissões aplicadas em apenas 8 telas; usuários, produtos, pessoas, contas, NF-e, PDV e compras não checam permissão. | `Desktop\src\Views\*` |
-| T2 | A | Login pré-preenche `admin`/`admin123`. | `uFrmLogin.pas` |
-| T3 | A | Login sem `EMPRESA_ID`: mesmo login em duas empresas autentica na empresa errada. | `uUsuarioService.pas`, `uRotasLogin.pas` |
 | T4 | A | Consultas/gravações cruzando empresas (bipagem, consumo, produção, copiloto, caixa legado). | `uFrmBipagem.pas`, `uProducaoService.pas`, `uCopilotoERP.pas`, `uCaixaService.pas` |
-| F7 | A | App envia `codigoUsuario`, API ignora; token pode sair com empresa errada. | `uRotasLogin.pas`, `MainActivity.java` |
 
 ## 3. API REST
 
@@ -70,7 +67,7 @@ polimento/dívida.
 | F6 | M | Pedido de compra sem listagem/edição/cancelamento. | `uPedidoCompraService.pas`, `uFrmCompras.pas` |
 | F9 | M | Financeiro sem baixa parcial, juros/multa, estorno; lançamento sem cliente/fornecedor. | `uContasService.pas`, `uFrmContas*` |
 | F4 | M | Sem CRUD de empresa, grupo, unidade, condição/forma de pagamento. | `Desktop\src\Views\` |
-| F7 | M | Relatórios limitados a talão/mapa/pedidos; sem exportação CSV/Excel. | `Desktop\relatorios\`, `uFrmCentralRelatorios.pas` |
+| F7 (desktop) | M | Relatórios limitados a talão/mapa/pedidos; sem exportação CSV/Excel. | `Desktop\relatorios\`, `uFrmCentralRelatorios.pas` |
 | F8 | B | Orçamento salvo não pode ser reaberto/convertido depois. | `uFrmOrcamento.pas` |
 | F10 | B | Inventário sem contagem/ajuste. | `uInventarioService.pas`, `uFrmInventario.pas` |
 | F11 | B | Caixa somente leitura fora do PDV. | `uFrmCaixa.pas` |
@@ -80,18 +77,19 @@ polimento/dívida.
 ## Ordem de execução acordada
 
 1. **F1 + F2 + F3** — fechar o ciclo fiscal de ponta a ponta.
-2. **T1 + T2 + T3/T4 + F7** — controle de acesso e isolamento por empresa.
+2. **T1 + T4 + F7 (login da API)** — controle de acesso e isolamento por empresa.
 3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services, ID/índices, auditoria e numeração por empresa.
 4. **D7 + D8** — banco novo confiável a partir do repositório.
 5. **F6 + F9** — paginação e visibilidade de erros na API/Android.
-6. **F5/F6/F9 + F4/F13 + F7/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios e backup pela aplicação.
-7. **F8, F10, F11, F12, F14, T5, D10, D11, D12** — completudes e dívida.
+6. **F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios e backup pela aplicação.
+7. **F8, F10, F11, F12, F14, T5, D10, D11** — completudes e dívida.
 
 ## Já resolvido (não reabrir)
 
 - **D1/D2** — banco e JWT por variáveis de ambiente (marco 3.60).
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
 - **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
+- **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).
 - Backup/restauração por `gbak` (marco 3.59).
 - Cenário fiscal de teste e validação local/em lote da NF-e (marcos 3.55–3.58).
 - Menu desktop sem itens inertes; DML só em Services; SQL parametrizado nos filtros.

@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **366/366**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **367/367**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
@@ -35,16 +35,26 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (14/11/2026)
 
-**HEAD:** `7bffb94` — "API: devolver conexao ao pool e health check" (o
-commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
-**0/0** · suíte desktop **366/366** · API compilada (`Scripts\build_api.bat`) ·
-testes Android **OK** (`Scripts\run_tests_android.bat`).
+**HEAD:** `1cec868` — "Login: sem credenciais padrao e desambiguado por
+empresa" (o commit de docs deste marco vem logo acima). Árvore: limpa.
+Build: desktop **0/0** · suíte desktop **367/367** · API compilada
+(`Scripts\build_api.bat`) · testes Android **OK**
+(`Scripts\run_tests_android.bat`).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.62 — login por empresa)
+
+| Item | Entrega |
+|---|---|
+| **Credenciais (T2)** | `uFrmLogin` não pré-preenche mais `admin`/`admin123`. |
+| **Login desktop (T3)** | `BuscarPorLogin(login, empresa_id)`; sem empresa, login repetido em duas empresas levanta `ELoginAmbiguo` e a tela pede o código. |
+| **Login API (F7)** | `POST /api/login` aceita `empresa_id` (número ou string); sem ele, ambiguidade devolve 400 com a lista de empresas; com ele, filtra `EMPRESA_ID`. |
+| **Teste** | `TestLoginAmbiguoPorEmpresa` cria/limpa usuários temporários em duas empresas. Suíte **367/367**. Validação manual: 200/200/401 na API e 400 `(1, 2)` no cenário ambíguo. Commit `1cec868`. |
 
 ### O que fechou nesta sessão (marco 3.61 — API: pool e health check)
 
@@ -218,7 +228,7 @@ cabeçalho pai.
 ### Próximo passo (executável)
 
 1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**366/366** ou mais); API
+   `Scripts\run_tests.bat` (**367/367** ou mais); API
    `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
    (**5/5**). Configuração de banco/JWT por ambiente já está no marco
    3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
