@@ -47,6 +47,9 @@ type
     function  StatusDaNota(ANotaId: Int64): string;
     procedure GerarContasReceber(ANotaId: Int64);
     function  DigitoChave(const ABase: string): Integer;
+    procedure AtualizarAutorizacao(ANotaId: Int64;
+      ANumero, ASerie, AModelo: Integer; const ANatureza, ACFOP,
+      AChave, AProtocolo, AArquivoXml: string);
   public
     constructor Create;
 
@@ -63,6 +66,17 @@ type
       AFrete, ASeguro, AOutras: Double);
     function  GerarChaveAcesso(ANotaId: Int64): string;
     procedure Faturar(ANotaId: Int64);
+    { Confere o saldo de todos os itens do pedido antes de transmitir a
+      NF-e. Nota já faturada não é conferida (o estoque já foi baixado). }
+    function  VerificarSaldoPedido(APedidoId: Int64; out ADescricao: string;
+      out ADisponivel, ASolicitado: Double): Boolean;
+    { F2: depois da autorização da SEFAZ, transforma o pedido em nota de
+      saída: cria/reaproveita a NOTA_SAIDA, grava número/série/modelo/
+      chave/protocolo/XML e fatura (estoque + contas a receber). Devolve
+      o ID da nota de saída. }
+    function  MaterializarAutorizada(APedidoId: Int64;
+      ANumero, ASerie, AModelo: Integer; const ANatureza, ACFOP,
+      AChave, AProtocolo, AArquivoXml: string): Int64;
     procedure Cancelar(ANotaId: Int64; const AMotivo: string);
     procedure ExcluirItem(AItemId: Int64);
     function  GerarXML(ANotaId: Int64): string;
@@ -71,7 +85,7 @@ type
 implementation
 
 uses
-  Math, DateUtils, uSessao, uServiceBase;
+  Math, DateUtils, uSessao, uServiceBase, uAuditoria;
 
 type
   TItemSaida = record
@@ -820,6 +834,7 @@ var
   LCab, LReg, LMov, LUpd: TSQLQuery;
   LItens: array of TItemSaida;
   LStatus, LModelo, LSerie, LNumero, LDocumento, LChave: string;
+  LProtocolo: string;
   LEmpresaId, LClienteId, LPedidoId, LUsuarioId: Int64;
   LIndice: Integer;
   LDataSaida: TDate;
@@ -836,6 +851,7 @@ begin
     // --- Cabeçalho -------------------------------------------------------
     LCab.SQL.Text :=
       'SELECT STATUS, EMPRESA_ID, CLIENTE_ID, PEDIDO_VENDA_ID, NUMERO, SERIE, MODELO, ' +
+      '       CHAVE_ACESSO, PROTOCOLO, ' +
       '       COALESCE(DATA_SAIDA, CURRENT_DATE) AS DATA_SAIDA ' +
       'FROM NOTA_SAIDA WHERE ID = :ID';
     LCab.ParamByName('ID').AsLargeInt := ANotaId;
@@ -855,6 +871,8 @@ begin
     LNumero     := Trim(LCab.FieldByName('NUMERO').AsString);
     LSerie      := Trim(LCab.FieldByName('SERIE').AsString);
     LModelo     := Trim(LCab.FieldByName('MODELO').AsString);
+    LChave      := Trim(LCab.FieldByName('CHAVE_ACESSO').AsString);
+    LProtocolo  := Trim(LCab.FieldByName('PROTOCOLO').AsString);
     LDataSaida  := LCab.FieldByName('DATA_SAIDA').AsDateTime;
     LUsuarioId  := TSessao.GetInstance.UsuarioId;
     LDocumento  := 'NF SAIDA ' + LModelo + '/' + LSerie + '-' + LNumero;
@@ -937,14 +955,19 @@ begin
     GerarContasReceber(ANotaId);
 
     // --- Chave de acesso -------------------------------------------------
-    LChave := GerarChaveAcesso(ANotaId);
+    { a chave autorizada pela SEFAZ (F2) prevalece; só é gerada uma chave
+      de homologação quando a nota é faturada sem emissão real }
+    if LChave = '' then
+      LChave := GerarChaveAcesso(ANotaId);
+    if LProtocolo = '' then
+      LProtocolo := 'HOM' + Copy(LChave, 30, 9);
 
     LUpd.SQL.Text :=
       'UPDATE NOTA_SAIDA SET STATUS = ''P'', CHAVE_ACESSO = :CHAVE, ' +
       '  PROTOCOLO = :PROT, DATA_PROCESSAMENTO = CURRENT_TIMESTAMP ' +
       'WHERE ID = :ID';
     LUpd.ParamByName('CHAVE').AsString := LChave;
-    LUpd.ParamByName('PROT').AsString := 'HOM' + Copy(LChave, 30, 9);
+    LUpd.ParamByName('PROT').AsString := LProtocolo;
     LUpd.ParamByName('ID').AsLargeInt := ANotaId;
     LUpd.ExecSQL;
 
@@ -974,6 +997,152 @@ begin
   LReg.Free;
   LMov.Free;
   LUpd.Free;
+end;
+
+function TNotaSaidaService.VerificarSaldoPedido(APedidoId: Int64;
+  out ADescricao: string; out ADisponivel, ASolicitado: Double): Boolean;
+var
+  LQuery: TSQLQuery;
+  LNotaId: Int64;
+  LSaldo: Double;
+begin
+  Result := True;
+  ADescricao := '';
+  ADisponivel := 0;
+  ASolicitado := 0;
+  GarantirDaEmpresa('PEDIDO_VENDA', APedidoId,
+    'Pedido de venda não encontrado para a empresa atual.');
+
+  { nota já faturada: o estoque já foi baixado, não há o que conferir }
+  LNotaId := NotaDoPedido(APedidoId);
+  if (LNotaId > 0) and (StatusDaNota(LNotaId) = 'P') then
+    Exit;
+
+  LQuery := NovaConsulta;
+  try
+    LQuery.SQL.Text :=
+      'SELECT P.DESCRICAO, I.PRODUTO_ID, I.QUANTIDADE ' +
+      'FROM ITEM_PEDIDO I JOIN PRODUTO P ON P.ID = I.PRODUTO_ID ' +
+      'WHERE I.PEDIDO_VENDA_ID = :PED ORDER BY I.ID';
+    LQuery.ParamByName('PED').AsLargeInt := APedidoId;
+    LQuery.Open;
+    while not LQuery.EOF do
+    begin
+      LerSaldo(TSessao.GetInstance.EmpresaId,
+        LQuery.FieldByName('PRODUTO_ID').AsLargeInt, LSaldo);
+      if LSaldo < LQuery.FieldByName('QUANTIDADE').AsFloat then
+      begin
+        Result := False;
+        ADescricao := Trim(LQuery.FieldByName('DESCRICAO').AsString);
+        ADisponivel := LSaldo;
+        ASolicitado := LQuery.FieldByName('QUANTIDADE').AsFloat;
+        Break;
+      end;
+      LQuery.Next;
+    end;
+  finally
+    LQuery.Free;
+  end;
+end;
+
+procedure TNotaSaidaService.AtualizarAutorizacao(ANotaId: Int64;
+  ANumero, ASerie, AModelo: Integer; const ANatureza, ACFOP,
+  AChave, AProtocolo, AArquivoXml: string);
+var
+  LQuery: TSQLQuery;
+begin
+  FConexao.IniciarTransacao;
+  LQuery := NovaConsulta;
+  try
+    try
+      LQuery.SQL.Text :=
+        'UPDATE NOTA_SAIDA SET NUMERO = :NUM, SERIE = :SER, MODELO = :MOD, ' +
+        '  NATUREZA_OPERACAO = :NAT, CFOP = :CFOP, CHAVE_ACESSO = :CHAVE, ' +
+        '  PROTOCOLO = :PROT, XML_ARQUIVO = :ARQ, ' +
+        '  DATA_PROCESSAMENTO = CURRENT_TIMESTAMP ' +
+        'WHERE ID = :ID';
+      LQuery.ParamByName('NUM').AsString := IntToStr(ANumero);
+      LQuery.ParamByName('SER').AsString := IntToStr(ASerie);
+      LQuery.ParamByName('MOD').AsString := IntToStr(AModelo);
+      LQuery.ParamByName('NAT').AsString := ANatureza;
+      LQuery.ParamByName('CFOP').AsString := Copy(ACFOP, 1, 4);
+      LQuery.ParamByName('CHAVE').AsString := Copy(AChave, 1, 44);
+      LQuery.ParamByName('PROT').AsString := Copy(AProtocolo, 1, 20);
+      if Trim(AArquivoXml) = '' then
+        LQuery.ParamByName('ARQ').Clear
+      else
+        LQuery.ParamByName('ARQ').AsString := Copy(AArquivoXml, 1, 255);
+      LQuery.ParamByName('ID').AsLargeInt := ANotaId;
+      LQuery.ExecSQL;
+      FConexao.Confirmar;
+    except
+      FConexao.Cancelar;
+      raise;
+    end;
+  finally
+    LQuery.Free;
+  end;
+end;
+
+function TNotaSaidaService.MaterializarAutorizada(APedidoId: Int64;
+  ANumero, ASerie, AModelo: Integer; const ANatureza, ACFOP,
+  AChave, AProtocolo, AArquivoXml: string): Int64;
+var
+  LQuery: TSQLQuery;
+  LNotaId: Int64;
+  LStatus, LChaveAtual, LProtocoloAtual: string;
+begin
+  if Trim(AChave) = '' then
+    raise ENotaSaida.Create(
+      'A materialização exige a chave autorizada da NF-e.');
+
+  LNotaId := NotaDoPedido(APedidoId);
+  if LNotaId = 0 then
+    LNotaId := CriarDoPedido(APedidoId);
+
+  LStatus := '';
+  LChaveAtual := '';
+  LProtocoloAtual := '';
+  LQuery := NovaConsulta;
+  try
+    LQuery.SQL.Text :=
+      'SELECT STATUS, CHAVE_ACESSO, PROTOCOLO FROM NOTA_SAIDA WHERE ID = :ID';
+    LQuery.ParamByName('ID').AsLargeInt := LNotaId;
+    LQuery.Open;
+    if LQuery.IsEmpty then
+      raise ENotaSaida.Create('Nota de saída não encontrada.');
+    LStatus := Trim(LQuery.FieldByName('STATUS').AsString);
+    LChaveAtual := Trim(LQuery.FieldByName('CHAVE_ACESSO').AsString);
+    LProtocoloAtual := Trim(LQuery.FieldByName('PROTOCOLO').AsString);
+  finally
+    LQuery.Free;
+  end;
+
+  if LStatus = 'C' then
+    raise ENotaSaida.Create(
+      'A nota de saída deste pedido está cancelada; gere outra antes de emitir.');
+
+  { nota já faturada com uma autorização real: não sobrescreve }
+  if (LStatus = 'P') and (Length(LChaveAtual) = 44) and
+     (LProtocoloAtual <> '') and
+     (Copy(UpperCase(LProtocoloAtual), 1, 3) <> 'HOM') then
+    raise ENotaSaida.Create(
+      'Este pedido já foi materializado com a NF-e ' + LChaveAtual + '.');
+
+  AtualizarAutorizacao(LNotaId, ANumero, ASerie, AModelo, ANatureza, ACFOP,
+    AChave, AProtocolo, AArquivoXml);
+
+  if LStatus = 'A' then
+    Faturar(LNotaId);
+
+  RegistrarAuditoria('NOTA_SAIDA', 'NFE_AUTORIZADA', LNotaId, '',
+    ResumoAuditoria(['NUMERO=' + IntToStr(ANumero),
+      'SERIE=' + IntToStr(ASerie),
+      'CHAVE=' + AChave,
+      'PROTOCOLO=' + AProtocolo,
+      'XML=' + AArquivoXml]));
+
+  Result := LNotaId;
 end;
 
 procedure TNotaSaidaService.Cancelar(ANotaId: Int64; const AMotivo: string);

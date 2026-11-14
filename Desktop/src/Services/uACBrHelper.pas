@@ -37,6 +37,9 @@ type
     XML: string;
     cStat: Integer;
     Motivo: string;
+    { F2: nota de saída materializada depois da autorização (0 = nenhuma,
+      como na emissão simulada) }
+    NotaSaidaId: Int64;
   end;
 
   { TACBrHelper }
@@ -101,7 +104,7 @@ type
 implementation
 
 uses
-  uConexao, SQLDB, uAuditoria, uSessao, uNFeXmlService;
+  uConexao, SQLDB, uAuditoria, uSessao, uNFeXmlService, uNotaSaidaService;
 
 {$IFDEF ACBR}
 { ------------------------------------------------------------------
@@ -270,6 +273,7 @@ begin
   Result.Status := ansPendente;
   Result.cStat := 0;
   Result.Motivo := '';
+  Result.NotaSaidaId := 0;
 
   LQuery := TSQLQuery.Create(nil);
   try
@@ -543,6 +547,12 @@ var
   LValorNF: Double;
   LCStat: Integer;
   LMotivo: string;
+
+  { F2: materialização da nota de saída após a autorização }
+  LNotaSaida: TNotaSaidaService;
+  LArquivoXml, LFaltandoDesc: string;
+  LLista: TStringList;
+  LSaldoDisp, LSaldoSol: Double;
 begin
   if not ASomenteValidar then
     ValidarConfiguracao;
@@ -554,6 +564,7 @@ begin
   Result.NaturezaOperacao := ANatureza;
   Result.Serie := 1;
   Result.Status := ansPendente;
+  Result.NotaSaidaId := 0;
 
   LQuery := TSQLQuery.Create(nil);
   LItens := TSQLQuery.Create(nil);
@@ -1227,6 +1238,22 @@ begin
       Exit;
     end;
 
+    // ---------------- Conferência de estoque (F2) ----------------
+    // Feita antes de transmitir: sem saldo, nada é autorizado e nenhuma
+    // nota de saída parcial fica para trás.
+    LNotaSaida := TNotaSaidaService.Create;
+    try
+      if not LNotaSaida.VerificarSaldoPedido(APedidoId, LFaltandoDesc,
+        LSaldoDisp, LSaldoSol) then
+        raise Exception.CreateFmt(
+          'Estoque insuficiente para "%s" (disponível: %s, solicitado: %s). ' +
+          'Nada foi enviado à SEFAZ.',
+          [LFaltandoDesc, FormatFloat('#,##0.####', LSaldoDisp),
+           FormatFloat('#,##0.####', LSaldoSol)]);
+    finally
+      LNotaSaida.Free;
+    end;
+
     // ---------------- Envio ----------------
     try
       if not LNFe.Enviar(1, False, True) then
@@ -1262,6 +1289,44 @@ begin
     end;
 
     Result.Status := ansAutorizada;
+
+    // ---------------- Materialização da nota de saída (F2) ----------------
+    // A NF-e autorizada vira NOTA_SAIDA: grava número/série/modelo/chave/
+    // protocolo, salva o XML em CaminhoSalvar, baixa o estoque e gera as
+    // contas a receber (TNotaSaidaService.Faturar).
+    LArquivoXml := '';
+    if Trim(Result.XML) <> '' then
+    begin
+      ForceDirectories(FCaminhoSalvar);
+      LArquivoXml := IncludeTrailingPathDelimiter(FCaminhoSalvar) +
+        Result.ChaveAcesso + '.xml';
+      LLista := TStringList.Create;
+      try
+        LLista.Text := Result.XML;
+        LLista.SaveToFile(LArquivoXml);
+      finally
+        LLista.Free;
+      end;
+    end;
+
+    LNotaSaida := TNotaSaidaService.Create;
+    try
+      try
+        Result.NotaSaidaId := LNotaSaida.MaterializarAutorizada(APedidoId,
+          LNumero, LSerie, AModelo, ANatureza, Result.CFOP,
+          Result.ChaveAcesso, Result.Protocolo,
+          ExtractFileName(LArquivoXml));
+      except
+        on E: Exception do
+          raise Exception.CreateFmt(
+            'NF-e autorizada (chave %s), mas a nota de saída não foi ' +
+            'materializada: %s A chave e o XML foram salvos; regularize e ' +
+            'fature a nota manualmente.',
+            [Result.ChaveAcesso, E.Message]);
+      end;
+    finally
+      LNotaSaida.Free;
+    end;
 
     // ---------------- Persistência + auditoria ----------------
     LQuery.Close;

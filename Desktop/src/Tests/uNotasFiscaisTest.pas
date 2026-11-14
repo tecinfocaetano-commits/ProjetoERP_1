@@ -13,8 +13,9 @@ unit uNotasFiscaisTest;
       auditoria;
     - TNotaSaidaService: criação a partir do pedido de venda,
       faturamento (baixa de estoque, contas a receber, chave de
-      acesso de 44 dígitos com DV), cancelamento/estorno, cabeçalho,
-      itens e XML.
+      acesso de 44 dígitos com DV), materialização da NF-e autorizada
+      (chave/protocolo da SEFAZ, XML e recusa de dupla materialização),
+      cancelamento/estorno, cabeçalho, itens e XML.
 
   Padrão da suíte: dados com sufixo de timestamp e limpeza explícita
   no finally, sem mock de banco. Os Services confirmam a transação
@@ -1940,6 +1941,86 @@ var
     end;
   end;
 
+  { F2: a NF-e autorizada vira NOTA_SAIDA. A chave/protocolo da SEFAZ
+    prevalecem sobre a chave de homologação e o pedido sai faturado
+    (estoque baixado e contas a receber geradas). }
+  procedure TestSaidaMaterializarAutorizada;
+  var
+    LProdutoId, LPedidoId, LNotaId: Int64;
+    LChave, LOutraChave, LMensagem: string;
+    LDeu: Boolean;
+  begin
+    try
+      LProdutoId := InserirProduto('PRODUTO MATERIALIZAR ' + LSufixo, 0,
+        10, 25, '', '', '', '', 0);
+      InserirEstoque(LProdutoId, 10, 10);
+      LPedidoId := InserirPedidoVenda(LClienteId, LCondicao1Id,
+        NovoNumero('PV'), 'A');
+      InserirItemPedido(LPedidoId, LProdutoId, 4, 25, 0, '');
+
+      LChave := '3526' + Copy(LSufixo + StringOfChar('0', 44), 1, 40);
+      LOutraChave := '3526' + Copy(LSufixo + StringOfChar('1', 44), 1, 40);
+
+      LNotaId := LSaida.MaterializarAutorizada(LPedidoId, 4321, 2, 55,
+        'VENDA', '5102', LChave, '135260000000001',
+        'nfe_' + LChave + '.xml');
+
+      AssertTrue(LNotaId > 0,
+        'a materialização deve criar a nota de saída');
+      AssertEquals('P', TextoPorId(
+        'SELECT STATUS AS VALOR FROM NOTA_SAIDA WHERE ID = :ID', LNotaId),
+        'a nota de saída deve ficar Processada');
+      AssertEquals('4321', TextoPorId(
+        'SELECT NUMERO AS VALOR FROM NOTA_SAIDA WHERE ID = :ID', LNotaId),
+        'o número autorizado deve substituir a numeração interna');
+      AssertEquals('2', TextoPorId(
+        'SELECT SERIE AS VALOR FROM NOTA_SAIDA WHERE ID = :ID', LNotaId),
+        'a série autorizada deve ser gravada');
+      AssertEquals(LChave, TextoPorId(
+        'SELECT CHAVE_ACESSO AS VALOR FROM NOTA_SAIDA WHERE ID = :ID',
+        LNotaId), 'a chave autorizada deve ser gravada');
+      AssertEquals('135260000000001', TextoPorId(
+        'SELECT PROTOCOLO AS VALOR FROM NOTA_SAIDA WHERE ID = :ID', LNotaId),
+        'o protocolo da SEFAZ deve ser gravado');
+      AssertEquals('nfe_' + LChave + '.xml', TextoPorId(
+        'SELECT XML_ARQUIVO AS VALOR FROM NOTA_SAIDA WHERE ID = :ID',
+        LNotaId), 'o nome do XML deve ser gravado');
+
+      AssertTrue(QuaseIgual(6, FloatPorId(
+        'SELECT QUANTIDADE AS VALOR FROM ESTOQUE WHERE PRODUTO_ID = :ID',
+        LProdutoId)), 'o estoque deve ser baixado');
+      AssertEquals('1', IntToStr(ContarContasReceber(LNotaId)),
+        'deve ser gerada uma conta a receber');
+      AssertEquals('F', TextoPorId(
+        'SELECT STATUS AS VALOR FROM PEDIDO_VENDA WHERE ID = :ID',
+        LPedidoId), 'o pedido deve ficar Faturado');
+      AssertEquals('4321', IntToStr(IntPorId(
+        'SELECT NUMERO_NFE AS VALOR FROM PEDIDO_VENDA WHERE ID = :ID',
+        LPedidoId)), 'o pedido deve receber o número autorizado');
+
+      LDeu := False;
+      LMensagem := '';
+      try
+        LSaida.MaterializarAutorizada(LPedidoId, 4322, 2, 55, 'VENDA',
+          '5102', LOutraChave, '135260000000002', '');
+      except
+        on E: Exception do
+        begin
+          LDeu := True;
+          LMensagem := E.Message;
+        end;
+      end;
+      AssertTrue(LDeu, 'não deve materializar duas vezes o mesmo pedido');
+      AssertTrue(Pos('já foi materializado', LowerCase(LMensagem)) > 0,
+        'a mensagem deve indicar pedido já materializado');
+
+      ASuite.AddResult('TestSaidaMaterializarAutorizada', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestSaidaMaterializarAutorizada', False, E.Message);
+    end;
+  end;
+
   procedure TestSaidaFaturarSemCliente;
   var
     LProdutoId, LNotaId: Int64;
@@ -2413,6 +2494,7 @@ begin
     TestSaidaAtualizarCabecalho;
     TestSaidaChaveAcesso;
     TestSaidaFaturar;
+    TestSaidaMaterializarAutorizada;
     TestSaidaFaturarSemCliente;
     TestSaidaFaturarSemItens;
     TestSaidaFaturarEstoqueInsuficiente;

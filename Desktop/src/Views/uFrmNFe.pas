@@ -196,6 +196,10 @@ begin
       'Série: ' + IntToStr(LDados.Serie) + #13#10 +
       'Chave: ' + LDados.ChaveAcesso + #13#10 +
       'Protocolo: ' + LDados.Protocolo;
+    if LDados.NotaSaidaId > 0 then
+      LMensagem := LMensagem + #13#10 +
+        'Nota de saída: ' + IntToStr(LDados.NotaSaidaId) +
+        ' (estoque e contas a receber gerados)';
     if LDados.Motivo <> '' then
       LMensagem := LMensagem + #13#10 + 'Retorno: ' + LDados.Motivo;
 
