@@ -14,6 +14,7 @@ uses
   uConexao,
   uMiddlewareJWT,
   uMiddlewareCORS,
+  uMiddlewareConexao,
   uRotasLogin,
   uRotasClientes,
   uRotasProdutos,
@@ -21,6 +22,15 @@ uses
   uRotasVendas,
   uRotasOrcamentos,
   uRotasFinanceiro;
+
+procedure RotaHealth(Req: THorseRequest; Res: THorseResponse);
+begin
+  Res.Send('{"status":"ok","servico":"ERP2026API","pool":"' +
+    TConexao.PoolDescricao + '"}');
+end;
+
+var
+  LBanco: string;
 
 begin
   // Em producao, recusa subir com o segredo JWT padrao de desenvolvimento.
@@ -36,8 +46,11 @@ begin
 
   // Middleware global
   THorse.Use(@MiddlewareCORS);
+  // Devolve a conexao da thread ao pool ao fim de cada requisicao
+  THorse.Use(@MiddlewareConexao);
 
-  // Rotas públicas
+  // Rotas publicas
+  THorse.Get('/api/health', @RotaHealth);
   THorse.Post('/api/login', @RotaLogin);
 
   // Middleware JWT para rotas protegidas
@@ -54,6 +67,7 @@ begin
   WriteLn('=== ERP 2026 API REST ===');
   WriteLn('Servidor iniciado na porta 9000');
   WriteLn('Endpoints disponíveis:');
+  WriteLn('  GET  /api/health');
   WriteLn('  POST /api/login');
   WriteLn('  GET/POST /api/clientes');
   WriteLn('  GET/POST /api/produtos');
@@ -67,10 +81,13 @@ begin
   // as requisicoes usam cada uma a sua conexao tirada do pool
   try
     TConexao.GetInstance.Conectar;
-    WriteLn('Banco conectado: ', TConexao.GetInstance.Database);
+    LBanco := TConexao.GetInstance.Database;
+    WriteLn('Banco conectado: ', LBanco);
     // cada thread de requisicao recebe a propria conexao (pool com afinidade
     // por thread; tamanho via variavel de ambiente ERP_API_POOL)
     WriteLn('Pool de conexoes: ', TConexao.PoolDescricao);
+    // libera a vaga do thread principal: quem usa o banco sao as requisicoes
+    TConexao.DevolverAtual;
   except
     on E: Exception do
       WriteLn('ATENCAO - falha ao conectar no banco: ', E.Message);

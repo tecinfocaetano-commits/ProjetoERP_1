@@ -88,16 +88,17 @@ public final class ApiClient {
     }
 
     /**
-     * Testa se o servidor informado responde. Qualquer resposta HTTP (inclusive
-     * 401/404) prova que existe um servidor atendendo no endereco; excecao fica
-     * reservada a falha de rede/timeout. Nao envia o token da sessao.
+     * Testa se o servidor informado responde como API do ERP. Consulta a rota
+     * publica /api/health: so 2xx confirma que e a API certa (um 404 de outro
+     * servico no mesmo endereco nao pode passar como sucesso). Nao envia o
+     * token da sessao.
      */
     public static Result ping(String urlServidor) throws Exception {
         String base = Configuracao.normalizarUrl(urlServidor);
         if (base.isEmpty()) {
             throw new IllegalArgumentException("Informe a URL do servidor.");
         }
-        return enviar("GET", base + "/", null, false);
+        return enviar("GET", base + "/api/health", null, false);
     }
 
     private static Result enviar(String method, String endereco, String jsonBody,

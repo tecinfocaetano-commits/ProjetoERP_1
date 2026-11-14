@@ -233,7 +233,8 @@ var
   LAuth, LToken: string;
 begin
   // Rotas publicas: nao exigem token
-  if SameText(Req.RawWebRequest.PathInfo, '/api/login') then
+  if SameText(Req.RawWebRequest.PathInfo, '/api/login') or
+     SameText(Req.RawWebRequest.PathInfo, '/api/health') then
   begin
     Next;
     Exit;

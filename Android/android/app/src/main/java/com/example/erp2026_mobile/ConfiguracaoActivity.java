@@ -203,8 +203,8 @@ public class ConfiguracaoActivity extends BaseActivity {
                     if (resposta.status >= 200 && resposta.status < 300) {
                         resultado = "Servidor respondeu (HTTP " + resposta.status + ").";
                     } else {
-                        resultado = "Servidor alcançável (HTTP " + resposta.status
-                                + "). A conexão está funcionando.";
+                        resultado = "O endereço respondeu HTTP " + resposta.status
+                                + ", mas não parece ser a API do ERP. Confira a URL.";
                     }
                 } catch (Exception e) {
                     resultado = "Sem resposta de " + url + ".\n"
