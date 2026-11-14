@@ -1822,6 +1822,37 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.64 Materialização da NF-e autorizada (14/11)
+
+- **Objetivo:** fechar F2 — a emissão real só gravava `NUMERO_NFE`/
+  `CHAVE_NFE` no pedido; a venda não virava `NOTA_SAIDA`, o estoque não
+  baixava, as contas a receber não eram geradas e o XML não era guardado.
+- **Service:** `TNotaSaidaService.MaterializarAutorizada` recebe o
+  retorno da SEFAZ (número, série, modelo, natureza, CFOP, chave,
+  protocolo e nome do XML), cria ou reaproveita a `NOTA_SAIDA` do pedido
+  (`CriarDoPedido`), grava os dados autorizados (`AtualizarAutorizacao`)
+  e fatura (`Faturar`: baixa de estoque, contas a receber e pedido
+  Faturado). Uma segunda materialização do mesmo pedido é recusada.
+- **Chave:** `Faturar` passou a preservar `CHAVE_ACESSO`/`PROTOCOLO`
+  quando já gravados; a chave de homologação (`HOM...`) só é gerada no
+  faturamento sem emissão real. Nota faturada manualmente (chave `HOM`)
+  pode receber a chave verdadeira.
+- **Estoque:** `VerificarSaldoPedido` confere o saldo de todos os itens
+  antes do envio; sem saldo, a NF-e não é transmitida (evita documento
+  autorizado sem baixa).
+- **XML e auditoria:** `EmitirReal` salva o XML em
+  `CaminhoSalvar\<chave>.xml`, grava o nome em `NOTA_SAIDA.XML_ARQUIVO`
+  e audita `NOTA_SAIDA/NFE_AUTORIZADA` com número, chave e protocolo.
+  Se a materialização falhar depois da autorização, a mensagem informa a
+  chave, avisa que o XML foi salvo e orienta faturar manualmente.
+- **Tela:** `uFrmNFe` mostra o número da nota de saída materializada.
+- **Teste:** `TestSaidaMaterializarAutorizada` cobre chave/protocolo da
+  SEFAZ, número/série, XML, baixa de estoque, conta a receber, pedido
+  Faturado e a recusa da dupla materialização. Suíte desktop **369/369**.
+- **Commit:** `46a984f`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

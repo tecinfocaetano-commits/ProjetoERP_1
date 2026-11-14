@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **368/368**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **369/369**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
@@ -35,9 +35,9 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (14/11/2026)
 
-**HEAD:** `0c539c3` — "NF-e: importacao real de XML vira Service" (o
+**HEAD:** `46a984f` — "NF-e: materializa nota de saida apos autorizacao" (o
 commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
-**0/0** · suíte desktop **368/368** · API compilada
+**0/0** · suíte desktop **369/369** · API compilada
 (`Scripts\build_api.bat`) · testes Android **OK**
 (`Scripts\run_tests_android.bat`).
 
@@ -46,6 +46,16 @@ commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.64 — materialização da NF-e autorizada)
+
+| Item | Entrega |
+|---|---|
+| **Service (F2)** | `TNotaSaidaService.MaterializarAutorizada` cria/reaproveita a `NOTA_SAIDA` do pedido, grava número/série/modelo/chave/protocolo/XML da SEFAZ e fatura (estoque + contas a receber). `Faturar` preserva a chave/protocolo já gravados em vez de gerar uma chave de homologação. Recusa materializar duas vezes o mesmo pedido. |
+| **Pré-envio** | `VerificarSaldoPedido` confere o estoque antes de transmitir; sem saldo, nada é enviado à SEFAZ. |
+| **XML** | `EmitirReal` salva o XML em `CaminhoSalvar\<chave>.xml` e grava o nome em `NOTA_SAIDA.XML_ARQUIVO`; auditoria `NOTA_SAIDA/NFE_AUTORIZADA`. |
+| **Tela** | `uFrmNFe` mostra o número da nota de saída materializada. |
+| **Teste** | `TestSaidaMaterializarAutorizada` (chave/protocolo, estoque, financeiro, pedido Faturado e recusa de dupla materialização). Suíte **369/369**. |
 
 ### O que fechou nesta sessão (marco 3.63 — importação real de XML)
 
@@ -237,7 +247,7 @@ cabeçalho pai.
 ### Próximo passo (executável)
 
 1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**368/368** ou mais); API
+   `Scripts\run_tests.bat` (**369/369** ou mais); API
    `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
    (**5/5**). Configuração de banco/JWT por ambiente já está no marco
    3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
@@ -260,8 +270,9 @@ cabeçalho pai.
    (desktop e API/Android/banco) retornaram 40 itens priorizados. Ordem
    acordada para atacar:
    - **Fiscal (maior risco):** F1 fechado no marco 3.63 (importação real
-     de XML). Faltam F2 (materializar `NOTA_SAIDA`, estoque e financeiro
-     após autorizar) e F3 (DANFE/NFC-e/manifestação/CC-e/inutilização).
+     de XML) e F2 no 3.64 (materialização de `NOTA_SAIDA`, estoque,
+     financeiro e XML após a autorização). Falta F3
+     (DANFE/NFC-e/manifestação/CC-e/inutilização).
    - **Acesso e empresa:** T1 (permissões em todas as telas) e T4
      (consultas por `EMPRESA_ID`). T2/T3/F7 (login) fechados no marco 3.62.
    - **API:** D3 (linkar `Desktop\src\Services` no build), F4+D9 (ID na
