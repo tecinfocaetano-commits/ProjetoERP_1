@@ -61,9 +61,8 @@ end;
 
 procedure TfrmLogin.FormShow(Sender: TObject);
 begin
-  // Preencher credenciais padrão para facilitar testes
-  edtUsuario.Text := 'admin';
-  edtSenha.Text := 'admin123';
+  { Nada de credencial pre-preenchida: em producao o operador digita
+    usuario e senha. }
   edtUsuario.SetFocus;
   lblStatus.Caption := '';
 end;
@@ -126,6 +125,8 @@ var
   LConexao: TConexao;
   LService: TUsuarioService;
   LUsuario: TUsuario;
+  LEmpresaTexto: string;
+  LEmpresaId: Int64;
 begin
   Result := False;
   LConexao := TConexao.GetInstance;
@@ -146,8 +147,29 @@ begin
     puro, migrada para hash no RegistrarAcesso }
   LService := TUsuarioService.Create;
   try
-    LUsuario := LService.BuscarPorLogin(ALogin);
+    LUsuario := nil;
     try
+      try
+        LUsuario := LService.BuscarPorLogin(ALogin);
+      except
+        on E: ELoginAmbiguo do
+        begin
+          { login repetido em mais de uma empresa: pergunta qual }
+          LEmpresaTexto := '';
+          if not InputQuery('Empresa',
+            E.Message + sLineBreak + sLineBreak + 'Código da empresa:',
+            LEmpresaTexto) then
+            Exit;
+          LEmpresaId := StrToInt64Def(Trim(LEmpresaTexto), 0);
+          if LEmpresaId <= 0 then
+          begin
+            ExibirErro('Código de empresa inválido.');
+            Exit;
+          end;
+          LUsuario := LService.BuscarPorLogin(ALogin, LEmpresaId);
+        end;
+      end;
+
       if LUsuario = nil then
         Exit;
       if not SenhaConfere(ASenha, LUsuario.Senha) then

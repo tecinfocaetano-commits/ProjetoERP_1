@@ -10,7 +10,8 @@ unit uFrmLoginTest;
 interface
 
 uses
-  Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao, uSenhaHash, uHMAC;
+  Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao, uSenhaHash, uHMAC,
+  uUsuarioService, uUsuario;
 
 type
   { TLoginTest }
@@ -304,6 +305,77 @@ var
     end;
   end;
 
+  { Mesmo login em duas empresas: sem empresa informada, o Service deve
+    recusar com ELoginAmbiguo em vez de escolher a primeira. }
+  procedure TestLoginAmbiguoPorEmpresa;
+  var
+    LService: TUsuarioService;
+    LUsuario: TUsuario;
+    LLogin: string;
+    LRaisou: Boolean;
+    LEmpresa: Int64;
+    LI: Integer;
+  begin
+    LLogin := 'ambig_' + FormatDateTime('yyyymmddhhnnsszzz', Now);
+    try
+      { duas linhas com o mesmo login; a senha e o grupo vem do admin }
+      for LI := 1 to 2 do
+      begin
+        LEmpresa := LI;
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'INSERT INTO USUARIO (EMPRESA_ID, GRUPO_ID, NOME, LOGIN, SENHA, ' +
+          '  ADMINISTRADOR, ATIVO) ' +
+          'SELECT :EMP, GRUPO_ID, ''TESTE AMBIGUIDADE'', :LOGIN, SENHA, ' +
+          '  ''N'', ''A'' FROM USUARIO WHERE LOGIN = :ADMIN';
+        LQuery.ParamByName('EMP').AsLargeInt := LEmpresa;
+        LQuery.ParamByName('LOGIN').AsString := LLogin;
+        LQuery.ParamByName('ADMIN').AsString := LTestUser;
+        LQuery.ExecSQL;
+      end;
+      LConexao.Confirmar;
+
+      LService := TUsuarioService.Create;
+      try
+        LRaisou := False;
+        LUsuario := nil;
+        try
+          LUsuario := LService.BuscarPorLogin(LLogin);
+        except
+          on E: ELoginAmbiguo do
+            LRaisou := True;
+        end;
+        LUsuario.Free;
+        AssertTrue(LRaisou,
+          'login repetido sem empresa deve levantar ELoginAmbiguo');
+
+        LUsuario := LService.BuscarPorLogin(LLogin, 1);
+        try
+          AssertTrue((LUsuario <> nil) and (LUsuario.EmpresaId = 1),
+            'com empresa informada deve achar o usuario da empresa 1');
+        finally
+          LUsuario.Free;
+        end;
+      finally
+        LService.Free;
+      end;
+      ASuite.AddResult('TestLoginAmbiguoPorEmpresa', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestLoginAmbiguoPorEmpresa', False, E.Message);
+    end;
+
+    { limpeza sempre, mesmo se o teste falhou }
+    try
+      LQuery.Close;
+      LQuery.SQL.Text := 'DELETE FROM USUARIO WHERE LOGIN = :LOGIN';
+      LQuery.ParamByName('LOGIN').AsString := LLogin;
+      LQuery.ExecSQL;
+      LConexao.Confirmar;
+    except
+    end;
+  end;
+
 begin
   WriteLn('========================================');
   WriteLn('EXECUTANDO TESTES DE LOGIN');
@@ -346,6 +418,7 @@ begin
     TestAutenticacaoFalhaSenhaIncorreta;
     TestAutenticacaoFalhaUsuarioInexistente;
     TestAutenticacaoFalhaUsuarioInativo;
+    TestLoginAmbiguoPorEmpresa;
     TestAtualizarUltimoAcesso;
 
     // SHA-256 (pendência: senhas em hash)

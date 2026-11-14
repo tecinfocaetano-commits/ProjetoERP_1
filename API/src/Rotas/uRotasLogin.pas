@@ -30,6 +30,10 @@ var
   LToken: string;
   LSenhaGuardada: string;
   LUsuarioId, LEmpresaId: Int64;
+  LEmpresaIdPedido: Int64;
+  LEmpresaAtual: Int64;
+  LEmpresas: string;
+  LDadoEmpresa: TJSONData;
   LNome, LLoginDb: string;
 begin
   try
@@ -50,6 +54,10 @@ begin
     try
       LLogin := LBody.Get('login', '');
       LSenha := LBody.Get('senha', '');
+      LEmpresaIdPedido := 0;
+      LDadoEmpresa := LBody.Find('empresa_id');
+      if LDadoEmpresa <> nil then
+        LEmpresaIdPedido := StrToInt64Def(Trim(LDadoEmpresa.AsString), 0);
     finally
       LBody.Free;
     end;
@@ -71,13 +79,45 @@ begin
       LQuery.SQL.Text :=
         'SELECT U.ID, U.NOME, U.LOGIN, U.EMPRESA_ID, U.SENHA ' +
         'FROM USUARIO U WHERE U.LOGIN = :LOGIN AND U.ATIVO = ''A''';
+      if LEmpresaIdPedido > 0 then
+        LQuery.SQL.Text := LQuery.SQL.Text + ' AND U.EMPRESA_ID = :EMP';
       LQuery.ParamByName('LOGIN').AsString := LLogin;
+      if LEmpresaIdPedido > 0 then
+        LQuery.ParamByName('EMP').AsLargeInt := LEmpresaIdPedido;
       LQuery.Open;
 
       if LQuery.IsEmpty then
       begin
         Res.Send('{"error":"Credenciais inválidas"}').Status(THTTPStatus.Unauthorized);
         Exit;
+      end;
+
+      { Sem empresa_id, o login precisa identificar uma unica empresa.
+        Antes isto pegava a primeira linha silenciosamente. }
+      if LEmpresaIdPedido = 0 then
+      begin
+        LQuery.First;
+        LEmpresaAtual := LQuery.FieldByName('EMPRESA_ID').AsLargeInt;
+        LEmpresas := '';
+        LQuery.Next;
+        while not LQuery.EOF do
+        begin
+          if LQuery.FieldByName('EMPRESA_ID').AsLargeInt <> LEmpresaAtual then
+          begin
+            if LEmpresas = '' then
+              LEmpresas := IntToStr(LEmpresaAtual);
+            LEmpresas := LEmpresas + ', ' +
+              IntToStr(LQuery.FieldByName('EMPRESA_ID').AsLargeInt);
+          end;
+          LQuery.Next;
+        end;
+        if LEmpresas <> '' then
+        begin
+          Res.Send('{"error":"Login existe em mais de uma empresa (' +
+            LEmpresas + '). Informe empresa_id."}').Status(THTTPStatus.BadRequest);
+          Exit;
+        end;
+        LQuery.First;
       end;
 
       LSenhaGuardada := LQuery.FieldByName('SENHA').AsString;

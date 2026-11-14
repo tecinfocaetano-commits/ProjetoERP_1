@@ -20,6 +20,9 @@ uses
   uSessao;
 
 type
+  { Login existe em mais de uma empresa e o chamador nao informou qual. }
+  ELoginAmbiguo = class(Exception);
+
   { TUsuarioService }
   TUsuarioService = class(TServiceBase)
   private
@@ -33,7 +36,11 @@ type
     destructor Destroy; override;
 
     function BuscarPorId(AId: Int64): TUsuario;
-    function BuscarPorLogin(const ALogin: string): TUsuario;
+    { Com AEmpresaId > 0, restringe a empresa. Sem ele, se o mesmo login
+      existir em mais de uma empresa, levanta ELoginAmbiguo em vez de
+      escolher a primeira silenciosamente. }
+    function BuscarPorLogin(const ALogin: string;
+      AEmpresaId: Int64 = 0): TUsuario;
     function BuscarTodos: TSQLQuery;
     function Inserir(AObj: TUsuario; const ASenhaTexto: string): Int64;
     function Atualizar(AObj: TUsuario; const ASenhaTexto: string): Boolean;
@@ -142,34 +149,76 @@ begin
   end;
 end;
 
-function TUsuarioService.BuscarPorLogin(const ALogin: string): TUsuario;
+function TUsuarioService.BuscarPorLogin(const ALogin: string;
+  AEmpresaId: Int64): TUsuario;
 var
   LQuery: TSQLQuery;
+  LCond: string;
+  LNomes, LValores: array of string;
+  LEmpresaAtual: Int64;
+  LEmpresas: string;
 begin
-  { mesmo critério do login antigo: LOGIN + ATIVO='A', sem empresa —
-    o login identifica a empresa pela sessão depois da senha conferir }
   Result := nil;
-  LQuery := FRepo.BuscarTodosParam(
-    'LOGIN = :LOG AND ATIVO = ''A''',
-    ['LOG'], [ALogin], 'ID');
+
+  if AEmpresaId > 0 then
+  begin
+    LCond := 'LOGIN = :LOG AND ATIVO = ''A'' AND EMPRESA_ID = :EMP';
+    SetLength(LNomes, 2);
+    SetLength(LValores, 2);
+    LNomes[0] := 'LOG';
+    LNomes[1] := 'EMP';
+    LValores[0] := ALogin;
+    LValores[1] := IntToStr(AEmpresaId);
+  end
+  else
+  begin
+    LCond := 'LOGIN = :LOG AND ATIVO = ''A''';
+    SetLength(LNomes, 1);
+    SetLength(LValores, 1);
+    LNomes[0] := 'LOG';
+    LValores[0] := ALogin;
+  end;
+
+  LQuery := FRepo.BuscarTodosParam(LCond, LNomes, LValores, 'EMPRESA_ID, ID');
   try
-    if not LQuery.IsEmpty then
+    if LQuery.IsEmpty then
+      Exit;
+
+    { Sem empresa informada, o login so pode identificar uma empresa.
+      Percorre as linhas: mais de uma empresa = ambiguidade explicita. }
+    LQuery.First;
+    LEmpresaAtual := LQuery.FieldByName('EMPRESA_ID').AsLargeInt;
+    LEmpresas := '';
+    while not LQuery.EOF do
     begin
-      LQuery.First;
-      Result := TUsuario.Create;
-      Result.Id := LQuery.FieldByName('ID').AsLargeInt;
-      Result.EmpresaId := LQuery.FieldByName('EMPRESA_ID').AsLargeInt;
-      if (LQuery.FindField('GRUPO_ID') <> nil) and
-         (not LQuery.FieldByName('GRUPO_ID').IsNull) then
-        Result.GrupoId := LQuery.FieldByName('GRUPO_ID').AsLargeInt;
-      Result.Nome := LQuery.FieldByName('NOME').AsString;
-      Result.Login := LQuery.FieldByName('LOGIN').AsString;
-      Result.Senha := LQuery.FieldByName('SENHA').AsString;
-      Result.Email := LQuery.FieldByName('EMAIL').AsString;
-      Result.Administrador :=
-        LQuery.FieldByName('ADMINISTRADOR').AsString = 'S';
-      Result.Ativo := 'A';
+      if LQuery.FieldByName('EMPRESA_ID').AsLargeInt <> LEmpresaAtual then
+      begin
+        if LEmpresas = '' then
+          LEmpresas := IntToStr(LEmpresaAtual);
+        LEmpresas := LEmpresas + ', ' +
+          IntToStr(LQuery.FieldByName('EMPRESA_ID').AsLargeInt);
+      end;
+      LQuery.Next;
     end;
+    if LEmpresas <> '' then
+      raise ELoginAmbiguo.Create(
+        'Este login existe em mais de uma empresa (' + LEmpresas +
+        '). Informe o codigo da empresa.');
+
+    LQuery.First;
+    Result := TUsuario.Create;
+    Result.Id := LQuery.FieldByName('ID').AsLargeInt;
+    Result.EmpresaId := LQuery.FieldByName('EMPRESA_ID').AsLargeInt;
+    if (LQuery.FindField('GRUPO_ID') <> nil) and
+       (not LQuery.FieldByName('GRUPO_ID').IsNull) then
+      Result.GrupoId := LQuery.FieldByName('GRUPO_ID').AsLargeInt;
+    Result.Nome := LQuery.FieldByName('NOME').AsString;
+    Result.Login := LQuery.FieldByName('LOGIN').AsString;
+    Result.Senha := LQuery.FieldByName('SENHA').AsString;
+    Result.Email := LQuery.FieldByName('EMAIL').AsString;
+    Result.Administrador :=
+      LQuery.FieldByName('ADMINISTRADOR').AsString = 'S';
+    Result.Ativo := 'A';
   finally
     if LQuery.Active then
       LQuery.Close;
