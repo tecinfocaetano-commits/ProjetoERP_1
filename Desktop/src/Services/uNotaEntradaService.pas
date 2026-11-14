@@ -78,10 +78,13 @@ type
     { Grava um item da nota (insert quando AItemId = 0, update caso
       contrário), herdando a classificação fiscal do PRODUTO_FISCAL
       (CarregarFiscalDoProduto), recalcula os totais e audita.
-      Devolve o ID do item. }
+      Devolve o ID do item.
+      ANcm/ACfop/ACstIcms, quando informados (importação de XML),
+      substituem a classificação herdada; AAliqIcms >= 0 idem. }
     function  SalvarItem(ANotaId, AItemId, AProdutoId: Int64;
       const ADescricao: string; AQuantidade, AValorUnitario,
-      ADesconto: Double): Int64;
+      ADesconto: Double; const ANcm: string = ''; const ACfop: string = '';
+      const ACstIcms: string = ''; AAliqIcms: Double = -1): Int64;
     procedure Processar(ANotaId: Int64);
     procedure Cancelar(ANotaId: Int64);
     procedure ExcluirItem(AItemId: Int64);
@@ -388,7 +391,8 @@ end;
 
 function TNotaEntradaService.SalvarItem(ANotaId, AItemId, AProdutoId: Int64;
   const ADescricao: string; AQuantidade, AValorUnitario,
-  ADesconto: Double): Int64;
+  ADesconto: Double; const ANcm: string; const ACfop: string;
+  const ACstIcms: string; AAliqIcms: Double): Int64;
 var
   LQuery: TSQLQuery;
   LProdutoFiscalId: Int64;
@@ -415,6 +419,17 @@ begin
       if AProdutoId > 0 then
         CarregarFiscalDoProduto(AProdutoId, LProdutoFiscalId,
           LNcm, LCfop, LCst, LAliq);
+
+      { importação de XML: os dados fiscais do documento do fornecedor
+        prevalecem sobre o cadastro (o cadastro pode estar incompleto) }
+      if Trim(ANcm) <> '' then
+        LNcm := Copy(Trim(ANcm), 1, 8);
+      if Trim(ACfop) <> '' then
+        LCfop := Copy(Trim(ACfop), 1, 4);
+      if Trim(ACstIcms) <> '' then
+        LCst := Copy(Trim(ACstIcms), 1, 3);
+      if AAliqIcms >= 0 then
+        LAliq := AAliqIcms;
 
       LValorIcms := AQuantidade * AValorUnitario * LAliq / 100;
       LValorTotal := AQuantidade * AValorUnitario;

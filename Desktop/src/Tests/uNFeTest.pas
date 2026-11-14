@@ -28,7 +28,8 @@ unit uNFeTest;
 interface
 
 uses
-  Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao, uACBrHelper;
+  Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao, uACBrHelper,
+  uNFeXmlService;
 
 type
   { TNFeTest }
@@ -669,6 +670,197 @@ var
     end;
   end;
 
+  { XML de NF-e (com prefixo de namespace de proposito) importado como
+    nota de entrada: fornecedor por CNPJ, produto por codigo, fiscal do
+    documento e recusa da mesma chave na segunda tentativa. }
+  procedure TestImportarXmlNotaEntrada;
+  var
+    LFornecedorId, LProdutoId, LNotaCriada, LTentativa: Int64;
+    LIncluidos, LSemProduto: Integer;
+    LChave, LArquivo, LXml, LCodigoProduto, LDOC: string;
+    LLista: TStringList;
+    LImportou, LRecusouDuplicada: Boolean;
+  begin
+    LFornecedorId := 0;
+    LProdutoId := 0;
+    LNotaCriada := 0;
+    LCodigoProduto := 'XML' + Copy(LSufixo, 1, 10);
+    LDOC := Copy('99' + LSufixo, 1, 14);
+    LChave := Copy('35' + LSufixo +
+      '0000000000000000000000000000000000', 1, 44);
+    LArquivo := IncludeTrailingPathDelimiter(GetTempDir) +
+      'nfe_import_' + LSufixo + '.xml';
+    try
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'INSERT INTO PESSOA (EMPRESA_ID, TIPO, TIPO_PESSOA, NOME, CPF_CNPJ, ' +
+        '  ATIVO, DATA_CADASTRO) ' +
+        'VALUES (:EMP, ''F'', ''J'', :NOME, :DOC, ''A'', CURRENT_TIMESTAMP) ' +
+        'RETURNING ID';
+      LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+      LQuery.ParamByName('NOME').AsString := NovoNome('FORNECEDOR XML');
+      LQuery.ParamByName('DOC').AsString := LDOC;
+      LQuery.Open;
+      LFornecedorId := LQuery.FieldByName('ID').AsLargeInt;
+      LQuery.Close;
+      LConexao.Confirmar;
+
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'INSERT INTO PRODUTO (EMPRESA_ID, CATEGORIA_ID, UNIDADE_ID, CODIGO, ' +
+        '  DESCRICAO, PRECO_CUSTO, PRECO_VENDA, CONTROLA_ESTOQUE, ATIVO) ' +
+        'VALUES (:EMP, 1, 1, :COD, :DESC, 1, 2, ''S'', ''A'') RETURNING ID';
+      LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+      LQuery.ParamByName('COD').AsString := LCodigoProduto;
+      LQuery.ParamByName('DESC').AsString := NovoNome('PRODUTO XML');
+      LQuery.Open;
+      LProdutoId := LQuery.FieldByName('ID').AsLargeInt;
+      LQuery.Close;
+      LConexao.Confirmar;
+
+      LXml :=
+        '<nfe:nfeProc xmlns:nfe="http://www.portalfiscal.inf.br/nfe">' +
+        '<nfe:NFe><nfe:infNFe Id="NFe' + LChave + '">' +
+        '<nfe:ide><nfe:natOp>COMPRA PARA COMERCIALIZACAO</nfe:natOp>' +
+        '<nfe:mod>55</nfe:mod><nfe:serie>1</nfe:serie>' +
+        '<nfe:nNF>9001</nfe:nNF>' +
+        '<nfe:dhEmi>2026-11-14T10:00:00-03:00</nfe:dhEmi></nfe:ide>' +
+        '<nfe:emit><nfe:CNPJ>' + LDOC + '</nfe:CNPJ>' +
+        '<nfe:xNome>FORNECEDOR XML ' + LSufixo + '</nfe:xNome></nfe:emit>' +
+        '<nfe:det nItem="1"><nfe:prod>' +
+        '<nfe:cProd>' + LCodigoProduto + '</nfe:cProd>' +
+        '<nfe:cEAN></nfe:cEAN>' +
+        '<nfe:xProd>PRODUTO &amp; XML</nfe:xProd>' +
+        '<nfe:NCM>84713012</nfe:NCM><nfe:CFOP>1102</nfe:CFOP>' +
+        '<nfe:uCom>UN</nfe:uCom><nfe:qCom>2.0000</nfe:qCom>' +
+        '<nfe:vUnCom>10.00</nfe:vUnCom><nfe:vDesc>0</nfe:vDesc>' +
+        '</nfe:prod><nfe:imposto><nfe:ICMS><nfe:ICMS00>' +
+        '<nfe:CST>00</nfe:CST><nfe:pICMS>18.00</nfe:pICMS>' +
+        '</nfe:ICMS00></nfe:ICMS></nfe:imposto></nfe:det>' +
+        '<nfe:total><nfe:ICMSTot><nfe:vProd>20.00</nfe:vProd>' +
+        '<nfe:vFrete>0</nfe:vFrete><nfe:vSeg>0</nfe:vSeg>' +
+        '<nfe:vDesc>0</nfe:vDesc><nfe:vOutro>0</nfe:vOutro>' +
+        '<nfe:vNF>20.00</nfe:vNF></nfe:ICMSTot></nfe:total>' +
+        '</nfe:infNFe></nfe:NFe></nfe:nfeProc>';
+
+      LLista := TStringList.Create;
+      try
+        LLista.Text := LXml;
+        LLista.SaveToFile(LArquivo);
+      finally
+        LLista.Free;
+      end;
+
+      LImportou := TNFeImportService.Importar(LArquivo, LNotaCriada,
+        LIncluidos, LSemProduto);
+      AssertTrue(LImportou and (LNotaCriada > 0) and (LIncluidos = 1) and
+        (LSemProduto = 0),
+        'XML deve gerar nota de entrada com um item vinculado');
+
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'SELECT CHAVE_ACESSO, FORNECEDOR_ID, VALOR_TOTAL ' +
+        'FROM NOTA_ENTRADA WHERE ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := LNotaCriada;
+      LQuery.Open;
+      AssertTrue((not LQuery.IsEmpty) and
+        (Trim(LQuery.FieldByName('CHAVE_ACESSO').AsString) = LChave) and
+        (LQuery.FieldByName('FORNECEDOR_ID').AsLargeInt = LFornecedorId) and
+        (Abs(LQuery.FieldByName('VALOR_TOTAL').AsFloat - 20) < 0.01),
+        'cabeçalho deve guardar chave, fornecedor e total do XML');
+      LQuery.Close;
+
+      LQuery.SQL.Text :=
+        'SELECT DESCRICAO, NCM, CFOP, CST_ICMS, QUANTIDADE, VALOR_UNITARIO ' +
+        'FROM NOTA_ENTRADA_ITEM WHERE NOTA_ENTRADA_ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := LNotaCriada;
+      LQuery.Open;
+      AssertTrue((not LQuery.IsEmpty) and
+        (Trim(LQuery.FieldByName('DESCRICAO').AsString) = 'PRODUTO & XML') and
+        (Trim(LQuery.FieldByName('NCM').AsString) = '84713012') and
+        (Trim(LQuery.FieldByName('CFOP').AsString) = '1102') and
+        (Trim(LQuery.FieldByName('CST_ICMS').AsString) = '00') and
+        (Abs(LQuery.FieldByName('QUANTIDADE').AsFloat - 2) < 0.01) and
+        (Abs(LQuery.FieldByName('VALOR_UNITARIO').AsFloat - 10) < 0.01),
+        'item deve herdar NCM/CFOP/CST do XML');
+      LQuery.Close;
+
+      LQuery.SQL.Text :=
+        'SELECT COUNT(*) AS QTD FROM LOG_SISTEMA WHERE TABELA = :T ' +
+        'AND OPERACAO = :O AND REGISTRO_ID = :ID AND USUARIO_ID = :USR';
+      LQuery.ParamByName('T').AsString := 'XML_FISCAL';
+      LQuery.ParamByName('O').AsString := 'IMPORTACAO_XML';
+      LQuery.ParamByName('ID').AsLargeInt := LNotaCriada;
+      LQuery.ParamByName('USR').AsLargeInt := LSessao.UsuarioId;
+      LQuery.Open;
+      AssertTrue(LQuery.FieldByName('QTD').AsInteger = 1,
+        'importacao deve auditar XML_FISCAL/IMPORTACAO_XML');
+      LQuery.Close;
+
+      LRecusouDuplicada := False;
+      LTentativa := 0;
+      try
+        TNFeImportService.Importar(LArquivo, LTentativa, LIncluidos,
+          LSemProduto);
+      except
+        on E: ENFeXml do
+          LRecusouDuplicada := True;
+      end;
+      AssertTrue(LRecusouDuplicada,
+        'reimportar a mesma chave deve ser recusado');
+
+      ASuite.AddResult('TestNFeImportarXmlNotaEntrada', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeImportarXmlNotaEntrada', False, E.Message);
+    end;
+
+    { limpeza: itens, nota, produto, fornecedor e arquivo }
+    try
+      if LNotaCriada > 0 then
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'DELETE FROM NOTA_ENTRADA_ITEM WHERE NOTA_ENTRADA_ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LNotaCriada;
+        LQuery.ExecSQL;
+        LQuery.Close;
+        LQuery.SQL.Text := 'DELETE FROM NOTA_ENTRADA WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LNotaCriada;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+      end;
+    except
+    end;
+    try
+      if LProdutoId > 0 then
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text := 'DELETE FROM PRODUTO WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LProdutoId;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+      end;
+    except
+    end;
+    try
+      if LFornecedorId > 0 then
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text := 'DELETE FROM PESSOA WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LFornecedorId;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+      end;
+    except
+    end;
+    try
+      if FileExists(LArquivo) then
+        DeleteFile(LArquivo);
+    except
+    end;
+  end;
+
   // ------------------------------------------------------------------
   // Limpeza
   // ------------------------------------------------------------------
@@ -750,6 +942,7 @@ begin
     TestCancelarComConfiguracao;
     TestManifestarSemConfiguracao;
     TestManifestarComConfiguracao;
+    TestImportarXmlNotaEntrada;
   finally
     LimparSobraPorSufixo;
     LHelper.Free;

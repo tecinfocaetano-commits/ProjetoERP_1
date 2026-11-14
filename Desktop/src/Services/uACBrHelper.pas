@@ -101,7 +101,7 @@ type
 implementation
 
 uses
-  uConexao, SQLDB, uAuditoria, uSessao;
+  uConexao, SQLDB, uAuditoria, uSessao, uNFeXmlService;
 
 {$IFDEF ACBR}
 { ------------------------------------------------------------------
@@ -421,32 +421,14 @@ end;
 
 function TACBrHelper.ImportarXML(const ACaminhoXML: string): Int64;
 var
-  LConexao: TConexao;
-  LIniciei: Boolean;
+  LIncluidos, LSemProduto: Integer;
 begin
+  { a importação real vive em uNFeXmlService (parser + nota de entrada);
+    aqui mantemos só a fachada usada pela tela de NF-e }
   Result := 0;
-  if not FileExists(ACaminhoXML) then
-    raise Exception.Create('Arquivo XML não encontrado: ' + ACaminhoXML);
-
-  { auditoria via uAuditoria (SQL parametrizado, empresa/usuário da sessão).
-    Só confirma/desfaz a transação se ela foi aberta aqui, para não commitar
-    uma transação externa em andamento. }
-  LConexao := TConexao.GetInstance;
-  LIniciei := not LConexao.EmTransacao;
-  if LIniciei then
-    LConexao.IniciarTransacao;
-  try
-    RegistrarAuditoria('XML_FISCAL', 'IMPORTACAO_XML', 0, '',
-      'XML importado: ' + ExtractFileName(ACaminhoXML));
-    if LIniciei then
-      LConexao.Confirmar;
-  except
-    if LIniciei then
-      LConexao.Cancelar;
-    raise;
-  end;
-
-  Result := 1;
+  if not TNFeImportService.Importar(ACaminhoXML, Result,
+    LIncluidos, LSemProduto) then
+    Result := 0;
 end;
 
 function TACBrHelper.ManifestarNFe(const AChave: string;

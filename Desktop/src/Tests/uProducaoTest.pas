@@ -251,15 +251,16 @@ var
     end;
   end;
 
-  procedure TestImportarXmlGravaAuditoria;
+  { ImportarXML agora faz a importacao real (uNFeXmlService): arquivo
+    inexistente ou XML sem NF-e sao recusados sem gravar auditoria. }
+  procedure TestImportarXmlRecusaInvalido;
   var
     LHelper: TACBrHelper;
     LArquivo, LInexistente: string;
     LRaisou: Boolean;
-    LId: Int64;
+    LTopoLog: Int64;
   begin
     try
-      { caminho inexistente deve falhar antes de tocar no banco }
       LInexistente :=
         IncludeTrailingPathDelimiter(GetTempDir) + 'erp2026_xml_nao_existe.xml';
       LHelper := TACBrHelper.Create;
@@ -273,9 +274,13 @@ var
         end;
         AssertTrue(LRaisou, 'ImportarXML deve recusar arquivo inexistente');
 
-        { com arquivo: audita em LOG_SISTEMA com as colunas certas
-          (o INSERT antigo usava MODULO/ACAO/DESCRICAO inexistentes
-          e estourava "Column unknown" em tempo de execucao) }
+        { topo do log: XML invalido nao pode gravar auditoria }
+        LQuery.Close;
+        LQuery.SQL.Text := 'SELECT COALESCE(MAX(ID), 0) AS TOPO FROM LOG_SISTEMA';
+        LQuery.Open;
+        LTopoLog := LQuery.FieldByName('TOPO').AsLargeInt;
+        LQuery.Close;
+
         LArquivo :=
           IncludeTrailingPathDelimiter(GetTempDir) + 'erp2026_xml_teste_f7.xml';
         with TStringList.Create do
@@ -287,33 +292,26 @@ var
           Free;
         end;
         try
-          AssertTrue(LHelper.ImportarXML(LArquivo) = 1,
-            'ImportarXML deve retornar 1');
+          LRaisou := False;
+          try
+            LHelper.ImportarXML(LArquivo);
+          except
+            on E: Exception do
+              LRaisou := True;
+          end;
+          AssertTrue(LRaisou, 'XML sem infNFe deve ser recusado');
 
           LQuery.Close;
           LQuery.SQL.Text :=
-            'SELECT FIRST 1 ID, USUARIO_ID, DADOS_NOVOS FROM LOG_SISTEMA ' +
-            'WHERE TABELA = :T AND OPERACAO = :O ORDER BY ID DESC';
+            'SELECT COUNT(*) AS QTD FROM LOG_SISTEMA WHERE ID > :TOPO ' +
+            'AND TABELA = :T AND OPERACAO = :O';
+          LQuery.ParamByName('TOPO').AsLargeInt := LTopoLog;
           LQuery.ParamByName('T').AsString := 'XML_FISCAL';
           LQuery.ParamByName('O').AsString := 'IMPORTACAO_XML';
           LQuery.Open;
-          AssertFalse(LQuery.IsEmpty,
-            'ImportarXML deve auditar em LOG_SISTEMA');
-          AssertEquals(IntToStr(LSessao.UsuarioId),
-            LQuery.FieldByName('USUARIO_ID').AsString,
-            'auditoria do XML deve usar o usuario da sessao');
-          AssertTrue(
-            Pos('erp2026_xml_teste_f7.xml',
-              LQuery.FieldByName('DADOS_NOVOS').AsString) > 0,
-            'DADOS_NOVOS deve citar o arquivo importado');
-          LId := LQuery.FieldByName('ID').AsLargeInt;
+          AssertTrue(LQuery.FieldByName('QTD').AsInteger = 0,
+            'XML invalido nao deve gravar auditoria');
           LQuery.Close;
-
-          { limpeza: teste nao deixa rastro }
-          LQuery.SQL.Text := 'DELETE FROM LOG_SISTEMA WHERE ID = :ID';
-          LQuery.ParamByName('ID').AsLargeInt := LId;
-          LQuery.ExecSQL;
-          LConexao.Confirmar;
         finally
           if FileExists(LArquivo) then
             DeleteFile(LArquivo);
@@ -321,10 +319,10 @@ var
       finally
         LHelper.Free;
       end;
-      ASuite.AddResult('TestImportarXmlGravaAuditoria', True, '');
+      ASuite.AddResult('TestImportarXmlRecusaInvalido', True, '');
     except
       on E: Exception do
-        ASuite.AddResult('TestImportarXmlGravaAuditoria', False, E.Message);
+        ASuite.AddResult('TestImportarXmlRecusaInvalido', False, E.Message);
     end;
   end;
 
@@ -567,7 +565,7 @@ begin
     TestPermissaoPorAcaoSemAdmin;
     TestAuditoriaUsaUsuarioDaSessao;
     TestLogOperacaoServiceParametrizado;
-    TestImportarXmlGravaAuditoria;
+    TestImportarXmlRecusaInvalido;
     TestProximoNumeroDoMapa;
     TestCopilotoFluxoCaixaTipado;
     TestTaloesComCodigoBarras;

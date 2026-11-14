@@ -23,7 +23,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls, DateUtils, StrUtils,
-  uConexao, uSessao, uNotaEntradaService;
+  uConexao, uSessao, uNotaEntradaService, uNFeXmlService;
 
 type
   { TfrmNotaEntrada }
@@ -156,82 +156,6 @@ var
 implementation
 
 {$R *.lfm}
-
-{ ------------------------------------------------------------------
-  Auxiliares de leitura de XML de NF-e (sem dependência do fcl-xml)
-  ------------------------------------------------------------------ }
-function TagTexto(const ATexto, ATag: string): string;
-var
-  LAbre, LFecha: string;
-  LP1, LP2: Integer;
-begin
-  Result := '';
-  LAbre := '<' + ATag + '>';
-  LFecha := '</' + ATag + '>';
-  LP1 := Pos(LAbre, ATexto);
-  if LP1 = 0 then
-    Exit;
-  LP2 := PosEx(LFecha, ATexto, LP1 + Length(LAbre));
-  if LP2 = 0 then
-    Exit;
-  Result := Trim(Copy(ATexto, LP1 + Length(LAbre), LP2 - LP1 - Length(LAbre)));
-end;
-
-function TagBlocos(const ATexto, ATag: string): TStringList;
-var
-  LAbre, LFecha: string;
-  LP, LP1, LP2: Integer;
-begin
-  Result := TStringList.Create;
-  LAbre := '<' + ATag;
-  LFecha := '</' + ATag + '>';
-  LP := 1;
-  while True do
-  begin
-    LP1 := PosEx(LAbre, ATexto, LP);
-    if LP1 = 0 then
-      Break;
-    // Evita casar prefixos de outras tags (ex.: <detX>)
-    if not ((ATexto[LP1 + Length(LAbre)] = '>') or
-            (ATexto[LP1 + Length(LAbre)] = ' ')) then
-    begin
-      LP := LP1 + Length(LAbre);
-      Continue;
-    end;
-    LP1 := PosEx('>', ATexto, LP1) + 1;
-    LP2 := PosEx(LFecha, ATexto, LP1);
-    if LP2 = 0 then
-      Break;
-    Result.Add(Copy(ATexto, LP1, LP2 - LP1));
-    LP := LP2 + Length(LFecha);
-  end;
-end;
-
-function NumXml(const AValor: string): Double;
-var
-  LTexto: string;
-begin
-  LTexto := Trim(AValor);
-  if FormatSettings.DecimalSeparator = ',' then
-    LTexto := StringReplace(LTexto, '.', ',', [rfReplaceAll]);
-  Result := StrToFloatDef(LTexto, 0);
-end;
-
-function DataXml(const AValor: string): TDate;
-var
-  LAno, LMes, LDia: Integer;
-begin
-  Result := 0;
-  // Formato NF-e: 2026-10-17T13:50:48-03:00
-  if Length(AValor) < 10 then
-    Exit;
-  LAno := StrToIntDef(Copy(AValor, 1, 4), 0);
-  LMes := StrToIntDef(Copy(AValor, 6, 2), 0);
-  LDia := StrToIntDef(Copy(AValor, 9, 2), 0);
-  if (LAno > 1900) and (LMes >= 1) and (LMes <= 12) and
-     (LDia >= 1) and (LDia <= 31) then
-    Result := EncodeDate(LAno, LMes, LDia);
-end;
 
 { Converte um campo DATE do banco em texto dd/mm/aaaa ('' quando vazio). }
 function DataTexto(AField: TField): string;
@@ -982,195 +906,33 @@ end;
 
 procedure TfrmNotaEntrada.ImportarXML(const AArquivo: string);
 var
-  LTexto: string;
-  LLista: TStringList;
-  LBloco, LProd: string;
-  LChave, LNome, LNumero: string;
-  LFornecId: Int64;
-  LI, LIncluidos, LSemProduto, LJ: Integer;
-  LQtd, LValor, LDesconto: Double;
-  LProdId: Int64;
-  LQuery: TSQLQuery;
-  LHArquivo: TextFile;
-  LLinha: string;
+  LNotaId: Int64;
+  LIncluidos, LSemProduto: Integer;
 begin
-  // Lê o arquivo XML inteiro
-  LTexto := '';
-  AssignFile(LHArquivo, AArquivo);
   try
-    Reset(LHArquivo);
-    while not System.EOF(LHArquivo) do
+    if not TNFeImportService.Importar(AArquivo, LNotaId,
+      LIncluidos, LSemProduto) then
     begin
-      ReadLn(LHArquivo, LLinha);
-      LTexto := LTexto + LLinha;
+      MessageDlg('Nada foi importado: o XML está vazio.',
+        mtWarning, [mbOK], 0);
+      Exit;
     end;
-  finally
-    CloseFile(LHArquivo);
-  end;
-
-  if Trim(LTexto) = '' then
-  begin
-    MessageDlg('Arquivo XML vazio ou ilegível.', mtWarning, [mbOK], 0);
-    Exit;
-  end;
-
-  // Cabeçalho
-  LChave := '';
-  LLista := TagBlocos(LTexto, 'infNFe');
-  if LLista.Count > 0 then
-    LBloco := LLista[0]
-  else
-    LBloco := LTexto;
-
-  // Chave de acesso: atributo Id="NFe<44 dígitos>" na tag infNFe
-  LI := Pos('Id="', LTexto);
-  if LI > 0 then
-  begin
-    LJ := PosEx('"', LTexto, LI + 4);
-    if LJ > 0 then
-      LChave := Trim(Copy(LTexto, LI + 4, LJ - LI - 4));
-  end;
-  if (LChave <> '') and (Copy(LChave, 1, 3) = 'NFe') then
-    LChave := Copy(LChave, 4, Length(LChave));
-
-  if FNotaId = 0 then
-  begin
-    // Garante um documento gravado para receber os itens
-    edtNumero.Text := TagTexto(LBloco, 'nNF');
-    if edtNumero.Text = '' then
-      edtNumero.Text := '1';
-    edtSerie.Text := TagTexto(LBloco, 'serie');
-    if Trim(edtSerie.Text) = '' then
-      edtSerie.Text := '1';
-    edtModelo.Text := TagTexto(LBloco, 'mod');
-    if Trim(edtModelo.Text) = '' then
-      edtModelo.Text := '55';
-    edtChave.Text := Copy(Trim(LChave), 1, 44);
-  end;
-
-  LNome := TagTexto(LBloco, 'xNome');
-  // Fornecedor pelo CNPJ do emitente
-  LFornecId := 0;
-  LQuery := TSQLQuery.Create(nil);
-  try
-    LQuery.DataBase := FConexao.Connection;
-    LQuery.Transaction := FConexao.Transaction;
-    LQuery.SQL.Text :=
-      'SELECT FIRST 1 ID FROM PESSOA WHERE TIPO = ''F'' AND ' +
-      'REPLACE(REPLACE(REPLACE(COALESCE(CPF_CNPJ, ''''), ''.'', ''''), ''/'', ''''), ''-'', '''') = ' +
-      // CAST obrigatório: sem ele o Firebird infere o parâmetro como CHAR(1)
-      // dentro do REPLACE aninhado e o Execute falha com "string right truncation"
-      'REPLACE(REPLACE(REPLACE(CAST(:DOC AS VARCHAR(40)), ''.'', ''''), ''/'', ''''), ''-'', '''') ' +
-      'AND EMPRESA_ID = :EMP ORDER BY ID';
-    LQuery.ParamByName('DOC').AsString := Trim(TagTexto(LBloco, 'CNPJ'));
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.Open;
-    if not LQuery.IsEmpty then
-      LFornecId := LQuery.FieldByName('ID').AsLargeInt;
-    LQuery.Close;
-
-    if LFornecId = 0 then
+  except
+    on E: Exception do
     begin
-      // Tenta pelo nome (razão social / fantasia)
-      LQuery.SQL.Text :=
-        'SELECT FIRST 1 ID FROM PESSOA WHERE TIPO = ''F'' AND EMPRESA_ID = :EMP AND ' +
-        '(UPPER(COALESCE(NOME, NOME_FANTASIA)) = UPPER(:NOME) ' +
-        'OR UPPER(COALESCE(NOME_FANTASIA, NOME)) = UPPER(:NOME)) ORDER BY ID';
-      LQuery.ParamByName('NOME').AsString := Trim(LNome);
-      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-      LQuery.Open;
-      if not LQuery.IsEmpty then
-        LFornecId := LQuery.FieldByName('ID').AsLargeInt;
+      MessageDlg('Não foi possível importar o XML:' + sLineBreak + E.Message,
+        mtError, [mbOK], 0);
+      Exit;
     end;
-  finally
-    LQuery.Free;
   end;
 
-  if LFornecId = 0 then
-  begin
-    MessageDlg('Não identifiquei o fornecedor "' + Trim(LNome) + '" no cadastro.' + sLineBreak +
-      'Cadastre-o (com o CNPJ do XML) ou informe o fornecedor manualmente antes de gravar.',
-      mtWarning, [mbOK], 0);
-    Exit;
-  end;
-
-  FFornecedorId := LFornecId;
-  edtFornecedor.Text := IntToStr(LFornecId);
-  lblFornecedorDesc.Caption := Trim(LNome);
-  if Trim(edtNatureza.Text) = '' then
-    edtNatureza.Text := Trim(TagTexto(LBloco, 'natOp'));
-  if Trim(TagTexto(LBloco, 'CFOP')) <> '' then
-    edtCfop.Text := Trim(TagTexto(LBloco, 'CFOP'));
-  if Trim(TagTexto(LBloco, 'vFrete')) <> '' then
-    edtFrete.Text := FormatFloat('#,##0.00', NumXml(TagTexto(LBloco, 'vFrete')));
-  if Trim(TagTexto(LBloco, 'vSeg')) <> '' then
-    edtSeguro.Text := FormatFloat('#,##0.00', NumXml(TagTexto(LBloco, 'vSeg')));
-  if Trim(TagTexto(LBloco, 'vDesc')) <> '' then
-    edtDesconto.Text := FormatFloat('#,##0.00', NumXml(TagTexto(LBloco, 'vDesc')));
-  if Trim(TagTexto(LBloco, 'dhEmi')) <> '' then
-    edtDataEmissao.Text := FormatDateTime('dd/mm/yyyy', DataXml(TagTexto(LBloco, 'dhEmi')));
-
-  // Grava o cabeçalho para poder inserir itens
-  if not SalvarCabecalho then
-    Exit;
-
-  // Itens
-  LLista.Free;
-  LLista := TagBlocos(LTexto, 'det');
-  LIncluidos := 0;
-  LSemProduto := 0;
-  for LI := 0 to LLista.Count - 1 do
-  begin
-    LProd := TagTexto(LLista[LI], 'prod');
-
-    LProdId := 0;
-    LQuery := TSQLQuery.Create(nil);
-    try
-      LQuery.DataBase := FConexao.Connection;
-      LQuery.Transaction := FConexao.Transaction;
-      LQuery.SQL.Text :=
-        'SELECT FIRST 1 ID FROM PRODUTO WHERE (CODIGO = :C OR CODIGO_BARRAS = :C) AND EMPRESA_ID = :EMP ORDER BY ID';
-      LQuery.ParamByName('C').AsString := Trim(TagTexto(LProd, 'cProd'));
-      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-      LQuery.Open;
-      if not LQuery.IsEmpty then
-        LProdId := LQuery.FieldByName('ID').AsLargeInt;
-      LQuery.Close;
-      if (LProdId = 0) and (Trim(TagTexto(LProd, 'cEAN')) <> '') then
-      begin
-        LQuery.SQL.Text := 'SELECT FIRST 1 ID FROM PRODUTO WHERE CODIGO_BARRAS = :C AND EMPRESA_ID = :EMP ORDER BY ID';
-        LQuery.ParamByName('C').AsString := Trim(TagTexto(LProd, 'cEAN'));
-        LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-        LQuery.Open;
-        if not LQuery.IsEmpty then
-          LProdId := LQuery.FieldByName('ID').AsLargeInt;
-      end;
-    finally
-      LQuery.Free;
-    end;
-
-    LQtd := NumXml(TagTexto(LProd, 'qCom'));
-    LValor := NumXml(TagTexto(LProd, 'vUnCom'));
-    LDesconto := NumXml(TagTexto(LProd, 'vDesc'));
-    if LQtd <= 0 then
-      LQtd := 1;
-
-    if LProdId = 0 then
-      Inc(LSemProduto);
-
-    FItemId := 0;
-    if InserirItem(LProdId, Trim(TagTexto(LProd, 'xProd')), LQtd, LValor, LDesconto) then
-      Inc(LIncluidos);
-  end;
-  LLista.Free;
-
-  CarregarItens;
+  AbrirNota(LNotaId);
   CarregarNotas;
-  ModoEdicao;
-
   MessageDlg('XML importado.' + sLineBreak +
+    'Nota de entrada: ' + IntToStr(LNotaId) + sLineBreak +
     'Itens incluídos: ' + IntToStr(LIncluidos) + sLineBreak +
-    'Itens sem produto vinculado (ajuste pelo duplo clique): ' + IntToStr(LSemProduto),
+    'Itens sem produto vinculado (ajuste pelo duplo clique): ' +
+    IntToStr(LSemProduto),
     mtInformation, [mbOK], 0);
 end;
 
