@@ -1739,7 +1739,28 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   **0/0**; suíte desktop **366/366**. Testado em execução: conexão padrão
   resolveu `Banco\dados.fdb`; `ERP_DB_PATH` inválido derrubou só a
   conexão; produção sem segredo saiu com código 2 e com segredo subiu.
-- **Commit:** (este marco).
+- **Commit:** `0e0d245`.
+
+---
+
+### 3.61 API: devolução de conexões ao pool e health check (14/11)
+
+- **Objetivo:** fechar D6 (conexões/transações presas por thread) e D12
+  (teste de conexão do Android com falso positivo).
+- **Middleware:** `API\src\Middleware\uMiddlewareConexao.pas` envolve cada
+  requisição e, no `finally`, chama `TConexao.DevolverAtual`. A conexão
+  da thread volta ao pool; `Destroy` faz `Rollback` de transação
+  pendente e fecha a conexão, então a próxima requisição começa limpa.
+- **Health:** `GET /api/health` é público e devolve
+  `{"status":"ok","servico":"ERP2026API","pool":"pool=N conexoes, M em uso"}`.
+  O thread principal libera a vaga após a checagem inicial de conexão.
+- **Android:** `ApiClient.ping` consulta `/api/health` e a tela de
+  configuração só considera sucesso em 2xx; antes qualquer 404 de outro
+  serviço passava como "conexão funcionando".
+- **Validação:** API compila; health respondeu 200 e o pool ficou em
+  `0 em uso` após login e três GETs de clientes; suíte desktop
+  **366/366**; testes Android **OK** (`Scripts\run_tests_android.bat`).
+- **Commit:** `7bffb94`.
 
 ---
 

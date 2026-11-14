@@ -1,4 +1,4 @@
-# CHECKPOINT - último ponto de parada (11/11/2026)
+# CHECKPOINT - último ponto de parada (14/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -33,18 +33,27 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ---
 
-## Estado atual da sessão (11/11/2026)
+## Estado atual da sessão (14/11/2026)
 
-**HEAD:** `0e0d245` — "Config: banco e JWT por variaveis de ambiente" (o
+**HEAD:** `7bffb94` — "API: devolver conexao ao pool e health check" (o
 commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
 **0/0** · suíte desktop **366/366** · API compilada (`Scripts\build_api.bat`) ·
-testes Android **5/5** (inalterados).
+testes Android **OK** (`Scripts\run_tests_android.bat`).
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.61 — API: pool e health check)
+
+| Item | Entrega |
+|---|---|
+| **Conexões (D6)** | `uMiddlewareConexao` devolve a conexão da thread ao pool no fim de cada requisição; transação pendente sofre `Rollback` e a conexão é fechada. Health confirmou `0 em uso` após login e três GETs. |
+| **Health** | `GET /api/health` público devolve `status`, serviço e descrição do pool. O thread principal libera a vaga após a checagem inicial. |
+| **Android (D12)** | `ApiClient.ping` consulta `/api/health`; a tela de configuração só aceita 2xx, sem falso positivo de 404. |
+| **Teste** | API compila; health 200; suíte desktop 366/366; testes Android OK. Commit `7bffb94`. |
 
 ### O que fechou nesta sessão (marco 3.60 — configuração por ambiente)
 

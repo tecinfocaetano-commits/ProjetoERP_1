@@ -40,7 +40,6 @@ polimento/dívida.
 | F5 | A | Numeração de orçamento global na API (sem `EMPRESA_ID`). | `uRotasOrcamentos.pas` |
 | F1 | A | CRUD incompleto: sem edição/exclusão de produtos e orçamentos, sem criação de venda. | `uRotasProdutos.pas`, `uRotasOrcamentos.pas`, `uRotasVendas.pas` |
 | F6 | M | Listas truncadas em 100 registros, sem paginação nem total. | rotas de vendas/financeiro |
-| D6 | M | `DevolverAtual` nunca é chamado: conexões/transações presas por thread. | `API\src\Config\uConexao.pas` |
 | D10 | M | Sem CI e sem testes de API. | repositório |
 | D11 | B | App: `usesCleartextTraffic`, token sem checar `exp`, CORS `*`. | `AndroidManifest.xml`, `Sessao.java`, `uMiddlewareCORS.pas` |
 | F10 | B | `DELETE /api/clientes` físico, sem auditoria (desktop inativa). | `uRotasClientes.pas` |
@@ -91,6 +90,8 @@ polimento/dívida.
 ## Já resolvido (não reabrir)
 
 - **D1/D2** — banco e JWT por variáveis de ambiente (marco 3.60).
+- **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
+- **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
 - Backup/restauração por `gbak` (marco 3.59).
 - Cenário fiscal de teste e validação local/em lote da NF-e (marcos 3.55–3.58).
 - Menu desktop sem itens inertes; DML só em Services; SQL parametrizado nos filtros.
