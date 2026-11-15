@@ -89,6 +89,9 @@ type
       certificado, confere apenas os dados fiscais. Útil antes da
       emissão real. }
     function ValidarNFe(APedidoId: Int64): TACBrDadosNFe;
+    { Mesma validação local, no modelo 65 (NFC-e). Útil para conferir o
+      cupom antes de habilitar a emissão real no PDV. }
+    function ValidarNFCe(APedidoId: Int64): TACBrDadosNFe;
     function ConsultarNFe(const AChave: string): TACBrDadosNFe;
     function CancelarNFe(const AChave, AJustificativa: string): Boolean;
     function ImportarXML(const ACaminhoXML: string): Int64;
@@ -112,6 +115,21 @@ type
       XML autorizado da chave. Devolve o caminho do PDF gerado; em modo
       simulado devolve '' sem criar arquivo. }
     function GerarDANFEPDF(const AChave: string): string;
+
+    { Lê da CONFIGURACAO da empresa as chaves fiscais usadas pela emissão
+      (NFE_CERTIFICADO, NFE_AMBIENTE, NFE_MODO, NFCE_ID_CSC, NFCE_CSC) e
+      a UF da EMPRESA quando ainda não houver. NFE_MODO=REAL desliga o
+      modo simulado; a senha do certificado não fica no banco: continue
+      passando por SenhaCertificado. }
+    procedure CarregarConfiguracaoFiscal;
+
+    { Lista os campos que faltam no destinatário do pedido, conforme o
+      modelo (55 = NF-e, 65 = NFC-e). Vazio quando tudo está certo.
+      Na NF-e o destinatário e o endereço são obrigatórios; na NFC-e o
+      destinatário é opcional e o endereço só é exigido quando o
+      consumidor é identificado por CPF/CNPJ. }
+    function CamposFaltandoDestinatario(APedidoId: Int64;
+      AModelo: Integer): string;
 
     property CaminhoSchemas: string read FCaminhoSchemas write FCaminhoSchemas;
     property CaminhoSalvar: string read FCaminhoSalvar write FCaminhoSalvar;
@@ -139,6 +157,86 @@ begin
   for I := 1 to Length(AValor) do
     if AValor[I] in ['0'..'9'] then
       Result := Result + AValor[I];
+end;
+
+{ ------------------------------------------------------------------
+  Regras do destinatário (fora do bloco ACBR para poder ser testado)
+  ------------------------------------------------------------------
+  NF-e (modelo 55): destinatário e endereço completo são obrigatórios.
+  NFC-e (modelo 65): o destinatário é opcional (consumidor final sem
+  identificação) e o endereço só é exigido quando há CPF/CNPJ.
+  Devolve a lista dos campos que faltam, separada por '; '.
+  ------------------------------------------------------------------ }
+function TACBrHelper.CamposFaltandoDestinatario(APedidoId: Int64;
+  AModelo: Integer): string;
+var
+  LConexao: TConexao;
+  LQuery: TSQLQuery;
+  LCliNome, LCliDoc, LCliLogradouro, LCliNumero, LCliBairro: string;
+  LCliCidade, LCliUF, LCliCEP: string;
+  LTemDestinatario: Boolean;
+  LDocValido: Boolean;
+begin
+  Result := '';
+  LConexao := TConexao.GetInstance;
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := LConexao.Connection;
+    LQuery.Transaction := LConexao.Transaction;
+    LQuery.SQL.Text :=
+      'SELECT C.NOME, C.CPF_CNPJ, C.ENDERECO, C.NUMERO AS CLIENTE_NUMERO, ' +
+      '  C.BAIRRO, C.CIDADE, C.UF, C.CEP ' +
+      'FROM PEDIDO_VENDA PV ' +
+      'JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
+      '  AND C.EMPRESA_ID = PV.EMPRESA_ID ' +
+      'WHERE PV.ID = :ID AND PV.EMPRESA_ID = :EMP';
+    LQuery.ParamByName('ID').AsLargeInt := APedidoId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.Open;
+    if LQuery.IsEmpty then
+      raise Exception.Create('Pedido não encontrado.');
+
+    LCliNome := Trim(LQuery.FieldByName('NOME').AsString);
+    LCliDoc := SoDigitos(LQuery.FieldByName('CPF_CNPJ').AsString);
+    LCliLogradouro := Trim(LQuery.FieldByName('ENDERECO').AsString);
+    LCliNumero := Trim(LQuery.FieldByName('CLIENTE_NUMERO').AsString);
+    LCliBairro := Trim(LQuery.FieldByName('BAIRRO').AsString);
+    LCliCidade := Trim(LQuery.FieldByName('CIDADE').AsString);
+    LCliUF := Trim(LQuery.FieldByName('UF').AsString);
+    LCliCEP := SoDigitos(LQuery.FieldByName('CEP').AsString);
+    LQuery.Close;
+
+    LDocValido := Length(LCliDoc) in [11, 14];
+    LTemDestinatario := (AModelo = 55) or LDocValido;
+
+    if LTemDestinatario then
+    begin
+      if LCliNome = '' then
+        Result := Result + 'NOME; ';
+      if not LDocValido then
+        Result := Result + 'CPF/CNPJ; ';
+    end;
+
+    { Endereço completo é obrigatório só na NF-e (modelo 55); no cupom o
+      consumidor pode ser identificado apenas pelo CPF. }
+    if AModelo = 55 then
+    begin
+      if LCliLogradouro = '' then
+        Result := Result + 'ENDERECO; ';
+      if LCliNumero = '' then
+        Result := Result + 'NUMERO; ';
+      if LCliBairro = '' then
+        Result := Result + 'BAIRRO; ';
+      if LCliCidade = '' then
+        Result := Result + 'CIDADE; ';
+      if LCliUF = '' then
+        Result := Result + 'UF; ';
+      if Length(LCliCEP) <> 8 then
+        Result := Result + 'CEP (8 dígitos); ';
+    end;
+  finally
+    LQuery.Free;
+  end;
 end;
 
 {$IFDEF ACBR}
@@ -409,11 +507,39 @@ begin
 end;
 
 function TACBrHelper.ValidarNFe(APedidoId: Int64): TACBrDadosNFe;
+var
+  LFaltando: string;
 begin
+  Result := Default(TACBrDadosNFe);
+  { A conferência do destinatário é regra do ERP e vale mesmo sem o
+    ACBr: numa NF-e ele é obrigatório, com endereço completo. }
+  LFaltando := CamposFaltandoDestinatario(APedidoId, 55);
+  if LFaltando <> '' then
+    raise Exception.Create('Dados do destinatário incompletos: ' + LFaltando);
 {$IFDEF ACBR}
   { não envia nada e não exige certificado: só monta o XML e valida
     contra os schemas da NF-e }
   Result := EmitirReal(APedidoId, 'VENDA', 55, True);
+{$ELSE}
+  raise Exception.Create(
+    'Validação local indisponível: recompile o aplicativo com o ACBr (-dACBR).');
+{$ENDIF}
+end;
+
+function TACBrHelper.ValidarNFCe(APedidoId: Int64): TACBrDadosNFe;
+var
+  LFaltando: string;
+begin
+  Result := Default(TACBrDadosNFe);
+  { Na NFC-e o destinatário é opcional: só é cobrado quando o
+    consumidor é identificado por CPF/CNPJ. }
+  LFaltando := CamposFaltandoDestinatario(APedidoId, 65);
+  if LFaltando <> '' then
+    raise Exception.Create('Dados do destinatário incompletos: ' + LFaltando);
+{$IFDEF ACBR}
+  { Mesma validação local da NF-e, agora no modelo 65: monta o XML do
+    cupom e confere contra os schemas, sem enviar à SEFAZ. }
+  Result := EmitirReal(APedidoId, 'VENDA AO CONSUMIDOR', 65, True);
 {$ELSE}
   raise Exception.Create(
     'Validação local indisponível: recompile o aplicativo com o ACBr (-dACBR).');
@@ -603,6 +729,68 @@ begin
 {$ENDIF}
 end;
 
+procedure TACBrHelper.CarregarConfiguracaoFiscal;
+var
+  LConexao: TConexao;
+  LQuery: TSQLQuery;
+  LValor: string;
+
+  function LerChave(const AChave: string): string;
+  begin
+    LQuery.Close;
+    LQuery.SQL.Text :=
+      'SELECT FIRST 1 VALOR FROM CONFIGURACAO ' +
+      'WHERE CHAVE = :CHAVE AND (EMPRESA_ID = :EMP OR EMPRESA_ID IS NULL) ' +
+      'ORDER BY EMPRESA_ID DESC';
+    LQuery.ParamByName('CHAVE').AsString := AChave;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.Open;
+    Result := Trim(LQuery.FieldByName('VALOR').AsString);
+    LQuery.Close;
+  end;
+
+begin
+  LConexao := TConexao.GetInstance;
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := LConexao.Connection;
+    LQuery.Transaction := LConexao.Transaction;
+
+    LValor := LerChave('NFE_CERTIFICADO');
+    if LValor <> '' then
+      FCaminhoCertificado := LValor;
+
+    LValor := LerChave('NFE_AMBIENTE');
+    if LValor <> '' then
+      FAmbiente := StrToIntDef(LValor, FAmbiente);
+
+    LValor := LerChave('NFCE_ID_CSC');
+    if LValor <> '' then
+      FIdCSC := LValor;
+
+    LValor := LerChave('NFCE_CSC');
+    if LValor <> '' then
+      FCSC := LValor;
+
+    { NFE_MODO = REAL liga a emissão de verdade; qualquer outro valor
+      (ou a ausência da chave) mantém o modo simulado. }
+    FModoSimulado := not SameText(Trim(LerChave('NFE_MODO')), 'REAL');
+
+    if FUF = '' then
+    begin
+      LQuery.Close;
+      LQuery.SQL.Text := 'SELECT UF FROM EMPRESA WHERE ID = :EMP';
+      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+      LQuery.Open;
+      if not LQuery.IsEmpty then
+        FUF := Trim(LQuery.FieldByName('UF').AsString);
+      LQuery.Close;
+    end;
+  finally
+    LQuery.Free;
+  end;
+end;
+
 {$IFDEF ACBR}
 { ------------------------------------------------------------------
   Modo real (ACBr)
@@ -673,6 +861,7 @@ var
   LCliCidadeId: Int64;
   LCliCodMun: Integer;
   LCliUFResolvida: string;
+  LTemDestinatario: Boolean;
 
   LFormaTipo: string;
   LParcelas: Integer;
@@ -828,32 +1017,24 @@ begin
     LParcelas := 1;
     LQuery.Close;
 
-    LFaltando := '';
-    if LCliNome = '' then
-      LFaltando := LFaltando + 'NOME; ';
-    if not (Length(LCliDoc) in [11, 14]) then
-      LFaltando := LFaltando + 'CPF/CNPJ; ';
-    if LCliLogradouro = '' then
-      LFaltando := LFaltando + 'ENDERECO; ';
-    if LCliNumero = '' then
-      LFaltando := LFaltando + 'NUMERO; ';
-    if LCliBairro = '' then
-      LFaltando := LFaltando + 'BAIRRO; ';
-    if LCliCidade = '' then
-      LFaltando := LFaltando + 'CIDADE; ';
-    if LCliUF = '' then
-      LFaltando := LFaltando + 'UF; ';
-    if Length(LCliCEP) <> 8 then
-      LFaltando := LFaltando + 'CEP (8 dígitos); ';
+    { NFC-e pode sair sem destinatário identificado (consumidor final):
+      nesse caso o bloco Dest nem é preenchido. A NF-e sempre exige. }
+    LFaltando := CamposFaltandoDestinatario(APedidoId, AModelo);
     if LFaltando <> '' then
       raise Exception.Create(
         'Dados do destinatário incompletos: ' + LFaltando);
+    LTemDestinatario := (AModelo = 55) or
+      (Length(LCliDoc) in [11, 14]);
 
-    LCliUF := UpperCase(LCliUF);
-    if UFtoCUF(LCliUF) = 0 then
+    if LCliUF <> '' then
+      LCliUF := UpperCase(LCliUF);
+    if (LCliUF <> '') and (UFtoCUF(LCliUF) = 0) then
       raise Exception.Create('UF do destinatário inválida: ' + LCliUF);
-    ResolverCidade(LCidade, LCliCidadeId, LCliCidade, LCliUF,
-      LCliCodMun, LCliUFResolvida);
+    LCliCodMun := 0;
+    LCliUFResolvida := '';
+    if (LCliCidade <> '') and (LCliUF <> '') then
+      ResolverCidade(LCidade, LCliCidadeId, LCliCidade, LCliUF,
+        LCliCodMun, LCliUFResolvida);
 
     // Forma de pagamento e condição
     LQuery.Close;
@@ -938,7 +1119,9 @@ begin
       nNF := LNumero;
       dEmi := Now;
       tpNF := tnSaida;
-      if LCliUF = LEmpUF then
+      if not LTemDestinatario then
+        idDest := doInterna
+      else if LCliUF = LEmpUF then
         idDest := doInterna
       else
         idDest := doInterestadual;
@@ -993,6 +1176,7 @@ begin
     end;
 
     // ---------------- Destinatário ----------------
+    if LTemDestinatario then
     with LNota.NFe.Dest do
     begin
       CNPJCPF := LCliDoc;
@@ -1015,6 +1199,8 @@ begin
           IE := LCliIE;
       end;
       Email := Copy(LCliEmail, 1, 60);
+      { Endereço é opcional na NFC-e: só preenche quando existe. }
+      if (LCliLogradouro <> '') and (LCliCidade <> '') then
       with EnderDest do
       begin
         xLgr := Copy(LCliLogradouro, 1, 60);

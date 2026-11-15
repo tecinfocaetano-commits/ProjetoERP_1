@@ -11,8 +11,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, Buttons, Grids, DB, SQLDB, ComCtrls,
-  uConexao, uSessao, uPDVService;
+  ExtCtrls, Buttons, Grids, DB, SQLDB, ComCtrls, LCLIntf,
+  uConexao, uSessao, uPDVService, uACBrHelper;
 
 type
   { TfrmPDV }
@@ -51,6 +51,7 @@ type
     btnSangria: TBitBtn;
     btnSuprimento: TBitBtn;
     btnFecharCaixa: TBitBtn;
+    chkEmitirNFCe: TCheckBox;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -78,6 +79,9 @@ type
     procedure RecalcularTotais;
     procedure LimparVenda;
     procedure AbrirCaixa;
+    { Emite a NFC-e da venda já gravada e abre o cupom em PDF. Falhas não
+      desfazem a venda: a mensagem orienta reemitir pela tela de NF-e. }
+    procedure EmitirNFCeVenda(APedidoId: Int64);
   public
     destructor Destroy; override;
   end;
@@ -290,6 +294,7 @@ var
   I: Integer;
   LSub, LDesc, LTotal: Double;
   LFormaId: Int64;
+  LPedidoId: Int64;
 begin
   if FProdutoIds.Count = 0 then
   begin
@@ -326,13 +331,82 @@ begin
   LFormaId := Int64(PtrInt(cmbFormaPag.Items.Objects[cmbFormaPag.ItemIndex]));
 
   try
-    FService.SalvarVenda(FCaixaId, LItens, LDesc, LFormaId);
+    LPedidoId := FService.SalvarVenda(FCaixaId, LItens, LDesc, LFormaId);
     MessageDlg('Venda finalizada! Total: R$ ' + FormatFloat('#,##0.00', LTotal),
       mtInformation, [mbOK], 0);
+    if chkEmitirNFCe.Checked then
+      EmitirNFCeVenda(LPedidoId);
     LimparVenda;
   except
     on E: Exception do
       MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
+  end;
+end;
+
+{ NFC-e da venda do PDV. A configuração fiscal vem da CONFIGURACAO
+  (NFE_CERTIFICADO, NFE_AMBIENTE, NFE_MODO, NFCE_ID_CSC, NFCE_CSC); a
+  senha do certificado é pedida só no modo real. }
+procedure TfrmPDV.EmitirNFCeVenda(APedidoId: Int64);
+var
+  LHelper: TACBrHelper;
+  LDados: TACBrDadosNFe;
+  LSenha, LCupom, LBase: string;
+  LReal: Boolean;
+begin
+  LBase := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName));
+  LHelper := TACBrHelper.Create;
+  try
+    LHelper.CaminhoSchemas := LBase + 'schemas';
+    LHelper.CaminhoSalvar := LBase + 'nfe';
+    LHelper.CarregarConfiguracaoFiscal;
+    LReal := not LHelper.ModoSimulado;
+
+    if LReal then
+    begin
+      if LHelper.CaminhoCertificado = '' then
+        raise Exception.Create(
+          'Configure a chave NFE_CERTIFICADO (Sistema > Configurações) ' +
+          'com o caminho do certificado A1.');
+      if LHelper.UF = '' then
+        raise Exception.Create('UF da empresa não configurada.');
+      if not InputQuery('NFC-e', 'Senha do certificado digital:', LSenha) then
+        Exit;
+      LHelper.SenhaCertificado := LSenha;
+    end
+    else
+      { simulação não fala com a SEFAZ: certificado/senha fictícios }
+      LHelper.Configurar('simulado', 'simulado', LHelper.UF, LHelper.Ambiente);
+
+    LDados := LHelper.GerarNFCe(APedidoId);
+    if LReal and (LDados.Status <> ansAutorizada) then
+    begin
+      MessageDlg('NFC-e não autorizada: ' + LDados.Motivo,
+        mtWarning, [mbOK], 0);
+      Exit;
+    end;
+
+    if not LReal then
+    begin
+      MessageDlg('NFC-e simulada (não enviada à SEFAZ).' + #13#10 +
+        'Chave: ' + LDados.ChaveAcesso, mtInformation, [mbOK], 0);
+      Exit;
+    end;
+
+    LCupom := LHelper.GerarDANFEPDF(LDados.ChaveAcesso);
+    if LCupom = '' then
+    begin
+      MessageDlg('NFC-e autorizada (chave ' + LDados.ChaveAcesso +
+        '), mas o cupom não foi gerado.', mtWarning, [mbOK], 0);
+      Exit;
+    end;
+    MessageDlg('NFC-e autorizada.' + #13#10 +
+      'Chave: ' + LDados.ChaveAcesso + #13#10 +
+      'Cupom: ' + LCupom, mtInformation, [mbOK], 0);
+    OpenDocument(LCupom);
+  except
+    on E: Exception do
+      MessageDlg('Venda salva, mas a NFC-e não foi emitida: ' + E.Message +
+        #13#10 + 'Use a tela de NF-e para reemitir.', mtError, [mbOK], 0);
   end;
 end;
 

@@ -113,7 +113,7 @@ object frmPDV: TfrmPDV
   end
   object pnlDireita: TPanel
     Left = 680
-    Height = 350
+    Height = 400
     Top = 90
     Width = 220
     Align = alRight
@@ -271,7 +271,7 @@ object frmPDV: TfrmPDV
     end
     object pnlAcoes: TPanel
       Left = 0
-      Height = 110
+      Height = 152
       Top = 240
       Width = 220
       Align = alClient
@@ -325,6 +325,14 @@ object frmPDV: TfrmPDV
         Width = 200
         Caption = 'Fechar Caixa'
         OnClick = btnFecharCaixaClick
+      end
+      object chkEmitirNFCe: TCheckBox
+        Left = 10
+        Height = 20
+        Top = 130
+        Width = 200
+        Caption = 'Emitir NFC-e ao finalizar'
+        TabOrder = 5
       end
     end
   end

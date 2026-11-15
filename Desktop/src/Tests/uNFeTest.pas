@@ -94,6 +94,25 @@ var
     LConexao.Confirmar;
   end;
 
+  { Cliente com CPF válido e sem endereço: usado para conferir que a
+    NFC-e não exige endereço e que a NF-e exige. }
+  function CriarPessoaSemEndereco(const ANome, ADoc: string): Int64;
+  begin
+    LQuery.Close;
+    LQuery.SQL.Text :=
+      'INSERT INTO PESSOA (EMPRESA_ID, TIPO, TIPO_PESSOA, NOME, CPF_CNPJ, ' +
+      '  ATIVO, DATA_CADASTRO) ' +
+      'VALUES (:EMP, ''C'', ''F'', :NOME, :DOC, ''A'', CURRENT_TIMESTAMP) ' +
+      'RETURNING ID';
+    LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+    LQuery.ParamByName('NOME').AsString := ANome;
+    LQuery.ParamByName('DOC').AsString := ADoc;
+    LQuery.Open;
+    Result := LQuery.FieldByName('ID').AsLargeInt;
+    LQuery.Close;
+    LConexao.Confirmar;
+  end;
+
   function CriarPedido(AEmpresaId, AClienteId: Int64;
     ANumeroNfe: Integer): Int64;
   begin
@@ -903,6 +922,151 @@ var
     end;
   end;
 
+  { Carrega as chaves fiscais da CONFIGURACAO. As chaves originais são
+    guardadas e restauradas no finally para não alterar o banco do usuário. }
+  procedure TestCarregarConfiguracaoFiscal;
+  const
+    CHAVES: array[0..4] of string = ('NFE_CERTIFICADO', 'NFE_AMBIENTE',
+      'NFE_MODO', 'NFCE_ID_CSC', 'NFCE_CSC');
+    VALORES: array[0..4] of string = ('C:\teste\certificado.pfx', '2',
+      'REAL', 'ID-TESTE', 'CSC-TESTE');
+  var
+    LOriginais: TStringList;
+    LI: Integer;
+  begin
+    LOriginais := TStringList.Create;
+    try
+      try
+        for LI := 0 to High(CHAVES) do
+        begin
+          LQuery.Close;
+          LQuery.SQL.Text :=
+            'SELECT FIRST 1 VALOR FROM CONFIGURACAO WHERE CHAVE = :CHAVE ' +
+            'AND (EMPRESA_ID = :EMP OR EMPRESA_ID IS NULL) ' +
+            'ORDER BY EMPRESA_ID DESC';
+          LQuery.ParamByName('CHAVE').AsString := CHAVES[LI];
+          LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+          LQuery.Open;
+          if LQuery.IsEmpty then
+            LOriginais.Add('')
+          else
+            LOriginais.Add(Trim(LQuery.FieldByName('VALOR').AsString));
+          LQuery.Close;
+
+          LQuery.SQL.Text :=
+            'DELETE FROM CONFIGURACAO WHERE CHAVE = :CHAVE AND EMPRESA_ID = :EMP';
+          LQuery.ParamByName('CHAVE').AsString := CHAVES[LI];
+          LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+          LQuery.ExecSQL;
+
+          LQuery.SQL.Text :=
+            'INSERT INTO CONFIGURACAO (EMPRESA_ID, CHAVE, VALOR, DESCRICAO) ' +
+            'VALUES (:EMP, :CHAVE, :VALOR, ''teste'')';
+          LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+          LQuery.ParamByName('CHAVE').AsString := CHAVES[LI];
+          LQuery.ParamByName('VALOR').AsString := VALORES[LI];
+          LQuery.ExecSQL;
+        end;
+        LConexao.Confirmar;
+
+        LHelper := TACBrHelper.Create;
+        try
+          LHelper.CarregarConfiguracaoFiscal;
+          AssertEquals(VALORES[0], LHelper.CaminhoCertificado,
+            'NFE_CERTIFICADO deve preencher o certificado');
+          AssertEquals('2', IntToStr(LHelper.Ambiente),
+            'NFE_AMBIENTE deve preencher o ambiente');
+          AssertEquals(VALORES[3], LHelper.IdCSC, 'NFCE_ID_CSC');
+          AssertEquals(VALORES[4], LHelper.CSC, 'NFCE_CSC');
+          AssertFalse(LHelper.ModoSimulado, 'NFE_MODO=REAL desliga a simulação');
+          AssertEquals('SP', LHelper.UF, 'UF deve vir da EMPRESA');
+        finally
+          LHelper.Free;
+          LHelper := nil;
+        end;
+        ASuite.AddResult('TestNFeCarregarConfiguracaoFiscal', True, '');
+      finally
+        for LI := 0 to High(CHAVES) do
+        begin
+          LQuery.Close;
+          LQuery.SQL.Text :=
+            'DELETE FROM CONFIGURACAO WHERE CHAVE = :CHAVE AND EMPRESA_ID = :EMP';
+          LQuery.ParamByName('CHAVE').AsString := CHAVES[LI];
+          LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+          LQuery.ExecSQL;
+          if LOriginais[LI] <> '' then
+          begin
+            LQuery.SQL.Text :=
+              'INSERT INTO CONFIGURACAO (EMPRESA_ID, CHAVE, VALOR, DESCRICAO) ' +
+              'VALUES (:EMP, :CHAVE, :VALOR, ''restaurado'')';
+            LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+            LQuery.ParamByName('CHAVE').AsString := CHAVES[LI];
+            LQuery.ParamByName('VALOR').AsString := LOriginais[LI];
+            LQuery.ExecSQL;
+          end;
+        end;
+        LConexao.Confirmar;
+      end;
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeCarregarConfiguracaoFiscal', False, E.Message);
+    end;
+    LOriginais.Free;
+  end;
+
+  { Destinatário opcional na NFC-e: cliente com CPF e sem endereço passa
+    na NFC-e, mas a NF-e exige o endereço completo. }
+  procedure TestDestinatarioOpcionalNFCe;
+  var
+    LClienteSemEndereco: Int64;
+    LPedido: Int64;
+    LFaltando: string;
+  begin
+    try
+      LClienteSemEndereco := CriarPessoaSemEndereco(
+        NovoNome('CLIENTE SEM ENDERECO'), '12345678901');
+      LPedido := CriarPedido(LSessao.EmpresaId, LClienteSemEndereco, 0);
+
+      LFaltando := LHelper.CamposFaltandoDestinatario(LPedido, 65);
+      AssertEquals('', LFaltando,
+        'Na NFC-e o destinatário sem endereço não pode faltar');
+
+      LFaltando := LHelper.CamposFaltandoDestinatario(LPedido, 55);
+      AssertTrue(LFaltando <> '', 'Na NF-e o endereço é obrigatório');
+      AssertTrue(Pos('ENDERECO', LFaltando) > 0,
+        'A NF-e deve apontar o endereço que falta');
+      AssertTrue(Pos('CIDADE', LFaltando) > 0,
+        'A NF-e deve apontar a cidade que falta');
+
+      { A validação local também deve recusar a NF-e e não recusar a
+        NFC-e por causa do destinatário. }
+      try
+        LHelper.ValidarNFe(LPedido);
+        AssertFail('A NF-e deve recusar o pedido sem endereço do destinatário');
+      except
+        on E: TAssertException do
+          raise;
+        on E: Exception do
+          AssertTrue(Pos('destinat', LowerCase(E.Message)) > 0,
+            'A NF-e deve avisar sobre o destinatário: ' + E.Message);
+      end;
+
+      try
+        LHelper.ValidarNFCe(LPedido);
+      except
+        on E: Exception do
+          AssertTrue(Pos('destinat', LowerCase(E.Message)) = 0,
+            'A NFC-e não pode recusar por falta de dados do destinatário: ' +
+            E.Message);
+      end;
+
+      ASuite.AddResult('TestNFeDestinatarioOpcionalNFCe', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeDestinatarioOpcionalNFCe', False, E.Message);
+    end;
+  end;
+
   { XML de NF-e (com prefixo de namespace de proposito) importado como
     nota de entrada: fornecedor por CNPJ, produto por codigo, fiscal do
     documento e recusa da mesma chave na segunda tentativa. }
@@ -1184,6 +1348,8 @@ begin
     TestProximaSequenciaCce;
     TestDANFEChaveInvalida;
     TestDANFEModoSimulado;
+    TestCarregarConfiguracaoFiscal;
+    TestDestinatarioOpcionalNFCe;
     TestImportarXmlNotaEntrada;
   finally
     LimparSobraPorSufixo;
