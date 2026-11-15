@@ -42,6 +42,39 @@ padrão e imprime um aviso no `stderr`.
 | `ERP_NFE_SENHA` | Senha do certificado. Evite deixar em script versionado. |
 | `ERP_FB_BIN` | Pasta `bin` do Firebird para `gbak` (backup/restauração). |
 
+### Configuração fiscal no banco (tabela `CONFIGURACAO`)
+
+A partir do marco 3.67 a tela de NF-e **e o PDV** leem a configuração
+fiscal da tabela `CONFIGURACAO`, sem recompilar e sem caminho fixo no
+código. As chaves são lidas da empresa da sessão; se não existirem, vale
+a linha global (`EMPRESA_ID IS NULL`).
+
+| Chave | Valor | Observação |
+|---|---|---|
+| `NFE_CERTIFICADO` | caminho do `.pfx` | Certificado A1 usado na emissão/validação. |
+| `NFE_AMBIENTE` | `1` ou `2` | `1` = produção, `2` = homologação. |
+| `NFE_MODO` | `REAL` | Só `REAL` desliga o modo simulado. Qualquer outro valor (ou a ausência da chave) mantém a simulação. |
+| `NFCE_ID_CSC` | código do CSC | Exigido pela SEFAZ na NFC-e. |
+| `NFCE_CSC` | código de segurança | Exigido pela SEFAZ na NFC-e. |
+
+**A senha do certificado não fica no banco** — o aplicativo pergunta com
+`InputQuery` no momento da emissão/validação. Guardar a senha no banco
+exigiria criptografia da chave, que ainda não existe no ERP.
+
+Exemplo de cadastro (pela tela *Sistema > Configurações*):
+
+```sql
+INSERT INTO CONFIGURACAO (EMPRESA_ID, CHAVE, VALOR, DESCRICAO)
+VALUES (1, 'NFE_CERTIFICADO', 'C:\certificados\empresa.pfx', 'Certificado A1'),
+       (1, 'NFE_AMBIENTE', '2', 'Homologacao'),
+       (1, 'NFE_MODO', 'REAL', 'Emissao real'),
+       (1, 'NFCE_ID_CSC', 'C0000000000000000000000000000000000000000000', 'Id do CSC'),
+       (1, 'NFCE_CSC', 'CSC0000000000000000000000000000000000000', 'CSC');
+```
+
+Sem essas chaves o ERP continua funcionando em **modo simulado** — nada é
+enviado à SEFAZ.
+
 ## Exemplo de produção (Windows)
 
 Em um prompt de administrador, uma vez por máquina:

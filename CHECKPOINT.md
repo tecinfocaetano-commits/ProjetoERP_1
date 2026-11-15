@@ -1,4 +1,4 @@
-# CHECKPOINT - último ponto de parada (14/11/2026)
+# CHECKPOINT - último ponto de parada (15/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **378/378**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **380/380**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
@@ -33,19 +33,34 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ---
 
-## Estado atual da sessão (14/11/2026)
+## Estado atual da sessão (15/11/2026)
 
-**HEAD:** `600906d` — "NF-e: DANFE/cupom em PDF e reimpressao por linha de comando" (o
-commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
-**0/0** · suíte desktop **378/378** · API compilada
+**HEAD:** `9d4a445` — "PDV: NFC-e na finalizacao da venda" (o commit de docs
+deste marco vem logo acima). Árvore: limpa, exceto o relatório de telas
+(`Documentacao\TESTE_TELAS_DESKTOP.md`), que é regenerado pelo smoke.
+Build: desktop **0/0** · suíte desktop **380/380** · API compilada
 (`Scripts\build_api.bat`) · testes Android **OK**
-(`Scripts\run_tests_android.bat`).
+(`Scripts\run_tests_android.bat`) · smoke de telas **33/33**.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.67 — NFC-e no PDV)
+
+| Item | Entrega |
+|---|---|
+| **Service (F3)** | `TACBrHelper.CamposFaltandoDestinatario(pedido, modelo)` concentra a regra do destinatário **fora** do bloco `{$IFDEF ACBR}`: na NF-e (55) destinatário e endereço completo são obrigatórios; na NFC-e (65) o destinatário é opcional (só é exigido com CPF/CNPJ) e o endereço não é cobrado. `EmitirReal` usa essa função (sem regra duplicada) e `ValidarNFe`/`ValidarNFCe` conferem o destinatário antes do ACBr. |
+| **Modelo 65** | `Dest`/`EnderDest` só são preenchidos quando existem; sem identificação, `idDest` fica `doInterna` e o bloco `Dest` sai vazio no XML do cupom. |
+| **Configuração fiscal** | `CarregarConfiguracaoFiscal` lê da `CONFIGURACAO` as chaves `NFE_CERTIFICADO`, `NFE_AMBIENTE`, `NFE_MODO`, `NFCE_ID_CSC`, `NFCE_CSC` (empresa antes da global) e a UF da `EMPRESA`. `NFE_MODO=REAL` desliga a simulação; qualquer outro valor mantém. **A senha do certificado nunca fica no banco** — é pedida na hora da emissão. |
+| **Tela** | `uFrmPDV`: checkbox **"Emitir NFC-e ao finalizar"** no painel de ações; `btnFinalizar` guarda o ID de `SalvarVenda` e emite **depois** de gravar a venda. Modo real: senha via `InputQuery`, transmissão, aviso se não autorizou e cupom em PDF (`GerarDANFEPDF` + `OpenDocument`). Modo simulado: mostra a chave e avisa que nada foi à SEFAZ. Falha na emissão **não desfaz a venda** (a mensagem orienta reemitir pela tela de NF-e). O `pnlDireita` ganhou altura para o checkbox não cortar os botões. |
+| **Teste** | `TestNFeDestinatarioOpcionalNFCe` (cliente com CPF e sem endereço: NFC-e não acusa falta; NF-e aponta `ENDERECO`/`CIDADE`) e `TestNFeCarregarConfiguracaoFiscal` (5 chaves lidas, originais restauradas no `finally`). Suíte **380/380**. Smoke de telas **33/33** com o checkbox visível na evidência do PDV. |
+| **Aviso eliminado** | "Function result does not seem to be set" em `ValidarNFe`/`ValidarNFCe` — o `Result` passa a ser inicializado. Build desktop **0/0** sem avisos do compilador. |
+
+> O **F3 fiscal está fechado**: CC-e + inutilização + manifestação (3.65),
+> DANFE/cupom em PDF (3.66) e NFC-e no PDV (3.67).
 
 ### O que fechou nesta sessão (marco 3.66 — DANFE/cupom em PDF)
 
@@ -268,7 +283,7 @@ cabeçalho pai.
 ### Próximo passo (executável)
 
 1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**378/378** ou mais); API
+   `Scripts\run_tests.bat` (**380/380** ou mais); API
    `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
    (**5/5**). Configuração de banco/JWT por ambiente já está no marco
    3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
@@ -278,7 +293,9 @@ cabeçalho pai.
    (`PESSOA`) e dos produtos (`PRODUTO`/`PRODUTO_FISCAL`), rodar
    `Scripts\preparar_acbr.bat` e usar um certificado A1 válido com a
    senha na tela. Sem certificado, mantenha **Modo simulado** marcado.
-   NFC-e real também exige `IdCSC`/`CSC`.
+   NFC-e real também exige `IdCSC`/`CSC`. No PDV, a emissão usa as chaves
+   da `CONFIGURACAO` (`NFE_CERTIFICADO`, `NFE_AMBIENTE`, `NFE_MODO`,
+   `NFCE_ID_CSC`, `NFCE_CSC`) — ver marco 3.67.
 3. **Cenário fiscal de teste** criado no marco 3.58
    (`Scripts\preparar_cenario_fiscal.sql`, pedido 3581). Use os pedidos
    **1003** e **3581** para validar; os legados 997/998/1000 continuam
@@ -290,16 +307,13 @@ cabeçalho pai.
 5. **Roadmap de produção (auditorias de 11/11):** as duas auditorias
    (desktop e API/Android/banco) retornaram 40 itens priorizados. Ordem
    acordada para atacar:
-   - **Fiscal (maior risco):** F1 fechado no marco 3.63 (importação real
-     de XML), F2 no 3.64 (materialização de `NOTA_SAIDA`, estoque,
-     financeiro e XML após a autorização), a primeira parte do F3 no
-     3.65 (CC-e, inutilização e manifestação) e o **DANFE/cupom em PDF**
-     no 3.66 (botão na tela e `--danfe=<chave>`). Falta do F3 apenas a
-     **NFC-e no PDV** (emitir ao finalizar a venda em `uFrmPDV`); para
-     isso, `EmitirReal` precisa aceitar destinatário ausente no modelo 65
-     (hoje exige endereço completo do cliente).
-   - **Acesso e empresa:** T1 (permissões em todas as telas) e T4
-     (consultas por `EMPRESA_ID`). T2/T3/F7 (login) fechados no marco 3.62.
+   - **Fiscal (F3) — CONCLUÍDO:** F1 no 3.63 (importação real de XML),
+     F2 no 3.64 (materialização de `NOTA_SAIDA`, estoque, financeiro e
+     XML após a autorização), F3 no 3.65 (CC-e, inutilização e
+     manifestação), 3.66 (DANFE/cupom em PDF) e 3.67 (NFC-e no PDV).
+   - **Acesso e empresa (próximo bloco):** T1 (permissões em todas as
+     telas) e T4 (consultas por `EMPRESA_ID`). T2/T3/F7 (login) fechados
+     no marco 3.62.
    - **API:** D3 (linkar `Desktop\src\Services` no build), F4+D9 (ID na
      resposta + índices únicos), D4 (auditoria `LOG_SISTEMA`), D7/D8
      (schema reproduzível e `SET NAMES UTF8`), F6/F9 (paginação e erros

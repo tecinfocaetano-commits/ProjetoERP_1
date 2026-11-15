@@ -1928,6 +1928,47 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.67 NFC-e no PDV (15/11)
+
+- **Objetivo:** emitir a NFC-e (modelo 65) junto com a venda do PDV, sem
+  exigir que o consumidor final esteja cadastrado com endereço completo.
+- **Service — destinatário:** a regra saiu do bloco `{$IFDEF ACBR}` para
+  o método público `TACBrHelper.CamposFaltandoDestinatario(pedido,
+  modelo)`: na **NF-e (55)** o destinatário e o endereço completo são
+  obrigatórios; na **NFC-e (65)** o destinatário é opcional (só é exigido
+  quando há CPF/CNPJ) e o endereço só é cobrado no modelo 55. `EmitirReal`
+  passou a usar essa função — uma regra só, sem duplicação.
+- **Service — modelo 65:** `Dest`/`EnderDest` só são preenchidos quando
+  existem; sem identificação, `idDest` fica `doInterna` e o bloco `Dest`
+  sai vazio no XML. `ValidarNFe`/`ValidarNFCe` conferem o destinatário
+  **antes** do ACBr, então a recusa por cadastro incompleto vale mesmo na
+  build sem ACBr.
+- **Configuração fiscal:** `TACBrHelper.CarregarConfiguracaoFiscal` lê da
+  tabela `CONFIGURACAO` as chaves `NFE_CERTIFICADO`, `NFE_AMBIENTE`,
+  `NFE_MODO`, `NFCE_ID_CSC` e `NFCE_CSC` (a primeira da empresa, senão a
+  global) e a UF da `EMPRESA` quando ainda não houver. `NFE_MODO=REAL`
+  desliga o modo simulado; qualquer outro valor (ou a ausência da chave)
+  mantém a simulação. **A senha do certificado nunca fica no banco** —
+  o PDV pergunta com `InputQuery` no momento da emissão.
+- **Tela (`uFrmPDV`):** checkbox **"Emitir NFC-e ao finalizar"** no painel
+  de ações (`pnlAcoes`); o `btnFinalizar` agora guarda o ID devolvido por
+  `SalvarVenda` e chama `EmitirNFCeVenda` **depois** de gravar a venda.
+  Em modo real: pede a senha, transmite, avisa se não autorizou e abre o
+  cupom em PDF (`GerarDANFEPDF` + `OpenDocument`). Em modo simulado: mostra
+  a chave gerada e avisa que nada foi enviado à SEFAZ. Falha na emissão
+  **não desfaz a venda** — a mensagem orienta reemitir pela tela de NF-e.
+  O `pnlDireita` ganhou altura para caber o checkbox sem cortar os botões.
+- **Teste:** `TestNFeDestinatarioOpcionalNFCe` (cliente com CPF e sem
+  endereço: NFC-e não acusa falta, NF-e aponta `ENDERECO`/`CIDADE`) e
+  `TestNFeCarregarConfiguracaoFiscal` (as 5 chaves são lidas e as
+  originais restauradas no `finally`). Suíte desktop **380/380**.
+- **Verificação:** build desktop **0/0** (sem o aviso de "Function result
+  does not seem to be set"), API compilada, testes Android OK e smoke de
+  todas as telas **33/33** com o checkbox visível na evidência do PDV.
+- **Commit:** `9d4a445`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
