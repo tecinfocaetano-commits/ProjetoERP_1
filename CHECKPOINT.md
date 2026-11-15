@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **376/376**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **378/378**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
@@ -35,9 +35,9 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (14/11/2026)
 
-**HEAD:** `c6652c1` — "NF-e: CC-e, inutilizacao e manifestacao na tela" (o
+**HEAD:** `600906d` — "NF-e: DANFE/cupom em PDF e reimpressao por linha de comando" (o
 commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
-**0/0** · suíte desktop **376/376** · API compilada
+**0/0** · suíte desktop **378/378** · API compilada
 (`Scripts\build_api.bat`) · testes Android **OK**
 (`Scripts\run_tests_android.bat`).
 
@@ -46,6 +46,16 @@ commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.66 — DANFE/cupom em PDF)
+
+| Item | Entrega |
+|---|---|
+| **DANFE (F3)** | `TACBrHelper.GerarDANFEPDF(chave)` gera o DANFE (modelo 55) ou o cupom (modelo 65) a partir do XML autorizado: procura `NOTA_SAIDA.XML_ARQUIVO`, depois `<chave>.xml`, `<chave>-nfe.xml` e `<chave>-nfce.xml` em `CaminhoSalvar`; usa `TACBrNFeDANFeFPDF`/`TACBrNFCeDANFeFPDF` e devolve o caminho do PDF (`<chave>-nfe.pdf`/`-nfce.pdf`). Em modo simulado devolve `''`. |
+| **Sem pacote novo** | As units FPDF entraram em `OtherUnitFiles` do `ERP2026.lpi` (`C:/ACBr/Fontes/ACBrDFe/ACBrNFe/DANFE/NFe/FPDF` e `.../NFCe/FPDF`), sem registrar/instalar pacote no Lazarus; `ACBr_fpdf*` vêm do `ACBrComum`, já dependência do `ACBr_NFe`. |
+| **Tela** | Botão **DANFE** na segunda linha de `uFrmNFe`: exige chave de 44 dígitos do pedido, avisa em modo simulado e, no modo real, gera o PDF, mostra o caminho e abre no leitor padrão (`OpenDocument`). |
+| **CLI** | `ERP2026.exe --danfe=<chave>` reimprime off-line a partir do XML salvo; grava `bin\nfe\danfe_<chave>.txt` com OK/ERRO e retorna 0/1/2. |
+| **Teste** | `TestNFeDANFEChaveInvalida` (chave curta) e `TestNFeDANFEModoSimulado` (não gera arquivo). Suíte **378/378**. Verificação manual: `--danfe=35261100000000000191550010000000051021906712` gerou um PDF válido de 7.155 bytes a partir do XML existente. |
 
 ### O que fechou nesta sessão (marco 3.65 — CC-e, inutilização e manifestação)
 
@@ -258,7 +268,7 @@ cabeçalho pai.
 ### Próximo passo (executável)
 
 1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**376/376** ou mais); API
+   `Scripts\run_tests.bat` (**378/378** ou mais); API
    `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
    (**5/5**). Configuração de banco/JWT por ambiente já está no marco
    3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
@@ -282,11 +292,12 @@ cabeçalho pai.
    acordada para atacar:
    - **Fiscal (maior risco):** F1 fechado no marco 3.63 (importação real
      de XML), F2 no 3.64 (materialização de `NOTA_SAIDA`, estoque,
-     financeiro e XML após a autorização) e a primeira parte do F3 no
-     3.65 (CC-e, inutilização e manifestação na tela). Falta do F3:
-     **DANFE** (`TACBrNFeDANFeFPDF`, exige registrar
-     `ACBr_NFe_DanfeFPDF` no Lazarus ou pôr as units FPDF no path) e
-     **NFC-e no PDV** (emitir ao finalizar a venda em `uFrmPDV`).
+     financeiro e XML após a autorização), a primeira parte do F3 no
+     3.65 (CC-e, inutilização e manifestação) e o **DANFE/cupom em PDF**
+     no 3.66 (botão na tela e `--danfe=<chave>`). Falta do F3 apenas a
+     **NFC-e no PDV** (emitir ao finalizar a venda em `uFrmPDV`); para
+     isso, `EmitirReal` precisa aceitar destinatário ausente no modelo 65
+     (hoje exige endereço completo do cliente).
    - **Acesso e empresa:** T1 (permissões em todas as telas) e T4
      (consultas por `EMPRESA_ID`). T2/T3/F7 (login) fechados no marco 3.62.
    - **API:** D3 (linkar `Desktop\src\Services` no build), F4+D9 (ID na

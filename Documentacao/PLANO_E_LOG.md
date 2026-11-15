@@ -1896,6 +1896,38 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.66 DANFE e cupom em PDF (14/11)
+
+- **Objetivo:** imprimir o DANFE (modelo 55) e o cupom (modelo 65) sem
+  depender do site da SEFAZ e sem instalar pacote novo no Lazarus.
+- **Service:** `TACBrHelper.GerarDANFEPDF(chave)` valida os 44 dígitos,
+  localiza o XML autorizado (`NOTA_SAIDA.XML_ARQUIVO`, `<chave>.xml`,
+  `<chave>-nfe.xml` ou `<chave>-nfce.xml` em `CaminhoSalvar`), escolhe
+  `TACBrNFeDANFeFPDF`/`TACBrNFCeDANFeFPDF` pelo modelo da chave, carrega
+  a nota com `LerXML`, chama `ImprimirPDF` e devolve
+  `LNFe.DANFE.ArquivoPDF`. Em modo simulado devolve `''` sem gerar
+  arquivo; sem `-dACBR`, levanta erro claro.
+- **Projeto:** as units FPDF entraram em `OtherUnitFiles` do
+  `ERP2026.lpi` (`.../DANFE/NFe/FPDF` e `.../DANFE/NFCe/FPDF`). Nada foi
+  instalado no IDE: `ACBr_fpdf*` vêm do `ACBrComum`, que o `ACBr_NFe` já
+  trazia como dependência.
+- **Tela:** botão **DANFE** na segunda linha de `uFrmNFe`, ao lado de
+  Manifestar; usa a chave do pedido selecionado, avisa em modo simulado,
+  gera o PDF, mostra o caminho e abre no leitor padrão (`OpenDocument`).
+- **CLI:** `ERP2026.exe --danfe=<chave>` reimprime off-line a partir do
+  XML salvo; grava `bin\nfe\danfe_<chave>.txt` (OK/ERRO) e devolve
+  0/1/2, no mesmo padrão do `--validar-nfe`.
+- **Teste:** `TestNFeDANFEChaveInvalida` e `TestNFeDANFEModoSimulado` em
+  `uNFeTest`. Suíte desktop **378/378**. Verificação manual com o XML
+  `35261100000000000191550010000000051021906712`: PDF de 7.155 bytes com
+  cabeçalho `%PDF-1.3`.
+- **Pendente do F3:** NFC-e no PDV. `EmitirReal` ainda exige endereço
+  completo do destinatário em qualquer modelo; para o cupom com
+  consumidor não identificado, o modelo 65 precisa aceitar `Dest` vazio.
+- **Commit:** `600906d`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
