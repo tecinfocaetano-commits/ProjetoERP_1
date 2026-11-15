@@ -241,6 +241,30 @@ var
     end;
   end;
 
+  function RecusouCartaCorrecao(const AChave, ACorrecao: string): Boolean;
+  begin
+    Result := False;
+    try
+      LHelper.EnviarCartaCorrecao(AChave, ACorrecao, 1);
+    except
+      on E: Exception do
+        Result := True;
+    end;
+  end;
+
+  function RecusouInutilizar(AModelo, ASerie, AInicial, AFinal: Integer;
+    const AJustificativa: string): Boolean;
+  begin
+    Result := False;
+    try
+      LHelper.InutilizarNumeracao(AModelo, ASerie, AInicial, AFinal, 2026,
+        AJustificativa);
+    except
+      on E: Exception do
+        Result := True;
+    end;
+  end;
+
   // ------------------------------------------------------------------
   // Configuração
   // ------------------------------------------------------------------
@@ -670,6 +694,170 @@ var
     end;
   end;
 
+  // ------------------------------------------------------------------
+  // CC-e / inutilização
+  // ------------------------------------------------------------------
+
+  procedure TestCartaCorrecaoCurta;
+  begin
+    try
+      LHelper := TACBrHelper.Create;
+      try
+        LHelper.Configurar(LCertificado, '1234', 'SP', 2);
+        AssertTrue(RecusouCartaCorrecao(
+          '35260100000000000000550010000000011000000010', 'curta'),
+          'correção com menos de 15 caracteres deve ser recusada');
+      finally
+        LHelper.Free;
+        LHelper := nil;
+      end;
+      ASuite.AddResult('TestNFeCartaCorrecaoCurta', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeCartaCorrecaoCurta', False, E.Message);
+    end;
+  end;
+
+  procedure TestCartaCorrecaoChaveInvalida;
+  begin
+    try
+      LHelper := TACBrHelper.Create;
+      try
+        LHelper.Configurar(LCertificado, '1234', 'SP', 2);
+        AssertTrue(RecusouCartaCorrecao('123',
+          'Correcao valida com mais de quinze caracteres'),
+          'chave sem 44 dígitos deve ser recusada');
+      finally
+        LHelper.Free;
+        LHelper := nil;
+      end;
+      ASuite.AddResult('TestNFeCartaCorrecaoChaveInvalida', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeCartaCorrecaoChaveInvalida', False, E.Message);
+    end;
+  end;
+
+  procedure TestCartaCorrecaoComConfiguracao;
+  begin
+    try
+      LHelper := TACBrHelper.Create;
+      try
+        LHelper.Configurar(LCertificado, '1234', 'SP', 2);
+        AssertFalse(LHelper.EnviarCartaCorrecao(
+          '35260100000000000000550010000000011000000010',
+          'Correcao valida com mais de quinze caracteres', 1),
+          'CC-e simulada devolve False');
+      finally
+        LHelper.Free;
+        LHelper := nil;
+      end;
+      ASuite.AddResult('TestNFeCartaCorrecaoComConfiguracao', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeCartaCorrecaoComConfiguracao', False, E.Message);
+    end;
+  end;
+
+  procedure TestInutilizarJustificativaCurta;
+  begin
+    try
+      LHelper := TACBrHelper.Create;
+      try
+        LHelper.Configurar(LCertificado, '1234', 'SP', 2);
+        AssertTrue(RecusouInutilizar(55, 1, 1, 10, 'curta'),
+          'justificativa com menos de 15 caracteres deve ser recusada');
+      finally
+        LHelper.Free;
+        LHelper := nil;
+      end;
+      ASuite.AddResult('TestNFeInutilizarJustificativaCurta', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeInutilizarJustificativaCurta', False, E.Message);
+    end;
+  end;
+
+  procedure TestInutilizarFaixaInvalida;
+  begin
+    try
+      LHelper := TACBrHelper.Create;
+      try
+        LHelper.Configurar(LCertificado, '1234', 'SP', 2);
+        AssertTrue(RecusouInutilizar(55, 1, 10, 1,
+          'Justificativa valida com mais de quinze caracteres'),
+          'faixa com final menor que o inicial deve ser recusada');
+        AssertTrue(RecusouInutilizar(99, 1, 1, 10,
+          'Justificativa valida com mais de quinze caracteres'),
+          'modelo diferente de 55/65 deve ser recusado');
+      finally
+        LHelper.Free;
+        LHelper := nil;
+      end;
+      ASuite.AddResult('TestNFeInutilizarFaixaInvalida', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeInutilizarFaixaInvalida', False, E.Message);
+    end;
+  end;
+
+  procedure TestInutilizarComConfiguracao;
+  begin
+    try
+      LHelper := TACBrHelper.Create;
+      try
+        LHelper.Configurar(LCertificado, '1234', 'SP', 2);
+        AssertFalse(LHelper.InutilizarNumeracao(55, 1, 1, 10, 2026,
+          'Justificativa valida com mais de quinze caracteres'),
+          'inutilização simulada devolve False');
+      finally
+        LHelper.Free;
+        LHelper := nil;
+      end;
+      ASuite.AddResult('TestNFeInutilizarComConfiguracao', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeInutilizarComConfiguracao', False, E.Message);
+    end;
+  end;
+
+  procedure TestProximaSequenciaCce;
+  var
+    LChave: string;
+    LI: Integer;
+  begin
+    try
+      LChave := Copy('35' + LSufixo + StringOfChar('0', 44), 1, 44);
+      for LI := 1 to 2 do
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'INSERT INTO LOG_SISTEMA (EMPRESA_ID, USUARIO_ID, TABELA, ' +
+          '  OPERACAO, REGISTRO_ID, DADOS_NOVOS, DATA_OPERACAO, DATA_HORA) ' +
+          'VALUES (:EMP, :USR, ''NFE'', ''CCE'', 0, :DADOS, ' +
+          '  CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';
+        LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+        LQuery.ParamByName('USR').AsLargeInt := LSessao.UsuarioId;
+        LQuery.ParamByName('DADOS').AsString := 'CHAVE=' + LChave;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+      end;
+
+      LHelper := TACBrHelper.Create;
+      try
+        AssertEquals('3', IntToStr(LHelper.ProximaSequenciaCce(LChave)),
+          'duas CC-e auditadas devem deixar a sequência em 3');
+      finally
+        LHelper.Free;
+        LHelper := nil;
+      end;
+      ASuite.AddResult('TestNFeProximaSequenciaCce', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeProximaSequenciaCce', False, E.Message);
+    end;
+  end;
+
   { XML de NF-e (com prefixo de namespace de proposito) importado como
     nota de entrada: fornecedor por CNPJ, produto por codigo, fiscal do
     documento e recusa da mesma chave na segunda tentativa. }
@@ -942,6 +1130,13 @@ begin
     TestCancelarComConfiguracao;
     TestManifestarSemConfiguracao;
     TestManifestarComConfiguracao;
+    TestCartaCorrecaoCurta;
+    TestCartaCorrecaoChaveInvalida;
+    TestCartaCorrecaoComConfiguracao;
+    TestInutilizarJustificativaCurta;
+    TestInutilizarFaixaInvalida;
+    TestInutilizarComConfiguracao;
+    TestProximaSequenciaCce;
     TestImportarXmlNotaEntrada;
   finally
     LimparSobraPorSufixo;

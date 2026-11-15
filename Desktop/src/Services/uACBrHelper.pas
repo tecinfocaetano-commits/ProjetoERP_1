@@ -68,6 +68,10 @@ type
     function CancelarReal(const AChave, AJustificativa: string): Boolean;
     function ManifestarReal(const AChave: string;
       ATipoManifestacao: Integer): Boolean;
+    function CartaCorrecaoReal(const AChave, ACorrecao: string;
+      ASequencia: Integer): Boolean;
+    function InutilizarReal(AModelo, ASerie, ANumInicial, ANumFinal,
+      AAno: Integer; const AJustificativa: string): Boolean;
 {$ENDIF}
   public
     constructor Create;
@@ -89,6 +93,19 @@ type
     function ManifestarNFe(const AChave: string;
       ATipoManifestacao: Integer): Boolean;
 
+    { Eventos fiscais do emitente (F3):
+      - EnviarCartaCorrecao: CC-e; ASequencia é o nSeqEvento (1..20);
+      - InutilizarNumeracao: inutiliza uma faixa de NF-e/NFC-e.
+      Em modo simulado as duas devolvem False, como o cancelamento. }
+    function EnviarCartaCorrecao(const AChave, ACorrecao: string;
+      ASequencia: Integer = 1): Boolean;
+    function InutilizarNumeracao(AModelo, ASerie, ANumInicial, ANumFinal,
+      AAno: Integer; const AJustificativa: string): Boolean;
+
+    { Próximo nSeqEvento da CC-e para a chave, contando os eventos já
+      auditados em LOG_SISTEMA (1 quando ainda não houve CC-e). }
+    function ProximaSequenciaCce(const AChave: string): Integer;
+
     property CaminhoSchemas: string read FCaminhoSchemas write FCaminhoSchemas;
     property CaminhoSalvar: string read FCaminhoSalvar write FCaminhoSalvar;
     property CaminhoCertificado: string read FCaminhoCertificado;
@@ -105,6 +122,17 @@ implementation
 
 uses
   uConexao, SQLDB, uAuditoria, uSessao, uNFeXmlService, uNotaSaidaService;
+
+{ Extrai só os dígitos (usado fora do bloco ACBR para validar a chave). }
+function SoDigitos(const AValor: string): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  for I := 1 to Length(AValor) do
+    if AValor[I] in ['0'..'9'] then
+      Result := Result + AValor[I];
+end;
 
 {$IFDEF ACBR}
 { ------------------------------------------------------------------
@@ -449,6 +477,101 @@ begin
 {$ELSE}
   raise Exception.Create(
     'Manifestação real indisponível: recompile o aplicativo com o ACBr (-dACBR).');
+{$ENDIF}
+end;
+
+{ ------------------------------------------------------------------
+  Eventos fiscais do emitente (F3)
+  ------------------------------------------------------------------ }
+
+function TACBrHelper.ProximaSequenciaCce(const AChave: string): Integer;
+var
+  LQuery: TSQLQuery;
+  LChave: string;
+begin
+  Result := 1;
+  LChave := SoDigitos(AChave);
+  if LChave = '' then
+    Exit;
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := TConexao.GetInstance.Connection;
+    LQuery.Transaction := TConexao.GetInstance.Transaction;
+    LQuery.SQL.Text :=
+      'SELECT COUNT(*) AS QTD FROM LOG_SISTEMA ' +
+      'WHERE TABELA = ''NFE'' AND OPERACAO = ''CCE'' ' +
+      '  AND DADOS_NOVOS CONTAINING :CHAVE';
+    LQuery.ParamByName('CHAVE').AsString := LChave;
+    LQuery.Open;
+    Result := LQuery.Fields[0].AsInteger + 1;
+  finally
+    LQuery.Free;
+  end;
+  if Result > 20 then
+    Result := 20;
+end;
+
+function TACBrHelper.EnviarCartaCorrecao(const AChave, ACorrecao: string;
+  ASequencia: Integer): Boolean;
+var
+  LCorrecao: string;
+begin
+  Result := False;
+  if Length(SoDigitos(AChave)) <> 44 then
+    raise Exception.Create(
+      'Chave da NF-e inválida: informe os 44 dígitos.');
+  LCorrecao := Trim(ACorrecao);
+  if Length(LCorrecao) < 15 then
+    raise Exception.Create('A correção deve ter no mínimo 15 caracteres.');
+  if Length(LCorrecao) > 1000 then
+    raise Exception.Create('A correção deve ter no máximo 1000 caracteres.');
+  if (ASequencia < 1) or (ASequencia > 20) then
+    raise Exception.Create(
+      'A sequência da CC-e deve estar entre 1 e 20.');
+
+  ValidarConfiguracao;
+  if FModoSimulado then
+    Exit;
+
+{$IFDEF ACBR}
+  Result := CartaCorrecaoReal(AChave, LCorrecao, ASequencia);
+{$ELSE}
+  raise Exception.Create(
+    'Carta de Correção real indisponível: recompile o aplicativo com o ACBr (-dACBR).');
+{$ENDIF}
+end;
+
+function TACBrHelper.InutilizarNumeracao(AModelo, ASerie, ANumInicial,
+  ANumFinal, AAno: Integer; const AJustificativa: string): Boolean;
+var
+  LJustificativa: string;
+begin
+  Result := False;
+  if not (AModelo in [55, 65]) then
+    raise Exception.Create('Modelo inválido: use 55 (NF-e) ou 65 (NFC-e).');
+  if (ASerie < 0) or (ASerie > 999) then
+    raise Exception.Create('Série inválida para inutilização.');
+  if (ANumInicial <= 0) or (ANumFinal < ANumInicial) then
+    raise Exception.Create(
+      'Faixa de numeração inválida: o número final deve ser maior ou igual ao inicial.');
+  if (AAno < 2000) or (AAno > 2100) then
+    raise Exception.Create('Ano inválido para inutilização.');
+  LJustificativa := Trim(AJustificativa);
+  if Length(LJustificativa) < 15 then
+    raise Exception.Create('A justificativa deve ter no mínimo 15 caracteres.');
+  if Length(LJustificativa) > 255 then
+    raise Exception.Create('A justificativa deve ter no máximo 255 caracteres.');
+
+  ValidarConfiguracao;
+  if FModoSimulado then
+    Exit;
+
+{$IFDEF ACBR}
+  Result := InutilizarReal(AModelo, ASerie, ANumInicial, ANumFinal, AAno,
+    LJustificativa);
+{$ELSE}
+  raise Exception.Create(
+    'Inutilização real indisponível: recompile o aplicativo com o ACBr (-dACBR).');
 {$ENDIF}
 end;
 
@@ -1543,6 +1666,157 @@ begin
   if not Result then
     raise Exception.CreateFmt(
       'Manifestação rejeitada (cStat %d): %s', [LCStat, LMotivo]);
+end;
+
+function TACBrHelper.CartaCorrecaoReal(const AChave, ACorrecao: string;
+  ASequencia: Integer): Boolean;
+var
+  LConexao: TConexao;
+  LQuery: TSQLQuery;
+  LNFe: TACBrNFe;
+  LChave, LCNPJ, LProtocolo: string;
+  LCStat: Integer;
+  LNotaId: Int64;
+  LMotivo: string;
+begin
+  LChave := SomenteDigitos(AChave);
+  if Length(LChave) <> 44 then
+    raise Exception.Create(
+      'Chave da NF-e inválida: informe os 44 dígitos.');
+
+  LConexao := TConexao.GetInstance;
+  LNotaId := 0;
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := LConexao.Connection;
+    LQuery.Transaction := LConexao.Transaction;
+    LQuery.SQL.Text := 'SELECT CNPJ FROM EMPRESA WHERE ID = :EMP';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.Open;
+    if LQuery.IsEmpty then
+      raise Exception.Create('Empresa da sessão não encontrada.');
+    LCNPJ := SomenteDigitos(LQuery.FieldByName('CNPJ').AsString);
+    LQuery.Close;
+
+    LQuery.SQL.Text :=
+      'SELECT FIRST 1 ID FROM NOTA_SAIDA WHERE CHAVE_ACESSO = :CHAVE';
+    LQuery.ParamByName('CHAVE').AsString := LChave;
+    LQuery.Open;
+    if not LQuery.IsEmpty then
+      LNotaId := LQuery.FieldByName('ID').AsLargeInt;
+    LQuery.Close;
+  finally
+    LQuery.Free;
+  end;
+
+  if Length(LCNPJ) <> 14 then
+    raise Exception.Create('CNPJ da empresa inválido para a CC-e.');
+
+  LNFe := GetACBrNFe;
+  ConfigurarACBr;
+  if Copy(LChave, 21, 2) = '65' then
+    LNFe.Configuracoes.Geral.ModeloDF := moNFCe
+  else
+    LNFe.Configuracoes.Geral.ModeloDF := moNFe;
+
+  LNFe.EventoNFe.Evento.Clear;
+  with LNFe.EventoNFe.Evento.New do
+  begin
+    infEvento.CNPJ := LCNPJ;
+    infEvento.cOrgao := StrToIntDef(Copy(LChave, 1, 2), 0);
+    infEvento.dhEvento := Now;
+    infEvento.tpEvento := teCCe;
+    infEvento.chNFe := LChave;
+    infEvento.nSeqEvento := ASequencia;
+    infEvento.detEvento.xCorrecao := ACorrecao;
+    infEvento.detEvento.xCondUso := '';
+  end;
+
+  if not LNFe.EnviarEvento(1) then
+    raise Exception.Create('Carta de Correção não enviada: ' +
+      Trim(LNFe.WebServices.EnvEvento.xMotivo));
+
+  LCStat := LNFe.WebServices.EnvEvento.EventoRetorno.cStat;
+  LMotivo := Trim(LNFe.WebServices.EnvEvento.EventoRetorno.xMotivo);
+  LProtocolo := '';
+  if LNFe.WebServices.EnvEvento.EventoRetorno.retEvento.Count > 0 then
+  begin
+    LCStat := LNFe.WebServices.EnvEvento.EventoRetorno.retEvento.Items[0]
+      .RetInfEvento.cStat;
+    LMotivo := Trim(LNFe.WebServices.EnvEvento.EventoRetorno.retEvento
+      .Items[0].RetInfEvento.xMotivo);
+    LProtocolo := Trim(LNFe.WebServices.EnvEvento.EventoRetorno.retEvento
+      .Items[0].RetInfEvento.nProt);
+  end;
+
+  Result := LCStat in [135, 136, 155];
+  if not Result then
+    raise Exception.CreateFmt(
+      'Carta de Correção rejeitada (cStat %d): %s', [LCStat, LMotivo]);
+
+  RegistrarAuditoria('NFE', 'CCE', LNotaId, '',
+    ResumoAuditoria(['CHAVE=' + LChave,
+      'SEQUENCIA=' + IntToStr(ASequencia),
+      'PROTOCOLO=' + LProtocolo,
+      'CSTAT=' + IntToStr(LCStat)]));
+end;
+
+function TACBrHelper.InutilizarReal(AModelo, ASerie, ANumInicial,
+  ANumFinal, AAno: Integer; const AJustificativa: string): Boolean;
+var
+  LConexao: TConexao;
+  LQuery: TSQLQuery;
+  LNFe: TACBrNFe;
+  LCNPJ: string;
+  LCStat: Integer;
+  LMotivo, LProtocolo: string;
+begin
+  LConexao := TConexao.GetInstance;
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := LConexao.Connection;
+    LQuery.Transaction := LConexao.Transaction;
+    LQuery.SQL.Text := 'SELECT CNPJ FROM EMPRESA WHERE ID = :EMP';
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.Open;
+    if LQuery.IsEmpty then
+      raise Exception.Create('Empresa da sessão não encontrada.');
+    LCNPJ := SomenteDigitos(LQuery.FieldByName('CNPJ').AsString);
+    LQuery.Close;
+  finally
+    LQuery.Free;
+  end;
+
+  if Length(LCNPJ) <> 14 then
+    raise Exception.Create('CNPJ da empresa inválido para a inutilização.');
+
+  LNFe := GetACBrNFe;
+  ConfigurarACBr;
+  if AModelo = 65 then
+    LNFe.Configuracoes.Geral.ModeloDF := moNFCe
+  else
+    LNFe.Configuracoes.Geral.ModeloDF := moNFe;
+
+  LNFe.Inutilizar(LCNPJ, AJustificativa, AAno, ASerie, ANumInicial,
+    ANumFinal);
+
+  LCStat := LNFe.WebServices.Inutilizacao.cStat;
+  LMotivo := Trim(LNFe.WebServices.Inutilizacao.xMotivo);
+  LProtocolo := Trim(LNFe.WebServices.Inutilizacao.Protocolo);
+
+  Result := (LCStat = 102) or (LCStat = 563);
+  if not Result then
+    raise Exception.CreateFmt(
+      'Inutilização rejeitada (cStat %d): %s', [LCStat, LMotivo]);
+
+  RegistrarAuditoria('NFE', 'INUTILIZACAO', 0, '',
+    ResumoAuditoria(['MODELO=' + IntToStr(AModelo),
+      'SERIE=' + IntToStr(ASerie),
+      'ANO=' + IntToStr(AAno),
+      'INICIAL=' + IntToStr(ANumInicial),
+      'FINAL=' + IntToStr(ANumFinal),
+      'PROTOCOLO=' + LProtocolo,
+      'CSTAT=' + IntToStr(LCStat)]));
 end;
 {$ENDIF}
 

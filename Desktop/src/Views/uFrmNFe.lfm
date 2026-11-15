@@ -134,7 +134,7 @@ object frmNFe: TfrmNFe
   end
   object pnlBotoes: TPanel
     Left = 0
-    Height = 40
+    Height = 72
     Top = 121
     Width = 900
     Align = alTop
@@ -189,11 +189,35 @@ object frmNFe: TfrmNFe
       Caption = 'Fechar'
       OnClick = btnFecharClick
     end
+    object btnCartaCorrecao: TBitBtn
+      Left = 8
+      Height = 32
+      Top = 40
+      Width = 140
+      Caption = 'Carta de Correção'
+      OnClick = btnCartaCorrecaoClick
+    end
+    object btnInutilizar: TBitBtn
+      Left = 156
+      Height = 32
+      Top = 40
+      Width = 110
+      Caption = 'Inutilizar'
+      OnClick = btnInutilizarClick
+    end
+    object btnManifestar: TBitBtn
+      Left = 274
+      Height = 32
+      Top = 40
+      Width = 120
+      Caption = 'Manifestar'
+      OnClick = btnManifestarClick
+    end
   end
   object dbGrid: TDBGrid
     Left = 0
-    Height = 389
-    Top = 161
+    Height = 357
+    Top = 193
     Width = 900
     Align = alClient
     DataSource = DataSource1
