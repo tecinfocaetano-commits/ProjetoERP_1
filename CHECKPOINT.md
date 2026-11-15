@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **369/369**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **376/376**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
@@ -35,9 +35,9 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (14/11/2026)
 
-**HEAD:** `46a984f` — "NF-e: materializa nota de saida apos autorizacao" (o
+**HEAD:** `c6652c1` — "NF-e: CC-e, inutilizacao e manifestacao na tela" (o
 commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
-**0/0** · suíte desktop **369/369** · API compilada
+**0/0** · suíte desktop **376/376** · API compilada
 (`Scripts\build_api.bat`) · testes Android **OK**
 (`Scripts\run_tests_android.bat`).
 
@@ -46,6 +46,17 @@ commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.65 — CC-e, inutilização e manifestação)
+
+| Item | Entrega |
+|---|---|
+| **Service (F3)** | `TACBrHelper.EnviarCartaCorrecao(chave, correção, sequência)`, `InutilizarNumeracao(modelo, série, inicial, final, ano, justificativa)` e `ProximaSequenciaCce(chave)`. Validação antes do envio: chave de 44 dígitos, correção 15..1000, sequência 1..20, modelo 55/65, faixa final ≥ inicial, justificativa 15..255. |
+| **Modo real** | `CartaCorrecaoReal` (evento `teCCe`, sucesso `cStat` 135/136/155) e `InutilizarReal` (`cStat` 102/563) sob `{$IFDEF ACBR}`; ambos auditam em `LOG_SISTEMA` (`NFE/CCE` e `NFE/INUTILIZACAO`) com chave, sequência, protocolo e `cStat`. Em simulação devolvem `False`, como o cancelamento. |
+| **Sequência da CC-e** | Derivada de `LOG_SISTEMA` (`TABELA='NFE'`, `OPERACAO='CCE'`, `DADOS_NOVOS CONTAINING <chave>`), limitada a 20 — sem coluna nova no banco. |
+| **Tela** | Segunda linha na toolbar de `uFrmNFe` (`pnlBotoes.Height=72`): **Carta de Correção** (chave do pedido selecionado), **Inutilizar** (modelo + `série/ano/inicial/final` + justificativa) e **Manifestar** (chave digitada + tipo 1..4). `PrepararEnvioReal` centraliza certificado/senha. |
+| **Teste** | 7 testes novos em `uNFeTest`: correção curta, chave inválida, CC-e simulada, justificativa curta, faixa/modelo inválidos, inutilização simulada e sequência da CC-e (2 eventos → 3). Suíte **376/376**. |
+| **Limpeza** | `LOG_SISTEMA` sem resíduo de `CCE`; warning de range check (`cStat 563`) corrigido com comparação explícita; `LNotaId` em `Int64`/`AsLargeInt`. |
 
 ### O que fechou nesta sessão (marco 3.64 — materialização da NF-e autorizada)
 
@@ -247,7 +258,7 @@ cabeçalho pai.
 ### Próximo passo (executável)
 
 1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**369/369** ou mais); API
+   `Scripts\run_tests.bat` (**376/376** ou mais); API
    `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
    (**5/5**). Configuração de banco/JWT por ambiente já está no marco
    3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
@@ -270,9 +281,12 @@ cabeçalho pai.
    (desktop e API/Android/banco) retornaram 40 itens priorizados. Ordem
    acordada para atacar:
    - **Fiscal (maior risco):** F1 fechado no marco 3.63 (importação real
-     de XML) e F2 no 3.64 (materialização de `NOTA_SAIDA`, estoque,
-     financeiro e XML após a autorização). Falta F3
-     (DANFE/NFC-e/manifestação/CC-e/inutilização).
+     de XML), F2 no 3.64 (materialização de `NOTA_SAIDA`, estoque,
+     financeiro e XML após a autorização) e a primeira parte do F3 no
+     3.65 (CC-e, inutilização e manifestação na tela). Falta do F3:
+     **DANFE** (`TACBrNFeDANFeFPDF`, exige registrar
+     `ACBr_NFe_DanfeFPDF` no Lazarus ou pôr as units FPDF no path) e
+     **NFC-e no PDV** (emitir ao finalizar a venda em `uFrmPDV`).
    - **Acesso e empresa:** T1 (permissões em todas as telas) e T4
      (consultas por `EMPRESA_ID`). T2/T3/F7 (login) fechados no marco 3.62.
    - **API:** D3 (linkar `Desktop\src\Services` no build), F4+D9 (ID na

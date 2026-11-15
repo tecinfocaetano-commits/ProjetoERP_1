@@ -10,18 +10,18 @@ Regras: responder em português; terminar toda resposta com exatamente 3 linhas 
 
 Estado em 14/11/2026:
 
-- **HEAD:** `46a984f` (NF-e: materializa nota de saida apos autorizacao). Árvore limpa após o commit de docs.
-- Suíte desktop **369/369**; build desktop **0/0**; testes Android **OK**.
-- Concluído nesta etapa: **materialização da NF-e autorizada** (marco 3.64, §3.64): `TNotaSaidaService.MaterializarAutorizada` cria/reaproveita a `NOTA_SAIDA` do pedido, grava número/série/modelo/chave/protocolo/XML da SEFAZ e fatura (baixa de estoque e contas a receber); `Faturar` preserva a chave autorizada; o saldo é conferido antes do envio e o XML fica em `Desktop\bin\nfe\<chave>.xml`. Antes disso fechou a **importação real de XML de NF-e** (3.63), o **login por empresa** (3.62), a **API com pool limpo e health check** (3.61) e a **configuração por ambiente** (3.60: `ERP_DB_*`, `ERP_JWT_SECRET`; ver `Documentacao\CONFIGURACAO_AMBIENTE.md`), além de **backup/restauração** (3.59) e do ciclo fiscal de teste (3.55–3.58).
-- Banco real conferido sem resíduos; a validação não persiste `NUMERO_NFE`/`CHAVE_NFE` e os testes de importação/materialização limpam nota/itens/produto/fornecedor.
+- **HEAD:** `c6652c1` (NF-e: CC-e, inutilizacao e manifestacao na tela). Árvore limpa após o commit de docs.
+- Suíte desktop **376/376**; build desktop **0/0**; testes Android **OK**.
+- Concluído nesta etapa: **CC-e, inutilização e manifestação na tela de NF-e** (marco 3.65, §3.65): `TACBrHelper.EnviarCartaCorrecao`/`InutilizarNumeracao`/`ProximaSequenciaCce`, eventos reais sob `{$IFDEF ACBR}` (CC-e `cStat` 135/136/155; inutilização 102/563), auditoria `NFE/CCE` e `NFE/INUTILIZACAO` e segunda linha de botões em `uFrmNFe`. Antes disso: **materialização da NF-e autorizada** (3.64), **importação real de XML de NF-e** (3.63), **login por empresa** (3.62), **API com pool limpo e health check** (3.61) e **configuração por ambiente** (3.60), além de **backup/restauração** (3.59) e do ciclo fiscal de teste (3.55–3.58).
+- Banco real conferido sem resíduos (`LOG_SISTEMA` sem `CCE`).
 - **Auditorias de completude concluídas** (desktop e API/Android/banco): itens priorizados em `Documentacao\ROADMAP_PRODUCAO.md`. Ordem: fiscal F3; acesso T1/T4; API D3, F4+D9, D4, D7/D8, F6/F9; gestão F5/F6/F9, F4/F13, relatórios/backup.
-- **Próximo passo:** F3 (DANFE, NFC-e no PDV, manifestação, CC-e e inutilização), mantendo build 0/0 e suíte 369/369. Usar os pedidos **1003** e **3581** na validação local; legados 997/998/1000 ficam fora do cenário fiscal.
+- **Próximo passo:** terminar o F3 — DANFE (`TACBrNFeDANFeFPDF`; registrar `ACBr_NFe_DanfeFPDF` no Lazarus ou pôr as units FPDF no path) e NFC-e no PDV (`uPDVService.SalvarVenda` → `uFrmPDV`) —, mantendo build 0/0 e suíte **376/376**. Usar os pedidos **1003** e **3581** na validação local; legados 997/998/1000 ficam fora do cenário fiscal.
 
 Comandos:
 
 - `Scripts\build_desktop.bat` → esperado 0/0.
 - `Scripts\build_api.bat` → compila `API\bin\ERP2026API.exe`.
-- `Scripts\build_tests.bat` + `Scripts\run_tests.bat` → esperado **369/369**.
+- `Scripts\build_tests.bat` + `Scripts\run_tests.bat` → esperado **376/376**.
 - `Scripts\run_tests_android.bat` → esperado **5/5**.
 - `Scripts\preparar_acbr.bat` → copia schemas/DLLs para `Desktop\bin`.
 - `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1` → gera `C:\certificados\teste.pfx` (só para validação local).
@@ -33,6 +33,6 @@ Comandos:
 - Banco: `Banco\dados.fdb` (SYSDBA/masterkey); Firebird 5 em `C:\Program Files\Firebird\Firebird_5_0`.
 - Configuração de produção (banco/JWT): ver `Documentacao\CONFIGURACAO_AMBIENTE.md`.
 
-Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md` e o §3.64 do `Documentacao\PLANO_E_LOG.md`.
+Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md` e o §3.65 do `Documentacao\PLANO_E_LOG.md`.
 
 ---

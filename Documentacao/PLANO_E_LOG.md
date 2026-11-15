@@ -1853,6 +1853,49 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.65 CC-e, inutilização e manifestação na tela (14/11)
+
+- **Objetivo:** avançar o F3 com os eventos fiscais do emitente que não
+  dependem de impressão — Carta de Correção, inutilização de numeração e
+  manifestação do destinatário.
+- **Service:** `TACBrHelper` ganhou `EnviarCartaCorrecao(chave, correção,
+  sequência)`, `InutilizarNumeracao(modelo, série, inicial, final, ano,
+  justificativa)` e `ProximaSequenciaCce(chave)`. Toda validação roda antes
+  de qualquer acesso à SEFAZ: chave com 44 dígitos, correção 15..1000,
+  sequência 1..20, modelo 55/65, série 0..999, faixa final ≥ inicial,
+  justificativa 15..255. Em modo simulado devolvem `False`, igual ao
+  cancelamento, sem rede.
+- **Modo real:** `CartaCorrecaoReal` monta o evento `teCCe` com CNPJ,
+  `cOrgao`, `dhEvento`, `nSeqEvento` e `xCorrecao`, envia por
+  `EnviarEvento(1)` e considera sucesso `cStat` 135/136/155.
+  `InutilizarReal` chama `LNFe.Inutilizar` e considera sucesso `cStat` 102
+  (homologada) ou 563 (duplicidade já registrada). Ambos auditam em
+  `LOG_SISTEMA` (`NFE/CCE` e `NFE/INUTILIZACAO`) com chave, sequência,
+  protocolo e `cStat`; a CC-e grava também o `ID` da `NOTA_SAIDA` quando a
+  chave está cadastrada.
+- **Sequência da CC-e:** derivada de `LOG_SISTEMA` (`TABELA='NFE'`,
+  `OPERACAO='CCE'`, `DADOS_NOVOS CONTAINING <chave>`) e limitada a 20, sem
+  coluna nova no banco.
+- **Tela:** segunda linha na toolbar de `uFrmNFe` (`pnlBotoes.Height=72`):
+  **Carta de Correção** (chave do pedido selecionado + texto),
+  **Inutilizar** (modelo + `série/ano/inicial/final` + justificativa) e
+  **Manifestar** (chave digitada + tipo 1..4). `PrepararEnvioReal`
+  centraliza a checagem de certificado e a senha; com **Modo simulado**
+  marcado as três ações só mostram a confirmação na tela.
+- **Ajustes:** `LCStat in [102, 563]` gerava warning de range check
+  (constante 563 em `set of Byte`) — trocado por comparação explícita;
+  `LNotaId` passou a `Int64`/`AsLargeInt` para acompanhar o `ID` do banco.
+- **Teste:** 7 testes novos em `uNFeTest`
+  (`TestNFeCartaCorrecaoCurta`, `...ChaveInvalida`,
+  `...ComConfiguracao`, `TestNFeInutilizarJustificativaCurta`,
+  `...FaixaInvalida`, `...ComConfiguracao`, `TestNFeProximaSequenciaCce`).
+  Suíte desktop **376/376**; `LOG_SISTEMA` sem resíduo `CCE`.
+- **Pendente do F3:** DANFE (`TACBrNFeDANFeFPDF`; o pacote
+  `ACBr_NFe_DanfeFPDF` não está registrado no Lazarus) e NFC-e no PDV.
+- **Commit:** `c6652c1`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

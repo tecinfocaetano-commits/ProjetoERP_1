@@ -12,7 +12,7 @@ polimento/dívida.
 
 | # | Prior. | Item | Onde |
 |---|---|---|---|
-| F3 | A | Sem DANFE, cupom/NFC-e no PDV, manifestação do destinatário, CC-e ou inutilização na UI. | `uFrmNFe.pas`, `uFrmPDV.pas` |
+| F3 | A | Falta DANFE e cupom/NFC-e no PDV. CC-e, inutilização e manifestação já estão na UI (marco 3.65). | `uFrmNFe.pas`, `uFrmPDV.pas` |
 | F13 | M | Cadastro de produto não expõe/persiste peso, `PRODUTO_FISCAL_ID`, fornecedor e imagem. | `uProdutoService.pas`, `uFrmProdutos.pas` |
 | F14 | M | `ACRESCIMO` de pedido/item nunca é lido nem gravado (frete/encargos). | `uPedidoVendaService.pas`, telas de pedido |
 
@@ -74,7 +74,7 @@ polimento/dívida.
 
 ## Ordem de execução acordada
 
-1. **F3** — fechar o ciclo fiscal de ponta a ponta (F1 no marco 3.63 e F2 no 3.64).
+1. **F3** — fechar o ciclo fiscal de ponta a ponta (F1 no marco 3.63, F2 no 3.64 e CC-e/inutilização/manifestação no 3.65; faltam DANFE e NFC-e no PDV).
 2. **T1 + T4 + F7 (login da API)** — controle de acesso e isolamento por empresa.
 3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services, ID/índices, auditoria e numeração por empresa.
 4. **D7 + D8** — banco novo confiável a partir do repositório.
@@ -87,6 +87,7 @@ polimento/dívida.
 - **D1/D2** — banco e JWT por variáveis de ambiente (marco 3.60).
 - **F1 (fiscal)** — importação real de XML de NF-e em `uNFeXmlService`, com fornecedor/produto, fiscal do documento, recusa de chave repetida e limpeza de nota parcial (marco 3.63).
 - **F2 (fiscal)** — NF-e autorizada materializa `NOTA_SAIDA` (chave/protocolo da SEFAZ), baixa estoque, gera contas a receber e salva o XML; saldo conferido antes do envio (marco 3.64).
+- **F3 parcial (fiscal)** — CC-e (com sequência derivada do `LOG_SISTEMA`), inutilização de numeração e manifestação do destinatário na tela de NF-e, com validação, auditoria e 7 testes novos (marco 3.65).
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
 - **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
 - **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).
