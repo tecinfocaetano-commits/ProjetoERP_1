@@ -115,7 +115,10 @@ uses
   sem certificado apenas os dados fiscais são conferidos. O resultado
   vai para bin\nfe\validacao_<id>.txt. Nada é enviado à SEFAZ.
   O certificado e a senha também podem vir das variáveis de ambiente
-  ERP_NFE_CERT e ERP_NFE_SENHA. }
+  ERP_NFE_CERT e ERP_NFE_SENHA.
+
+  Reimpressão do DANFE/cupom (off-line, a partir do XML autorizado):
+    ERP2026.exe --danfe=<chave de 44 dígitos> }
 function ParametroOuAmbiente(const APrefixo, AVariavel: string): string;
 var
   LIndice: Integer;
@@ -339,6 +342,57 @@ begin
   end;
 end;
 
+{ Reimpressão do DANFE (modelo 55) ou do cupom (modelo 65) em PDF a partir
+  do XML autorizado já salvo em bin\nfe. Uso:
+    ERP2026.exe --danfe=<chave de 44 dígitos> }
+procedure GerarDANFEPorLinhaDeComando(const AArg: string);
+const
+  PREFIXO = '--danfe=';
+var
+  LChave, LArquivo, LBase, LRelatorio: string;
+  LHelper: TACBrHelper;
+  LTexto: TStringList;
+begin
+  LChave := Trim(Copy(AArg, Length(PREFIXO) + 1, MaxInt));
+  if Length(LChave) <> 44 then
+  begin
+    EscreverConsole('Uso: ERP2026.exe --danfe=<chave de 44 digitos>');
+    Finalizar(2);
+  end;
+
+  LBase := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)));
+  ForceDirectories(LBase + 'nfe');
+  LRelatorio := LBase + 'nfe' + PathDelim + 'danfe_' + LChave + '.txt';
+  TConexao.GetInstance.Conectar;
+  TSessao.GetInstance.Logar(1, 1, 1, 'DANFE', 'danfe', True);
+
+  LTexto := TStringList.Create;
+  LHelper := TACBrHelper.Create;
+  try
+    try
+      LHelper.ModoSimulado := False;
+      LHelper.CaminhoSchemas := LBase + 'schemas';
+      LHelper.CaminhoSalvar := LBase + 'nfe';
+      LArquivo := LHelper.GerarDANFEPDF(LChave);
+      LTexto.Add('OK: DANFE gerado em ' + LArquivo);
+      LTexto.SaveToFile(LRelatorio);
+      EscreverConsole(LTexto.Text);
+      Finalizar(0);
+    except
+      on E: Exception do
+      begin
+        LTexto.Add('ERRO: ' + E.Message);
+        LTexto.SaveToFile(LRelatorio);
+        EscreverConsole(LTexto.Text);
+        Finalizar(1);
+      end;
+    end;
+  finally
+    LHelper.Free;
+    LTexto.Free;
+  end;
+end;
+
 begin
   // Todo o sistema trata AnsiString como UTF-8 (fonte, LCL e Firebird com
   // CharSet=UTF8). Sem isto, o SQLDB converte os literais acentuados de
@@ -352,6 +406,10 @@ begin
   // Ferramenta de diagnóstico: valida o XML da NF-e sem enviar à SEFAZ.
   if (ParamCount >= 1) and (Pos('--validar-nfe=', ParamStr(1)) = 1) then
     ValidarNFePorLinhaDeComando(ParamStr(1));
+
+  // Reimpressão do DANFE/cupom a partir do XML autorizado.
+  if (ParamCount >= 1) and (Pos('--danfe=', ParamStr(1)) = 1) then
+    GerarDANFEPorLinhaDeComando(ParamStr(1));
 
   // Login
   Application.CreateForm(TfrmLogin, frmLogin);

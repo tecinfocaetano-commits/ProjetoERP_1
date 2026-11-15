@@ -858,6 +858,51 @@ var
     end;
   end;
 
+  procedure TestDANFEChaveInvalida;
+  begin
+    try
+      LHelper := TACBrHelper.Create;
+      try
+        LHelper.Configurar(LCertificado, '1234', 'SP', 2);
+        try
+          LHelper.GerarDANFEPDF('123');
+          AssertTrue(False, 'chave sem 44 dígitos deve ser recusada');
+        except
+          on E: Exception do
+            AssertTrue(Pos('44', E.Message) > 0,
+              'mensagem deve citar os 44 dígitos');
+        end;
+      finally
+        LHelper.Free;
+        LHelper := nil;
+      end;
+      ASuite.AddResult('TestNFeDANFEChaveInvalida', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeDANFEChaveInvalida', False, E.Message);
+    end;
+  end;
+
+  procedure TestDANFEModoSimulado;
+  begin
+    try
+      LHelper := TACBrHelper.Create;
+      try
+        LHelper.Configurar(LCertificado, '1234', 'SP', 2);
+        AssertEquals('',
+          LHelper.GerarDANFEPDF('35260100000000000000550010000000011000000010'),
+          'DANFE em modo simulado não gera arquivo');
+      finally
+        LHelper.Free;
+        LHelper := nil;
+      end;
+      ASuite.AddResult('TestNFeDANFEModoSimulado', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeDANFEModoSimulado', False, E.Message);
+    end;
+  end;
+
   { XML de NF-e (com prefixo de namespace de proposito) importado como
     nota de entrada: fornecedor por CNPJ, produto por codigo, fiscal do
     documento e recusa da mesma chave na segunda tentativa. }
@@ -1137,6 +1182,8 @@ begin
     TestInutilizarFaixaInvalida;
     TestInutilizarComConfiguracao;
     TestProximaSequenciaCce;
+    TestDANFEChaveInvalida;
+    TestDANFEModoSimulado;
     TestImportarXmlNotaEntrada;
   finally
     LimparSobraPorSufixo;

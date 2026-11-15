@@ -213,6 +213,14 @@ object frmNFe: TfrmNFe
       Caption = 'Manifestar'
       OnClick = btnManifestarClick
     end
+    object btnDANFE: TBitBtn
+      Left = 402
+      Height = 32
+      Top = 40
+      Width = 90
+      Caption = 'DANFE'
+      OnClick = btnDANFEClick
+    end
   end
   object dbGrid: TDBGrid
     Left = 0

@@ -10,7 +10,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils,
+  ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils, LCLIntf,
   uConexao, uSessao, uACBrHelper, uPedidoStatus;
 
 type
@@ -33,6 +33,7 @@ type
     btnCartaCorrecao: TBitBtn;
     btnInutilizar: TBitBtn;
     btnManifestar: TBitBtn;
+    btnDANFE: TBitBtn;
     pnlConfig: TPanel;
     lblAmbiente: TLabel;
     cmbAmbiente: TComboBox;
@@ -56,6 +57,7 @@ type
     procedure btnCartaCorrecaoClick(Sender: TObject);
     procedure btnInutilizarClick(Sender: TObject);
     procedure btnManifestarClick(Sender: TObject);
+    procedure btnDANFEClick(Sender: TObject);
   private
     FConexao: TConexao;
     FQuery: TSQLQuery;
@@ -556,6 +558,44 @@ end;
 procedure TfrmNFe.btnFiltrarClick(Sender: TObject);
 begin
   CarregarPedidos;
+end;
+
+{ DANFE/cupom: gera o PDF a partir do XML autorizado do pedido e abre o
+  arquivo no leitor padrão do sistema. }
+procedure TfrmNFe.btnDANFEClick(Sender: TObject);
+var
+  LChave, LArquivo: string;
+begin
+  if FQuery.IsEmpty then Exit;
+  LChave := Trim(FQuery.FieldByName('CHAVE_NFE').AsString);
+  if Length(LChave) <> 44 then
+  begin
+    MessageDlg('Selecione um pedido com NF-e autorizada (chave de 44 dígitos).',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
+  if chkSimulado.Checked then
+  begin
+    MessageDlg('DANFE simulado: nenhum PDF é gerado.' + #13#10 +
+      'Chave: ' + LChave, mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  try
+    LArquivo := FACBr.GerarDANFEPDF(LChave);
+    if LArquivo = '' then
+      MessageDlg('DANFE não gerado.', mtWarning, [mbOK], 0)
+    else
+    begin
+      MessageDlg('DANFE gerado:' + #13#10 + LArquivo,
+        mtInformation, [mbOK], 0);
+      OpenDocument(LArquivo);
+    end;
+  except
+    on E: Exception do
+      MessageDlg('Erro: ' + E.Message, mtError, [mbOK], 0);
+  end;
 end;
 
 procedure TfrmNFe.btnFecharClick(Sender: TObject);

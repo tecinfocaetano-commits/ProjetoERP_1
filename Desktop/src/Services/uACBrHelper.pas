@@ -19,6 +19,7 @@ uses
 {$IFDEF ACBR}
   , ACBrNFe, ACBrNFeNotasFiscais, ACBrNFe.Classes,
   ACBrDFeConfiguracoes, ACBrDFeSSL, ACBrDFeUtil,
+  ACBrNFeDANFeFPDF, ACBrNFCeDANFeFPDF,
   pcnConversao, pcnConversaoNFe
 {$ENDIF}
   ;
@@ -72,6 +73,7 @@ type
       ASequencia: Integer): Boolean;
     function InutilizarReal(AModelo, ASerie, ANumInicial, ANumFinal,
       AAno: Integer; const AJustificativa: string): Boolean;
+    function GerarDANFEPDFReal(const AChave: string): string;
 {$ENDIF}
   public
     constructor Create;
@@ -105,6 +107,11 @@ type
     { Próximo nSeqEvento da CC-e para a chave, contando os eventos já
       auditados em LOG_SISTEMA (1 quando ainda não houve CC-e). }
     function ProximaSequenciaCce(const AChave: string): Integer;
+
+    { Gera o DANFE (modelo 55) ou o cupom (modelo 65) em PDF a partir do
+      XML autorizado da chave. Devolve o caminho do PDF gerado; em modo
+      simulado devolve '' sem criar arquivo. }
+    function GerarDANFEPDF(const AChave: string): string;
 
     property CaminhoSchemas: string read FCaminhoSchemas write FCaminhoSchemas;
     property CaminhoSalvar: string read FCaminhoSalvar write FCaminhoSalvar;
@@ -572,6 +579,27 @@ begin
 {$ELSE}
   raise Exception.Create(
     'Inutilização real indisponível: recompile o aplicativo com o ACBr (-dACBR).');
+{$ENDIF}
+end;
+
+function TACBrHelper.GerarDANFEPDF(const AChave: string): string;
+var
+  LChave: string;
+begin
+  Result := '';
+  LChave := SoDigitos(AChave);
+  if Length(LChave) <> 44 then
+    raise Exception.Create(
+      'Chave da NF-e inválida: informe os 44 dígitos.');
+
+  if FModoSimulado then
+    Exit;
+
+{$IFDEF ACBR}
+  Result := GerarDANFEPDFReal(LChave);
+{$ELSE}
+  raise Exception.Create(
+    'DANFE indisponível: recompile o aplicativo com o ACBr (-dACBR).');
 {$ENDIF}
 end;
 
@@ -1817,6 +1845,113 @@ begin
       'FINAL=' + IntToStr(ANumFinal),
       'PROTOCOLO=' + LProtocolo,
       'CSTAT=' + IntToStr(LCStat)]));
+end;
+
+function TACBrHelper.GerarDANFEPDFReal(const AChave: string): string;
+var
+  LConexao: TConexao;
+  LQuery: TSQLQuery;
+  LNfe: TACBrNFe;
+  LNota: NotaFiscal;
+  LArquivo, LModelo: string;
+  LXml: TStringList;
+  LModeloDF: Integer;
+begin
+  Result := '';
+  LConexao := TConexao.GetInstance;
+
+  { O XML autorizado fica em NOTA_SAIDA.XML_ARQUIVO; sem nota de saída,
+    procura o arquivo padrão <chave>.xml em CaminhoSalvar. }
+  LArquivo := '';
+  LQuery := TSQLQuery.Create(nil);
+  try
+    LQuery.DataBase := LConexao.Connection;
+    LQuery.Transaction := LConexao.Transaction;
+    LQuery.SQL.Text :=
+      'SELECT FIRST 1 XML_ARQUIVO FROM NOTA_SAIDA ' +
+      'WHERE CHAVE_ACESSO = :CHAVE AND EMPRESA_ID = :EMP';
+    LQuery.ParamByName('CHAVE').AsString := AChave;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.Open;
+    if not LQuery.IsEmpty then
+      LArquivo := Trim(LQuery.FieldByName('XML_ARQUIVO').AsString);
+    LQuery.Close;
+  finally
+    LQuery.Free;
+  end;
+
+  if LArquivo <> '' then
+  begin
+    if not FileExists(LArquivo) then
+      LArquivo := IncludeTrailingPathDelimiter(FCaminhoSalvar) +
+        ExtractFileName(LArquivo);
+  end
+  else
+    LArquivo := IncludeTrailingPathDelimiter(FCaminhoSalvar) + AChave + '.xml';
+
+  { O ACBr grava o XML processado como <chave>-nfe.xml/<chave>-nfce.xml;
+    aceitamos também o nome usado pelo EmitirReal (<chave>.xml). }
+  if not FileExists(LArquivo) then
+    LArquivo := IncludeTrailingPathDelimiter(FCaminhoSalvar) +
+      AChave + '-nfe.xml';
+  if not FileExists(LArquivo) then
+    LArquivo := IncludeTrailingPathDelimiter(FCaminhoSalvar) +
+      AChave + '-nfce.xml';
+
+  if not FileExists(LArquivo) then
+    raise Exception.Create(
+      'XML autorizado não encontrado para a chave ' + AChave +
+      '. Reemita ou salve o XML em ' + FCaminhoSalvar + '.');
+
+  LModeloDF := StrToIntDef(Copy(AChave, 21, 2), 55);
+  if (LModeloDF <> 55) and (LModeloDF <> 65) then
+    raise Exception.CreateFmt(
+      'Modelo %d não suportado para DANFE (use 55 ou 65).', [LModeloDF]);
+  if LModeloDF = 65 then
+    LModelo := 'NFC-e'
+  else
+    LModelo := 'NF-e';
+
+  ConfigurarACBr(False);
+  LNfe := GetACBrNFe;
+  if LModeloDF = 65 then
+  begin
+    LNfe.Configuracoes.Geral.ModeloDF := moNFCe;
+    if not Assigned(LNfe.DANFE) then
+      LNfe.DANFE := TACBrNFCeDANFeFPDF.Create(LNfe);
+  end
+  else
+  begin
+    LNfe.Configuracoes.Geral.ModeloDF := moNFe;
+    if not Assigned(LNfe.DANFE) then
+      LNfe.DANFE := TACBrNFeDANFeFPDF.Create(LNfe);
+  end;
+  LNfe.DANFE.PathPDF := FCaminhoSalvar;
+
+  LXml := TStringList.Create;
+  try
+    LXml.LoadFromFile(LArquivo);
+    LNfe.NotasFiscais.Clear;
+    LNota := LNfe.NotasFiscais.Add;
+    if not LNota.LerXML(LXml.Text) then
+      raise Exception.Create('XML autorizado inválido: ' + LArquivo);
+    try
+      LNota.ImprimirPDF;
+    except
+      on E: Exception do
+        raise Exception.CreateFmt(
+          'Falha ao gerar o DANFE (%s) da chave %s: %s',
+          [LModelo, AChave, E.Message]);
+    end;
+  finally
+    LXml.Free;
+  end;
+
+  Result := Trim(LNfe.DANFE.ArquivoPDF);
+  if (Result = '') or (not FileExists(Result)) then
+    raise Exception.Create(
+      'O DANFE foi processado, mas o PDF não foi localizado em ' +
+      FCaminhoSalvar + '.');
 end;
 {$ENDIF}
 

@@ -430,7 +430,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="src/Config;src/Models;src/Views;src/Controllers;src/Services;src/Repositories;src/DTOs;src/Utils;src/Tests;../IA"/>
+      <OtherUnitFiles Value="src/Config;src/Models;src/Views;src/Controllers;src/Services;src/Repositories;src/DTOs;src/Utils;src/Tests;../IA;C:/ACBr/Fontes/ACBrDFe/ACBrNFe/DANFE/NFe/FPDF;C:/ACBr/Fontes/ACBrDFe/ACBrNFe/DANFE/NFCe/FPDF"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
