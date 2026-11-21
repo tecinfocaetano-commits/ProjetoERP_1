@@ -57,6 +57,29 @@ public final class ApiClient {
         return post(caminho, corpoJson, true);
     }
 
+    /** GET com token. Lança Exception em falha de rede/timeout. */
+    public static Result get(String caminho) throws Exception {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(urlBase + caminho);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(15000);
+            conn.setRequestProperty("Accept", "application/json");
+            if (token != null && !token.isEmpty()) {
+                conn.setRequestProperty("Authorization", "Bearer " + token);
+            }
+            int status = conn.getResponseCode();
+            InputStream is = status >= 400 ? conn.getErrorStream() : conn.getInputStream();
+            return new Result(status, ler(is));
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
     /** POST JSON sem token (usado pelo login). */
     public static Result postSemToken(String caminho, String corpoJson) throws Exception {
         return post(caminho, corpoJson, false);

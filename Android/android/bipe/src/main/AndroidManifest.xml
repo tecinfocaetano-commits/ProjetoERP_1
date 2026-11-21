@@ -22,6 +22,7 @@
         </activity>
 
         <activity android:name=".BipagemActivity"/>
+        <activity android:name=".HistoricoActivity"/>
 
         <!-- Tela de captura do ZXing (lê o código de barras pela câmera) -->
         <activity

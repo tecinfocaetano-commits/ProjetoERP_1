@@ -134,6 +134,8 @@ public class BipagemActivity extends AppCompatActivity {
         });
         // envio manual da fila offline (além do automático no onResume)
         btnSync.setOnClickListener(v -> sincronizar());
+        findViewById(R.id.btnHistoricoServidor).setOnClickListener(v ->
+                startActivity(new Intent(this, HistoricoActivity.class)));
 
         editCodigo.requestFocus();
     }
