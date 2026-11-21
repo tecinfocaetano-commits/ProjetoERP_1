@@ -1,0 +1,56 @@
+name: ERP 2026 - Bateria (self-hosted)
+
+# Esta pipeline roda NA MAQUINA DE DESENVOLVIMENTO (self-hosted), porque o
+# build usa Lazarus/FPC 3.2.2, Firebird 5, os scripts .bat locais e a API
+# ja rodando na porta 9000. Nao tenta recompilar a API: build_api.bat falha
+# com error code 5 quando o ERP2026API.exe esta em uso. Para recompilar,
+# pare a API manualmente, avise no COMUNICACAO_AGENTES.md e reinicie.
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  desktop-e-android:
+    name: Desktop, testes, :bipe e :app
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build desktop
+        shell: cmd
+        run: Scripts\build_desktop.bat
+
+      - name: Testes unitarios desktop
+        shell: cmd
+        run: Scripts\run_tests.bat
+
+      - name: Build do app de bipagem (:bipe)
+        shell: cmd
+        run: Scripts\build_bipe.bat
+
+      - name: Testes Android (:app e :bipe)
+        shell: cmd
+        run: Scripts\run_tests_android.bat
+
+      - name: Smoke das 33 telas
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\telas_todas_ui.ps1
+
+      - name: Permissoes de menu
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\permissoes_menu.ps1
+
+  api-smoke:
+    name: Smokes da API (9000)
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      # Nao inicia nem reinicia a API. Se /api/health nao responder, o
+      # script falha com mensagem clara; o operador deve subir a API e
+      # registrar o reinicio no canal de agentes.
+      - name: Rodar os 6 smokes
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_todos.ps1

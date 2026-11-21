@@ -35,7 +35,7 @@ polimento/dívida.
 | F5 | A | **CONCLUÍDO (marco 3.76):** `ProximoNumero` filtra por `EMPRESA_ID`, igual ao desktop. | `uRotasOrcamentos.pas` |
 | F1 | A | **CONCLUÍDO (marco 3.79):** `PUT/DELETE /api/produtos/:id`, `PUT/DELETE /api/orcamentos/:id` (só STATUS 'O') e `POST /api/vendas` (STATUS 'P'), todos via Services com validação, isolamento e auditoria atômica. | `uRotasProdutos.pas`, `uRotasOrcamentos.pas`, `uRotasVendas.pas`, `uOrcamentoService.pas`, `uProdutoService.pas` |
 | F6 | M | **CONCLUÍDO (marco 3.77):** paginação opcional com `total`/`total_paginas` em vendas e financeiro; sem parâmetros o array de até 100 é mantido. | `uPaginacao.pas`, rotas de vendas/financeiro |
-| D10 | M | Sem CI e sem testes de API. | repositório |
+| D10 | M | **CONCLUÍDO (marco 3.83):** `.github\workflows\bateria.yml` (self-hosted) e `Scripts\testes\api_todos.ps1` com os 6 smokes e checagem de `/api/health`. | repositório |
 | D11 | B | App: `usesCleartextTraffic`, token sem checar `exp`, CORS `*`. | `AndroidManifest.xml`, `Sessao.java`, `uMiddlewareCORS.pas` |
 | F10 | B | `DELETE /api/clientes` físico (a auditoria `PESSOA/D` já foi fechada em 3.74; falta decidir exclusão lógica). | `uRotasClientes.pas` |
 
@@ -79,7 +79,7 @@ polimento/dívida.
 3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services e auditoria concluída (D3 no 3.70; F4+D9 no 3.72; D4 no 3.74; D5+F5 no 3.76).
 4. **D7 + D8** — banco novo confiável a partir do repositório (concluído no 3.77).
 5. **F6 + F9 + F1 + bipe + preferência de homologação** — paginação no 3.77; F9 no 3.78; F1 no 3.79; app `:bipe` fechado e testado no 3.80; interruptor único de NF-e/NFC-e e PDV em homologação no 3.81. `:bipe` agora entra na bateria padrão.
-6. **D10/D11, F3/F2/F8 (Android), F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios, HTTPS/deploy e backup pela aplicação.
+6. **D10 (concluído 3.83), app `:pdv` (3.82, outro agente), D11, F3/F2/F8 (Android), F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — HTTPS/CORS/token, ciclo de vida de pedidos, cadastros estruturantes, relatórios, deploy e backup pela aplicação.
 7. **F8, F10, F11, F12, F14, T5, D10, D11** — completudes e dívida.
 
 ## Já resolvido (não reabrir)
@@ -101,6 +101,7 @@ polimento/dívida.
 - **F1 (API)** — CRUD completo de produtos/orçamentos e criação de venda pela API, com regra nos Services, STATUS 'O' protegido na edição/exclusão de orçamento, STATUS 'P' na venda e auditoria atômica corrigida em `TProdutoService` (marco 3.79).
 - **Preferência de homologação (pedido do usuário)** — checkbox em *Sistema > Configurações* grava `NFE_AMBIENTE=2` + `NFE_MODO=REAL` na `CONFIGURACAO` da empresa; desativar volta a `NFE_MODO=SIMULADO`. `TACBrHelper` e o PDV leem as mesmas chaves, sem estado redundante (marco 3.81).
 - **App `:bipe` de talão — CONCLUÍDO** (marco 3.80, outro agente): feedback visual/vibração/código lido e resultado acima do teclado; ciclo validado no Samsung A55. Incluído na bateria via `Scripts\build_bipe.bat`; código de `Android\android\bipe\**` não é alterado por esta sessão.
+- **D10 — CI local e smokes unificados** (marco 3.83): `.github\workflows\bateria.yml` roda desktop/testes/`:bipe`/`:app`/telas/permissões e, em job separado, `Scripts\testes\api_todos.ps1` (6 smokes com `/api/health`). API não é recompilada nem reiniciada pela pipeline.
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
 - **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
 - **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).

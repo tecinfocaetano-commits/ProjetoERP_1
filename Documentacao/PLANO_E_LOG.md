@@ -2488,6 +2488,33 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.83 D10 — CI local e executor único dos smokes da API (21/11)
+
+- **Pedido do usuário:** os agentes devem se atualizar e se comunicar de tempos
+  em tempos por `Documentacao\COMUNICACAO_AGENTES.md`. Foi formalizada uma
+  rotina no topo do canal: escrever ao iniciar/bloco e ao concluir, ler antes
+  de arquivo compartilhado, avisar antes de parar/reiniciar a API e registrar
+  "sem novidades" quando aplicável. O `PROMPT_AMANHA.md` agora repete a regra.
+- **Espaço de numeração:** 3.82 fica reservado ao app PDV mobile do outro
+  agente; este marco é 3.83.
+- **`Scripts\testes\api_todos.ps1`:** novo executor único dos 6 smokes
+  (`clientes_crud`, `auditoria`, `estoque_service`, `numeracao_empresa`,
+  `paginacao`, `f1`). Faz `GET /api/health` primeiro, para na primeira falha
+  com `$LASTEXITCODE` e **não inicia nem reinicia a API**. Resultado local:
+  **API-TODOS CONCLUIDO: 6 smokes OK**.
+- **`.github\workflows\bateria.yml`:** pipeline `self-hosted` (Lazarus/FPC,
+  Firebird e API já na 9000 vivem na máquina de desenvolvimento). Job 1:
+  build desktop + suíte + `:bipe` + `:app` + telas + permissões. Job 2:
+  `api_todos.ps1`. Não compila a API para não disputar o `.exe` com o
+  servidor em uso; recompilação continua manual e avisada no canal.
+- **Validação:** `api_todos.ps1` rodou com os 6 smokes OK contra a API já
+  ativa; `/api/health` = `ok`. Nenhuma mudança em cada um dos 6 scripts.
+- **Escopo:** nada em `uRotasPDV.pas`, `ERP2026API.lpr`, `:pdv/**`,
+  `AndroidManifest.xml` ou `Android\android\bipe\**`. Nenhum restart da API.
+- **Commits:** código/CI deste marco + docs.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

@@ -35,9 +35,10 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**Commits do marco 3.81:** `5da0c7d` — "Docs: marco 3.81 (homologacao),
-bipe na bateria e checklist"; abaixo, `462531f` — "Homologacao: preferencia
-no PDV e NF-e com teste". Pode haver commit de outro agente acima. Build: desktop **0/0** ·
+**Últimos marcos:** 3.83 (D10 — CI e `api_todos.ps1`), 3.81 (homologação) e
+3.80 (`:bipe`); 3.82 é o app PDV mobile do outro agente. O marco 3.81 está em
+`5da0c7d` (docs) e `462531f` (código). Pode haver commit de outro agente
+acima. Build: desktop **0/0** ·
 suíte desktop **385/385** · `build_api.bat` **OK** (pare a API antes de
 compilar, senão o `.exe` fica travado) · testes Android **9/9** ·
 `build_bipe.bat` **OK** (APK do app de bipagem de talão) · smoke de
@@ -54,6 +55,16 @@ API não foi reiniciada neste marco (mudança desktop-only); `/api/health` = `ok
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.83 — D10: CI e smokes unificados)
+
+| Item | Entrega |
+|---|---|
+| **Canal** | Rotina formal de comunicação em `COMUNICACAO_AGENTES.md`: escrever ao iniciar/concluir cada bloco, ler antes de arquivo compartilhado, avisar antes de reiniciar a API e registrar "sem novidades". `PROMPT_AMANHA.md` reforça a regra. |
+| **CI** | `.github\workflows\bateria.yml` (self-hosted): desktop/suíte/`:bipe`/`:app`/telas/permissões num job e `api_todos.ps1` noutro. Não recompila a API. |
+| **API** | `Scripts\testes\api_todos.ps1` checa `/api/health`, executa os 6 smokes em ordem e falha na primeira erro; resultado local **6 smokes OK**. |
+| **Escopo** | Nada em `uRotasPDV.pas`, `ERP2026API.lpr`, `:pdv/**`, manifest dele ou `Android\android\bipe\**`. API não foi reiniciada. |
+| **Numeração** | 3.82 reservado ao PDV mobile do outro agente; este marco é 3.83. |
 
 ### O que fechou nesta sessão (marco 3.81 — preferência de homologação)
 
@@ -418,12 +429,14 @@ cabeçalho pai.
 
 ### Próximo passo (executável)
 
-1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**385/385** ou mais; o build usa `lazbuild -B`);
-   API `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
-   (**9/9**) e `Scripts\build_bipe.bat` (APK do talão). Configuração de
-   banco/JWT por ambiente já está no marco
-   3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
+1. **Antes de qualquer commit:** ler/escrever
+   `Documentacao\COMUNICACAO_AGENTES.md`; `Scripts\build_desktop.bat` (0/0)
+   e `Scripts\run_tests.bat` (**385/385** ou mais; o build usa `lazbuild -B`);
+   API `Scripts\build_api.bat` (pare a API antes); Android
+   `Scripts\run_tests_android.bat` (**9/9**) e `Scripts\build_bipe.bat`
+   (APK do talão); `Scripts\testes\api_todos.ps1` (6 smokes). Configuração
+   de banco/JWT por ambiente já está no marco 3.60 (ver
+   `Documentacao\CONFIGURACAO_AMBIENTE.md`).
 2. **NF-e real (ACBr/SEFAZ)** implementada no código (marco 3.55) e com
    validação local em lote (marco 3.57). Para emitir de verdade:
    preencher os dados fiscais/endereço de `EMPRESA`, do cliente
