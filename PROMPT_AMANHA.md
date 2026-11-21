@@ -1,6 +1,12 @@
 # Prompt de retomada — 21/11/2026
 
-Copie o bloco abaixo ao abrir uma nova sessão.
+Copie o bloco abaixo ao abrir uma nova sessão. **Versão completa e
+autocontida (recomendada após reinício da máquina):
+`PROMPT_RETOMADA_COMPLETO.md`** — inclui as novas exigências fiscais do
+usuário (nota de serviço diverso + XML, importação de XML na nota de entrada
+com tela para escolher/cadastrar produto, e tabela `IMPORTACAO_XML_ITEM` com
+CNPJ do fornecedor, descrição original, produto da nota e classificação
+fiscal). Este arquivo continua como resumo operacional.
 
 ---
 
@@ -16,7 +22,7 @@ Estado em 21/11/2026:
 - Banco real com índices D9 conferidos; duplicatas sem vínculo removidas (IDs 1237/1246/1247); `LOG_SISTEMA` sem resíduo de `CCE`.
 - **Coordenação:** o app `:bipe` foi **finalizado e testado pelo outro agente** (marco 3.80, Samsung A55 + talão) e já está na bateria. Ele segue no **app PDV mobile `:pdv`** e nos pagamentos eletrônicos (marco 3.85, Fase 0 no ar desde o rebuild do marco 3.86) — **não tocar** em `uRotasPDV.pas`, `uMiddlewareJWT.pas`, `uMiddlewareSessao.pas`, `uPagamentoService.pas`, migração `022`/`:pdv/**` nem no manifest dele. Ler/escrever `Documentacao\COMUNICACAO_AGENTES.md` no início/fim de cada bloco e antes de reiniciar a API; código de `Android\android\bipe\**` continua intocável salvo pedido explícito. API na 9000, **PID 18576**, com o fix do pool (3.86) e as rotas PDV/pagamentos.
 - **Auditorias de completude concluídas** (desktop e API/Android/banco): itens priorizados em `Documentacao\ROADMAP_PRODUCAO.md`, com F3/T1/T4/D3/F4/D9/D4/D5/F5/D7/D8/F6/F9/F1 + preferência de homologação + bipe + D10 concluídos. Ordem restante: **D11**, inclusão do `:pdv` na bateria quando o outro agente avisar, F3/F2/F8 (Android `:app`), F15/HTTPS/deploy e gestão/relatórios.
-- **Próximo passo:** rodar a bateria local/gratuita do `PROMPT_TESTES_FISCAIS_GRATUITOS.md` (pedido 1003, nunca 3581) se o usuário pedir; aguardar o fechamento do `:pdv` para incluí-lo em builds/testes/docs **só com autorização**; sem colidir, atacar **D11** (HTTPS/CORS/token) e depois o restante do roadmap. NFS-e (F16) e nota de entrada de serviços (F17) estão como plano no prompt §5/§6 — não implementar sem decisão de provedor. Preservar cenário fiscal (talão 533/mapa 1014/pedido 3581), `:bipe` e `:pdv`. Bateria a cada marco: desktop **385/385**, `build_bipe.bat` **OK**, `api_todos.ps1` (6 smokes), Android **9/9**, telas **33/33**, permissões **0 falhas**, schema e banco fresco.
+- **Próximo passo:** rodar a bateria local/gratuita do `PROMPT_TESTES_FISCAIS_GRATUITOS.md` (pedido 1003, nunca 3581) se o usuário pedir; aguardar o fechamento do `:pdv` para incluí-lo em builds/testes/docs **só com autorização**; sem colidir, atacar **D11** (HTTPS/CORS/token) e depois o restante do roadmap. NFS-e (F16) e nota de entrada de serviços (F17) estão como plano no prompt §5/§6 — não implementar sem decisão de provedor. **Novo pedido do usuário (marco 3.87):** seguir o `PROMPT_RETOMADA_COMPLETO.md` §5 — nota de serviço diverso + geração XML, importação de XML resolvendo produto (tela para escolher compatível ou cadastrar novo) e tabela `IMPORTACAO_XML_ITEM` com CNPJ/descrição original/produto da nota/classificação fiscal. Preservar cenário fiscal (talão 533/mapa 1014/pedido 3581), `:bipe` e `:pdv`. Bateria a cada marco: desktop **385/385**, `build_bipe.bat` **OK**, `api_todos.ps1` (6 smokes), Android **9/9**, telas **33/33**, permissões **0 falhas**, schema e banco fresco.
 
 Comandos:
 

@@ -16,7 +16,8 @@ polimento/dívida.
 | F13 | M | Cadastro de produto não expõe/persiste peso, `PRODUTO_FISCAL_ID`, fornecedor e imagem. | `uProdutoService.pas`, `uFrmProdutos.pas` |
 | F14 | M | `ACRESCIMO` de pedido/item nunca é lido nem gravado (frete/encargos). | `uPedidoVendaService.pas`, telas de pedido |
 | F16 | M | **PLANO (marco 3.86, não implementado): NFS-e de prefeitura.** Preferência por **Código do provedor** (`SIGCORP`, `BETA`, `NACIONAL`, `OUTRO`) em `CONFIGURACAO`, adapter do padrão nacional 2026 como principal e adapters legados por provedor; sem envio em testes locais. Detalhes em `PROMPT_TESTES_FISCAIS_GRATUITOS.md` §5. | `CONFIGURACAO`, `TNFSeHelper` (futuro) |
-| F17 | M | **PLANO (marco 3.86, não implementado): nota de entrada aceitar serviços/comunicação/internet e notas municipais.** Detectar `infNFS-e`/`RPS`/`InfDeclaracaoPrestacaoServico`, item sem NCM/CFOP/estoque, migração aditiva com `TIPO_DOCUMENTO`/`PROVEDOR` e dedupe por tipo. Detalhes no prompt §6. | `uNFeXmlParser`, `uNFeImportService`, `NOTA_ENTRADA` |
+| F17 | M | **PLANO (marco 3.86, não implementado): nota de entrada aceitar serviços/comunicação/internet e notas municipais.** Detectar `infNFS-e`/`RPS`/`InfDeclaracaoPrestacaoServico`, item sem NCM/CFOP/estoque, migração aditiva com `TIPO_DOCUMENTO`/`PROVEDOR` e dedupe por tipo. Detalhes no `PROMPT_TESTES_FISCAIS_GRATUITOS.md` §6 e no `PROMPT_RETOMADA_COMPLETO.md` §5. | `uNFeXmlParser`, `uNFeImportService`, `NOTA_ENTRADA` |
+| F18 | A | **PLANO (marco 3.87, não implementado): importação de XML com resolução de produto.** Verificar se o produto do XML já existe; se não existir, abrir tela para o usuário escolher um compatível ou cadastrar novo (pré-preenchido), sem criação automática. Tabela aditiva `IMPORTACAO_XML_ITEM` guarda CNPJ do fornecedor, descrição original da nota, produto da nota e classificação fiscal que veio, com dedupe por empresa+chave+código. | `uNFeImportService`, tela de mapeamento, `Banco\023_importacao_xml.sql` |
 
 ## 2. Acesso e isolamento por empresa
 
@@ -88,6 +89,10 @@ polimento/dívida.
    explícito do usuário. **F16/F17** — NFS-e e nota de entrada de serviços:
    apenas plano registrado no `PROMPT_TESTES_FISCAIS_GRATUITOS.md`, aguardando
    decisão de provedor e prazos do padrão nacional antes de virar código.
+9. **F18 (marco 3.87)** — tabela `IMPORTACAO_XML_ITEM` + tela de escolha/cadastro
+   de produto na importação de XML, depois integrada ao parser ampliado (F17).
+   Sequência prevista: 3.88 tabela/mapeamento → 3.89 nota de serviço + XML →
+   3.90 nota de entrada ampliada, conforme `PROMPT_RETOMADA_COMPLETO.md` §6.
 
 ## Já resolvido (não reabrir)
 

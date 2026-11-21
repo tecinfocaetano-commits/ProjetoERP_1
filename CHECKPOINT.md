@@ -35,7 +35,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**Últimos marcos:** 3.86 (pool/health da API — **a API caindo toda hora**),
+**Últimos marcos:** 3.87 (prompt completo de retomada + novos requisitos
+fiscais), 3.86 (pool/health da API — **a API caindo toda hora**),
 3.85 (pagamentos PDV do outro agente), 3.84 (cupom PDF), 3.83 (D10),
 3.81 (homologação) e 3.80 (`:bipe`); 3.82 é o app PDV mobile. O marco 3.86
 está em `9fa4a87` (código + docs). Pode haver commit de outro agente
@@ -61,6 +62,16 @@ sequenciais e **60/60 concorrentes (20 simultâneos, `KeepAlive=false`)**,
 
 - Nada deste agente. Outro agente segue no app `:pdv` (tela de espera/polling
   de pagamento); arquivos dele não são editados nem commitados aqui.
+
+### O que fechou nesta sessão (marco 3.87 — prompt de retomada + requisitos fiscais)
+
+| Item | Entrega |
+|---|---|
+| **Motivo** | Usuário vai reiniciar a máquina e pediu um prompt para continuar depois, "lembrando de tudo que solicitei". |
+| **Arquivo** | `PROMPT_RETOMADA_COMPLETO.md` — autocontido: regras de condução, estado do git/API, checklist pós-reboot, decisões já tomadas, bateria, limites e os novos requisitos fiscais. `PROMPT_AMANHA.md` passa a apontar para ele. |
+| **Novos requisitos registrados** | (1) nota de serviço diverso + geração de XML (NFS-e nacional + provedores Sigcorp/Beta/NACIONAL, `TNFSeHelper`, `NFSE_*`, validação off-line); (2) nota de entrada com importação de XML que **verifica se o produto existe** e, se não existir, **abre tela para escolher compatível ou cadastrar novo**; (3) tabela `IMPORTACAO_XML_ITEM` com **CNPJ do fornecedor, descrição original da nota, produto da nota e classificação fiscal que veio** (migração aditiva `023`, `DEFAULT` antes de `NOT NULL`, ≤31 chars). |
+| **Escopo** | Somente documentação/prompt. Nenhum código, migração, tela, build ou restart de API neste marco. Nada em `:pdv/**`, `uRotasPDV.pas`, `uConexao.pas`, cenário fiscal 533/1014/3581. `tmp_shots/` segue untracked. |
+| **Ordem futura** | 3.88 tabela + mapeamento de produto; 3.89 nota de serviço + XML; 3.90 nota de entrada ampliada — cada um com bateria + commit + push. |
 
 ### O que fechou nesta sessão (marco 3.86 — API estável: pool/health)
 

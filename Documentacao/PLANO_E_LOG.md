@@ -2659,3 +2659,47 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Escopo preservado:** nada em `:pdv/**`, `uRotasPDV.pas`, `:bipe/**`,
   `HistoricoActivity.java`, `settings.gradle`, cenário fiscal 533/1014/3581
   ou arquivos de pagamentos do outro agente. `tmp_shots/` segue untracked.
+
+### 3.87 Prompt completo de retomada + novos requisitos fiscais (21/11)
+
+- **Pedido do usuário:** vai reiniciar a máquina e pediu "um prompt para
+  continuar depois ... lembrando de tudo que solicitei como notas preparada
+  para nota de serviço diverso e geração xml e também as notas de entradas e
+  importação de xml, na importação do xml na nota de entrada verificar se um
+  produto ja existe se ele não existir abrir uma tela para o usuário escolher
+  um produto compatível ou cadastrar um novo, ter um tabela de importação xml
+  para salvar o cnpj do fornecedor a descrição original da nota e produto da
+  nota e a classificação fiscal que veio".
+- **Entrega:** `PROMPT_RETOMADA_COMPLETO.md`, prompt autocontido para colar
+  numa nova sessão. Reúne regras (português, 3 linhas Feito/Falta/Próximo,
+  canal, avisos de restart, limites de `:pdv`/`:bipe`/cenário fiscal), estado
+  do HEAD e da API, checklist pós-reboot (git, Firebird, subida da API com
+  aviso, health `banco=ok`, bateria), decisões já fechadas (homologação,
+  certificados autoassinados, pedido 1003), e os novos requisitos abaixo.
+  `PROMPT_AMANHA.md` agora aponta para ele e repete os novos requisitos.
+- **Requisito A — nota de serviço diverso + XML:** preparar emissão de
+  serviços (comunicação/internet, municipais) com `TNFSeHelper`, preferências
+  `NFSE_*` (inclusive **Código do provedor**: `SIGCORP`/`BETA`/`NACIONAL`/
+  `OUTRO`), geração/assinatura/validação de XML **off-line**, retenções de ISS,
+  auditoria e dedupe. Sem envio em `SIMULADO`.
+- **Requisito B — importação de XML na nota de entrada:** aceitar `infNFe`
+  (55/65) e `infNFS-e`/`RPS`/`InfDeclaracaoPrestacaoServico`; para cada item,
+  buscar produto por `cProd`+descrição+NCM no `EMPRESA_ID`; se achar vários,
+  mostrar compatíveis; se **não achar**, **não** criar automático — abrir tela
+  para **escolher produto compatível ou cadastrar novo** pré-preenchido;
+  reimportar a mesma chave reaproveita o mapeamento; itens de serviço sem
+  estoque/NCM/CFOP obrigatórios; auditoria `XML_FISCAL/IMPORTACAO_XML` e
+  `IMPORTACAO_XML/MAPEAMENTO_PRODUTO`.
+- **Requisito C — tabela de importação:** migração aditiva
+  `Banco\023_importacao_xml.sql` + rollback e `schema_canonico.sql`, com
+  `IMPORTACAO_XML_ITEM` guardando **FORNECEDOR_CNPJ**, **DESCRICAO_ORIGINAL**,
+  **CODIGO_PRODUTO_NOTA**, **CLASSIFICACAO_FISCAL** (além de NCM/CFOP/CST/
+  CEST, `PRODUTO_ID`, `SITUACAO` e chave do documento). Nomes ≤31,
+  `DEFAULT` antes de `NOT NULL`, sem rename; índice único por
+  empresa+chave+código do produto.
+- **Ordem futura:** 3.88 tabela + tela de mapeamento; 3.89 serviço + XML;
+  3.90 nota de entrada ampliada. Cada marco com bateria e push.
+- **Escopo:** só documentação neste marco — nenhum código, SQL aplicado, tela,
+  build ou restart de API. Arquivos do outro agente (`Documentacao\PROMPT_CONTINUACAO_PDV.md`,
+  `Documentacao\PROMPT_EXECUCAO_PAGAMENTOS.md`, commits `5e4e527`/`3f74ee5`)
+  não foram editados nem incluídos. `tmp_shots/` continua untracked.

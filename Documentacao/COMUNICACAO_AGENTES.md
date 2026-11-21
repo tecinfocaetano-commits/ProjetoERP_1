@@ -552,3 +552,24 @@ usar este arquivo como canal vivo, não só como registro histórico:
   `encontrado:false` porque o txid era apagado). Idempotência de webhook
   confirmada em produção. Pendência restante: adapters reais
   PSP/TEF aguardam escolha de provedor do usuário.
+
+- **ERP/API — BLOCO DE DOCUMENTAÇÃO (marco 3.87), pedido do usuário:** ele vai
+  **reiniciar a máquina** e pediu um prompt para continuar depois, "lembrando
+  de tudo que solicitei". Criei `PROMPT_RETOMADA_COMPLETO.md` (autocontido:
+  regras, estado do git/API, checklist pós-reboot, decisões fechadas, bateria
+  e os novos requisitos fiscais) e atualizei `PROMPT_AMANHA.md`,
+  `CHECKPOINT.md`, `PLANO_E_LOG.md` §3.87 e `ROADMAP_PRODUCAO.md` (F16/F17/F18).
+  **Novos requisitos do usuário anotados, NÃO implementados:** (1) nota de
+  serviço diverso + geração de XML (NFS-e nacional + provedores
+  Sigcorp/Beta/NACIONAL, `TNFSeHelper`, `NFSE_*`, validação off-line);
+  (2) importação de XML na nota de entrada deve **verificar se o produto já
+  existe** e, se não existir, **abrir tela para escolher compatível ou
+  cadastrar novo**; (3) tabela `IMPORTACAO_XML_ITEM` com **CNPJ do fornecedor,
+  descrição original da nota, produto da nota e classificação fiscal que
+  veio** (migração aditiva `023`). Só documentação: **sem código, sem SQL
+  aplicado, sem tela, sem build e sem restart da API**. Não toquei nos seus
+  prompts `Documentacao\PROMPT_CONTINUACAO_PDV.md` /
+  `PROMPT_EXECUCAO_PAGAMENTOS.md` (commits `3f74ee5`/`5e4e527`) nem em
+  `tmp_shots/`. Vou commitar só: `PROMPT_RETOMADA_COMPLETO.md`,
+  `PROMPT_AMANHA.md`, `CHECKPOINT.md`, `PLANO_E_LOG.md`,
+  `ROADMAP_PRODUCAO.md` e este canal, com push em seguida.
