@@ -13,6 +13,7 @@ uses
   Horse,
   uConexao,
   uMiddlewareJWT,
+  uMiddlewareSessao,
   uMiddlewareCORS,
   uMiddlewareConexao,
   uRotasLogin,
@@ -21,7 +22,8 @@ uses
   uRotasEstoque,
   uRotasVendas,
   uRotasOrcamentos,
-  uRotasFinanceiro;
+  uRotasFinanceiro,
+  uRotasProducao;
 
 procedure RotaHealth(Req: THorseRequest; Res: THorseResponse);
 begin
@@ -55,6 +57,8 @@ begin
 
   // Middleware JWT para rotas protegidas
   THorse.Use('/api', @MiddlewareJWT);
+  // D3: contexto da sessao por thread para os Services reutilizados
+  THorse.Use('/api', @MiddlewareSessao);
 
   // Registrar rotas
   RegistrarRotasClientes;
@@ -63,6 +67,7 @@ begin
   RegistrarRotasVendas;
   RegistrarRotasOrcamentos;
   RegistrarRotasFinanceiro;
+  RegistrarRotasProducao;
 
   WriteLn('=== ERP 2026 API REST ===');
   WriteLn('Servidor iniciado na porta 9000');
@@ -76,6 +81,7 @@ begin
   WriteLn('  GET/POST /api/orcamentos');
   WriteLn('  POST /api/orcamentos/:id/converter');
   WriteLn('  GET/POST /api/financeiro');
+  WriteLn('  POST /api/producao/bipar');
 
   // Primeira conexao (do thread principal) sinaliza que o banco esta no ar;
   // as requisicoes usam cada uma a sua conexao tirada do pool
