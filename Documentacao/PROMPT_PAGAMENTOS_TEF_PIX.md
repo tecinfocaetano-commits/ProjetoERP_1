@@ -46,7 +46,16 @@ REGRAS INEGOCIÁVEIS
 OBJETIVO
 
 Evoluir o PDV para pagamentos eletrônicos REAIS, substituindo a confirmação
-manual atual ("Aprovado — gerar cupom") por confirmação automática:
+manual atual ("Aprovado — gerar cupom") por confirmação automática.
+
+PRINCÍPIO ARQUITETURAL CENTRAL (pedido explícito do usuário):
+O sistema deve ser PREPARADO PARA DIVERSOS PROVEDORES — nenhuma regra de
+negócio, endpoint ou tela pode depender de um PSP/adquirente específico.
+Cada provedor é um adaptador plugável escolhido por configuração
+(CONFIGURACAO chave PAG_PROVIDER por empresa), permitindo trocar de
+banco/adquirente sem mexer em venda, cupom, caixa ou auditoria.
+Cobertura alvo de bandeiras: Visa, Mastercard, Elo (e Amex/Hipercard
+quando o adquirente suportar).
 
 1. CARTÃO (TEF): a venda só é registrada quando a maquininha/terminal
    APROVAR a transação.
@@ -67,9 +76,17 @@ A) Máquina de estados de pagamento (tabela nova PAGAMENTO ou colunas em
 
 B) Camada de adaptadores provider-neutral em Desktop/src/Services:
    interface IPaymentProvider com operações IniciarCobranca,
-   ConsultarStatus, Cancelar. Implementações concretas por provedor
+   ConsultarStatus, Cancelar (e Estornar quando suportado).
+   Implementações concretas por provedor
    (ex.: uPagamentoAsaas.pas, uPagamentoMercadoPago.pas,
-   uPagamentoEfí.pas, uTEFSitef.pas, uTEFPayGo.pas).
+   uPagamentoEfí.pas, uTEFSitef.pas, uTEFPayGo.pas, uTEFStone.pas...).
+   Um REGISTRY/factory resolve o provider ativo a partir da config
+   PAG_PROVIDER — adicionar provedor novo = criar 1 unit + registrar,
+   zero alteração no restante do sistema.
+   Bandeiras: o adaptador declara quais card schemes suporta
+   (VISA/MASTERCARD/ELO/AMEX...) e o app exibe ao operador; a validação
+   de PAN/Luhn e a captura de dados são SEMPRE do PSP/adquirente —
+   o ERP nunca armazena número de cartão completo (PCI-DSS).
    A rota API e o app Android NUNCA falam direto com o PSP.
 
 C) Novos endpoints na API (estender uRotasPDV.pas — coordenar no canal):
@@ -101,32 +118,44 @@ E) Segurança:
      transaction id, status e valor.
 
 PRINCIPAIS PROVEDORES A PREPARAR (pesquise APIs atuais antes de codar)
+Todos devem ser tratados como ADAPTADORES PLUGÁVEIS — implementar a
+interface e registrar, um por vez, começando pelos de sandbox gratuito.
 
 PIX (API-first, sandbox disponível — RECOMENDADO COMEÇAR POR AQUI):
 - Mercado Pago (preferencial: boa doc, sandbox, QR dinâmico, webhooks)
-- Asaas (sandbox, webhook, PIX + boleto + cartão)
+- Asaas (sandbox, webhook, PIX + boleto + cartão com split)
 - Efí/Gerencianet (Pix API oficial BACEN-style, webhooks)
 - PagBank/PagSeguro, Cora, Sicoob/Sicredi (APIs próprias ou via PSP)
-Cartão online (se o PDV um dia vender por link): Mercado Pago, Asaas.
+- Stone, InfinitePay, Ton (PIX + cartão integrado ao adquirente)
 
-TEF presencial (depende de contrato com adquirente — NÃO implementar sem
-modelo de terminal definido; deixar adapter stub + documentação):
-- Stone, Getnet (Santander), Rede, Cielo, PagSeguro/PagBank maquininha,
-  Ton/InfinitePay — cada um tem SDK/próprio protocolo (alguns via TEF
-  Sitef/PayGo que exigem homologação no TEF do adquirente)
-- Alternativa realista fase 1: maquininha "smart" com app do banco —
-  manter confirmação manual atual como fallback declarado.
+CARTÃO presencial — maquininhas/adquirentes (cada um cobre Visa,
+Mastercard e Elo conforme contrato; verificar bandeiras habilitadas
+por terminal no credenciamento):
+- Cielo, Rede (Santander), Stone, Getnet, PagBank/PagSeguro maquininha,
+  Ton, InfinitePay — TEF via Sitef/PayGo exige homologação no TEF do
+  adquirente; alguns oferecem SDK Android direto (smart POS).
+- Fase 1 realista: adapter stub + confirmação manual como fallback;
+  Fase 2: integrar o adquirente que o cliente efetivamente contratar.
+
+REGRA DE OURO: nunca "chumbar" provedor no código. Se o cliente trocar
+de Cielo para Stone, deve bastar trocar PAG_PROVIDER + credenciais.
 
 FASES SUGERIDAS
-Fase 0 — Descoberta: perguntar ao usuário QUAL provedor/PSP e QUAL
-         maquininha o cliente usa; obter credenciais de sandbox.
-         Sem isso, implementar apenas o esqueleto (interface + stub
-         SIMULADO para testes, claramente marcado como fake).
-Fase 1 — PIX via PSP com sandbox: iniciar cobrança → QR → webhook/
-         polling → APROVADO → venda+cupom. Homologar expiração/cancelamento.
-Fase 2 — TEF/adquirente escolhido: adapter real, conforme documentação
-         do provedor; manter stub SIMULADO para CI/testes.
-Fase 3 — Relatórios: conciliação PSP × MOVIMENTO_CAIXA, estorno/chargeback.
+Fase 0 — Descoberta + esqueleto: perguntar ao usuário QUAL provedor/PSP
+         será o primeiro (recomendação: Mercado Pago ou Asaas para PIX —
+         sandbox gratuito). Implementar JÁ a máquina de estados,
+         endpoints /api/pdv/pagamentos/*, tela de espera no app e o
+         registry de providers com um adapter SIMULADO (fake, marcado)
+         — tudo testável sem credenciais reais.
+Fase 1 — Primeiro PSP real com sandbox (PIX): iniciar cobrança → QR →
+         webhook/polling → APROVADO → venda+cupom. Homologar
+         expiração/cancelamento. Adicionar 2º PSP para provar que o
+         registry funciona (ex.: Asaas após Mercado Pago).
+Fase 2 — TEF/adquirente escolhido pelo cliente (Cielo, Stone, Rede,
+         Getnet...): adapter real conforme doc do provedor; fallback
+         manual permanece.
+Fase 3 — Relatórios: conciliação PSP × MOVIMENTO_CAIXA, estorno/
+         chargeback, demonstrativo por bandeira (Visa/MC/Elo).
 
 TESTES OBRIGATÓRIOS (banco de teste/sandbox apenas)
 - Aprovação PIX → venda criada 1x → cupom gerado.
@@ -147,11 +176,13 @@ ENTREGÁVEIS
 
 ## Notas para o usuário (fora do prompt)
 
-- **Fase 0 é indispensável:** antes de qualquer código real, precisamos
-  saber qual banco/PSP você usa (recomendação: Mercado Pago ou Asaas para
-  PIX — ambos têm sandbox gratuito) e qual maquininha (Stone, Cielo, Rede,
-  PagBank...). Sem isso, o agente só consegue entregar o esqueleto com
-  adaptador simulado.
+- **Diretriz registrada:** arquitetura multi-provedor plugável,
+  bandeiras Visa/Mastercard/Elo (o adquirente define quais bandeiras o
+  terminal aceita — o ERP só declara/filtra, nunca processa PAN).
+- **Fase 0 é indispensável para o PSP real:** precisamos saber qual
+  provedor será o primeiro (recomendação: Mercado Pago ou Asaas para
+  PIX — sandbox gratuito) e, para cartão, qual adquirente o cliente
+  vai contratar (Cielo, Stone, Rede, Getnet, PagBank...).
 - O esqueleto (máquina de estados + endpoints + tela de espera + stub
-  SIMULADO) **pode ser implementado já**, sem credenciais — quer que eu
-  peça a um agente para fazer essa Fase 0+esqueleto agora?
+  SIMULADO + registry) **pode ser implementado já**, sem credenciais —
+  quer que eu peça a um agente para fazer essa Fase 0+esqueleto agora?
