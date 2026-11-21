@@ -35,22 +35,36 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `5a3bd7b` — "F1: CRUD completo na API com auditoria atomica"
-(acima dele entra o commit de docs do marco 3.79). Build: desktop **0/0** ·
-suíte desktop **384/384** · `build_api.bat` **OK** (pare a API antes de
-compilar, senão o `.exe` fica travado) · testes Android **9/9** · smoke de
+**HEAD:** `462531f` — "Homologacao: preferencia no PDV e NF-e com teste"
+(acima dele entra o commit de docs do marco 3.81). Build: desktop **0/0** ·
+suíte desktop **385/385** · `build_api.bat` **OK** (pare a API antes de
+compilar, senão o `.exe` fica travado) · testes Android **9/9** ·
+`build_bipe.bat` **OK** (APK do app de bipagem de talão) · smoke de
 telas **33/33** · `permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1`
 e `banco_fresco.ps1` **OK** (585 campos, diff vazio, acentos conferidos) · na
 API 9000: `api_clientes_crud.ps1`, `api_auditoria.ps1` (6 logs),
 `api_estoque_service.ps1`, `api_numeracao_empresa.ps1`, `api_paginacao.ps1` e
 `api_f1.ps1` (7 logs) **OK**. Árvore: sem mudanças nossas após os commits;
 `tmp_shots/` (do smoke do `:bipe`) permanece untracked e não foi tocada.
+API não foi reiniciada neste marco (mudança desktop-only); `/api/health` = `ok`.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.81 — preferência de homologação)
+
+| Item | Entrega |
+|---|---|
+| **Onde fica** | Tabela `CONFIGURACAO`, campos `CHAVE`/`VALOR` da empresa da sessão: `NFE_AMBIENTE='2'` + `NFE_MODO='REAL'` liga; `NFE_MODO='SIMULADO'` desliga. |
+| **Tela** | Checkbox em *Sistema > Configurações* ("Modo homologação (NF-e/NFC-e e PDV)"), lido das chaves reais e com mensagem de confirmação. |
+| **Service** | `TConfiguracaoService.LerValor`, `HomologacaoAtiva`, `DefinirModoHomologacao`; auditoria `CONFIGURACAO/ALTERACAO` mantida. |
+| **Efeito** | `TACBrHelper` e o PDV já lia as chaves: `Ambiente=2` + `ModoSimulado=False` envia para a SEFAZ de homologação; NF-e/NFC-e e cupom do PDV usam a mesma preferência. |
+| **Teste** | `TestNFeModoHomologacao` valida ativação/desativação e restaura chaves, descrições e logs no `finally`. `build_tests.bat` passou a usar `-B` para não reaproveitar `.ppu` antigo. |
+| **Verificação** | Desktop **385/385**, telas **33/33**, permissões **0 falhas**, schema/banco fresco **OK**, Android **9/9**, `build_bipe.bat` **OK**, 6 smokes da API **OK**. |
+| **Bipe incluído** | A pedido do usuário, o app `:bipe` (marco 3.80, validado no Samsung A55) entra na bateria via `Scripts\build_bipe.bat`. Nenhum código de `Android\android\bipe\**` foi alterado; cenário fiscal preservado. |
 
 ### O que fechou nesta sessão (marco 3.79 — F1: CRUD completo na API)
 
@@ -404,9 +418,10 @@ cabeçalho pai.
 ### Próximo passo (executável)
 
 1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**384/384** ou mais); API
-   `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
-   (**5/5**). Configuração de banco/JWT por ambiente já está no marco
+   `Scripts\run_tests.bat` (**385/385** ou mais; o build usa `lazbuild -B`);
+   API `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
+   (**9/9**) e `Scripts\build_bipe.bat` (APK do talão). Configuração de
+   banco/JWT por ambiente já está no marco
    3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
 2. **NF-e real (ACBr/SEFAZ)** implementada no código (marco 3.55) e com
    validação local em lote (marco 3.57). Para emitir de verdade:
@@ -416,7 +431,10 @@ cabeçalho pai.
    senha na tela. Sem certificado, mantenha **Modo simulado** marcado.
    NFC-e real também exige `IdCSC`/`CSC`. No PDV, a emissão usa as chaves
    da `CONFIGURACAO` (`NFE_CERTIFICADO`, `NFE_AMBIENTE`, `NFE_MODO`,
-   `NFCE_ID_CSC`, `NFCE_CSC`) — ver marco 3.67.
+   `NFCE_ID_CSC`, `NFCE_CSC`) — ver marco 3.67. Para homologação, use o
+   checkbox em *Sistema > Configurações* (marco 3.81): grava
+   `NFE_AMBIENTE=2` + `NFE_MODO=REAL` e a emissão vai para a SEFAZ de
+   testes; desmarcar volta a `NFE_MODO=SIMULADO`.
 3. **Cenário fiscal de teste** criado no marco 3.58
    (`Scripts\preparar_cenario_fiscal.sql`, pedido 3581). Use os pedidos
    **1003** e **3581** para validar; os legados 997/998/1000 continuam

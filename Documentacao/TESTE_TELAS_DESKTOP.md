@@ -1,6 +1,6 @@
 ﻿# Teste de UI em todas as telas do desktop
 
-Gerado por `Scripts\testes\telas_todas_ui.ps1` em 21/11/2026 18:13 (HEAD `af66399`).
+Gerado por `Scripts\testes\telas_todas_ui.ps1` em 21/11/2026 18:24 (HEAD `b88cc85`).
 
 **Resultado: 33 OK, 0 aviso(s), 0 falha(s)** - 33 telas do menu.
 
@@ -41,7 +41,7 @@ sao lidos e fechados, e a tela por tras continua sendo validada.
 | 29 | 39 | PDV > Abrir PDV | PDV - Ponto de Venda | 19 | **OK** | evidencias/telas_39_pdv_ponto_de_venda.png |
 | 30 | 41 | Relatórios > Central de Relatórios... | Central de Relatórios | 6 | **OK** | evidencias/telas_41_central_de_relatorios.png |
 | 31 | 43 | IA Copiloto > Abrir Copiloto ERP | Copiloto ERP - Assistente Inteligente | 16 | **OK** | evidencias/telas_43_copiloto_erp_assistente_inteligente.png |
-| 32 | 45 | Sistema > Configurações | Configurações | 19 | **OK** | evidencias/telas_45_configuracoes.png |
+| 32 | 45 | Sistema > Configurações | Configurações | 20 | **OK** | evidencias/telas_45_configuracoes.png |
 | 33 | 46 | Sistema > Permissões | Permissões | 16 | **OK** | evidencias/telas_46_permissoes.png |
 
 Telas fora do menu cobertas em outros testes: **Login** (fluxo do `Start-ERPApp`),

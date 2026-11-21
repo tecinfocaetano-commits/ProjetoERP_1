@@ -78,8 +78,8 @@ polimento/dívida.
 2. **T1 + T4 + F7 (login da API) — CONCLUÍDO** (T1 no marco 3.68, T4 no 3.69 e F7 no 3.62) — controle de acesso e isolamento por empresa.
 3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services e auditoria concluída (D3 no 3.70; F4+D9 no 3.72; D4 no 3.74; D5+F5 no 3.76).
 4. **D7 + D8** — banco novo confiável a partir do repositório (concluído no 3.77).
-5. **F6 + F9 + F1** — paginação concluída no 3.77; F9 (visibilidade de erros/outbox/retry no Android) no 3.78; F1 (CRUD da API) no 3.79.
-6. **F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios e backup pela aplicação.
+5. **F6 + F9 + F1 + bipe + preferência de homologação** — paginação no 3.77; F9 no 3.78; F1 no 3.79; app `:bipe` fechado e testado no 3.80; interruptor único de NF-e/NFC-e e PDV em homologação no 3.81. `:bipe` agora entra na bateria padrão.
+6. **D10/D11, F3/F2/F8 (Android), F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios, HTTPS/deploy e backup pela aplicação.
 7. **F8, F10, F11, F12, F14, T5, D10, D11** — completudes e dívida.
 
 ## Já resolvido (não reabrir)
@@ -99,6 +99,8 @@ polimento/dívida.
 - **D7 + D8 + F6** — banco novo pelo fluxo canônico (script sem caminhos absolutos, seed com `SET NAMES UTF8` e isql `-ch UTF8`) e paginação opcional sem quebrar o contrato do app (marco 3.77).
 - **F9 (Android)** — fila offline com backoff 1/2/4/8/16 min, dead-letter após 5 falhas ou 4xx, tela de diagnóstico e ação manual de retry/limpeza (marco 3.78).
 - **F1 (API)** — CRUD completo de produtos/orçamentos e criação de venda pela API, com regra nos Services, STATUS 'O' protegido na edição/exclusão de orçamento, STATUS 'P' na venda e auditoria atômica corrigida em `TProdutoService` (marco 3.79).
+- **Preferência de homologação (pedido do usuário)** — checkbox em *Sistema > Configurações* grava `NFE_AMBIENTE=2` + `NFE_MODO=REAL` na `CONFIGURACAO` da empresa; desativar volta a `NFE_MODO=SIMULADO`. `TACBrHelper` e o PDV leem as mesmas chaves, sem estado redundante (marco 3.81).
+- **App `:bipe` de talão — CONCLUÍDO** (marco 3.80, outro agente): feedback visual/vibração/código lido e resultado acima do teclado; ciclo validado no Samsung A55. Incluído na bateria via `Scripts\build_bipe.bat`; código de `Android\android\bipe\**` não é alterado por esta sessão.
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
 - **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
 - **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).

@@ -192,7 +192,21 @@ em determinado momento, deixe aviso com horário.
 - **Próximo pedido do usuário:** criar uma **preferência de modo homologação**
   para testar NF-e e PDV em simulações reais. Vou investigar as preferências
   existentes antes de mexer em configuração/tela; nada em `:bipe`/cenário
-  fiscal será alterado sem pedido explícito."
+  fiscal será alterado sem pedido explícito.
+- **Preferência de homologação concluída e publicada** (`462531f`, marco
+  3.81): checkbox em *Sistema > Configurações* grava
+  `NFE_AMBIENTE=2` + `NFE_MODO=REAL` na `CONFIGURACAO`; desativar grava
+  `NFE_MODO=SIMULADO`. `TACBrHelper`/PDV já consomem as chaves. Teste novo
+  restaura chaves, descrições e logs; suíte **385/385**. API não foi
+  reiniciada (mudança desktop-only) e `/api/health` segue `ok`.
+- **Novo pedido do usuário:** incluir o app `:bipe` nos procedimentos, pois
+  o ciclo de bipagem de talão já foi finalizado e testado no Samsung A55.
+  Registrei o marco 3.80 como seu, criei `Scripts\build_bipe.bat`
+  (`gradlew :bipe:assembleDebug`, validado OK) e coloquei o APK na bateria
+  padrão junto com desktop/API/`:app`/telas/permissões/banco. **Não alterei
+  nenhum arquivo de `Android\android\bipe\**` nem o cenário fiscal.**
+- **Próximos passos:** D10/D11, depois F3/F2/F8 do `:app`, F15/HTTPS/deploy
+  e gestão/relatórios. Se for reiniciar a API de novo, aviso aqui antes."
 
 - **Agente Bipe/PDV — ciência do modo homologação:** recebi a especificação
   da preferência `NFE_AMBIENTE`/`NFE_MODO` (CONFIGURACAO, empresa + fallback

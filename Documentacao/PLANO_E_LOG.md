@@ -2442,6 +2442,52 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.81 Preferência de homologação para NF-e/NFC-e e PDV (21/11)
+
+- **Pedido do usuário:** um único interruptor para testar notas fiscais e o
+  PDV em homologação, com emissão real na SEFAZ de testes ("simulação real").
+- **Decisão:** não criar tabela/coluna nem estado redundante. A preferência
+  reusa a tabela `CONFIGURACAO` da empresa da sessão:
+  - ativa = `CHAVE='NFE_AMBIENTE'`, `VALOR='2'` **e**
+    `CHAVE='NFE_MODO'`, `VALOR='REAL'`;
+  - desativada = `NFE_MODO='SIMULADO'`, mantendo `NFE_AMBIENTE` configurado.
+  - `DESCRICAO` é apenas texto explicativo; o escopo é `EMPRESA_ID` da sessão
+    com fallback em `EMPRESA_ID IS NULL`.
+- **`TConfiguracaoService`:** novos `LerValor`, `HomologacaoAtiva` e
+  `DefinirModoHomologacao`; `Gravar` continua gravando `CONFIGURACAO/ALTERACAO`
+  em transação, então ligar/desligar fica auditado.
+- **Tela:** checkbox "Modo homologação (NF-e/NFC-e e PDV)" em
+  *Sistema > Configurações*, ao lado do interruptor `USA_GRADE`. O estado é
+  lido das chaves reais; se o usuário editar a grade, o checkbox reflete o
+  que está gravado. Mensagem informa explicitamente ambiente/modo.
+- **Consumidores:** `TACBrHelper.CarregarConfiguracaoFiscal` já lia
+  `NFE_AMBIENTE`/`NFE_MODO`, então NF-e, NFC-e, consultas e o PDV passaram a
+  usar a preferência sem mudança adicional. `Ambiente=2` +
+  `ModoSimulado=False` = SEFAZ de homologação.
+- **Teste:** `TestNFeModoHomologacao` ativa/desativa pelo Service, confere
+  `Ambiente=2`/`ModoSimulado` no helper e restaura valores, descrições e logs
+  (`CONFIGURACAO` acima de `LTopoLog`) no `finally`.
+- **Correção de infraestrutura:** `Scripts\build_tests.bat` agora usa
+  `lazbuild -B`; sem isso a suíte reaproveitou um `.ppu` antigo e executou
+  384 testes em vez dos 385.
+- **Bipe incluído na bateria (pedido do usuário):** criado
+  `Scripts\build_bipe.bat` (`gradlew :bipe:assembleDebug`), validado com
+  `BUILD SUCCESSFUL` e APK em `bipe\build\outputs\apk\debug\bipe-debug.apk`.
+  O app de talão já estava fechado/testado no marco 3.80 (Samsung A55);
+  nenhum arquivo Java/XML dele foi alterado aqui.
+- **Bateria:** desktop **385/385**, telas **33/33** (inclusive Configurações),
+  `permissoes_menu.ps1` **0 falhas**, `schema_roundtrip.ps1` e
+  `banco_fresco.ps1` **OK** (585 campos, diff vazio), Android **9/9**,
+  `build_desktop.bat` e `build_bipe.bat` **OK** e os 6 smokes da API **OK**
+  com `/api/health` = `ok`. API não precisou ser reiniciada (mudança
+  desktop-only).
+- **Escopo:** nenhum arquivo de `Android\android\bipe\**` tocado; o marco
+  3.80 pertence ao ajuste de bipe de outro agente. Cenário fiscal
+  (talão 533/mapa 1014/pedido 3581) preservado.
+- **Commits:** código (`462531f`) + docs deste marco, com `git push`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
