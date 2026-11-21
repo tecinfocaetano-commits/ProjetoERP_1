@@ -92,9 +92,10 @@ O QUE FALTA / PRÓXIMOS PASSOS POSSÍVEIS (em ordem de prioridade)
 1. ~~TESTE DE CAMPO~~ — **FEITO NO EMULADOR E NO APARELHO FÍSICO**
    (Samsung A55, marco 3.75+): ciclo completo OK/CONCLUSAO/DUPLICADO
    validado, fila offline sincronizou sozinha após restart da API, e
-   histórico do servidor OK. **Pendente apenas:** leitor/câmera física
-   — a bipagem foi digitada via `input text`; o botão "Ler pela câmera"
-   (ZXing) ainda não foi exercitado com um código de barras real.
+   histórico do servidor OK. **Câmera validada no aparelho** (18:15):
+   EAN-13 `7898083661293` lido pelo ZXing → enviado à API → `INVALIDO`
+   (não é talão) — scanner físico funcionando. App **completo e
+   testado em produção**.
 
 2. ~~MODO OFFLINE / FILA~~ — **IMPLEMENTADO**: tabela `pendente` no
    BipeDb (FIFO), envio automático no onResume/após bipagem e botão

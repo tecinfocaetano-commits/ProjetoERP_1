@@ -2241,7 +2241,9 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   o PC estava em USB tethering do celular (Wi-Fi do PC desconectado);
   IP correto para o app = `http://10.103.239.156:9000`, e foi preciso
   liberar a porta 9000 no Firewall (perfil Público → regra
-  `ERP2026API 9000`). Pendente só câmera/leitor físico.
+  `ERP2026API 9000`). **Câmera validada no aparelho:** EAN-13
+  `7898083661293` lido pelo ZXing → API → `INVALIDO` — scanner físico
+  funcionando. App `:bipe` **completo e testado**.
 - **Commits:** `71c18a5` (diagnóstico de erro no HistoricoActivity) +
   docs deste marco.
 
@@ -2373,6 +2375,46 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Coordenação:** API parada/recompilada/reiniciada na 9000 com aviso prévio
   no canal. Canal registra que o próximo bloco é F1 (CRUD da API).
 - **Commits:** código F9 + docs deste marco.
+
+---
+
+### 3.79 F1 — CRUD completo na API e auditoria atômica de produto (21/11)
+
+- **Escopo:** rotas `uRotasProdutos.pas`, `uRotasOrcamentos.pas`,
+  `uRotasVendas.pas`, lista de endpoints em `ERP2026API.lpr`, novos métodos em
+  `TOrcamentoService`, ajuste de auditoria em `TProdutoService` e variantes
+  sem `Commit` em `TRepositoryBase`. Nenhum arquivo de `Android\android\bipe\**`
+  nem o cenário fiscal foi tocado.
+- **Produtos:** `PUT /api/produtos/:id` e `DELETE /api/produtos/:id` usam
+  `TProdutoService` (mesma validação do desktop: descrição, categoria, unidade
+  e preço), conferem `EMPRESA_ID` do JWT e gravam `PRODUTO/U` e `PRODUTO/D`.
+- **Orçamentos:** `TOrcamentoService.AtualizarOrcamento` e
+  `ExcluirOrcamento` exigem STATUS 'O' da empresa da sessão, revalidam
+  cliente/itens/totais, substituem os itens por inteiro na mesma transação e
+  auditam `PEDIDO_VENDA/U` e `PEDIDO_VENDA/D`. A rota devolve 404 para registro
+  de outra empresa, 409 para rascunho já convertido e 400 para dados inválidos.
+- **Vendas:** `POST /api/vendas` usa `TPedidoVendaService.SalvarPedido` com
+  STATUS 'P', numeração/recalcimento de totais pelo Service e auditoria
+  `PEDIDO_VENDA/INSERT`. Resposta 201 com `id`, `numero`, `subtotal`,
+  `desconto` e `total`. Quando o app não envia `valor_unitario`, a rota busca
+  `PRECO_VENDA` do produto da empresa antes de chamar o Service.
+- **Correção descoberta pelo smoke:** o `TProdutoService` auditava **depois**
+  do `Commit` do repositório; no desktop o teste antigo passava, mas na API
+  os logs `U`/`D` desapareciam silenciosamente. Foram acrescentadas as
+  variantes `InserirParamNNaTransacao`, `AtualizarParamNNaTransacao` e
+  `ExcluirNaTransacao` em `TRepositoryBase`; o Service agora abre a transação,
+  grava, chama `LogOperacao` e confirma (ou cancela) tudo junto.
+- **Smoke F1:** `Scripts\testes\api_f1.ps1` cria cliente/produto, edita e
+  exclui produto, cria/edita/exclui orçamento, cria venda e confere as 7
+  auditorias (`PRODUTO/I,U,D`, `PEDIDO_VENDA/I,U,D,INSERT`) com limpeza no
+  `finally`. Resultado: **API-F1 CONCLUIDO**.
+- **Bateria:** desktop **384/384**, telas **33/33**, `permissoes_menu.ps1`
+  **0 falhas**, `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos,
+  diff vazio), Android **9/9**, `build_desktop.bat`/`build_api.bat` **OK** e os
+  6 smokes da API **OK** (os 5 anteriores + F1).
+- **Coordenação:** API parada/recompilada/reiniciada na 9000 com aviso prévio
+  no canal; `/api/health` = `ok`. Canal registra o F1 como fechado.
+- **Commits:** código F1 (`5a3bd7b`) + docs deste marco.
 
 ---
 
