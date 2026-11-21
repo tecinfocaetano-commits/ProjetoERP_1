@@ -14,8 +14,9 @@ import java.util.List;
  * <p><b>Envio:</b> percorre a fila {@code outbox} e manda primeiro os clientes
  * (o POST devolve o id criado, entao nao e mais preciso procurar na lista) e
  * depois os orcamentos, que precisam do id do cliente ja cadastrado. Uma falha
- * nao descarta a operacao: a linha continua na fila com o erro anotado para a
- * proxima tentativa.
+ * nao descarta a operacao: F9 classifica o erro. Falhas de rede/5xx entram em
+ * backoff exponencial (1/2/4/8/16 min); erros de validacao 4xx e respostas sem
+ * id viram dead-letter e aparecem na tela "Sincronizar dados" para o usuario.
  *
  * <p><b>Download:</b> atualiza os caches de clientes, produtos e orcamentos em
  * aberto e, na sincronizacao total, tambem vendas, estoque e financeiro. Os
@@ -53,6 +54,9 @@ public final class Sincronizacao {
         public int falhas;
         public String primeiraFalha = "";
 
+        /** F9: estado da fila DEPOIS da rodada (backoff/dead-letter inclusos). */
+        public BancoLocal.ResumoFila fila = new BancoLocal.ResumoFila();
+
         /** Preenchido quando a API respondeu 401 (token invalido/expirado). */
         public ApiClient.Result sessaoExpirada;
 
@@ -85,6 +89,11 @@ public final class Sincronizacao {
                 if (primeiraFalha != null && !primeiraFalha.isEmpty()) {
                     sb.append(": ").append(primeiraFalha);
                 }
+            }
+            if (fila.aguardando > 0 || fila.deadLetter > 0) {
+                sb.append("\nFila: ").append(fila.naFila).append(" pronto(s), ")
+                        .append(fila.aguardando).append(" aguardando retry, ")
+                        .append(fila.deadLetter).append(" falha(s) definitiva(s).");
             }
             return sb.toString();
         }
@@ -188,6 +197,7 @@ public final class Sincronizacao {
         if (r.sessaoExpirada == null) {
             banco.setMeta("ultima_sincronizacao", String.valueOf(System.currentTimeMillis()));
         }
+        r.fila = banco.resumoFila();
         return r;
     }
 
@@ -219,7 +229,7 @@ public final class Sincronizacao {
                     return;
                 }
                 if (!res.ok()) {
-                    banco.marcarErro(item.id, mensagem(res));
+                    banco.registrarErro(item.id, mensagem(res), erroPermanente(res));
                     falha(r, mensagem(res));
                     continue;
                 }
@@ -231,8 +241,9 @@ public final class Sincronizacao {
                     // resposta sem corpo JSON: o id obrigatorio nao veio
                 }
                 if (idServidor <= 0) {
-                    banco.marcarErro(item.id,
-                            "Cliente enviado, mas a API não devolveu o id.");
+                    // Reenviar pode duplicar o cadastro: vai direto para dead-letter.
+                    banco.registrarErro(item.id,
+                            "Cliente enviado, mas a API não devolveu o id.", true);
                     falha(r, "cliente " + cliente.nome + " enviado sem id");
                     continue;
                 }
@@ -271,14 +282,15 @@ public final class Sincronizacao {
                 }
             }
             if (clienteId == null) {
-                banco.marcarErro(item.id, "Cliente do orçamento ainda não foi sincronizado.");
+                banco.registrarErro(item.id, "Cliente do orçamento ainda não foi sincronizado.", false);
                 falha(r, "orçamento com cliente pendente");
                 continue;
             }
 
             List<OrcamentoItemLocal> itens = banco.listarItens(orcamento.id);
             if (itens.isEmpty()) {
-                banco.marcarErro(item.id, "Orçamento sem itens.");
+                // O usuario pode editar e reenfileirar; ate la nao adianta tentar.
+                banco.registrarErro(item.id, "Orçamento sem itens.", true);
                 falha(r, "orçamento sem itens");
                 continue;
             }
@@ -290,7 +302,7 @@ public final class Sincronizacao {
                 }
             }
             if (semProduto) {
-                banco.marcarErro(item.id, "Item sem produto do servidor.");
+                banco.registrarErro(item.id, "Item sem produto do servidor.", false);
                 falha(r, "item de orçamento sem produto");
                 continue;
             }
@@ -303,7 +315,7 @@ public final class Sincronizacao {
                     return;
                 }
                 if (!res.ok()) {
-                    banco.marcarErro(item.id, mensagem(res));
+                    banco.registrarErro(item.id, mensagem(res), erroPermanente(res));
                     falha(r, mensagem(res));
                     continue;
                 }
@@ -598,6 +610,16 @@ public final class Sincronizacao {
         if (r.primeiraFalha == null || r.primeiraFalha.isEmpty()) {
             r.primeiraFalha = texto == null ? "" : texto;
         }
+    }
+
+    /**
+     * 4xx (exceto 408/429, que sao transitarios) nao muda sem interacao: ir
+     * direto para dead-letter evita reenviar a mesma requisicao inválida cinco
+     * vezes e, no caso do orcamento, criar duplicatas.
+     */
+    private static boolean erroPermanente(ApiClient.Result res) {
+        int s = res.status;
+        return s >= 400 && s < 500 && s != 408 && s != 429;
     }
 
     private static String mensagem(ApiClient.Result res) {

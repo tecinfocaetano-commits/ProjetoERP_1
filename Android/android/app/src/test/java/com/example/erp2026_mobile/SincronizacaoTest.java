@@ -8,11 +8,14 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
@@ -274,6 +277,120 @@ public class SincronizacaoTest {
         // A operacao continua na fila para a proxima tentativa.
         assertEquals(1, banco.contarPendentes());
         assertNull(banco.buscarCliente(idLocal).idServidor);
+    }
+
+    // ------------------------------------------------------------------
+    // F9 - backoff, dead-letter e diagnostico da fila
+    // ------------------------------------------------------------------
+
+    private long enfileirarCliente(String cpf) {
+        BancoLocal banco = BancoLocal.get(contexto);
+        ClienteLocal cliente = new ClienteLocal("Cliente F9", cpf);
+        long idLocal = banco.inserirCliente(cliente, false);
+        return banco.enfileirar(ItemOutbox.TIPO_CLIENTE, ItemOutbox.ACAO_INSERIR,
+                idLocal, "{\"cpf_cnpj\":\"" + cpf + "\"}");
+    }
+
+    private ItemOutbox unicoItem() {
+        List<ItemOutbox> itens = BancoLocal.get(contexto).fila(10);
+        assertEquals(1, itens.size());
+        return itens.get(0);
+    }
+
+    @Test
+    public void falhaTransitoriaEntraEmBackoffENaoReenviaAntesDaHora() {
+        long idFila = enfileirarCliente("11111111111");
+        json("POST", "/api/clientes", 500, "{\"error\":\"Servidor indisponivel\"}");
+
+        Sincronizacao.Resultado r = Sincronizacao.sincronizar(contexto);
+
+        assertEquals(1, r.falhas);
+        assertEquals(1, postsClientes.get());
+        ItemOutbox item = unicoItem();
+        assertEquals(ItemOutbox.STATUS_ERRO, item.status);
+        assertEquals(1, item.tentativas);
+        assertTrue(item.proximaTentativa > System.currentTimeMillis());
+        assertTrue(item.emBackoff());
+        assertTrue(item.descricao().contains("retry"));
+        assertEquals(1, r.fila.aguardando);
+        assertEquals(0, r.fila.deadLetter);
+
+        // Outra rodada enquanto o backoff corre: nao pode gerar outro POST.
+        Sincronizacao.sincronizar(contexto);
+        assertEquals(1, postsClientes.get());
+        assertEquals(1, BancoLocal.get(contexto).contarPendentes());
+
+        // O botao "Tentar novamente" libera o item e o envio fecha a pendencia.
+        BancoLocal.get(contexto).requererTentativa(idFila);
+        json("POST", "/api/clientes", 200, "{}");
+        Sincronizacao.Resultado r2 = Sincronizacao.sincronizar(contexto);
+        assertEquals(1, r2.clientesEnviados);
+        assertEquals(2, postsClientes.get());
+        assertEquals(0, BancoLocal.get(contexto).contarPendentes());
+    }
+
+    @Test
+    public void erro4xxViraDeadLetterENaoReenvia() {
+        enfileirarCliente("22222222222");
+        json("POST", "/api/clientes", 400, "{\"error\":\"CPF ja cadastrado\"}");
+
+        Sincronizacao.Resultado r = Sincronizacao.sincronizar(contexto);
+
+        ItemOutbox item = unicoItem();
+        assertEquals(ItemOutbox.STATUS_DEAD, item.status);
+        assertEquals(1, item.tentativas);
+        assertEquals(0, item.proximaTentativa);
+        assertTrue(item.descricao().contains("FALHA DEFINITIVA"));
+        assertEquals(1, r.fila.deadLetter);
+
+        Sincronizacao.sincronizar(contexto);
+        assertEquals(1, postsClientes.get());
+
+        BancoLocal banco = BancoLocal.get(contexto);
+        assertEquals(1, banco.limparDeadLetter());
+        assertEquals(0, banco.contarPendentes());
+        assertEquals(0, banco.fila(10).size());
+    }
+
+    @Test
+    public void telaDeSincronizacaoMostraPainelDaFila() {
+        enfileirarCliente("44444444444");
+
+        SincronizacaoActivity tela =
+                Robolectric.buildActivity(SincronizacaoActivity.class).setup().get();
+
+        TextView resumo = tela.findViewById(R.id.textViewFilaResumo);
+        assertNotNull(resumo);
+        assertTrue(resumo.getText().toString().contains("1 item"));
+        LinearLayout container = tela.findViewById(R.id.containerFila);
+        assertNotNull(container);
+        assertTrue(container.getChildCount() >= 1);
+        assertNotNull(tela.findViewById(R.id.buttonTentarFila));
+        assertNotNull(tela.findViewById(R.id.buttonLimparFalhas));
+    }
+
+    @Test
+    public void cincoFalhasTransitoriasViramDeadLetter() {
+        long idFila = enfileirarCliente("33333333333");
+        json("POST", "/api/clientes", 500, "{\"error\":\"Servidor indisponivel\"}");
+        BancoLocal banco = BancoLocal.get(contexto);
+
+        for (int tentativa = 1; tentativa <= ItemOutbox.MAX_TENTATIVAS; tentativa++) {
+            if (tentativa > 1) {
+                banco.requererTentativa(idFila);
+            }
+            Sincronizacao.sincronizar(contexto);
+            ItemOutbox item = unicoItem();
+            assertEquals(tentativa, item.tentativas);
+            if (tentativa < ItemOutbox.MAX_TENTATIVAS) {
+                assertEquals(ItemOutbox.STATUS_ERRO, item.status);
+            }
+        }
+
+        ItemOutbox item = unicoItem();
+        assertEquals(ItemOutbox.STATUS_DEAD, item.status);
+        assertEquals(ItemOutbox.MAX_TENTATIVAS, item.tentativas);
+        assertEquals(ItemOutbox.MAX_TENTATIVAS, postsClientes.get());
     }
 
     // ------------------------------------------------------------------

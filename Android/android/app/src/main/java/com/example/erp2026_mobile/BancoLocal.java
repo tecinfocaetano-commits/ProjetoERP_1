@@ -852,6 +852,10 @@ public final class BancoLocal {
                     v.put(ErpDbHelper.B_PAYLOAD, payload);
                     v.put(ErpDbHelper.B_TENTATIVAS, 0);
                     v.putNull(ErpDbHelper.B_ULTIMO_ERRO);
+                    // F9: reenfileirar o mesmo registro e uma edicao do usuario;
+                    // volta da dead-letter/backoff para a fila normal.
+                    v.put(ErpDbHelper.B_PROXIMA_TENTATIVA, 0);
+                    v.put(ErpDbHelper.B_STATUS, ItemOutbox.STATUS_PENDENTE);
                     db.update(ErpDbHelper.T_OUTBOX, v,
                             ErpDbHelper.B_ID + " = ?", new String[]{String.valueOf(id)});
                     return id;
@@ -871,30 +875,29 @@ public final class BancoLocal {
         }
         v.put(ErpDbHelper.B_PAYLOAD, payload);
         v.put(ErpDbHelper.B_CRIADO_EM, System.currentTimeMillis());
+        v.put(ErpDbHelper.B_PROXIMA_TENTATIVA, 0);
+        v.put(ErpDbHelper.B_STATUS, ItemOutbox.STATUS_PENDENTE);
         return db.insertOrThrow(ErpDbHelper.T_OUTBOX, null, v);
     }
 
+    /**
+     * Itens que podem ser enviados AGORA: exclui dead-letter e quem ainda esta
+     * no backoff. A tela de diagnostico usa {@link #fila(int)} para ver todos.
+     */
     public List<ItemOutbox> pendentes(int limite) {
         List<ItemOutbox> lista = new ArrayList<>();
         Cursor c = helper.getReadableDatabase().rawQuery(
                 "SELECT * FROM " + ErpDbHelper.T_OUTBOX
                         + " WHERE " + ErpDbHelper.B_EMPRESA + " = ?"
+                        + " AND (" + ErpDbHelper.B_STATUS + " <> ? OR " + ErpDbHelper.B_STATUS + " IS NULL)"
+                        + " AND " + ErpDbHelper.B_PROXIMA_TENTATIVA + " <= ?"
                         + " ORDER BY " + ErpDbHelper.B_ID
                         + " LIMIT " + Math.max(1, limite),
-                new String[]{empresaAtual()});
+                new String[]{empresaAtual(), ItemOutbox.STATUS_DEAD,
+                        String.valueOf(System.currentTimeMillis())});
         try {
             while (c.moveToNext()) {
-                ItemOutbox item = new ItemOutbox();
-                item.id = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.B_ID));
-                item.tipo = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.B_TIPO)));
-                item.acao = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.B_ACAO)));
-                int iRef = c.getColumnIndexOrThrow(ErpDbHelper.B_REFERENCIA_LOCAL);
-                item.referenciaLocal = c.isNull(iRef) ? null : c.getLong(iRef);
-                item.payload = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.B_PAYLOAD)));
-                item.criadoEm = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.B_CRIADO_EM));
-                item.tentativas = c.getInt(c.getColumnIndexOrThrow(ErpDbHelper.B_TENTATIVAS));
-                item.ultimoErro = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.B_ULTIMO_ERRO)));
-                lista.add(item);
+                lista.add(lerItem(c));
             }
         } finally {
             c.close();
@@ -902,17 +905,140 @@ public final class BancoLocal {
         return lista;
     }
 
+    /** Todos os itens da empresa, inclusive backoff e dead-letter (diagnostico). */
+    public List<ItemOutbox> fila(int limite) {
+        List<ItemOutbox> lista = new ArrayList<>();
+        Cursor c = helper.getReadableDatabase().rawQuery(
+                "SELECT * FROM " + ErpDbHelper.T_OUTBOX
+                        + " WHERE " + ErpDbHelper.B_EMPRESA + " = ?"
+                        + " ORDER BY CASE " + ErpDbHelper.B_STATUS
+                        + " WHEN '" + ItemOutbox.STATUS_DEAD + "' THEN 0"
+                        + " WHEN '" + ItemOutbox.STATUS_ERRO + "' THEN 1 ELSE 2 END, "
+                        + ErpDbHelper.B_ID
+                        + " LIMIT " + Math.max(1, limite),
+                new String[]{empresaAtual()});
+        try {
+            while (c.moveToNext()) {
+                lista.add(lerItem(c));
+            }
+        } finally {
+            c.close();
+        }
+        return lista;
+    }
+
+    private ItemOutbox lerItem(Cursor c) {
+        ItemOutbox item = new ItemOutbox();
+        item.id = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.B_ID));
+        item.tipo = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.B_TIPO)));
+        item.acao = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.B_ACAO)));
+        int iRef = c.getColumnIndexOrThrow(ErpDbHelper.B_REFERENCIA_LOCAL);
+        item.referenciaLocal = c.isNull(iRef) ? null : c.getLong(iRef);
+        item.payload = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.B_PAYLOAD)));
+        item.criadoEm = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.B_CRIADO_EM));
+        item.tentativas = c.getInt(c.getColumnIndexOrThrow(ErpDbHelper.B_TENTATIVAS));
+        item.ultimoErro = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.B_ULTIMO_ERRO)));
+        item.proximaTentativa = c.getLong(c.getColumnIndexOrThrow(ErpDbHelper.B_PROXIMA_TENTATIVA));
+        item.status = nulo(c.getString(c.getColumnIndexOrThrow(ErpDbHelper.B_STATUS)));
+        if (item.status.isEmpty()) {
+            item.status = ItemOutbox.STATUS_PENDENTE;
+        }
+        return item;
+    }
+
     public int contarPendentes() {
         return contar(ErpDbHelper.T_OUTBOX, null);
     }
 
-    /** Registra a falha de uma tentativa (mantem a linha para a proxima). */
+    /** Contadores da fila para a tela de sincronizacao. */
+    public static final class ResumoFila {
+        public int naFila;
+        public int aguardando;
+        public int deadLetter;
+
+        public int total() {
+            return naFila + aguardando + deadLetter;
+        }
+    }
+
+    public ResumoFila resumoFila() {
+        ResumoFila r = new ResumoFila();
+        long agora = System.currentTimeMillis();
+        Cursor c = helper.getReadableDatabase().rawQuery(
+                "SELECT " + ErpDbHelper.B_STATUS + ", " + ErpDbHelper.B_PROXIMA_TENTATIVA
+                        + " FROM " + ErpDbHelper.T_OUTBOX + " WHERE " + ErpDbHelper.B_EMPRESA + " = ?",
+                new String[]{empresaAtual()});
+        try {
+            while (c.moveToNext()) {
+                String status = nulo(c.getString(0));
+                if (ItemOutbox.STATUS_DEAD.equals(status)) {
+                    r.deadLetter++;
+                } else if (c.getLong(1) > agora) {
+                    r.aguardando++;
+                } else {
+                    r.naFila++;
+                }
+            }
+        } finally {
+            c.close();
+        }
+        return r;
+    }
+
+    /**
+     * Registra uma falha. Erros de validacao (permanente) e o esgotamento das
+     * tentativas viram dead-letter; os demais entram em backoff exponencial.
+     */
+    public void registrarErro(long id, String erro, boolean permanente) {
+        String texto = erro == null || erro.isEmpty() ? "Falha ao enviar." : erro;
+        if (texto.length() > 240) {
+            texto = texto.substring(0, 240);
+        }
+        Cursor c = helper.getReadableDatabase().rawQuery(
+                "SELECT " + ErpDbHelper.B_TENTATIVAS + " FROM " + ErpDbHelper.T_OUTBOX
+                        + " WHERE " + ErpDbHelper.B_ID + " = ?",
+                new String[]{String.valueOf(id)});
+        int tentativas = 0;
+        try {
+            if (c.moveToFirst()) {
+                tentativas = c.getInt(0);
+            }
+        } finally {
+            c.close();
+        }
+        int novaTentativa = tentativas + 1;
+        boolean dead = permanente || novaTentativa >= ItemOutbox.MAX_TENTATIVAS;
+        String status = dead ? ItemOutbox.STATUS_DEAD : ItemOutbox.STATUS_ERRO;
+        long proxima = dead ? 0 : ItemOutbox.calcularProximaTentativa(novaTentativa);
+
+        ContentValues v = new ContentValues();
+        v.put(ErpDbHelper.B_TENTATIVAS, novaTentativa);
+        v.put(ErpDbHelper.B_ULTIMO_ERRO, texto);
+        v.put(ErpDbHelper.B_STATUS, status);
+        v.put(ErpDbHelper.B_PROXIMA_TENTATIVA, proxima);
+        helper.getWritableDatabase().update(ErpDbHelper.T_OUTBOX, v,
+                ErpDbHelper.B_ID + " = ?", new String[]{String.valueOf(id)});
+    }
+
+    /** Compatibilidade: falha transitoria com backoff. */
     public void marcarErro(long id, String erro) {
-        helper.getWritableDatabase().execSQL(
-                "UPDATE " + ErpDbHelper.T_OUTBOX + " SET "
-                        + ErpDbHelper.B_TENTATIVAS + " = " + ErpDbHelper.B_TENTATIVAS + " + 1, "
-                        + ErpDbHelper.B_ULTIMO_ERRO + " = ? WHERE " + ErpDbHelper.B_ID + " = ?",
-                new Object[]{erro == null ? "" : erro, id});
+        registrarErro(id, erro, false);
+    }
+
+    /** Botao "Tentar novamente": volta para a fila mantendo o historico. */
+    public void requererTentativa(long id) {
+        ContentValues v = new ContentValues();
+        v.put(ErpDbHelper.B_STATUS, ItemOutbox.STATUS_PENDENTE);
+        v.put(ErpDbHelper.B_PROXIMA_TENTATIVA, 0);
+        helper.getWritableDatabase().update(ErpDbHelper.T_OUTBOX, v,
+                ErpDbHelper.B_ID + " = ?", new String[]{String.valueOf(id)});
+    }
+
+    /** Remove do aparelho apenas as falhas definitivas. */
+    public int limparDeadLetter() {
+        return helper.getWritableDatabase().delete(ErpDbHelper.T_OUTBOX,
+                ErpDbHelper.B_EMPRESA + " = ? AND " + ErpDbHelper.B_STATUS + " = ?",
+                new String[]{empresaAtual(), ItemOutbox.STATUS_DEAD});
     }
 
     /** Remove da fila depois do envio confirmado. */

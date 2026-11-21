@@ -24,8 +24,8 @@ public class ErpDbHelper extends SQLiteOpenHelper {
 
     public static final String NOME_BANCO = "erp2026.db";
 
-    /** v3: cache de vendas, estoque e financeiro para a sincronizacao total. */
-    public static final int VERSAO = 3;
+    /** v4: F9 - backoff, status e dead-letter na fila de sincronizacao. */
+    public static final int VERSAO = 4;
 
     // ---- clientes -------------------------------------------------
     public static final String T_CLIENTE = "cliente_local";
@@ -92,6 +92,10 @@ public class ErpDbHelper extends SQLiteOpenHelper {
     public static final String B_CRIADO_EM = "criado_em";
     public static final String B_TENTATIVAS = "tentativas";
     public static final String B_ULTIMO_ERRO = "ultimo_erro";
+    /** F9: epoch ms da proxima tentativa permitida (backoff exponencial). */
+    public static final String B_PROXIMA_TENTATIVA = "proxima_tentativa";
+    /** F9: PENDENTE / ERRO (aguardando backoff) / DEAD (dead-letter). */
+    public static final String B_STATUS = "status";
 
     // ---- metadados -----------------------------------------------
     public static final String T_META = "meta";
@@ -232,7 +236,9 @@ public class ErpDbHelper extends SQLiteOpenHelper {
                 + B_PAYLOAD + " TEXT NOT NULL, "
                 + B_CRIADO_EM + " INTEGER NOT NULL DEFAULT 0, "
                 + B_TENTATIVAS + " INTEGER NOT NULL DEFAULT 0, "
-                + B_ULTIMO_ERRO + " TEXT"
+                + B_ULTIMO_ERRO + " TEXT, "
+                + B_PROXIMA_TENTATIVA + " INTEGER NOT NULL DEFAULT 0, "
+                + B_STATUS + " TEXT NOT NULL DEFAULT 'PENDENTE'"
                 + ")");
         db.execSQL("CREATE INDEX ix_outbox_pendente ON " + T_OUTBOX
                 + " (" + B_EMPRESA + ", " + B_TIPO + ", " + B_ID + ")");
@@ -342,6 +348,18 @@ public class ErpDbHelper extends SQLiteOpenHelper {
         if (versaoAntiga < 3) {
             // v2 -> v3: cache de vendas, estoque e financeiro (sincronizacao total).
             criarTabelasConsulta(db);
+        }
+        if (versaoAntiga < 4) {
+            // v3 -> v4 (F9): backoff e estado da fila. Itens que ja tinham
+            // tentativa/erro passam para ERRO com proxima tentativa livre, para
+            // que a proxima rodada tente de novo e o usuario veja o historico.
+            db.execSQL("ALTER TABLE " + T_OUTBOX + " ADD COLUMN "
+                    + B_PROXIMA_TENTATIVA + " INTEGER NOT NULL DEFAULT 0");
+            db.execSQL("ALTER TABLE " + T_OUTBOX + " ADD COLUMN "
+                    + B_STATUS + " TEXT NOT NULL DEFAULT 'PENDENTE'");
+            db.execSQL("UPDATE " + T_OUTBOX + " SET " + B_STATUS + " = 'ERRO' WHERE "
+                    + B_TENTATIVAS + " > 0 OR (" + B_ULTIMO_ERRO
+                    + " IS NOT NULL AND " + B_ULTIMO_ERRO + " <> '')");
         }
     }
 }

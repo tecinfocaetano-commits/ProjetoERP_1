@@ -1,11 +1,15 @@
 package com.example.erp2026_mobile;
 
 import android.os.Bundle;
+import androidx.core.content.ContextCompat;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.List;
 
 /**
  * Tela "Sincronizar dados" (menu do Dashboard).
@@ -14,6 +18,10 @@ import android.widget.Toast;
  * sincronizacao de cada conjunto e as alteracoes pendentes de envio. O botao
  * "Baixar tudo" roda a rodada completa: envia a fila e baixa clientes,
  * produtos, orcamentos, vendas, estoque e financeiro da empresa do usuario.
+ *
+ * <p>F9: o painel "Fila de envio" mostra tentativas, proxima tentativa e falhas
+ * definitivas. "Tentar novamente" libera itens em backoff (nao apaga o
+ * historico); "Limpar falhas" remove so a dead-letter.
  */
 public class SincronizacaoActivity extends BaseActivity {
 
@@ -27,7 +35,11 @@ public class SincronizacaoActivity extends BaseActivity {
     private TextView textViewFinanceiro;
     private TextView textViewPendencias;
     private TextView textViewResultado;
+    private TextView textViewFilaResumo;
+    private LinearLayout containerFila;
     private Button buttonBaixarTudo;
+    private Button buttonTentarFila;
+    private Button buttonLimparFalhas;
     private ProgressBar progressBarSincronizacao;
 
     private boolean sincronizando;
@@ -54,10 +66,16 @@ public class SincronizacaoActivity extends BaseActivity {
         textViewFinanceiro = findViewById(R.id.textViewFinanceiro);
         textViewPendencias = findViewById(R.id.textViewPendencias);
         textViewResultado = findViewById(R.id.textViewResultado);
+        textViewFilaResumo = findViewById(R.id.textViewFilaResumo);
+        containerFila = findViewById(R.id.containerFila);
         buttonBaixarTudo = findViewById(R.id.buttonBaixarTudo);
+        buttonTentarFila = findViewById(R.id.buttonTentarFila);
+        buttonLimparFalhas = findViewById(R.id.buttonLimparFalhas);
         progressBarSincronizacao = findViewById(R.id.progressBarSincronizacao);
 
         buttonBaixarTudo.setOnClickListener(v -> sincronizar());
+        buttonTentarFila.setOnClickListener(v -> tentarNovamente());
+        buttonLimparFalhas.setOnClickListener(v -> limparFalhas());
     }
 
     @Override
@@ -97,6 +115,44 @@ public class SincronizacaoActivity extends BaseActivity {
             textViewPendencias.setText(pendentes
                     + " alterações pendentes de envio ao servidor.");
         }
+        preencherFila(banco);
+    }
+
+    private void preencherFila(BancoLocal banco) {
+        BancoLocal.ResumoFila fila = banco.resumoFila();
+        if (fila.total() == 0) {
+            textViewFilaResumo.setText("Nenhum item na fila.");
+        } else {
+            textViewFilaResumo.setText(fila.total() + " item(ns): "
+                    + fila.naFila + " pronto(s), "
+                    + fila.aguardando + " aguardando retry, "
+                    + fila.deadLetter + " falha(s) definitiva(s).");
+        }
+
+        containerFila.removeAllViews();
+        List<ItemOutbox> itens = banco.fila(20);
+        if (itens.isEmpty()) {
+            containerFila.addView(linhaFila("Nada aguardando envio."));
+        } else {
+            for (ItemOutbox item : itens) {
+                containerFila.addView(linhaFila(item.descricao()));
+            }
+            if (fila.total() > itens.size()) {
+                containerFila.addView(linhaFila("... e mais "
+                        + (fila.total() - itens.size()) + " item(ns)."));
+            }
+        }
+        buttonTentarFila.setEnabled(fila.total() > 0 && !sincronizando);
+        buttonLimparFalhas.setEnabled(fila.deadLetter > 0 && !sincronizando);
+    }
+
+    private TextView linhaFila(String texto) {
+        TextView tv = new TextView(this);
+        tv.setText(texto);
+        tv.setTextSize(13f);
+        tv.setTextColor(ContextCompat.getColor(this, R.color.erp_on_surface_variant));
+        tv.setPadding(0, 6, 0, 6);
+        return tv;
     }
 
     private String linha(String nome, int quantidade, String conjunto) {
@@ -105,42 +161,76 @@ public class SincronizacaoActivity extends BaseActivity {
     }
 
     private void sincronizar() {
-        if (sincronizando) {
+        if (sincronizando || !temRedeOuAvisa()) {
             return;
         }
-        if (!Conectividade.temRede(this)) {
-            Toast.makeText(this,
-                    "Sem conexão.\nOs dados continuam salvos no aparelho.",
-                    Toast.LENGTH_LONG).show();
-            return;
-        }
+        iniciar();
+        new Thread(() -> finalizar(Sincronizacao.sincronizar(this))).start();
+    }
 
+    /** Libera itens em backoff e roda uma rodada completa. */
+    private void tentarNovamente() {
+        if (sincronizando || !temRedeOuAvisa()) {
+            return;
+        }
+        iniciar();
+        new Thread(() -> {
+            BancoLocal banco = BancoLocal.get(this);
+            for (ItemOutbox item : banco.fila(500)) {
+                if (!ItemOutbox.STATUS_DEAD.equals(item.status)) {
+                    banco.requererTentativa(item.id);
+                }
+            }
+            finalizar(Sincronizacao.sincronizar(this));
+        }).start();
+    }
+
+    private void limparFalhas() {
+        int removidas = BancoLocal.get(this).limparDeadLetter();
+        Toast.makeText(this,
+                removidas + " falha(s) definitiva(s) removida(s) do aparelho.",
+                Toast.LENGTH_SHORT).show();
+        preencher();
+    }
+
+    private boolean temRedeOuAvisa() {
+        if (Conectividade.temRede(this)) {
+            return true;
+        }
+        Toast.makeText(this,
+                "Sem conexão.\nOs dados continuam salvos no aparelho.",
+                Toast.LENGTH_LONG).show();
+        return false;
+    }
+
+    private void iniciar() {
         sincronizando = true;
         buttonBaixarTudo.setEnabled(false);
+        buttonTentarFila.setEnabled(false);
+        buttonLimparFalhas.setEnabled(false);
         buttonBaixarTudo.setText("Sincronizando...");
         progressBarSincronizacao.setVisibility(View.VISIBLE);
         textViewResultado.setVisibility(View.GONE);
+    }
 
-        new Thread(() -> {
-            final Sincronizacao.Resultado resultado = Sincronizacao.sincronizar(this);
-            runOnUiThread(() -> {
-                if (isFinishing()) {
-                    return;
-                }
-                sincronizando = false;
-                buttonBaixarTudo.setEnabled(true);
-                buttonBaixarTudo.setText("Baixar tudo");
-                progressBarSincronizacao.setVisibility(View.GONE);
+    private void finalizar(Sincronizacao.Resultado resultado) {
+        runOnUiThread(() -> {
+            if (isFinishing()) {
+                return;
+            }
+            sincronizando = false;
+            buttonBaixarTudo.setEnabled(true);
+            buttonBaixarTudo.setText("Baixar tudo");
+            progressBarSincronizacao.setVisibility(View.GONE);
 
-                if (resultado.sessaoExpirada != null) {
-                    Sessao.tratarSessaoExpirada(this, resultado.sessaoExpirada);
-                    return;
-                }
+            if (resultado.sessaoExpirada != null) {
+                Sessao.tratarSessaoExpirada(this, resultado.sessaoExpirada);
+                return;
+            }
 
-                textViewResultado.setText(resultado.resumo());
-                textViewResultado.setVisibility(View.VISIBLE);
-                preencher();
-            });
-        }).start();
+            textViewResultado.setText(resultado.resumo());
+            textViewResultado.setVisibility(View.VISIBLE);
+            preencher();
+        });
     }
 }
