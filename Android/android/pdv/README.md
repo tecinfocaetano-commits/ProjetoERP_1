@@ -16,9 +16,12 @@ na API (`/api/pdv/*` → `TPDVService`); o app só coleta e exibe dados.
 - Carrinho: toque no resultado adiciona; botões ＋/－/Remover ajustam o
   item selecionado; desconto opcional; total calculado no aparelho.
 - Pagamento: lista as formas ativas (`GET /api/pdv/formas-pagamento`),
-  valor pago com troco calculado na hora; `POST /api/pdv/vendas` grava
-  a venda STATUS 'F' + itens + movimento de caixa 'V' (mesma transação
-  e auditoria do PDV desktop).
+  valor pago com troco calculado na hora. **Dinheiro** registra direto;
+  **cartão/PIX/outros** exigem um segundo passo — o operador confirma
+  que a cobrança foi aprovada na maquininha/app do banco e só então a
+  venda é registrada e o cupom gerado (`POST /api/pdv/vendas` grava
+  STATUS 'F' + itens + movimento 'V', mesma transação e auditoria do
+  PDV desktop).
 - Cupom não fiscal exibido após a venda, com opções de **compartilhar**
   texto (WhatsApp etc.) e **PDF** (`CupomPdf.java`, PdfDocument nativo,
   compartilhado via FileProvider — sem dependência nova).

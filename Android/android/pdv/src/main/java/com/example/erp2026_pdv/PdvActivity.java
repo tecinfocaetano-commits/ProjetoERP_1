@@ -691,7 +691,7 @@ public class PdvActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Pagamento — total " + moeda(total()))
                 .setView(v)
-                .setPositiveButton("Confirmar venda", (d, w) -> {
+                .setPositiveButton("Confirmar pagamento", (d, w) -> {
                     int sel = grupo.getCheckedRadioButtonId();
                     if (sel < 0 || sel >= formas.size()) {
                         Toast.makeText(this, "Escolha a forma de pagamento.",
@@ -700,9 +700,37 @@ public class PdvActivity extends AppCompatActivity {
                     }
                     FormaPagamento f = formas.get(sel);
                     double pago = lerValor(editPago.getText().toString());
-                    postarVenda(f.id, pago);
+                    // Dinheiro é instantâneo: registra direto. Cartão/PIX
+                    // passam por um segundo passo — o cupom só sai depois
+                    // do operador confirmar que a cobrança foi aprovada
+                    // na maquininha/app do banco.
+                    if ("DI".equals(f.tipo)) {
+                        postarVenda(f.id, pago);
+                    } else {
+                        dialogoConfirmacaoPagamento(f, pago);
+                    }
                 })
                 .setNegativeButton("Voltar", null)
+                .show();
+    }
+
+    /** Segundo passo: a cobrança já foi aprovada no terminal/PIX? */
+    private void dialogoConfirmacaoPagamento(FormaPagamento f,
+                                             double valorPago) {
+        String instrucao = "DI".equals(f.tipo)
+                ? ""
+                : "Cobrança em " + f.descricao + " de " + moeda(total())
+                        + ".\n\n"
+                        + "Confirme SOMENTE depois que a maquininha ou o "
+                        + "app do banco aprovar o pagamento.\n\n"
+                        + "Pagamento aprovado?";
+        new AlertDialog.Builder(this)
+                .setTitle("Aguardando pagamento")
+                .setMessage(instrucao)
+                .setPositiveButton("Aprovado — gerar cupom", (d, w) ->
+                        postarVenda(f.id, valorPago))
+                .setNegativeButton("Cancelar", null)
+                .setCancelable(false)
                 .show();
     }
 
