@@ -12,7 +12,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, Grids, DateUtils,
-  uConexao, uSessao, uPedidoVendaService, uOrcamentoService;
+  uConexao, uSessao, uPedidoVendaService, uOrcamentoService,
+  uPermissao, uPermissaoUI;
 
 type
   { TfrmOrcamento }
@@ -91,6 +92,11 @@ begin
     FConexao.Conectar;
   FProdutoId := 0;
   FOrcamentoId := 0;
+
+  { Permissoes do grupo (T1): VENDAS/ORCAMENTO }
+  AplicarPermissaoAcao(Self, PERM_INSERIR, ['btnSalvar', 'btnAddItem']);
+  AplicarPermissaoAcao(Self, PERM_EDITAR, ['btnRemoverItem', 'btnGerarPedido']);
+
   CarregarClientes;
   ConfigurarGrid;
   edtData.Text := FormatDateTime('dd/mm/yyyy', Now);

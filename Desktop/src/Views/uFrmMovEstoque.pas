@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls, Spin, DateUtils,
-  uConexao, uSessao, uEstoqueService;
+  uConexao, uSessao, uEstoqueService, uPermissao, uPermissaoUI;
 
 type
   { TfrmMovEstoque }
@@ -108,6 +108,9 @@ end;
 
 procedure TfrmMovEstoque.FormShow(Sender: TObject);
 begin
+  { Permissoes do grupo (T1): ESTOQUE/MOVIMENTACAO }
+  AplicarPermissaoAcao(Self, PERM_INSERIR, ['btnNovaMovimentacao', 'btnConfirmar']);
+
   try
     // Inicializar datas após os componentes visuais serem criados
     if edtDataInicio <> nil then

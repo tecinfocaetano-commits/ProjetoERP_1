@@ -210,7 +210,7 @@ end;
 
 procedure TfrmListaPedidos.btnMapaProducaoClick(Sender: TObject);
 begin
-  if not TemPermissao(MODULO_PRODUCAO, TELA_MAPA_PRODUCAO, PERM_VISUALIZAR) then
+  if not TemPermissao(MODULO_VENDAS, 'LISTA_PEDIDOS', PERM_VISUALIZAR) then
   begin
     MessageDlg('Seu usuário não tem permissão para acessar o Mapa de Produção.',
       mtWarning, [mbOK], 0);

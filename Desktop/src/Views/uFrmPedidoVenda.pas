@@ -13,7 +13,8 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, Grids, DateUtils,
   uConexao, uSessao, uGrade, uGradeService, uFrmGradeQuantidades,
-  uPedidoVendaService;
+  uPedidoVendaService,
+  uPermissao, uPermissaoUI;
 
 type
   { TfrmPedidoVenda }
@@ -115,6 +116,11 @@ begin
     FConexao.Conectar;
   FProdutoId := 0;
   FPedidoId := 0;
+
+  { Permissoes do grupo (T1): VENDAS/PEDIDO_VENDA }
+  AplicarPermissaoAcao(Self, PERM_INSERIR, ['btnSalvar', 'btnAddItem']);
+  AplicarPermissaoAcao(Self, PERM_EDITAR,
+    ['btnRemoverItem', 'btnGradeItem']);
 
   FGradeService := TGradeService.Create;
   FUsaGrade := FGradeService.UsaGrade;

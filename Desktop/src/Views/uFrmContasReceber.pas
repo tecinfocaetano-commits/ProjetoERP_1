@@ -11,7 +11,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils,
-  uConexao, uSessao, uContasService;
+  uConexao, uSessao, uContasService, uPermissao, uPermissaoUI;
 
 type
   TfrmContasReceber = class(TForm)
@@ -85,6 +85,10 @@ end;
 
 procedure TfrmContasReceber.FormShow(Sender: TObject);
 begin
+  { Permissoes do grupo (T1): FINANCEIRO/CONTAS_RECEBER }
+  AplicarPermissaoAcao(Self, PERM_INSERIR, ['btnNovo']);
+  AplicarPermissaoAcao(Self, PERM_EDITAR, ['btnBaixar']);
+
   try
     edtDataInicio.Text := FormatDateTime('dd/mm/yyyy', IncMonth(Now, -1));
     edtDataFim.Text := FormatDateTime('dd/mm/yyyy', IncMonth(Now, 1));

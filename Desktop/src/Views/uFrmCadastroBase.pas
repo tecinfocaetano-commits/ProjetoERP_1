@@ -12,7 +12,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls, uConexao;
+  ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls, uConexao, uPermissao;
 
 type
   TEstadoForm = (efNavegando, efInserindo, efEditando);
@@ -51,6 +51,10 @@ type
     FEstado: TEstadoForm;
     FIdSelecionado: Int64;
     FConexao: TConexao;
+    { Permissoes do grupo do usuario para esta tela (T1) }
+    FPodeInserir: Boolean;
+    FPodeEditar: Boolean;
+    FPodeExcluir: Boolean;
 
     procedure ConfigurarEstado(AEstado: TEstadoForm); virtual;
     procedure HabilitarCampos(AHabilitar: Boolean); virtual; abstract;
@@ -62,6 +66,8 @@ type
     function Salvar: Boolean; virtual; abstract;
     function Excluir: Boolean; virtual; abstract;
     function ObterIdGrid: Int64; virtual;
+    { Le as permissoes do grupo para a tela (catalogo canonico). }
+    procedure CarregarPermissoesDaTela;
   public
     property Estado: TEstadoForm read FEstado;
   end;
@@ -80,8 +86,25 @@ begin
   FConexao := TConexao.GetInstance;
   Position := poScreenCenter;
   BorderStyle := bsSizeable;
+  CarregarPermissoesDaTela;
   ConfigurarEstado(efNavegando);
   CarregarDados;
+end;
+
+{ Le do catalogo canonico as permissoes do grupo do usuario para esta
+  tela (T1). Telas fora do catalogo ficam sem restricao. }
+procedure TfrmCadastroBase.CarregarPermissoesDaTela;
+var
+  LModulo, LTela: string;
+begin
+  FPodeInserir := True;
+  FPodeEditar := True;
+  FPodeExcluir := True;
+  if not PermissaoDaTela(ClassName, LModulo, LTela) then
+    Exit;
+  FPodeInserir := TemPermissao(LModulo, LTela, PERM_INSERIR);
+  FPodeEditar := TemPermissao(LModulo, LTela, PERM_EDITAR);
+  FPodeExcluir := TemPermissao(LModulo, LTela, PERM_EXCLUIR);
 end;
 
 procedure TfrmCadastroBase.ConfigurarEstado(AEstado: TEstadoForm);
@@ -91,9 +114,9 @@ begin
   case AEstado of
     efNavegando:
     begin
-      btnNovo.Enabled := True;
-      btnEditar.Enabled := True;
-      btnExcluir.Enabled := True;
+      btnNovo.Enabled := FPodeInserir;
+      btnEditar.Enabled := FPodeEditar;
+      btnExcluir.Enabled := FPodeExcluir;
       btnSalvar.Enabled := False;
       btnCancelar.Enabled := False;
       HabilitarCampos(False);
@@ -104,7 +127,7 @@ begin
       btnNovo.Enabled := False;
       btnEditar.Enabled := False;
       btnExcluir.Enabled := False;
-      btnSalvar.Enabled := True;
+      btnSalvar.Enabled := FPodeInserir or FPodeEditar;
       btnCancelar.Enabled := True;
       HabilitarCampos(True);
       PageControl1.ActivePage := tsCadastro;
@@ -114,6 +137,12 @@ end;
 
 procedure TfrmCadastroBase.btnNovoClick(Sender: TObject);
 begin
+  if not FPodeInserir then
+  begin
+    MessageDlg('Seu grupo não tem permissão para incluir registros nesta tela.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
   LimparCampos;
   FIdSelecionado := 0;
   ConfigurarEstado(efInserindo);
@@ -121,6 +150,12 @@ end;
 
 procedure TfrmCadastroBase.btnEditarClick(Sender: TObject);
 begin
+  if not FPodeEditar then
+  begin
+    MessageDlg('Seu grupo não tem permissão para editar registros nesta tela.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
   FIdSelecionado := ObterIdGrid;
   if FIdSelecionado <= 0 then
   begin
@@ -133,6 +168,12 @@ end;
 
 procedure TfrmCadastroBase.btnExcluirClick(Sender: TObject);
 begin
+  if not FPodeExcluir then
+  begin
+    MessageDlg('Seu grupo não tem permissão para excluir registros nesta tela.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
   FIdSelecionado := ObterIdGrid;
   if FIdSelecionado <= 0 then
   begin

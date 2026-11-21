@@ -171,7 +171,7 @@ procedure TfrmCentralRelatorios.btnAbrirMapaClick(Sender: TObject);
 var
   LForm: TfrmMapaProducao;
 begin
-  if not TemPermissao(MODULO_PRODUCAO, TELA_MAPA_PRODUCAO, PERM_VISUALIZAR) then
+  if not TemPermissao(MODULO_RELATORIOS, TELA_CENTRAL_RELATORIOS, PERM_VISUALIZAR) then
   begin
     MessageDlg('Seu usuário não tem permissão para acessar o Módulo de Produção.',
       mtWarning, [mbOK], 0);

@@ -24,7 +24,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils,
-  uConexao, uSessao, uNotaSaidaService, uPedidoStatus;
+  uConexao, uSessao, uNotaSaidaService, uPedidoStatus,
+  uPermissao, uPermissaoUI;
 
 type
   { TfrmNotaSaida }
@@ -183,6 +184,11 @@ end;
 
 procedure TfrmNotaSaida.FormShow(Sender: TObject);
 begin
+  { Permissoes do grupo (T1): FISCAL/NOTA_SAIDA }
+  AplicarPermissaoAcao(Self, PERM_INSERIR, ['btnNovaDoPedido', 'btnGravar']);
+  AplicarPermissaoAcao(Self, PERM_EDITAR, ['btnFaturar']);
+  AplicarPermissaoAcao(Self, PERM_EXCLUIR, ['btnCancelarNota']);
+
   CarregarComboStatus;
   CarregarComboCondicao;
   edtFiltroDe.Text := FormatDateTime('dd/mm/yyyy', IncMonth(Now, -3));

@@ -141,7 +141,7 @@ end;
 
 procedure TfrmConsumoMaterial.FormShow(Sender: TObject);
 begin
-  if not TemPermissao(MODULO_PRODUCAO, TELA_CONSUMO, PERM_VISUALIZAR) then
+  if not TemPermissao(MODULO_SUPRIMENTOS, TELA_CONSUMO, PERM_VISUALIZAR) then
   begin
     MessageDlg('Seu usuário não tem permissão para acessar o Consumo de Materiais.',
       mtError, [mbOK], 0);
@@ -149,9 +149,9 @@ begin
     Exit;
   end;
 
-  FPodeGerar := TemPermissao(MODULO_PRODUCAO, TELA_CONSUMO, PERM_INSERIR);
+  FPodeGerar := TemPermissao(MODULO_SUPRIMENTOS, TELA_CONSUMO, PERM_INSERIR);
   FPodeConfirmar := FPodeGerar;
-  FPodeEstornar := TemPermissao(MODULO_PRODUCAO, TELA_CONSUMO, PERM_EXCLUIR);
+  FPodeEstornar := TemPermissao(MODULO_SUPRIMENTOS, TELA_CONSUMO, PERM_EXCLUIR);
 
   if FPodeGerar and FPodeEstornar then
     lblPermissao.Caption := ''

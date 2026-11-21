@@ -109,6 +109,8 @@ procedure mnuVenNotaSaidaClick(Sender: TObject);
   private
     procedure AtualizarStatusBar;
     procedure AbrirFormulario(AFormClass: TFormClass);
+    { Habilita no menu apenas as telas que o usuário pode visualizar. }
+    procedure AplicarPermissoesNoMenu;
   public
   end;
 
@@ -147,7 +149,64 @@ var
 begin
   LSessao := TSessao.GetInstance;
   lblBemVindo.Caption := 'Bem-vindo, ' + LSessao.UsuarioNome;
+  AplicarPermissoesNoMenu;
   AtualizarStatusBar;
+end;
+
+{ Cada item do menu aponta para uma tela do catálogo de permissões.
+  Sem permissão de visualizar, o item fica desabilitado — o usuário não
+  precisa descobrir a recusa só depois de clicar. }
+procedure TfrmPrincipal.AplicarPermissoesNoMenu;
+var
+  LPar: array[0..32] of TMenuItem;
+  LClasses: array[0..32] of TFormClass;
+  I: Integer;
+  LModulo, LTela: string;
+
+  procedure Marcar(AItem: TMenuItem; AClass: TFormClass);
+  begin
+    AItem.Enabled := False;
+    if PermissaoDaTela(AClass.ClassName, LModulo, LTela) then
+      AItem.Enabled := TemPermissao(LModulo, LTela, PERM_VISUALIZAR);
+  end;
+
+begin
+  LPar[0] := mnuSupMateriais;       LClasses[0] := TfrmMaterial;
+  LPar[1] := mnuSupCompras;         LClasses[1] := TfrmCompras;
+  LPar[2] := mnuProConsumo;         LClasses[2] := TfrmConsumoMaterial;
+  LPar[3] := mnuCadProdutos;        LClasses[3] := TfrmProdutos;
+  LPar[4] := mnuVenPedidos;         LClasses[4] := TfrmPedidoVenda;
+  LPar[5] := mnuVenOrcamentos;      LClasses[5] := TfrmOrcamento;
+  LPar[6] := mnuVenListaPedidos;    LClasses[6] := TfrmListaPedidos;
+  LPar[7] := mnuProMapaProducao;    LClasses[7] := TfrmMapaProducao;
+  LPar[8] := mnuProBipagem;         LClasses[8] := TfrmBipagem;
+  LPar[9] := mnuProFichaTecnica;    LClasses[9] := TfrmFichaTecnica;
+  LPar[10] := mnuFinContasReceber;  LClasses[10] := TfrmContasReceber;
+  LPar[11] := mnuFinContasPagar;    LClasses[11] := TfrmContasPagar;
+  LPar[12] := mnuFinCaixa;          LClasses[12] := TfrmCaixa;
+  LPar[13] := mnuFinProdutoFiscal;  LClasses[13] := TfrmProdutoFiscal;
+  LPar[14] := mnuFinMovimentacao;   LClasses[14] := TfrmMovimentoFinanceiro;
+  LPar[15] := mnuVenNotaSaida;      LClasses[15] := TfrmNotaSaida;
+  LPar[16] := mnuComNotaEntrada;    LClasses[16] := TfrmNotaEntrada;
+  LPar[17] := mnuFisNFe;            LClasses[17] := TfrmNFe;
+  LPar[18] := mnuCadPessoas;        LClasses[18] := TfrmPessoas;
+  LPar[19] := mnuCadCategorias;     LClasses[19] := TfrmCategorias;
+  LPar[20] := mnuCadGrades;         LClasses[20] := TfrmGrade;
+  LPar[21] := mnuCadPaises;         LClasses[21] := TfrmPais;
+  LPar[22] := mnuCadEstados;        LClasses[22] := TfrmEstado;
+  LPar[23] := mnuCadCidades;        LClasses[23] := TfrmCidade;
+  LPar[24] := mnuCadUsuarios;       LClasses[24] := TfrmUsuarios;
+  LPar[25] := mnuEstMovimentacao;   LClasses[25] := TfrmMovEstoque;
+  LPar[26] := mnuEstInventario;     LClasses[26] := TfrmInventario;
+  LPar[27] := mnuEstKardex;         LClasses[27] := TfrmKardex;
+  LPar[28] := mnuPDVAbrirPDV;       LClasses[28] := TfrmPDV;
+  LPar[29] := mnuRelCentral;        LClasses[29] := TfrmCentralRelatorios;
+  LPar[30] := mnuIACopiloto;        LClasses[30] := TfrmCopiloto;
+  LPar[31] := mnuSisConfiguracoes;  LClasses[31] := TfrmConfiguracoes;
+  LPar[32] := mnuSisPermissoes;     LClasses[32] := TfrmPermissoes;
+
+  for I := Low(LPar) to High(LPar) do
+    Marcar(LPar[I], LClasses[I]);
 end;
 
 procedure TfrmPrincipal.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -175,7 +234,28 @@ end;
 procedure TfrmPrincipal.AbrirFormulario(AFormClass: TFormClass);
 var
   LForm: TForm;
+  LModulo, LTela: string;
 begin
+  { Guarda de acesso (T1): toda tela do menu tem uma linha no catálogo
+    de permissões. Sem permissão de visualizar, a tela não abre. Tela
+    fora do catálogo é bloqueada (falha fechada): assim uma tela nova
+    nunca abre sem permissão configurada. }
+  if not PermissaoDaTela(AFormClass.ClassName, LModulo, LTela) then
+  begin
+    MessageDlg('Esta tela não tem permissão cadastrada.' + #13#10 +
+      'Fale com o administrador do sistema.',
+      mtError, [mbOK], 0);
+    Exit;
+  end;
+
+  if not TemPermissao(LModulo, LTela, PERM_VISUALIZAR) then
+  begin
+    MessageDlg('Seu usuário não tem permissão para acessar esta tela.' +
+      #13#10 + '(' + LModulo + '/' + LTela + ')',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
+
   LForm := AFormClass.Create(Application);
   try
     LForm.ShowModal;

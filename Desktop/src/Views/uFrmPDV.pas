@@ -12,7 +12,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, Grids, DB, SQLDB, ComCtrls, LCLIntf,
-  uConexao, uSessao, uPDVService, uACBrHelper;
+  uConexao, uSessao, uPDVService, uACBrHelper,
+  uPermissao, uPermissaoUI;
 
 type
   { TfrmPDV }
@@ -129,6 +130,12 @@ end;
 
 procedure TfrmPDV.FormShow(Sender: TObject);
 begin
+  { Permissoes do grupo (T1): PDV/PDV }
+  AplicarPermissaoAcao(Self, PERM_INSERIR,
+    ['btnFinalizar', 'btnSangria', 'btnSuprimento', 'chkEmitirNFCe']);
+  AplicarPermissaoAcao(Self, PERM_EDITAR, ['btnFecharCaixa']);
+  AplicarPermissaoAcao(Self, PERM_EXCLUIR, ['btnCancelarVenda', 'btnCancelarItem']);
+
   // O foco só pode ser aplicado depois que a janela está visível
   if edtCodigo.CanFocus then
     edtCodigo.SetFocus;

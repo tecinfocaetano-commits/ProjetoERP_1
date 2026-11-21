@@ -23,7 +23,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls, DateUtils, StrUtils,
-  uConexao, uSessao, uNotaEntradaService, uNFeXmlService;
+  uConexao, uSessao, uNotaEntradaService, uNFeXmlService,
+  uPermissao, uPermissaoUI;
 
 type
   { TfrmNotaEntrada }
@@ -219,6 +220,12 @@ end;
 
 procedure TfrmNotaEntrada.FormShow(Sender: TObject);
 begin
+  { Permissoes do grupo (T1): FISCAL/NOTA_ENTRADA }
+  AplicarPermissaoAcao(Self, PERM_INSERIR,
+    ['btnNovaNota', 'btnGravar', 'btnIncluirItem', 'btnImportarXML']);
+  AplicarPermissaoAcao(Self, PERM_EDITAR, ['btnExcluirItem', 'btnProcessar']);
+  AplicarPermissaoAcao(Self, PERM_EXCLUIR, ['btnCancelarNota']);
+
   CarregarComboStatus;
   CarregarComboCondicao;
   edtFiltroDe.Text := FormatDateTime('dd/mm/yyyy', IncMonth(Now, -3));

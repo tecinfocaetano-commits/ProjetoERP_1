@@ -13,7 +13,8 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, Grids, DateUtils,
-  uConexao, uSessao, uNotaEntradaService, uPedidoCompraService;
+  uConexao, uSessao, uNotaEntradaService, uPedidoCompraService,
+  uPermissao, uPermissaoUI;
 
 type
   { TfrmCompras }
@@ -93,6 +94,10 @@ begin
     FConexao.Conectar;
   FMaterialId := 0;
   FPedidoId := 0;
+
+  { Permissoes do grupo (T1): SUPRIMENTOS/COMPRAS }
+  AplicarPermissaoAcao(Self, PERM_INSERIR, ['btnSalvar', 'btnAddItem']);
+  AplicarPermissaoAcao(Self, PERM_EDITAR, ['btnConfirmar', 'btnRemoverItem']);
 
   CarregarFornecedores;
   ConfigurarGridItens;

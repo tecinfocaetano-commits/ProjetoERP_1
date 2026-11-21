@@ -11,7 +11,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, DateUtils, LCLIntf,
-  uConexao, uSessao, uACBrHelper, uPedidoStatus;
+  uConexao, uSessao, uACBrHelper, uPedidoStatus, uPermissao, uPermissaoUI;
 
 type
   TfrmNFe = class(TForm)
@@ -93,6 +93,12 @@ begin
     DataSource1 := TDataSource.Create(Self);
 
   FACBr := TACBrHelper.Create;
+
+  { Permissoes do grupo (T1): FISCAL/NFE }
+  AplicarPermissaoAcao(Self, PERM_INSERIR,
+    ['btnEmitirNFe', 'btnImportarXML', 'btnCartaCorrecao', 'btnInutilizar',
+     'btnManifestar']);
+  AplicarPermissaoAcao(Self, PERM_EXCLUIR, ['btnCancelar']);
 
   // UF do emitente define o serviço da SEFAZ
   FUF := 'SP';

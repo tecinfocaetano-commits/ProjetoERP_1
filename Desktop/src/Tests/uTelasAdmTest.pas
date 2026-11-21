@@ -20,7 +20,7 @@ interface
 
 uses
   Classes, SysUtils, DB, SQLDB, uAssert, uConexao, uSessao,
-  uConfiguracaoService, uPermissaoService, uCaixaService;
+  uConfiguracaoService, uPermissaoService, uCaixaService, uPermissao;
 
 type
   { TTelasAdmTest }
@@ -413,6 +413,171 @@ var
     end;
   end;
 
+  { ------------------------------------------------------------------
+    T1 - permissoes em todas as telas do menu
+    ------------------------------------------------------------------ }
+
+  { O catalogo canonico (uPermissao.CATALOGO_TELAS) tem uma linha por
+    tela do menu: nome da classe, modulo, tela e descricao. Nomes de
+    form nao podem se repetir e nada pode ficar vazio. }
+  procedure TestCatalogoPermissoesCompleto;
+  var
+    I, J: Integer;
+    LModulo, LTela: string;
+    LEncontrado: Boolean;
+    LFaltando: string;
+  begin
+    try
+      AssertTrue(QuantidadeTelasPermissao >= 30,
+        'o catalogo deve ter uma linha por tela do menu');
+
+      for I := 0 to QuantidadeTelasPermissao - 1 do
+      begin
+        AssertTrue(Trim(TelaPermissaoPorIndice(I).FormClass) <> '',
+          'tela ' + IntToStr(I) + ' sem nome de form');
+        AssertTrue(Trim(TelaPermissaoPorIndice(I).Modulo) <> '',
+          'tela ' + IntToStr(I) + ' sem modulo');
+        AssertTrue(Trim(TelaPermissaoPorIndice(I).Tela) <> '',
+          'tela ' + IntToStr(I) + ' sem nome de tela');
+        for J := I + 1 to QuantidadeTelasPermissao - 1 do
+          AssertFalse(
+            UpperCase(TelaPermissaoPorIndice(I).FormClass) =
+            UpperCase(TelaPermissaoPorIndice(J).FormClass),
+            'form repetido no catalogo: ' +
+            TelaPermissaoPorIndice(I).FormClass);
+      end;
+
+      { procura pelo nome da classe }
+      LEncontrado := PermissaoDaTela('TfrmPessoas', LModulo, LTela);
+      AssertTrue(LEncontrado, 'TfrmPessoas deve estar no catalogo');
+      AssertEquals(MODULO_CADASTROS, LModulo, 'modulo de TfrmPessoas');
+      AssertEquals('PESSOAS', LTela, 'tela de TfrmPessoas');
+
+      LEncontrado := PermissaoDaTela('TFormQualquer', LModulo, LTela);
+      AssertFalse(LEncontrado, 'form fora do catalogo nao deve ser achado');
+
+      ASuite.AddResult('TestCatalogoPermissoesCompleto', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestCatalogoPermissoesCompleto', False, E.Message);
+    end;
+  end;
+
+  { Toda tela do catalogo tem a sua linha de permissao semeada para o
+    grupo 1 (Administradores) - seed da migracao 020. }
+  procedure TestSeedPermissoesDeTodasAsTelas;
+  var
+    I: Integer;
+    LFaltando: string;
+  begin
+    try
+      LFaltando := '';
+      for I := 0 to QuantidadeTelasPermissao - 1 do
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'SELECT COUNT(*) FROM PERMISSAO WHERE GRUPO_ID = :G ' +
+          'AND MODULO = :M AND TELA = :T';
+        LQuery.ParamByName('G').AsLargeInt := 1;
+        LQuery.ParamByName('M').AsString :=
+          TelaPermissaoPorIndice(I).Modulo;
+        LQuery.ParamByName('T').AsString :=
+          TelaPermissaoPorIndice(I).Tela;
+        LQuery.Open;
+        if LQuery.Fields[0].AsInteger = 0 then
+          LFaltando := LFaltando + TelaPermissaoPorIndice(I).Modulo + '/' +
+            TelaPermissaoPorIndice(I).Tela + ' ';
+        LQuery.Close;
+      end;
+      AssertEquals('', Trim(LFaltando),
+        'telas do catalogo sem permissao semeada: ' + LFaltando);
+      ASuite.AddResult('TestSeedPermissoesDeTodasAsTelas', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestSeedPermissoesDeTodasAsTelas', False, E.Message);
+    end;
+  end;
+
+  { Falha fechada: grupo sem linha de permissao nao acessa nada;
+    grupo com linha acessa so a acao liberada; administrador acessa
+    tudo. A sessao e restaurada no fim. }
+  procedure TestPermissaoFalhaFechada;
+  var
+    LGrupoId: Int64;
+    LGrupoAntes, LAdminAntes: Int64;
+    LAdminAntesBool: Boolean;
+  begin
+    LGrupoId := 0;
+    LGrupoAntes := LSessao.GrupoId;
+    LAdminAntesBool := LSessao.Administrador;
+    try
+      { grupo de teste, sem nenhuma permissao }
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'INSERT INTO GRUPO (NOME, DESCRICAO, ATIVO) ' +
+        'VALUES (:N, :D, ''A'') RETURNING ID';
+      LQuery.ParamByName('N').AsString := 'TESTE_PERM_GRUPO';
+      LQuery.ParamByName('D').AsString := 'grupo criado pelo teste';
+      LQuery.Open;
+      LGrupoId := LQuery.FieldByName('ID').AsLargeInt;
+      LQuery.Close;
+      LConexao.Confirmar;
+
+      LSessao.GrupoId := LGrupoId;
+      LSessao.Administrador := False;
+      AssertFalse(TemPermissao(MODULO_CADASTROS, 'PESSOAS', PERM_VISUALIZAR),
+        'grupo sem permissao nao pode visualizar');
+
+      { agora libera so a visualizacao de CADASTROS/PESSOAS }
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'INSERT INTO PERMISSAO (GRUPO_ID, MODULO, TELA, PODE_VISUALIZAR, ' +
+        'PODE_INSERIR, PODE_EDITAR, PODE_EXCLUIR, PODE_IMPRIMIR) ' +
+        'VALUES (:G, :M, :T, ''S'', ''N'', ''N'', ''N'', ''N'')';
+      LQuery.ParamByName('G').AsLargeInt := LGrupoId;
+      LQuery.ParamByName('M').AsString := MODULO_CADASTROS;
+      LQuery.ParamByName('T').AsString := 'PESSOAS';
+      LQuery.ExecSQL;
+      LConexao.Confirmar;
+
+      AssertTrue(TemPermissao(MODULO_CADASTROS, 'PESSOAS', PERM_VISUALIZAR),
+        'grupo com linha deve visualizar');
+      AssertFalse(TemPermissao(MODULO_CADASTROS, 'PESSOAS', PERM_INSERIR),
+        'grupo so com visualizar nao pode incluir');
+
+      { outra tela continua negada }
+      AssertFalse(TemPermissao(MODULO_VENDAS, 'PEDIDO_VENDA', PERM_VISUALIZAR),
+        'tela sem linha deve continuar negada');
+
+      { administrador acessa tudo, mesmo sem linha }
+      LSessao.Administrador := True;
+      AssertTrue(TemPermissao(MODULO_VENDAS, 'PEDIDO_VENDA', PERM_INSERIR),
+        'administrador deve ter acesso total');
+
+      ASuite.AddResult('TestPermissaoFalhaFechada', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestPermissaoFalhaFechada', False, E.Message);
+    end;
+    { restaura a sessao e apaga o rastro }
+    LSessao.GrupoId := LGrupoAntes;
+    LSessao.Administrador := LAdminAntesBool;
+    try
+      if LGrupoId > 0 then
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text := 'DELETE FROM PERMISSAO WHERE GRUPO_ID = :G';
+        LQuery.ParamByName('G').AsLargeInt := LGrupoId;
+        LQuery.ExecSQL;
+        LQuery.SQL.Text := 'DELETE FROM GRUPO WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LGrupoId;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+      end;
+    except
+    end;
+  end;
+
 begin
   LConexao := TConexao.GetInstance;
   LQuery := TSQLQuery.Create(nil);
@@ -429,6 +594,9 @@ begin
     TestConfiguracaoServiceGravaEhLimpa;
     TestPermissaoServiceFazUpsertSemDuplicar;
     TestCaixaServiceLeSemGravar;
+    TestCatalogoPermissoesCompleto;
+    TestSeedPermissoesDeTodasAsTelas;
+    TestPermissaoFalhaFechada;
   finally
     LQuery.Free;
   end;
