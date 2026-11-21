@@ -2321,7 +2321,50 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   resolveu; não é regressão de código.
 - **Coordenação:** API parada/recompilada/reiniciada na 9000 com aviso no
   canal. Nada de `Android\android\bipe\**` foi tocado.
-- **Commits:** código D7+D8+F6 (`90f2af2`) + docs deste marco.
+- **Commits:** código D7+D8+F6 (`90f2af2`) + docs (`58f34b9`).
+
+---
+
+### 3.78 F9 — erros de sincronização visíveis, backoff e dead-letter (21/11)
+
+- **Escopo:** só `Android\android\app\src\`. O mapeamento confirmou que
+  `:app` e `:bipe` não compartilham nenhum arquivo Java; nenhum arquivo de
+  `Android\android\bipe\**`, `HistoricoActivity.java` ou dos dados de cenário
+  do outro agente foi tocado.
+- **Schema (migração v3 → v4 em `ErpDbHelper`):** a outbox ganhou
+  `proxima_tentativa` (epoch ms) e `status` (`PENDENTE`/`ERRO`/`DEAD`). Itens
+  antigos com tentativa/erro passam para `ERRO` com retry livre, preservando
+  o histórico. `onCreate` já cria as colunas para instalações novas.
+- **Política (`ItemOutbox`):** backoff exponencial de 1/2/4/8/16 minutos;
+  após 5 falhas a linha vira `DEAD`. Erro HTTP 4xx (exceto 408/429, que são
+  transitórios), resposta de POST sem `id` e orçamento sem itens vão direto
+  para `DEAD` — reenviar não mudaria a causa e poderia duplicar registro.
+  Falhas de rede/5xx e dependências ainda pendentes ficam em `ERRO` com retry.
+- **`BancoLocal`:** `pendentes()` agora devolve só o que pode ser enviado
+  (não-dead e com backoff vencido); `fila()` devolve tudo para diagnóstico;
+  `registrarErro()` grava tentativa/erro/status/próxima data;
+  `requererTentativa()` zera o backoff sem apagar o histórico;
+  `limparDeadLetter()` remove só falhas definitivas; `resumoFila()` conta
+  prontos/aguardando/dead. Reenfileirar o mesmo registro volta para
+  `PENDENTE`.
+- **`Sincronizacao`:** `Resultado.fila` e `resumo()` mostram o estado da fila;
+  o envio classifica cada falha. Não foi adicionado retry automático em
+  `ApiClient.post` — POST não é idempotente e a outbox já reenvia com backoff.
+- **Tela:** `activity_sincronizacao.xml` ganhou o card "Fila de envio" com
+  resumo, lista das primeiras 20 operações (`ItemOutbox.descricao()`),
+  `Tentar novamente` (libera backoff e roda a rodada) e `Limpar falhas`.
+  Todos os `android:id` existentes foram preservados; os novos são
+  `textViewFilaResumo`, `containerFila`, `buttonTentarFila` e
+  `buttonLimparFalhas`.
+- **Testes Android 9/9** (antes 5): 3 casos novos de backoff/dead-letter/
+  limpeza e 1 de inflação da Activity com os novos IDs. Nenhum teste antigo
+  precisou mudar.
+- **Bateria:** desktop **384/384**, telas **33/33**, `permissoes_menu.ps1`
+  **0 falhas**, `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos,
+  diff vazio), Android **9/9**, `build_api.bat` **OK**, 5 smokes da API **OK**.
+- **Coordenação:** API parada/recompilada/reiniciada na 9000 com aviso prévio
+  no canal. Canal registra que o próximo bloco é F1 (CRUD da API).
+- **Commits:** código F9 + docs deste marco.
 
 ---
 

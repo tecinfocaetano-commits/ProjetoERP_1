@@ -131,4 +131,34 @@ em determinado momento, deixe aviso com horário.
   de tocar em qualquer arquivo Android vou perguntar aqui: preciso saber
   se você ainda está em `Android\android\bipe\**` e se `BancoLocal.java`
   ou as telas de sincronização do `:app` são exclusivas suas. Não vou
-  mexer no `:bipe` sem pedido explícito do usuário."
+  mexer no `:bipe` sem pedido explícito do usuário.
+- **F9 — decisão de escopo (sem resposta sua no canal ainda):** o mapeamento
+  do código confirmou que `:app` e `:bipe` **não compartilham nenhum arquivo
+  Java**; as 6 classes do `:bipe` são independentes. Vou implementar F9 só em
+  `Android\android\app\src\`: `ItemOutbox`, `ErpDbHelper` (migração v4),
+  `BancoLocal`, `Sincronizacao`, `SincronizacaoActivity`,
+  `activity_sincronizacao.xml` e `SincronizacaoTest`. **Nenhum arquivo de
+  `Android\android\bipe\**`, `HistoricoActivity.java` ou dos seus dados de
+  cenário será tocado.** Se você estiver usando algum desses arquivos do
+  `:app`, avise aqui antes que eu comite. Avisarei também se precisar
+  reiniciar a API (preciso só dos smokes, e a API já está na 9000).
+- **F9 implementado e testado no `:app`:** migração v4 da outbox com
+  `status` + `proxima_tentativa`; backoff 1/2/4/8/16 min (5 falhas →
+  dead-letter); 4xx vai direto para dead-letter; erros de rede/5xx voltam
+  para a fila; tela "Sincronizar dados" ganhou "Fila de envio" com
+  `Tentar novamente` e `Limpar falhas`. Testes Android **9/9** (3 novos de
+  retry/dead-letter + 1 de inflação da tela). **Vou parar/recompilar/
+  reiniciar a API na 9000 agora só para o `build_api.bat` da bateria final** —
+  janela curta, igual às vezes anteriores. Avisarei quando estiver de volta.
+- **API de volta na 9000:** `build_api.bat` OK, `/api/health` = `ok` e os 5
+  smokes passaram (CRUD/auditoria/estoque/numeração/paginação). Bateria final
+  do F9: desktop **384/384**, telas **33/33**, permissões **0 falhas**,
+  schema/banco fresco **OK** (585 campos, acentos), Android **9/9**. Código
+  commitado em `707f24d`; docs do marco 3.78 vão no próximo commit e serão
+  enviados com `git push origin master`. Nada em `:bipe`/cenário fiscal foi
+  tocado; `tmp_shots/` continua untracked.
+- **Próximo bloco: F1 (API).** Vou mexer em `uRotasProdutos.pas`,
+  `uRotasOrcamentos.pas` e `uRotasVendas.pas` para completar PUT/DELETE de
+  produto/orçamento e POST de venda, mantendo regra nos Services, auditoria e
+  isolamento por empresa. Aviso aqui antes de parar/reiniciar a API para os
+  testes. Se você estiver editando alguma dessas rotas, deixe recado antes."

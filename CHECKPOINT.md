@@ -35,23 +35,34 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `90f2af2` — "Banco canonico e paginacao opcional na API (D7+D8+F6)"
-(logo abaixo, `f40b63b` — docs do marco 3.76; o commit de docs deste marco
-vem acima). Build: desktop **0/0** · suíte desktop **384/384** ·
-`build_api.bat` **OK** (pare a API antes de compilar, senão o `.exe`
-fica travado) · testes Android **OK** · smoke de telas **33/33** ·
-`permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1` e
-`banco_fresco.ps1` **OK** (585 campos, diff vazio, acentos conferidos) ·
-na API 9000: `api_clientes_crud.ps1`, `api_auditoria.ps1` (6 logs),
-`api_estoque_service.ps1`, `api_numeracao_empresa.ps1` e
-`api_paginacao.ps1` **OK**. Árvore: sem mudanças nossas após os commits;
-`tmp_shots/` (do smoke do `:bipe`) permanece untracked e não foi tocada.
+**HEAD:** `58f34b9` — "Docs: marco 3.77 (D7+D8+F6), checkpoint e canal de
+agentes" (acima dele entra o commit de código F9 e, depois, o de docs deste
+marco). Build: desktop **0/0** · suíte desktop **384/384** · `build_api.bat`
+**OK** (pare a API antes de compilar, senão o `.exe` fica travado) · testes
+Android **9/9** · smoke de telas **33/33** · `permissoes_menu.ps1`
+**0 falhas** · `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos,
+diff vazio, acentos conferidos) · na API 9000: `api_clientes_crud.ps1`,
+`api_auditoria.ps1` (6 logs), `api_estoque_service.ps1`,
+`api_numeracao_empresa.ps1` e `api_paginacao.ps1` **OK**. Árvore: sem
+mudanças nossas após os commits; `tmp_shots/` (do smoke do `:bipe`)
+permanece untracked e não foi tocada.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.78 — F9: fila offline com backoff e dead-letter)
+
+| Item | Entrega |
+|---|---|
+| **F9 (Android)** | Migração v4 da outbox (`status`, `proxima_tentativa`); backoff 1/2/4/8/16 min, dead-letter após 5 falhas ou 4xx; `pendentes()` filtra o que pode enviar e `fila()` mostra tudo. |
+| **Tela** | Card "Fila de envio" em `activity_sincronizacao.xml` com resumo, lista de itens, `Tentar novamente` e `Limpar falhas`. IDs antigos preservados. |
+| **Controller** | `Sincronizacao.java` classifica falha transitória/permanente; `Resultado.resumo()` informa a fila. Sem retry em POST (não idempotente). |
+| **Testes** | Android **9/9** (3 novos de retry/dead-letter + 1 de inflação da tela). |
+| **Verificação** | Desktop **384/384**, telas **33/33**, permissões **0 falhas**, schema/banco fresco **OK**, `build_api.bat` **OK**, 5 smokes da API **OK**. |
+| **Escopo** | Nenhum arquivo de `Android\android\bipe\**` tocado; canal avisado antes da parada da API. |
 
 ### O que fechou nesta sessão (marco 3.77 — D7 + D8 + F6)
 
