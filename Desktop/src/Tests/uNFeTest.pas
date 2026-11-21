@@ -29,7 +29,7 @@ interface
 
 uses
   Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao, uACBrHelper,
-  uNFeXmlService, uConfiguracaoService;
+  uNFeXmlService, uConfiguracaoService, uImportacaoXmlMapService;
 
 type
   { TNFeTest }
@@ -1366,6 +1366,332 @@ var
   end;
 
   // ------------------------------------------------------------------
+  // Marco 3.88 - rastro e mapeamento de produto do XML
+  // ------------------------------------------------------------------
+
+  procedure PrepararXmlSemProduto(const ACodigo: string;
+    out AFornecedorId: Int64; out AChave, AArquivo: string);
+  var
+    LXml: string;
+    LLista: TStringList;
+    LDoc: string;
+  begin
+    Inc(LSeq);
+    AChave := Copy('35' + LSufixo + IntToStr(LSeq) +
+      StringOfChar('0', 44), 1, 44);
+    LDoc := Copy('98' + LSufixo, 1, 14);
+    AFornecedorId := 0;
+
+    LQuery.Close;
+    LQuery.SQL.Text :=
+      'INSERT INTO PESSOA (EMPRESA_ID, TIPO, TIPO_PESSOA, NOME, CPF_CNPJ, ' +
+      '  ATIVO, DATA_CADASTRO) ' +
+      'VALUES (:EMP, ''F'', ''J'', :NOME, :DOC, ''A'', CURRENT_TIMESTAMP) ' +
+      'RETURNING ID';
+    LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+    LQuery.ParamByName('NOME').AsString := NovoNome('FORNECEDOR MAPA');
+    LQuery.ParamByName('DOC').AsString := LDoc;
+    LQuery.Open;
+    AFornecedorId := LQuery.FieldByName('ID').AsLargeInt;
+    LQuery.Close;
+    LConexao.Confirmar;
+
+    AArquivo := IncludeTrailingPathDelimiter(GetTempDir) + 'nfe_mapa_' +
+      LSufixo + '_' + IntToStr(LSeq) + '.xml';
+    LXml :=
+      '<nfe:nfeProc xmlns:nfe="http://www.portalfiscal.inf.br/nfe">' +
+      '<nfe:NFe><nfe:infNFe Id="NFe' + AChave + '">' +
+      '<nfe:ide><nfe:natOp>COMPRA PARA COMERCIALIZACAO</nfe:natOp>' +
+      '<nfe:mod>55</nfe:mod><nfe:serie>1</nfe:serie>' +
+      '<nfe:nNF>' + IntToStr(9000 + LSeq) + '</nfe:nNF>' +
+      '<nfe:dhEmi>2026-11-14T10:00:00-03:00</nfe:dhEmi></nfe:ide>' +
+      '<nfe:emit><nfe:CNPJ>' + LDoc + '</nfe:CNPJ>' +
+      '<nfe:xNome>FORNECEDOR MAPA ' + LSufixo + '</nfe:xNome></nfe:emit>' +
+      '<nfe:det nItem="1"><nfe:prod>' +
+      '<nfe:cProd>' + ACodigo + '</nfe:cProd>' +
+      '<nfe:cEAN>SEM GTIN</nfe:cEAN>' +
+      '<nfe:xProd>PRODUTO SEM CADASTRO &amp; TESTE</nfe:xProd>' +
+      '<nfe:NCM>84713012</nfe:NCM><nfe:CFOP>1102</nfe:CFOP>' +
+      '<nfe:uCom>UN</nfe:uCom><nfe:qCom>3.0000</nfe:qCom>' +
+      '<nfe:vUnCom>12.50</nfe:vUnCom><nfe:vDesc>0</nfe:vDesc>' +
+      '</nfe:prod><nfe:imposto><nfe:ICMS><nfe:ICMS00>' +
+      '<nfe:CST>00</nfe:CST></nfe:ICMS00></nfe:ICMS></nfe:imposto></nfe:det>' +
+      '<nfe:total><nfe:ICMSTot><nfe:vProd>37.50</nfe:vProd>' +
+      '<nfe:vFrete>0</nfe:vFrete><nfe:vSeg>0</nfe:vSeg>' +
+      '<nfe:vDesc>0</nfe:vDesc><nfe:vOutro>0</nfe:vOutro>' +
+      '<nfe:vNF>37.50</nfe:vNF></nfe:ICMSTot></nfe:total>' +
+      '</nfe:infNFe></nfe:NFe></nfe:nfeProc>';
+    LLista := TStringList.Create;
+    try
+      LLista.Text := LXml;
+      LLista.SaveToFile(AArquivo);
+    finally
+      LLista.Free;
+    end;
+  end;
+
+  procedure LimparCenario(ANotaId, AFornecedorId, AProdutoId: Int64;
+    const AArquivo: string);
+  begin
+    try
+      if ANotaId > 0 then
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'DELETE FROM IMPORTACAO_XML_ITEM WHERE NOTA_ENTRADA_ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := ANotaId;
+        LQuery.ExecSQL;
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'DELETE FROM NOTA_ENTRADA_ITEM WHERE NOTA_ENTRADA_ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := ANotaId;
+        LQuery.ExecSQL;
+        LQuery.Close;
+        LQuery.SQL.Text := 'DELETE FROM NOTA_ENTRADA WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := ANotaId;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+      end;
+    except
+      LConexao.Cancelar;
+    end;
+    try
+      if AProdutoId > 0 then
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text := 'DELETE FROM PRODUTO WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := AProdutoId;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+      end;
+    except
+      LConexao.Cancelar;
+    end;
+    try
+      if AFornecedorId > 0 then
+      begin
+        LQuery.Close;
+        LQuery.SQL.Text := 'DELETE FROM PESSOA WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := AFornecedorId;
+        LQuery.ExecSQL;
+        LConexao.Confirmar;
+      end;
+    except
+      LConexao.Cancelar;
+    end;
+    try
+      if FileExists(AArquivo) then
+        DeleteFile(AArquivo);
+    except
+    end;
+  end;
+
+  procedure TestImportacaoXmlRastroItem;
+  var
+    LFornecedor, LNota: Int64;
+    LChave, LArquivo, LCodigo: string;
+    LIncluidos, LSem: Integer;
+  begin
+    LFornecedor := 0;
+    LNota := 0;
+    LCodigo := 'SEM' + Copy(LSufixo, 1, 10);
+    PrepararXmlSemProduto(LCodigo, LFornecedor, LChave, LArquivo);
+    try
+      AssertTrue(TNFeImportService.Importar(LArquivo, LNota,
+        LIncluidos, LSem) and (LIncluidos = 1) and (LSem = 1),
+        'item sem cadastro deve ser importado e contado');
+
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'SELECT ID, FORNECEDOR_CNPJ, DESCRICAO_ORIGINAL, ' +
+        ' CODIGO_PRODUTO_NOTA, CLASSIFICACAO_FISCAL, SITUACAO, PRODUTO_ID ' +
+        'FROM IMPORTACAO_XML_ITEM WHERE EMPRESA_ID = :EMP ' +
+        'AND NOTA_ENTRADA_ID = :NOTA';
+      LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+      LQuery.ParamByName('NOTA').AsLargeInt := LNota;
+      LQuery.Open;
+      AssertTrue((not LQuery.IsEmpty) and
+        (Trim(LQuery.FieldByName('DESCRICAO_ORIGINAL').AsString) =
+          'PRODUTO SEM CADASTRO & TESTE') and
+        (Trim(LQuery.FieldByName('CODIGO_PRODUTO_NOTA').AsString) = LCodigo) and
+        (Trim(LQuery.FieldByName('CLASSIFICACAO_FISCAL').AsString) =
+          'NCM 84713012; CFOP 1102; CST 00') and
+        (Trim(LQuery.FieldByName('SITUACAO').AsString) = 'PENDENTE') and
+        LQuery.FieldByName('PRODUTO_ID').IsNull and
+        (Trim(LQuery.FieldByName('FORNECEDOR_CNPJ').AsString) <> ''),
+        'rastro deve guardar CNPJ, descrição original e classificação do XML');
+      LQuery.Close;
+      ASuite.AddResult('TestImportacaoXmlRastroItem', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestImportacaoXmlRastroItem', False, E.Message);
+    end;
+    LimparCenario(LNota, LFornecedor, 0, LArquivo);
+  end;
+
+  procedure TestImportacaoXmlMapeiaProdutoExistente;
+  var
+    LFornecedor, LNota, LProduto, LMapId: Int64;
+    LChave, LArquivo, LCodigoXml, LCodigoCad: string;
+    LIncluidos, LSem, LQtdLog: Integer;
+    LMap: TImportacaoXmlMapService;
+  begin
+    LFornecedor := 0;
+    LNota := 0;
+    LProduto := 0;
+    LMapId := 0;
+    LCodigoXml := 'NAO' + Copy(LSufixo, 1, 10);
+    LCodigoCad := 'CAD' + Copy(LSufixo, 1, 10);
+    PrepararXmlSemProduto(LCodigoXml, LFornecedor, LChave, LArquivo);
+    try
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'INSERT INTO PRODUTO (EMPRESA_ID, CATEGORIA_ID, UNIDADE_ID, CODIGO, ' +
+        '  DESCRICAO, PRECO_CUSTO, PRECO_VENDA, CONTROLA_ESTOQUE, ATIVO) ' +
+        'VALUES (:EMP, 1, 1, :COD, :DESC, 10, 20, ''S'', ''A'') RETURNING ID';
+      LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+      LQuery.ParamByName('COD').AsString := LCodigoCad;
+      LQuery.ParamByName('DESC').AsString := NovoNome('COMPATIVEL XML');
+      LQuery.Open;
+      LProduto := LQuery.FieldByName('ID').AsLargeInt;
+      LQuery.Close;
+      LConexao.Confirmar;
+
+      AssertTrue(TNFeImportService.Importar(LArquivo, LNota,
+        LIncluidos, LSem) and (LSem = 1),
+        'XML com código desconhecido deve ficar pendente');
+
+      LMap := TImportacaoXmlMapService.Create;
+      try
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'SELECT ID FROM IMPORTACAO_XML_ITEM WHERE NOTA_ENTRADA_ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LNota;
+        LQuery.Open;
+        LMapId := LQuery.FieldByName('ID').AsLargeInt;
+        LQuery.Close;
+
+        LMap.AplicarMapeamento(LMapId, LProduto, 'XML');
+      finally
+        LMap.Free;
+      end;
+
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'SELECT SITUACAO, PRODUTO_ID FROM IMPORTACAO_XML_ITEM WHERE ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := LMapId;
+      LQuery.Open;
+      AssertTrue((Trim(LQuery.FieldByName('SITUACAO').AsString) = 'MAPEADO') and
+        (LQuery.FieldByName('PRODUTO_ID').AsLargeInt = LProduto),
+        'escolha de compatível deve marcar o rastro como MAPEADO');
+      LQuery.Close;
+
+      LQuery.SQL.Text :=
+        'SELECT PRODUTO_ID, NCM, CFOP, CST_ICMS FROM NOTA_ENTRADA_ITEM ' +
+        'WHERE NOTA_ENTRADA_ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := LNota;
+      LQuery.Open;
+      AssertTrue((LQuery.FieldByName('PRODUTO_ID').AsLargeInt = LProduto) and
+        (Trim(LQuery.FieldByName('NCM').AsString) = '84713012') and
+        (Trim(LQuery.FieldByName('CFOP').AsString) = '1102'),
+        'item da nota deve herdar o produto escolhido e a classificação');
+      LQuery.Close;
+
+      LQuery.SQL.Text :=
+        'SELECT COUNT(*) AS QTD FROM LOG_SISTEMA WHERE TABELA = :T ' +
+        'AND OPERACAO = :O AND REGISTRO_ID = :ID AND USUARIO_ID = :USR';
+      LQuery.ParamByName('T').AsString := 'IMPORTACAO_XML';
+      LQuery.ParamByName('O').AsString := 'MAPEAMENTO_PRODUTO';
+      LQuery.ParamByName('ID').AsLargeInt := LMapId;
+      LQuery.ParamByName('USR').AsLargeInt := LSessao.UsuarioId;
+      LQuery.Open;
+      LQtdLog := LQuery.FieldByName('QTD').AsInteger;
+      LQuery.Close;
+      AssertTrue(LQtdLog = 1,
+        'mapeamento deve auditar usuário, empresa e origem XML');
+      ASuite.AddResult('TestImportacaoXmlMapeiaProdutoExistente', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestImportacaoXmlMapeiaProdutoExistente', False,
+          E.Message);
+    end;
+    LimparCenario(LNota, LFornecedor, LProduto, LArquivo);
+  end;
+
+  procedure TestImportacaoXmlCriaProdutoNovo;
+  var
+    LFornecedor, LNota, LProduto, LMapId: Int64;
+    LChave, LArquivo, LCodigo: string;
+    LIncluidos, LSem, LQtd: Integer;
+    LMap: TImportacaoXmlMapService;
+  begin
+    LFornecedor := 0;
+    LNota := 0;
+    LProduto := 0;
+    LMapId := 0;
+    LCodigo := 'NOVO' + Copy(LSufixo, 1, 9);
+    PrepararXmlSemProduto(LCodigo, LFornecedor, LChave, LArquivo);
+    try
+      AssertTrue(TNFeImportService.Importar(LArquivo, LNota,
+        LIncluidos, LSem) and (LSem = 1),
+        'XML sem produto deve gerar pendência');
+
+      LMap := TImportacaoXmlMapService.Create;
+      try
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'SELECT ID FROM IMPORTACAO_XML_ITEM WHERE NOTA_ENTRADA_ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LNota;
+        LQuery.Open;
+        LMapId := LQuery.FieldByName('ID').AsLargeInt;
+        LQuery.Close;
+
+        LProduto := LMap.CriarProdutoDoItem(LMapId, 12.5);
+        AssertTrue(LProduto > 0, 'cadastro manual deve criar produto');
+
+        { reprocessar a mesma chave/código não duplica o rastro nem
+          desfaz o produto escolhido }
+        LMap.RegistrarItem(LChave, '55', 'NACIONAL', '',
+          'PRODUTO SEM CADASTRO & TESTE', LCodigo,
+          'NCM 84713012; CFOP 1102; CST 00', '84713012', '1102',
+          '00', '', 'UN', 3, 12.5, LNota, 0, LProduto, 'PENDENTE');
+      finally
+        LMap.Free;
+      end;
+
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'SELECT COUNT(*) AS QTD, MAX(SITUACAO) AS SIT, ' +
+        ' MAX(PRODUTO_ID) AS PROD FROM IMPORTACAO_XML_ITEM ' +
+        'WHERE EMPRESA_ID = :EMP AND CHAVE = :CHAVE';
+      LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+      LQuery.ParamByName('CHAVE').AsString := LChave;
+      LQuery.Open;
+      LQtd := LQuery.FieldByName('QTD').AsInteger;
+      AssertTrue((LQtd = 1) and
+        (Trim(LQuery.FieldByName('SIT').AsString) = 'NOVO') and
+        (LQuery.FieldByName('PROD').AsLargeInt = LProduto),
+        'reprocessamento deve reaproveitar o mapeamento do produto novo');
+      LQuery.Close;
+
+      LQuery.SQL.Text :=
+        'SELECT NCM, DESCRICAO FROM PRODUTO WHERE ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := LProduto;
+      LQuery.Open;
+      AssertTrue((Trim(LQuery.FieldByName('NCM').AsString) = '84713012') and
+        (Trim(LQuery.FieldByName('DESCRICAO').AsString) =
+          'PRODUTO SEM CADASTRO & TESTE'),
+        'produto novo deve ser pré-preenchido com os dados do XML');
+      LQuery.Close;
+      ASuite.AddResult('TestImportacaoXmlCriaProdutoNovo', True, '');
+    except
+      on E: Exception do
+        ASuite.AddResult('TestImportacaoXmlCriaProdutoNovo', False, E.Message);
+    end;
+    LimparCenario(LNota, LFornecedor, LProduto, LArquivo);
+  end;
+
+  // ------------------------------------------------------------------
   // Limpeza
   // ------------------------------------------------------------------
 
@@ -1459,6 +1785,9 @@ begin
     TestModoHomologacao;
     TestDestinatarioOpcionalNFCe;
     TestImportarXmlNotaEntrada;
+    TestImportacaoXmlRastroItem;
+    TestImportacaoXmlMapeiaProdutoExistente;
+    TestImportacaoXmlCriaProdutoNovo;
   finally
     LimparSobraPorSufixo;
     LHelper.Free;

@@ -79,6 +79,7 @@ uses
   uFrmCidade,
   uFrmGrade,
   uFrmGradeQuantidades,
+  uFrmMapearProdutoXML,
   // Views - Fase 3
   uFrmMovEstoque,
   uFrmKardex,

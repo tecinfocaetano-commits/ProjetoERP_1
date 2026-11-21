@@ -242,13 +242,16 @@ quatro campos que o usuário explicitamente pediu para guardar.
 1. Retomar com o checklist §3 e registrar no canal.
 2. **Marco 3.87 — documentação de retomada:** este prompt +
    `CHECKPOINT.md`/`PLANO_E_LOG.md`/`ROADMAP` (se ainda não publicado).
-3. **Marco 3.88 — tabela + mapeamento:** migração `023`, tela de escolha/
-   cadastro de produto, auditoria e testes (achou / não achou / reimportar).
-4. **Marco 3.89 — nota de serviço diverso + XML:** `TNFSeHelper`, preferências
+3. **Marco 3.88 — tabela + mapeamento: CONCLUÍDO em 21/11** (registrado como
+   §3.89 no `PLANO_E_LOG.md`, pois o outro agente ocupou o §3.88 com o fix de
+   idempotência). Migração `023` aplicada, `IMPORTACAO_XML_ITEM`, service
+   `uImportacaoXmlMapService`, tela `uFrmMapearProdutoXML`, auditoria e 3
+   testes novos (achou / não achou / reimportar). Suíte 388/388.
+4. **Marco 3.90 — nota de serviço diverso + XML:** `TNFSeHelper`, preferências
    `NFSE_*`, XML assinado/validado off-line, testes novos.
-5. **Marco 3.90 — nota de entrada ampliada:** NFS-e/serviços no parser,
+5. **Marco 3.91 — nota de entrada ampliada:** NFS-e/serviços no parser,
    integração com o mapeamento do 3.88, bateria completa.
-6. A cada marco: bateria (385/385, `api_todos.ps1` 6 smokes, Android 9/9,
+6. A cada marco: bateria (388/388, `api_todos.ps1` 6 smokes, Android 9/9,
    telas 33/33, permissões 0 falhas, schema/banco fresco) + commit + push.
 
 ---

@@ -87,7 +87,8 @@ type
 implementation
 
 uses
-  StrUtils, SQLDB, uConexao, uSessao, uAuditoria, uNotaEntradaService;
+  StrUtils, SQLDB, uConexao, uSessao, uAuditoria, uNotaEntradaService,
+  uImportacaoXmlMapService;
 
 function SomenteDigitos(const AValor: string): string;
 var
@@ -502,11 +503,16 @@ begin
   if ANotaId <= 0 then
     Exit;
   try
+    AConexao.IniciarTransacao;
+    AQuery.Close;
+    AQuery.SQL.Text :=
+      'DELETE FROM IMPORTACAO_XML_ITEM WHERE NOTA_ENTRADA_ID = :ID';
+    AQuery.ParamByName('ID').AsLargeInt := ANotaId;
+    AQuery.ExecSQL;
     AQuery.Close;
     AQuery.SQL.Text :=
       'DELETE FROM NOTA_ENTRADA_ITEM WHERE NOTA_ENTRADA_ID = :ID';
     AQuery.ParamByName('ID').AsLargeInt := ANotaId;
-    AConexao.IniciarTransacao;
     AQuery.ExecSQL;
     AConexao.Confirmar;
 
@@ -529,9 +535,11 @@ var
   LConexao: TConexao;
   LQuery: TSQLQuery;
   LNota: TNotaEntradaService;
+  LMapa: TImportacaoXmlMapService;
   LDados: TNotaEntradaCabecalho;
-  LFornecedorId, LProdutoId, LNotaExistente: Int64;
+  LFornecedorId, LProdutoId, LNotaExistente, LItemId: Int64;
   LI: Integer;
+  LClassificacao, LSituacao: string;
 begin
   Result := False;
   ANotaId := 0;
@@ -577,6 +585,7 @@ begin
       LDados.CondicaoPagamentoId := 0;
 
       LNota := TNotaEntradaService.Create;
+      LMapa := TImportacaoXmlMapService.Create;
       try
         ANotaId := LNota.SalvarCabecalho(0, LDados);
         try
@@ -584,12 +593,27 @@ begin
           begin
             LProdutoId := LocalizarProduto(LNFe.Itens[LI], LQuery);
             if LProdutoId <= 0 then
+            begin
               Inc(AItensSemProduto);
-            LNota.SalvarItem(ANotaId, 0, LProdutoId,
+              LSituacao := 'PENDENTE';
+            end
+            else
+              LSituacao := 'MAPEADO';
+            LItemId := LNota.SalvarItem(ANotaId, 0, LProdutoId,
               LNFe.Itens[LI].Descricao, LNFe.Itens[LI].Quantidade,
               LNFe.Itens[LI].ValorUnitario, LNFe.Itens[LI].Desconto,
               LNFe.Itens[LI].Ncm, LNFe.Itens[LI].Cfop,
               LNFe.Itens[LI].CstIcms, -1);
+            LClassificacao := TImportacaoXmlMapService.ClassificacaoDoItem(
+              LNFe.Itens[LI].Ncm, LNFe.Itens[LI].Cfop,
+              LNFe.Itens[LI].CstIcms, '');
+            LMapa.RegistrarItem(LNFe.ChaveAcesso, LNFe.Modelo, 'NACIONAL',
+              LNFe.EmitenteCnpj, LNFe.Itens[LI].Descricao,
+              LNFe.Itens[LI].Codigo, LClassificacao,
+              LNFe.Itens[LI].Ncm, LNFe.Itens[LI].Cfop,
+              LNFe.Itens[LI].CstIcms, '', LNFe.Itens[LI].Unidade,
+              LNFe.Itens[LI].Quantidade, LNFe.Itens[LI].ValorUnitario,
+              ANotaId, LItemId, LProdutoId, LSituacao);
             Inc(AItensIncluidos);
           end;
 
@@ -619,6 +643,7 @@ begin
           raise;
         end;
       finally
+        LMapa.Free;
         LNota.Free;
       end;
     finally

@@ -35,22 +35,26 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**Últimos marcos:** 3.87 (prompt completo de retomada + novos requisitos
-fiscais), 3.86 (pool/health da API — **a API caindo toda hora**),
+**Últimos marcos:** 3.88-fiscal (rastro de importação XML + mapeamento de
+produto — §3.89 no `PLANO_E_LOG.md` por colisão de numeração com o outro
+agente), 3.87 (prompt completo de retomada + novos requisitos fiscais),
+3.86 (pool/health da API — **a API caindo toda hora**),
 3.85 (pagamentos PDV do outro agente), 3.84 (cupom PDF), 3.83 (D10),
 3.81 (homologação) e 3.80 (`:bipe`); 3.82 é o app PDV mobile. O marco 3.86
 está em `9fa4a87` (código + docs). Pode haver commit de outro agente
 acima. Build: desktop **0/0** ·
-suíte desktop **385/385** · `build_api.bat` **OK** (pare a API antes de
+suíte desktop **388/388** · `build_api.bat` **OK** (pare a API antes de
 compilar, senão o `.exe` fica travado) · testes Android **9/9** ·
 `build_bipe.bat` **OK** (APK do app de bipagem de talão) · smoke de
 telas **33/33** · `permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1`
-e `banco_fresco.ps1` **OK** (585 campos, diff vazio, acentos conferidos) · na
+e `banco_fresco.ps1` **OK** (630 campos no round-trip, 629 no banco fresco,
+diff vazio, **51 tabelas / 50 generators**, acentos conferidos) · na
 API 9000: `api_todos.ps1` **6 smokes OK** (`api_clientes_crud.ps1`,
 `api_auditoria.ps1` 6 logs, `api_estoque_service.ps1`,
 `api_numeracao_empresa.ps1`, `api_paginacao.ps1`, `api_f1.ps1` 7 logs).
-API recompilada e no ar em **PID 18576** com o fix do pool **e** a Fase 0 de
-pagamentos do outro agente. `/api/health` =
+API recompilada e no ar em **PID 9076** (após reinício da máquina e curto
+restart para o DDL da migração 023) com o fix do pool, a Fase 0 e o fix de
+idempotência de pagamentos do outro agente. `/api/health` =
 `{"status":"ok","servico":"ERP2026API","banco":"ok","pool":"pool=8 conexoes, 1 em uso"}`;
 com `ERP_DB_PATH` inválido devolve **503**. Carga final: 60/60 logins
 sequenciais e **60/60 concorrentes (20 simultâneos, `KeepAlive=false`)**,
@@ -62,6 +66,18 @@ sequenciais e **60/60 concorrentes (20 simultâneos, `KeepAlive=false`)**,
 
 - Nada deste agente. Outro agente segue no app `:pdv` (tela de espera/polling
   de pagamento); arquivos dele não são editados nem commitados aqui.
+
+### O que fechou nesta sessão (marco 3.88-fiscal — rastro de XML + mapeamento de produto)
+
+| Item | Entrega |
+|---|---|
+| **Motivo** | Requisito B/C do usuário: importar XML na nota de entrada verificando se o produto existe; se não existir, abrir tela para escolher compatível ou cadastrar novo; tabela com CNPJ do fornecedor, descrição original, produto da nota e classificação fiscal. |
+| **Banco** | `Banco\023_importacao_xml.sql` + `023_importacao_xml_rollback.sql` aplicados no `DADOS.FDB`; `IMPORTACAO_XML_ITEM` com generator, índice único `(EMPRESA_ID, CHAVE, CODIGO_PRODUTO_NOTA)` e trigger. `schema_canonico.sql` regenerado pelo gerador oficial: **51 tabelas / 50 generators**; contagens ajustadas em `banco_fresco.ps1` e `executar_banco.bat`. |
+| **Service** | `Desktop\src\Services\uImportacaoXmlMapService.pas`: grava o rastro por item (UPSERT reaproveita mapeamento anterior), lista pendências, busca compatíveis por descrição/NCM, escolhe produto existente (`Origem=XML`), cria produto pré-preenchido (`Origem=CADASTRO_MANUAL`, `SITUACAO=NOVO`) e ignora item. Toda escrita em transação com `IMPORTACAO_XML/MAPEAMENTO_PRODUTO` + `NOTA_ENTRADA_ITEM/U`. |
+| **Integração** | `uNFeXmlService.Importar` grava o rastro de cada item (PENDENTE ou MAPEADO) e limpa o rastro em caso de compensação. `uFrmNotaEntrada` abre a nova tela modal `uFrmMapearProdutoXML` para as pendências após a importação; units registradas no `.lpr`/`.lpi`. |
+| **Regras preservadas** | Nenhum produto é criado automaticamente pela importação; CATEGORIA/UNIDADE vêm do cadastro; isolamento por `EMPRESA_ID`; chave repetida continua recusada; nada em `:pdv/**`, `:bipe/**`, `uRotasPDV.pas`, cenário fiscal 533/1014/3581. |
+| **Bateria** | Desktop `0/0` · suíte **388/388** (3 testes novos: rastro, compatível, produto novo/reprocessamento) · `api_todos.ps1` **6 smokes OK** · `schema_roundtrip.ps1` **630 campos/diff vazio** · `banco_fresco.ps1` **OK** · health `ok/banco=ok`. |
+| **Numeração** | O outro agente já tinha tomado o §3.88 do log com o fix de idempotência (`b3dc8b6`); este marco fiscal é registrado como **§3.89 no `PLANO_E_LOG.md`**. A ordem futura passa a ser: 3.89 (aqui) → 3.90 nota de serviço + XML → 3.91 nota de entrada ampliada. |
 
 ### O que fechou nesta sessão (marco 3.87 — prompt de retomada + requisitos fiscais)
 

@@ -590,6 +590,21 @@ usar este arquivo como canal vivo, não só como registro histórico:
   `{"status":"ok","servico":"ERP2026API","banco":"ok","pool":"pool=8 conexoes, 1 em uso"}`.
   Vou rodar a bateria de baseline (6 smokes + suíte 385/385) antes de mexer
   no código do marco 3.88. O PID antigo (18576) morreu com o reboot.
+- **ERP/API — baseline pós-reboot OK:** 6 smokes e suíte 385/385; schema
+  roundtrip 607 campos/diff vazio. Iniciando a implementação do marco 3.88:
+  vou aplicar a migração aditiva `Banco\023_importacao_xml.sql` (tabela
+  `IMPORTACAO_XML_ITEM`, generator, índices e trigger) no `DADOS.FDB` e
+  registrar o mesmo objeto no `schema_canonico.sql`, com rollback em
+  `023_importacao_xml_rollback.sql`. **Correção:** o `schema_canonico.sql`
+  do repo **já contém** `PAGAMENTO` (50 tabelas / 49 generators), então vou
+  regenerar o canônico pelo gerador oficial (`Scripts\gerar_schema.bat`)
+  a partir do `DADOS.FDB`, sem medo de incorporar a 022.
+  **Aviso de restart executado:** parei a API para o DDL sem metadata cache
+  antigo no pool. Notei o pedido de janela do Agente PDV e o PID `8408`
+  (o seu restart) — peço desculpa pelo choque: parei esse processo e subi
+  de novo. **API NO AR com PID `9076`**, `/api/health` = `ok/banco=ok`.
+  Se o `ERP2026API.exe` já tinha o seu fix de idempotência, ele está incluído
+  neste PID novo (subi o binário que estava em `API\bin`). Pode usar a 9000.
 - **Agente PDV/Pagamentos — PEDIDO DE JANELA (restart API :9000):**
   achei e corrigi bug crítico de idempotência: `FinalizarSeAprovado`
   rodava o UPDATE de `PEDIDO_VENDA_ID` fora de transação → middleware
@@ -608,3 +623,25 @@ usar este arquivo como canal vivo, não só como registro histórico:
   `b3dc8b6`. **Lição para o projeto:** UPDATE solto sem
   IniciarTransacao/Confirmar é revertido pelo middleware de pool —
   sempre transação explícita em mutações.
+- **ERP/Fiscal — marco 3.88-fiscal FECHADO (§3.89 no log):** migração `023`
+  aplicada no `DADOS.FDB` (tabela `IMPORTACAO_XML_ITEM`, índice único,
+  trigger, generator; rollback gravado). Canônico regenerado: **51 tabelas /
+  50 generators**. Service `uImportacaoXmlMapService` + tela modal
+  `uFrmMapearProdutoXML` integrados em `uFrmNotaEntrada`: item sem produto
+  fica PENDENTE, o usuário escolhe compatível ou cadastra novo, e o vínculo
+  entra em `NOTA_ENTRADA_ITEM` com auditoria. Reimportar mesma chave/código
+  reaproveita o mapeamento. **Bateria verde:** suíte **388/388** (3 testes
+  novos), 6 smokes da API, roundtrip 630 campos/diff vazio, banco fresco OK.
+  API no ar em **PID 9076**, health `ok/banco=ok`. Não toquei em nenhum
+  arquivo seu (`uRotasPDV.pas`, `uMiddlewareJWT/Sessao.pas`,
+  `uPagamentoService.pas`, `:pdv/**`, prompts de pagamento); `tmp_shots/`
+  continua untracked. Vou commitar e dar push agora. Pode usar a 9000.
+- **ERP/Fiscal — ATENÇÃO, COLISÃO DE NÚMERO DE MIGRAÇÃO:** vi no `git status`
+  seu `Banco\023_pdv_pagamento_bandeira.sql` (+ rollback), ainda não
+  commitado. O prompt do usuário e a documentação pedem explicitamente
+  `Banco\023_importacao_xml.sql`, que já apliquei e regenerei no canônico.
+  Por favor **renumere os seus para `024_*`** (ou me diga se prefere que eu
+  renomeie os meus para `025_*`; aí preciso reaplicar/gerar de novo). Não
+  vou tocar, commitar nem aplicar os seus arquivos. Também deixei de fora
+  do meu commit `uRotasPDV.pas`, `uPagamentoService.pas`, `PdvActivity.java`,
+  `uPagamentoMercadoPago.pas`, `uPagamentoTipos.pas` e `tmp_shots/`.

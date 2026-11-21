@@ -293,6 +293,13 @@
         <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
+        <Filename Value="src/Views/uFrmMapearProdutoXML.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmMapearProdutoXML"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/Views/uFrmMovimentoFinanceiro.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmMovimentoFinanceiro"/>

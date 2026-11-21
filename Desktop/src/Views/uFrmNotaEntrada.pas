@@ -24,6 +24,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, DBGrids, DB, SQLDB, ComCtrls, DateUtils, StrUtils,
   uConexao, uSessao, uNotaEntradaService, uNFeXmlService,
+  uImportacaoXmlMapService, uFrmMapearProdutoXML,
   uPermissao, uPermissaoUI;
 
 type
@@ -146,6 +147,7 @@ type
     procedure AtualizarStatusLabel(const AStatus: string);
     procedure AtualizarTotaisTela;
     procedure ImportarXML(const AArquivo: string);
+    procedure MapearProdutosImportados(ANotaId: Int64);
     function  SalvarCabecalho: Boolean;
     function  InserirItem(AProdutoId: Int64; const ADescricao: string;
       AQuantidade, AValorUnitario, ADesconto: Double): Boolean;
@@ -935,12 +937,77 @@ begin
 
   AbrirNota(LNotaId);
   CarregarNotas;
+  MapearProdutosImportados(LNotaId);
   MessageDlg('XML importado.' + sLineBreak +
     'Nota de entrada: ' + IntToStr(LNotaId) + sLineBreak +
     'Itens incluídos: ' + IntToStr(LIncluidos) + sLineBreak +
     'Itens sem produto vinculado (ajuste pelo duplo clique): ' +
     IntToStr(LSemProduto),
     mtInformation, [mbOK], 0);
+end;
+
+procedure TfrmNotaEntrada.MapearProdutosImportados(ANotaId: Int64);
+var
+  LService: TImportacaoXmlMapService;
+  LPendentes: TSQLQuery;
+  LDialog: TfrmMapearProdutoXML;
+  LIds: array of Int64;
+  LI, LMapeados, LIgnorados: Integer;
+  LItem: TItemMapaXML;
+begin
+  LService := TImportacaoXmlMapService.Create;
+  LPendentes := LService.ListarPendentes(ANotaId);
+  try
+    SetLength(LIds, 0);
+    while not LPendentes.EOF do
+    begin
+      SetLength(LIds, Length(LIds) + 1);
+      LIds[High(LIds)] := LPendentes.FieldByName('ID').AsLargeInt;
+      LPendentes.Next;
+    end;
+    LPendentes.Close;
+    if Length(LIds) = 0 then
+      Exit;
+
+    LMapeados := 0;
+    LIgnorados := 0;
+    for LI := 0 to High(LIds) do
+    begin
+      LItem := LService.ObterItem(LIds[LI]);
+      LDialog := TfrmMapearProdutoXML.Create(nil);
+      try
+        LDialog.Carregar(LItem);
+        if LDialog.ShowModal = mrOk then
+        begin
+          if LDialog.Ignorado then
+          begin
+            LService.Ignorar(LItem.Id);
+            Inc(LIgnorados);
+          end
+          else if LDialog.ProdutoId > 0 then
+          begin
+            { produto novo ja entrou vinculado pelo proprio service }
+            if not LDialog.JaAplicado then
+              LService.AplicarMapeamento(LItem.Id, LDialog.ProdutoId,
+                LDialog.Origem);
+            Inc(LMapeados);
+          end;
+        end;
+      finally
+        LDialog.Free;
+      end;
+    end;
+
+    CarregarItens;
+    AtualizarTotaisTela;
+    MessageDlg('Mapeamento de produtos do XML:' + sLineBreak +
+      '- vinculados: ' + IntToStr(LMapeados) + sLineBreak +
+      '- ignorados: ' + IntToStr(LIgnorados),
+      mtInformation, [mbOK], 0);
+  finally
+    LPendentes.Free;
+    LService.Free;
+  end;
 end;
 
 procedure TfrmNotaEntrada.btnFecharClick(Sender: TObject);

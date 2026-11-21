@@ -1,0 +1,235 @@
+object frmMapearProdutoXML: TfrmMapearProdutoXML
+  Left = 0
+  Height = 620
+  Top = 0
+  Width = 900
+  Caption = 'Mapeamento de produto - XML de entrada'
+  ClientHeight = 620
+  ClientWidth = 900
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  LCLVersion = '3.0.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 42
+    Top = 0
+    Width = 900
+    Align = alTop
+    Color = clNavy
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 12
+      Height = 24
+      Top = 9
+      Width = 700
+      AutoSize = False
+      Caption = 'Produto do XML não encontrado - escolha um compatível ou cadastre um novo'
+      Font.Color = clWhite
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+  end
+  object pnlDados: TPanel
+    Left = 0
+    Height = 108
+    Top = 42
+    Width = 900
+    Align = alTop
+    TabOrder = 1
+    object lblDadosXML: TMemo
+      Left = 8
+      Height = 92
+      Top = 8
+      Width = 880
+      Anchors = [akTop, akLeft, akRight, akBottom]
+      ReadOnly = True
+      ScrollBars = ssVertical
+      TabOrder = 0
+    end
+  end
+  object lblBuscar: TLabel
+    Left = 12
+    Height = 20
+    Top = 158
+    Width = 180
+    Caption = 'Buscar produto compatível:'
+  end
+  object edtTermo: TEdit
+    Left = 12
+    Height = 24
+    Top = 180
+    Width = 500
+    TabOrder = 2
+  end
+  object btnBuscar: TBitBtn
+    Left = 522
+    Height = 26
+    Top = 179
+    Width = 110
+    Caption = 'Buscar'
+    TabOrder = 3
+    OnClick = btnBuscarClick
+  end
+  object gridProdutos: TStringGrid
+    Left = 12
+    Height = 270
+    Top = 214
+    Width = 876
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ColCount = 5
+    FixedCols = 0
+    FixedRows = 1
+    RowCount = 2
+    TabOrder = 4
+    OnDblClick = gridProdutosDblClick
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 48
+    Top = 572
+    Width = 900
+    Align = alBottom
+    TabOrder = 5
+    object btnSelecionar: TBitBtn
+      Left = 12
+      Height = 30
+      Top = 9
+      Width = 180
+      Caption = 'Selecionar produto'
+      TabOrder = 0
+      OnClick = btnSelecionarClick
+    end
+    object btnNovo: TBitBtn
+      Left = 202
+      Height = 30
+      Top = 9
+      Width = 180
+      Caption = 'Cadastrar novo produto'
+      TabOrder = 1
+      OnClick = btnNovoClick
+    end
+    object btnIgnorar: TBitBtn
+      Left = 392
+      Height = 30
+      Top = 9
+      Width = 130
+      Caption = 'Ignorar item'
+      TabOrder = 2
+      OnClick = btnIgnorarClick
+    end
+    object btnCancelar: TBitBtn
+      Left = 758
+      Height = 30
+      Top = 9
+      Width = 130
+      Caption = 'Cancelar'
+      TabOrder = 3
+      OnClick = btnCancelarClick
+    end
+  end
+  object pnlNovo: TPanel
+    Left = 12
+    Height = 270
+    Top = 214
+    Width = 876
+    Visible = False
+    TabOrder = 6
+    object lblNovoTitulo: TLabel
+      Left = 12
+      Height = 24
+      Top = 8
+      Width = 600
+      Caption = 'Novo produto (pré-preenchido com os dados do XML)'
+      Font.Style = [fsBold]
+    end
+    object lblNovaDescricao: TLabel
+      Left = 12
+      Height = 20
+      Top = 40
+      Width = 120
+      Caption = 'Descrição:'
+    end
+    object edtNovaDescricao: TEdit
+      Left = 140
+      Height = 24
+      Top = 37
+      Width = 700
+      TabOrder = 0
+    end
+    object lblNovoCodigo: TLabel
+      Left = 12
+      Height = 20
+      Top = 72
+      Width = 120
+      Caption = 'Código:'
+    end
+    object edtNovoCodigo: TEdit
+      Left = 140
+      Height = 24
+      Top = 69
+      Width = 250
+      TabOrder = 1
+    end
+    object lblNovaNcm: TLabel
+      Left = 410
+      Height = 20
+      Top = 72
+      Width = 100
+      Caption = 'NCM:'
+    end
+    object edtNovaNcm: TEdit
+      Left = 480
+      Height = 24
+      Top = 69
+      Width = 150
+      TabOrder = 2
+    end
+    object lblNovaUnidade: TLabel
+      Left = 650
+      Height = 20
+      Top = 72
+      Width = 80
+      Caption = 'Unidade:'
+    end
+    object edtNovaUnidade: TEdit
+      Left = 730
+      Height = 24
+      Top = 69
+      Width = 110
+      TabOrder = 3
+    end
+    object lblNovoPreco: TLabel
+      Left = 12
+      Height = 20
+      Top = 104
+      Width = 120
+      Caption = 'Preço venda/custo:'
+    end
+    object edtNovoPreco: TEdit
+      Left = 140
+      Height = 24
+      Top = 101
+      Width = 150
+      TabOrder = 4
+    end
+    object btnConfirmarNovo: TBitBtn
+      Left = 140
+      Height = 30
+      Top = 150
+      Width = 200
+      Caption = 'Cadastrar e vincular'
+      TabOrder = 5
+      OnClick = btnConfirmarNovoClick
+    end
+    object btnVoltar: TBitBtn
+      Left = 350
+      Height = 30
+      Top = 150
+      Width = 130
+      Caption = 'Voltar'
+      TabOrder = 6
+      OnClick = btnVoltarClick
+    end
+  end
+end

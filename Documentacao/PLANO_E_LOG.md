@@ -2724,3 +2724,40 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   ~8s → cupom "Venda registrada" nº 10 (R$75) com PDF/compartilhar.
 - **Lição registrada no canal:** mutações sem transação explícita são
   revertidas pelo pool — sempre `IniciarTransacao`/`Confirmar`.
+
+### 3.89 Fiscal — rastro de importação XML + mapeamento de produto (21/11)
+
+- **Numeração:** o §3.88 foi registrado pelo outro agente (fix de
+  idempotência dos pagamentos, `b3dc8b6`); este é o marco fiscal que o
+  `PROMPT_RETOMADA_COMPLETO.md` chamava de 3.88. Daqui em diante:
+  3.90 = nota de serviço diverso + XML; 3.91 = nota de entrada ampliada.
+- **Migração 023:** `Banco\023_importacao_xml.sql` (aplicada) e
+  `023_importacao_xml_rollback.sql` criam `IMPORTACAO_XML_ITEM` com
+  `FORNECEDOR_CNPJ`, `DESCRICAO_ORIGINAL`, `CODIGO_PRODUTO_NOTA`,
+  `CLASSIFICACAO_FISCAL`, NCM/CFOP/CST/CEST, `PRODUTO_ID`, `SITUACAO`,
+  usuário, data, chave do documento, generator, trigger e índice único
+  por empresa+chave+código. `schema_canonico.sql` regenerado pelo
+  gerador oficial: 51 tabelas / 50 generators; contagens fixadas em
+  `banco_fresco.ps1` e no cabeçalho de `executar_banco.bat`.
+- **Service novo:** `uImportacaoXmlMapService` faz UPSERT do rastro por
+  item (reprocessar a mesma chave/código reaproveita produto e situação),
+  lista pendências, busca compatíveis por descrição/NCM, aplica a escolha
+  (`Origem=XML`) ao rastro e ao `NOTA_ENTRADA_ITEM`, cria produto novo
+  pré-preenchido (`Origem=CADASTRO_MANUAL`/`NOVO`) e ignora itens.
+  Auditoria `IMPORTACAO_XML/IMPORTACAO_ITEM`,
+  `IMPORTACAO_XML/MAPEAMENTO_PRODUTO` e `NOTA_ENTRADA_ITEM/U`, sempre
+  com usuário/empresa da sessão e na mesma transação.
+- **Tela nova:** `uFrmMapearProdutoXML` mostra descrição original, CNPJ,
+  código do produto da nota e classificação fiscal; oferece selecionar
+  compatível, cadastrar novo ou ignorar. `uFrmNotaEntrada` chama a tela
+  para cada pendência após importar o XML e recarrega os itens.
+- **Integração:** `TNFeImportService.Importar` grava o rastro de cada item
+  e remove esses registros na compensação de nota parcial. Nenhum produto
+  é criado automaticamente; categorias/unidades vêm do cadastro; itens com
+  produto encontrado ficam `MAPEADO` e os demais `PENDENTE`.
+- **Validação:** desktop `0/0`, suíte **388/388** (3 testes novos),
+  `api_todos.ps1` 6 smokes, `schema_roundtrip.ps1` 630 campos/diff vazio,
+  `banco_fresco.ps1` OK, `/api/health` `ok/banco=ok` (PID 9076).
+- **Escopo:** nada em `:pdv/**`, `:bipe/**`, `uRotasPDV.pas`,
+  `uMiddlewareJWT/Sessao.pas`, `uPagamentoService.pas`, cenário fiscal
+  533/1014/3581 ou prompts do outro agente. `tmp_shots/` segue untracked.
