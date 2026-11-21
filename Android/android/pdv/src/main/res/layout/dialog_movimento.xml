@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Valor (R$)"
+        android:textStyle="bold"/>
+
+    <EditText
+        android:id="@+id/editValorMovimento"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="0,00"
+        android:inputType="numberDecimal"
+        android:textSize="22sp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="Descrição"
+        android:textStyle="bold"/>
+
+    <EditText
+        android:id="@+id/editDescricaoMovimento"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Ex.: Troco para cofre"
+        android:inputType="text"
+        android:textSize="16sp"/>
+</LinearLayout>

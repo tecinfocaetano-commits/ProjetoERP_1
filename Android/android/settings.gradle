@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "ERP2026"
 include ':app'
 include ':bipe'
+include ':pdv'

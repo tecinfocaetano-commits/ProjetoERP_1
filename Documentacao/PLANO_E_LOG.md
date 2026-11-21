@@ -2515,6 +2515,43 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.82 PDV Mobile — app Android `:pdv` + rotas `/api/pdv/*` (21/11)
+
+- **Backend:** `API/src/Rotas/uRotasPDV.pas` (arquivo novo) registra em
+  `ERP2026API.lpr`: `GET /api/pdv/status`, `POST /api/pdv/caixa/abrir`,
+  `POST /api/pdv/caixa/fechar`, `POST /api/pdv/caixa/movimento`
+  (suprimento 'E'/sangria 'S'), `GET /api/pdv/produtos?busca=`,
+  `GET /api/pdv/produtos/buscar?codigo=`, `GET /api/pdv/formas-pagamento`
+  e `POST /api/pdv/vendas`. Tudo delega a `TPDVService` — caixa aberto
+  por usuário, venda STATUS 'F', itens + movimento 'V' na mesma
+  transação, auditoria e EMPRESA_ID do JWT. `FORMA_PAGAMENTO` é global
+  (convenção do projeto); `valor_pago`/`troco` calculados na resposta.
+- **App:** módulo Gradle `:pdv` (`com.example.erp2026_pdv`), Java,
+  minSdk 21. `LoginActivity` (mesmas credenciais do Bipe, empresa
+  opcional), `PdvActivity` (busca texto + câmera ZXing, carrinho com
+  ＋/－/Remover, desconto, pagamento com troco, suprimento/sangria,
+  fechar/abrir caixa — o botão "Fechar" vira "Abrir" sem caixa).
+  Venda final mostra cupom texto com botão **Compartilhar**.
+  Sessão expirada (401) volta ao login na thread de UI. `README.md`
+  no módulo.
+- **Fora de escopo (fase 1):** NFC-e (fica no desktop/modo homologação),
+  TEF, múltiplas formas por venda, cliente identificado (Consumidor
+  Final), impressão térmica/PDF, modo offline (vendas online-only).
+- **Smoke real no Samsung A55 (adb Wi-Fi):** login → status do caixa
+  3728 → busca "Produto Demo" → item no carrinho → FINALIZAR →
+  pagamento Dinheiro → **venda nº 3 gravada** (`PEDIDO_VENDA` 6373,
+  STATUS 'F', total 75, `MOVIMENTO_CAIXA` 'V' 75, saldo 125→200) → cupom
+  exibido → carrinho limpo. `POST /api/pdv/caixa/movimento` testado
+  via curl (suprimento R$10 → saldo 210).
+- **Incidente:** pool de conexões da API ficou com sockets mortos após
+  restart externo ("DoInternalConnect: connection shutdown" no login);
+  resolvido reiniciando `ERP2026API.exe`. Fica o registro para o
+  agente da API avaliar health-check de conexão no pool (D10/D11).
+- **Verificação:** `:pdv:assembleDebug` OK, APK instalado no aparelho;
+  endpoints smoke OK. `:bipe`/`:app` não tocados.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
