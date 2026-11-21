@@ -71,6 +71,7 @@ begin
     end;
 
     LBody := TJSONObject(LData);
+    LData := nil; { posse passa para LBody — evita double-free no finally }
     try
       LCodigo := LBody.Get('codigo', '');
       LOrigem := LBody.Get('origem', 'API');
