@@ -19,9 +19,11 @@ import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.net.Uri;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.core.content.FileProvider;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -33,8 +35,10 @@ import com.journeyapps.barcodescanner.ScanOptions;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -727,6 +731,20 @@ public class PdvActivity extends AppCompatActivity {
                 if (r.ok()) {
                     JSONObject j = new JSONObject(r.body);
                     final String cupom = montarCupom(j);
+                    // dados do cupom em PDF — montados antes de limpar o carrinho
+                    final String numeroVenda = j.optString("numero", "-");
+                    final List<String> linhasItens = new ArrayList<>();
+                    for (ItemCarrinho i : carrinho) {
+                        linhasItens.add(i.descricao + "  x"
+                                + String.format(Locale.getDefault(), "%.2f",
+                                        i.quantidade)
+                                + "  =  " + moeda(i.total()));
+                    }
+                    final double sub = j.optDouble("subtotal", 0);
+                    final double desc = j.optDouble("desconto", 0);
+                    final double tot = j.optDouble("total", 0);
+                    final double pago = j.optDouble("valor_pago", 0);
+                    final double troco = j.optDouble("troco", 0);
                     runOnUiThread(() -> {
                         btnFinalizar.setEnabled(true);
                         carrinho.clear();
@@ -745,6 +763,10 @@ public class PdvActivity extends AppCompatActivity {
                                     startActivity(Intent.createChooser(send,
                                             "Enviar cupom"));
                                 })
+                                .setNegativeButton("PDF", (d, w) ->
+                                        compartilharPdfCupom(numeroVenda,
+                                                linhasItens, sub, desc, tot,
+                                                pago, troco))
                                 .show();
                     });
                 } else {
@@ -762,6 +784,37 @@ public class PdvActivity extends AppCompatActivity {
                             Toast.LENGTH_LONG).show();
                 });
             }
+        }).start();
+    }
+
+    /** Gera o cupom em PDF no cache e abre o compartilhamento. */
+    private void compartilharPdfCupom(String numeroVenda,
+                                      List<String> linhasItens,
+                                      double sub, double desc, double tot,
+                                      double pago, double troco) {
+        new Thread(() -> {
+            File pdf = CupomPdf.gerar(this, numeroVenda, linhasItens,
+                    sub, desc, tot, pago, troco);
+            runOnUiThread(() -> {
+                if (pdf == null) {
+                    Toast.makeText(this, "Falha ao gerar o PDF do cupom.",
+                            Toast.LENGTH_LONG).show();
+                    return;
+                }
+                try {
+                    Uri uri = FileProvider.getUriForFile(this,
+                            "com.example.erp2026_pdv.fileprovider", pdf);
+                    Intent send = new Intent(Intent.ACTION_SEND);
+                    send.setType("application/pdf");
+                    send.putExtra(Intent.EXTRA_STREAM, uri);
+                    send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(Intent.createChooser(send, "Enviar cupom PDF"));
+                } catch (Exception e) {
+                    Toast.makeText(this,
+                            "Não foi possível compartilhar o PDF.",
+                            Toast.LENGTH_LONG).show();
+                }
+            });
         }).start();
     }
 
