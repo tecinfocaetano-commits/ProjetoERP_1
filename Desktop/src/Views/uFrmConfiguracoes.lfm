@@ -1,19 +1,31 @@
 inherited frmConfiguracoes: TfrmConfiguracoes
-  Height = 420
+  Height = 448
   Width = 680
   OnDestroy = FormDestroy
   Caption = 'Configurações do Sistema'
   inherited pnlTopo: TPanel
+    Height = 78
     object chkUsaGrade: TCheckBox
       Left = 300
       Height = 22
-      Top = 16
+      Top = 8
       Width = 370
       Caption = 'Usar grade de tamanhos no pedido e no mapa'
       Font.Color = clWhite
       ParentFont = False
       TabOrder = 0
       OnClick = chkUsaGradeClick
+    end
+    object chkModoHomologacao: TCheckBox
+      Left = 300
+      Height = 22
+      Top = 40
+      Width = 370
+      Caption = 'Modo homologação (NF-e/NFC-e e PDV)'
+      Font.Color = clWhite
+      ParentFont = False
+      TabOrder = 1
+      OnClick = chkModoHomologacaoClick
     end
   end
   inherited PageControl1: TPageControl

@@ -13,7 +13,9 @@ if not exist "%LAZBUILD%" (
   exit /b 1
 )
 
-"%LAZBUILD%" "%ROOT%\Desktop\Tests.lpi"
+REM -B garante que a suíte recompile todas as units alteradas; sem ele o
+REM lazbuild pode reaproveitar .ppu stale e executar testes antigos.
+"%LAZBUILD%" -B "%ROOT%\Desktop\Tests.lpi"
 if errorlevel 1 goto :erro
 
 REM Relatorios LazReport (.lrf): os testes de Modelo I/II conferem que os

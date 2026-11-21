@@ -29,7 +29,7 @@ interface
 
 uses
   Classes, SysUtils, SQLDB, uAssert, uConexao, uSessao, uACBrHelper,
-  uNFeXmlService;
+  uNFeXmlService, uConfiguracaoService;
 
 type
   { TNFeTest }
@@ -1014,6 +1014,113 @@ var
     LOriginais.Free;
   end;
 
+  { Preferência de homologação: o interruptor da tela de Configurações
+    grava NFE_AMBIENTE=2 + NFE_MODO=REAL e o ACBrHelper passa a mirar a
+    SEFAZ de homologação; desativar volta para o modo simulado. }
+  procedure TestModoHomologacao;
+  var
+    LConfig: TConfiguracaoService;
+    LAux: TACBrHelper;
+    LAmbienteAntes, LModoAntes: string;
+    LAmbienteDesc, LModoDesc: string;
+    LAmbienteExiste, LModoExiste: Boolean;
+
+    procedure CapturarChave(const AChave: string; out AExiste: Boolean;
+      out AValor, ADescricao: string);
+    begin
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'SELECT FIRST 1 VALOR, DESCRICAO FROM CONFIGURACAO ' +
+        'WHERE CHAVE = :CHAVE AND (EMPRESA_ID = :EMP OR EMPRESA_ID IS NULL) ' +
+        'ORDER BY EMPRESA_ID DESC NULLS LAST';
+      LQuery.ParamByName('CHAVE').AsString := AChave;
+      LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+      LQuery.Open;
+      AExiste := not LQuery.IsEmpty;
+      if AExiste then
+      begin
+        AValor := Trim(LQuery.FieldByName('VALOR').AsString);
+        ADescricao := LQuery.FieldByName('DESCRICAO').AsString;
+      end
+      else
+      begin
+        AValor := '';
+        ADescricao := '';
+      end;
+      LQuery.Close;
+    end;
+
+    procedure RestaurarChave(const AChave: string; AExiste: Boolean;
+      const AValor, ADescricao: string);
+    begin
+      LQuery.Close;
+      if (not AExiste) or (AValor = '') then
+        LQuery.SQL.Text :=
+          'DELETE FROM CONFIGURACAO ' +
+          'WHERE CHAVE = :CHAVE AND (EMPRESA_ID = :EMP OR EMPRESA_ID IS NULL)'
+      else
+      begin
+        LQuery.SQL.Text :=
+          'UPDATE CONFIGURACAO SET VALOR = :VALOR, DESCRICAO = :DESCR ' +
+          'WHERE CHAVE = :CHAVE AND (EMPRESA_ID = :EMP OR EMPRESA_ID IS NULL)';
+        LQuery.ParamByName('VALOR').AsString := AValor;
+        LQuery.ParamByName('DESCR').AsString := ADescricao;
+      end;
+      LQuery.ParamByName('CHAVE').AsString := AChave;
+      LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+      LQuery.ExecSQL;
+    end;
+
+  begin
+    LConfig := TConfiguracaoService.Create;
+    LAux := TACBrHelper.Create;
+    try
+      try
+        LConexao.IniciarTransacao;
+        CapturarChave('NFE_AMBIENTE', LAmbienteExiste, LAmbienteAntes,
+          LAmbienteDesc);
+        CapturarChave('NFE_MODO', LModoExiste, LModoAntes, LModoDesc);
+        LConexao.Confirmar;
+
+        LConfig.DefinirModoHomologacao(True);
+        AssertTrue(LConfig.HomologacaoAtiva, 'HomologacaoAtiva apos ativar');
+        LAux.CarregarConfiguracaoFiscal;
+        AssertEquals('2', IntToStr(LAux.Ambiente),
+          'Ambiente do ACBrHelper = homologacao');
+        AssertTrue(not LAux.ModoSimulado,
+          'ModoSimulado desligado no modo homologacao');
+
+        LConfig.DefinirModoHomologacao(False);
+        AssertTrue(not LConfig.HomologacaoAtiva, 'HomologacaoAtiva apos desativar');
+        LAux.CarregarConfiguracaoFiscal;
+        AssertTrue(LAux.ModoSimulado, 'ModoSimulado ligado apos desativar');
+      finally
+        LConexao.IniciarTransacao;
+        try
+          RestaurarChave('NFE_AMBIENTE', LAmbienteExiste, LAmbienteAntes,
+            LAmbienteDesc);
+          RestaurarChave('NFE_MODO', LModoExiste, LModoAntes, LModoDesc);
+          LQuery.Close;
+          LQuery.SQL.Text :=
+            'DELETE FROM LOG_SISTEMA WHERE TABELA = :TAB AND ID > :TOPO';
+          LQuery.ParamByName('TAB').AsString := 'CONFIGURACAO';
+          LQuery.ParamByName('TOPO').AsLargeInt := LTopoLog;
+          LQuery.ExecSQL;
+          LConexao.Confirmar;
+        except
+          LConexao.Cancelar;
+          raise;
+        end;
+      end;
+      ASuite.AddResult('TestNFeModoHomologacao', True);
+    except
+      on E: Exception do
+        ASuite.AddResult('TestNFeModoHomologacao', False, E.Message);
+    end;
+    LAux.Free;
+    LConfig.Free;
+  end;
+
   { Destinatário opcional na NFC-e: cliente com CPF e sem endereço passa
     na NFC-e, mas a NF-e exige o endereço completo. }
   procedure TestDestinatarioOpcionalNFCe;
@@ -1349,6 +1456,7 @@ begin
     TestDANFEChaveInvalida;
     TestDANFEModoSimulado;
     TestCarregarConfiguracaoFiscal;
+    TestModoHomologacao;
     TestDestinatarioOpcionalNFCe;
     TestImportarXmlNotaEntrada;
   finally

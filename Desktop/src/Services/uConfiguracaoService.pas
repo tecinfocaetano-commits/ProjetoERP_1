@@ -45,6 +45,16 @@ type
 
     { Apaga a chave pelo ID (com auditoria) - restaura o padrão. }
     procedure Excluir(AId: Int64);
+
+    { Lê uma chave da empresa (ou a global). Devolve '' quando ausente. }
+    function LerValor(const AChave: string): string;
+
+    { Preferência de homologação para NF-e/NFC-e e PDV:
+      ativa = NFE_AMBIENTE=2 (homologação) + NFE_MODO=REAL (envio real
+      à SEFAZ de homologação, sem usar o ambiente de produção);
+      desativa = NFE_MODO=SIMULADO, mantendo o ambiente configurado. }
+    function HomologacaoAtiva: Boolean;
+    procedure DefinirModoHomologacao(AAtivar: Boolean);
   end;
 
 implementation
@@ -54,6 +64,11 @@ uses
 
 const
   TABELA = 'CONFIGURACAO';
+  CHAVE_AMBIENTE = 'NFE_AMBIENTE';
+  CHAVE_MODO = 'NFE_MODO';
+  AMBIENTE_HOMOLOGACAO = '2';
+  MODO_REAL = 'REAL';
+  MODO_SIMULADO = 'SIMULADO';
 
 constructor TConfiguracaoService.Create;
 begin
@@ -237,6 +252,47 @@ begin
   finally
     LQuery.Free;
   end;
+end;
+
+function TConfiguracaoService.LerValor(const AChave: string): string;
+var
+  LQuery: TSQLQuery;
+begin
+  Result := '';
+  LQuery := NovaConsulta;
+  try
+    LQuery.SQL.Text :=
+      'SELECT FIRST 1 VALOR FROM CONFIGURACAO ' +
+      'WHERE CHAVE = :CHAVE AND (EMPRESA_ID = :EMP OR EMPRESA_ID IS NULL) ' +
+      'ORDER BY EMPRESA_ID DESC NULLS LAST';
+    LQuery.ParamByName('CHAVE').AsString := Trim(AChave);
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+    LQuery.Open;
+    if not LQuery.IsEmpty then
+      Result := Trim(LQuery.FieldByName('VALOR').AsString);
+  finally
+    LQuery.Free;
+  end;
+end;
+
+function TConfiguracaoService.HomologacaoAtiva: Boolean;
+begin
+  Result := (LerValor(CHAVE_AMBIENTE) = AMBIENTE_HOMOLOGACAO) and
+    SameText(LerValor(CHAVE_MODO), MODO_REAL);
+end;
+
+procedure TConfiguracaoService.DefinirModoHomologacao(AAtivar: Boolean);
+begin
+  if AAtivar then
+  begin
+    Gravar(CHAVE_AMBIENTE, AMBIENTE_HOMOLOGACAO,
+      'Ambiente fiscal: 2 = homologação (SEFAZ de testes)');
+    Gravar(CHAVE_MODO, MODO_REAL,
+      'Emissão fiscal real; com NFE_AMBIENTE=2 envia para homologação');
+  end
+  else
+    Gravar(CHAVE_MODO, MODO_SIMULADO,
+      'Emissão fiscal simulada (sem envio à SEFAZ)');
 end;
 
 end.

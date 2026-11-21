@@ -27,9 +27,11 @@ type
     lblDescricao: TLabel;
     edtDescricao: TEdit;
     chkUsaGrade: TCheckBox;
+    chkModoHomologacao: TCheckBox;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure chkUsaGradeClick(Sender: TObject);
+    procedure chkModoHomologacaoClick(Sender: TObject);
   protected
     procedure HabilitarCampos(AHabilitar: Boolean); override;
     procedure LimparCampos; override;
@@ -44,6 +46,7 @@ type
     FService: TConfiguracaoService;
     procedure ConfigurarGrid;
     procedure CarregarUsaGrade;
+    procedure CarregarModoHomologacao;
   end;
 
 var
@@ -109,6 +112,7 @@ begin
   FService.Carregar(FQuery, AFiltro);
   DataSource1.DataSet := FQuery;
   CarregarUsaGrade;
+  CarregarModoHomologacao;
 end;
 
 procedure TfrmConfiguracoes.CarregarUsaGrade;
@@ -120,6 +124,34 @@ begin
     chkUsaGrade.Checked := LService.UsaGrade;
   finally
     LService.Free;
+  end;
+end;
+
+procedure TfrmConfiguracoes.CarregarModoHomologacao;
+begin
+  chkModoHomologacao.Checked := FService.HomologacaoAtiva;
+end;
+
+procedure TfrmConfiguracoes.chkModoHomologacaoClick(Sender: TObject);
+begin
+  try
+    FService.DefinirModoHomologacao(chkModoHomologacao.Checked);
+    CarregarDados;
+    if chkModoHomologacao.Checked then
+      MessageDlg('Modo homologação ativado.' + sLineBreak +
+        'NF-e/NFC-e e PDV enviarão para a SEFAZ de homologação ' +
+        '(NFE_AMBIENTE=2, NFE_MODO=REAL).', mtInformation, [mbOK], 0)
+    else
+      MessageDlg('Modo homologação desativado.' + sLineBreak +
+        'A emissão voltou para o modo simulado (NFE_MODO=SIMULADO).',
+        mtInformation, [mbOK], 0);
+  except
+    on E: Exception do
+    begin
+      MessageDlg('Erro ao gravar a preferência de homologação: ' + E.Message,
+        mtError, [mbOK], 0);
+      CarregarModoHomologacao;
+    end;
   end;
 end;
 
