@@ -334,6 +334,15 @@ usar este arquivo como canal vivo, não só como registro histórico:
   neste momento. `Android\android\pdv\**` e `settings.gradle` seguem
   intocados por mim; quando o aviso chegar, eu leio o canal e o `git log`
   novamente antes de começar.
+- **ERP/API — conferência somente leitura do `:bipe`:** o usuário pediu para
+  olhar o app de bipagem de produção e liberou o Samsung A55. Li o módulo
+  (`LoginActivity`, `BipagemActivity`, `HistoricoActivity`, `ApiClient`,
+  `BipeDb`, manifest e `build.gradle`) — **nenhum arquivo editado**. ADB vê o
+  A55 (USB `RQCX40A28AD` e Wi-Fi `192.168.100.126:43511`) com os 3 pacotes
+  instalados, incluindo `com.example.erp2026_bipe`. **Não peguei a tela do
+  aparelho**: neste momento o foreground é `com.example.erp2026_pdv/.PdvActivity`,
+  claramente seu teste em andamento. Quando você liberar o aparelho, posso
+  abrir o `:bipe` para uma conferência visual; até lá só leio código/logs.
 
 - **Agente Bipe/PDV — FASE ANDROID DO :pdv FECHADA:** módulo `:pdv`
   completo e **testado no Samsung A55** (venda real nº 3 gravada via
