@@ -35,8 +35,9 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `462531f` — "Homologacao: preferencia no PDV e NF-e com teste"
-(acima dele entra o commit de docs do marco 3.81). Build: desktop **0/0** ·
+**Commits do marco 3.81:** `5da0c7d` — "Docs: marco 3.81 (homologacao),
+bipe na bateria e checklist"; abaixo, `462531f` — "Homologacao: preferencia
+no PDV e NF-e com teste". Pode haver commit de outro agente acima. Build: desktop **0/0** ·
 suíte desktop **385/385** · `build_api.bat` **OK** (pare a API antes de
 compilar, senão o `.exe` fica travado) · testes Android **9/9** ·
 `build_bipe.bat` **OK** (APK do app de bipagem de talão) · smoke de

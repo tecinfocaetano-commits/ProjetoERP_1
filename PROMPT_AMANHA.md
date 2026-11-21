@@ -10,7 +10,7 @@ Regras: responder em português; terminar toda resposta com exatamente 3 linhas 
 
 Estado em 21/11/2026:
 
-- **HEAD:** `462531f` ("Homologacao: preferencia no PDV e NF-e com teste"); logo acima vem o commit de docs do marco 3.81. Antes: `5a3bd7b` (F1) e o marco 3.80 de outro agente (bipe no Samsung A55).
+- **Commits do marco 3.81:** `5da0c7d` (docs/checklist) e `462531f` (código da preferência). Pode haver commit de outro agente acima. Antes: `5a3bd7b` (F1) e o marco 3.80 de outro agente (bipe no Samsung A55).
 - Suíte desktop **385/385**; build desktop **0/0**; `build_api.bat` **OK** (pare a API antes de compilar); testes Android **9/9** e `:bipe` compila; smoke de telas **33/33**; `permissoes_menu.ps1` **0 falhas**; `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos, diff vazio, acentos conferidos). Na API 9000: `api_clientes_crud.ps1`, `api_auditoria.ps1` (6 logs), `api_estoque_service.ps1`, `api_numeracao_empresa.ps1`, `api_paginacao.ps1` e `api_f1.ps1` (7 logs) **OK**; `/api/health` respondeu `ok`.
 - **Concluído nesta etapa:** **preferência de homologação** (marco 3.81, §3.81): checkbox em *Sistema > Configurações* grava `NFE_AMBIENTE=2` + `NFE_MODO=REAL` na `CONFIGURACAO`; desativar volta a `NFE_MODO=SIMULADO`. `TACBrHelper`/PDV já consomem as chaves. Antes: **F1** (3.79), **F9** (3.78), **D7 + D8 + F6** (3.77), **D5 + F5** (3.76), **D4** (3.74), **F4 + D9** (3.72), **D3** (3.70), **T4** (3.69), **T1** (3.68) e **F3** (3.65–3.67, fiscal). Outro agente fechou o marco 3.80 (bipe).
 - Banco real com índices D9 conferidos; duplicatas sem vínculo removidas (IDs 1237/1246/1247); `LOG_SISTEMA` sem resíduo de `CCE`.

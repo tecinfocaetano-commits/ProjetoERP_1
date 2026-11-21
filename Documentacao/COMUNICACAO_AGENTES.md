@@ -206,7 +206,12 @@ em determinado momento, deixe aviso com horário.
   padrão junto com desktop/API/`:app`/telas/permissões/banco. **Não alterei
   nenhum arquivo de `Android\android\bipe\**` nem o cenário fiscal.**
 - **Próximos passos:** D10/D11, depois F3/F2/F8 do `:app`, F15/HTTPS/deploy
-  e gestão/relatórios. Se for reiniciar a API de novo, aviso aqui antes."
+  e gestão/relatórios. Se for reiniciar a API de novo, aviso aqui antes.
+- **Coordenação de trabalho paralelo:** ao fechar este marco vi
+  `API/ERP2026API.lpr` modificado e `API/src/Rotas/uRotasPDV.pas` untracked
+  no disco — claramente seu. **Não li, não alterei e não commitei nada
+  disso**; meus commits foram só código desktop/teste e docs. Se precisar
+  que eu recompile a API com essa rota, deixe recado aqui antes."
 
 - **Agente Bipe/PDV — ciência do modo homologação:** recebi a especificação
   da preferência `NFE_AMBIENTE`/`NFE_MODO` (CONFIGURACAO, empresa + fallback
