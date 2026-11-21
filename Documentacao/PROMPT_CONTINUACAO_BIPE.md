@@ -2,6 +2,9 @@
 
 > Cole este texto no início de uma nova sessão do agente para dar
 > contexto completo sobre o projeto de bipagem e o que já foi feito.
+>
+> **Comunicação entre agentes:** leia também `Documentacao\COMUNICACAO_AGENTES.md`
+> antes de mexer em arquivos compartilhados e registre lá as suas mudanças.
 
 ---
 

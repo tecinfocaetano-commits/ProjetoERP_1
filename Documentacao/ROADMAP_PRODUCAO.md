@@ -30,14 +30,14 @@ polimento/dívida.
 | D3 | A | **CONCLUÍDO (marco 3.70):** build linka Services/Repositories, sessão por thread via JWT e rotas de clientes migradas para `TPessoaService`. | `Scripts\build_api.bat`, `uMiddlewareSessao.pas`, `uRotasClientes.pas` |
 | F4 | A | **CONCLUÍDO (marco 3.72):** `POST /api/clientes` devolve o ID (201), novo `PUT /:id`, `GET /:id` com telefone; app usa o ID do POST em vez de casar nome+CPF. | `uRotasClientes.pas`, `Sincronizacao.java` |
 | D9 | A | **CONCLUÍDO (marco 3.72):** migration 021 com `UQ_USUARIO_EMPRESA_LOGIN`, `UQ_PESSOA_EMPRESA_TIPO_CPF` (TIPO faz parte da chave) e `UQ_PEDIDO_VENDA_EMPRESA_NUMERO`, aplicadas ao banco real e ao canônico. | `Banco\021_indices_unicos.sql`, `Banco\schema_canonico.sql` |
-| D4 | A | Zero auditoria (`LOG_SISTEMA`) na API. | `API\src\Rotas\*` |
+| D4 | A | **CONCLUÍDO (marco 3.74):** escritas da API auditadas em `LOG_SISTEMA` com empresa/usuário do JWT e na mesma transação; `TPessoaService` audita antes do commit. | `API\src\Rotas\*`, `uPessoaService.pas` |
 | D5 | A | `POST /api/estoque/movimento` aceita produto de outra empresa e não atualiza saldo. | `uRotasEstoque.pas` |
 | F5 | A | Numeração de orçamento global na API (sem `EMPRESA_ID`). | `uRotasOrcamentos.pas` |
 | F1 | A | CRUD incompleto: sem edição/exclusão de produtos e orçamentos, sem criação de venda. | `uRotasProdutos.pas`, `uRotasOrcamentos.pas`, `uRotasVendas.pas` |
 | F6 | M | Listas truncadas em 100 registros, sem paginação nem total. | rotas de vendas/financeiro |
 | D10 | M | Sem CI e sem testes de API. | repositório |
 | D11 | B | App: `usesCleartextTraffic`, token sem checar `exp`, CORS `*`. | `AndroidManifest.xml`, `Sessao.java`, `uMiddlewareCORS.pas` |
-| F10 | B | `DELETE /api/clientes` físico, sem auditoria (desktop inativa). | `uRotasClientes.pas` |
+| F10 | B | `DELETE /api/clientes` físico (a auditoria `PESSOA/D` já foi fechada em 3.74; falta decidir exclusão lógica). | `uRotasClientes.pas` |
 
 ## 4. Android
 
@@ -76,7 +76,7 @@ polimento/dívida.
 
 1. **F3 — CONCLUÍDO** (F1 no marco 3.63, F2 no 3.64, CC-e/inutilização/manifestação no 3.65, DANFE/cupom em PDF no 3.66 e NFC-e no PDV no 3.67).
 2. **T1 + T4 + F7 (login da API) — CONCLUÍDO** (T1 no marco 3.68, T4 no 3.69 e F7 no 3.62) — controle de acesso e isolamento por empresa.
-3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services (D3 no marco 3.70; F4+D9 no 3.72); restam auditoria (`D4`), estoque (`D5`) e numeração por empresa (`F5`).
+3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services (D3 no marco 3.70; F4+D9 no 3.72; D4 no 3.74); restam estoque (`D5`) e numeração por empresa (`F5`).
 4. **D7 + D8** — banco novo confiável a partir do repositório.
 5. **F6 + F9** — paginação e visibilidade de erros na API/Android.
 6. **F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios e backup pela aplicação.
@@ -94,6 +94,7 @@ polimento/dívida.
 - **T4** — isolamento por empresa no copiloto (12 consultas com `:EMP`), produção (mapa/pedido/talão/consumo), bipagem (via `TALAO`/`USUARIO`) e caixa (via `JOIN CAIXA`); `CriarMapa` recusa pedido de outra empresa (marco 3.69).
 - **D3** — API compila com `Desktop\src\Services` + `Repositories`; `uSessao` por thread e `uMiddlewareSessao` levam `empresa_id` do JWT aos Services, sem singleton compartilhado; clientes passaram a usar `TPessoaService` (marco 3.70).
 - **F4 + D9** — `POST /api/clientes` devolve o ID, `PUT /:id` edita e o sync Android usa o ID do POST; migration 021 cria 3 índices únicos e remove duplicatas sem vínculo, com backup gbak (marco 3.72).
+- **D4** — auditoria `LOG_SISTEMA` nas escritas da API (empresa/usuário do JWT); `TPessoaService` passou a auditar antes do commit; smoke com 6 logs conferidos (marco 3.74).
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
 - **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
 - **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).

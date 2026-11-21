@@ -10,12 +10,13 @@ Regras: responder em português; terminar toda resposta com exatamente 3 linhas 
 
 Estado em 21/11/2026:
 
-- **HEAD:** `a6bdfd8` (ajustes do app `:bipe`); logo abaixo, `91c420e` (F4/D9). Árvore limpa após o commit de docs.
-- Suíte desktop **384/384**; build desktop **0/0**; API compilada e startup atualizado; testes Android **OK** e `:bipe` compila; smoke de telas **33/33**; `permissoes_menu.ps1` **0 falhas**; `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos, diff vazio).
-- **Concluído nesta etapa:** **F4 + D9** (marco 3.72, §3.72): `POST /api/clientes` devolve o ID, novo `PUT /api/clientes/:id`, `GET /:id` com telefone; Sync Android usa o ID do POST; migration `021_indices_unicos.sql` criou 3 índices únicos (o de PESSOA inclui `TIPO`, para não quebrar CPF igual em cliente/fornecedor), com limpeza de duplicatas e backup gbak. Antes: **D3** (3.70, Services + sessão por thread), **T4** (3.69), **T1** (3.68) e **F3** (3.65–3.67, fiscal).
-- Banco real com índices conferidos; duplicatas sem vínculo removidas (IDs 1237/1246/1247); `LOG_SISTEMA` sem resíduo de `CCE`.
-- **Auditorias de completude concluídas** (desktop e API/Android/banco): itens priorizados em `Documentacao\ROADMAP_PRODUCAO.md`, com F3/T1/T4/D3/F4/D9 concluídos. Ordem restante: D4, D5/F5, D7/D8, F6/F9; gestão F5/F6/F9, F4/F13, relatórios/backup.
-- **Próximo passo:** bloco da **API** — (a) **D4**: auditoria `LOG_SISTEMA` nas rotas (via `LogOperacao`, com empresa/usuário do JWT); (b) **D5/F5**: movimento de estoque pelo Service e numeração de orçamento por empresa; (c) **D7/D8** (banco novo) e **F6/F9** (paginação e erros de sync). Repetir a bateria completa (desktop, **384/384**, API, smoke CRUD, Android, telas, permissões, schema e banco fresco) a cada marco.
+- **HEAD:** `c9bf7f3` ("API: auditoria LOG_SISTEMA nas rotas de escrita (D4)"); logo abaixo, `a30c4c6` (Bipe: histórico do servidor). O commit de docs deste marco vem acima.
+- Suíte desktop **384/384**; build desktop **0/0**; `build_api.bat` **OK**; testes Android **OK** e `:bipe` compila; smoke de telas **33/33**; `permissoes_menu.ps1` **0 falhas**; `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos, diff vazio); `api_clientes_crud.ps1` **OK** na 9000 e `api_auditoria.ps1` **OK** (6 logs).
+- **Concluído nesta etapa:** **D4** (marco 3.74, §3.74): `LOG_SISTEMA` nas escritas da API com empresa/usuário do JWT e transação atômica; `TPessoaService` audita antes do commit. Antes: **F4 + D9** (3.72), **D3** (3.70), **T4** (3.69), **T1** (3.68) e **F3** (3.65–3.67, fiscal).
+- Banco real com índices D9 conferidos; duplicatas sem vínculo removidas (IDs 1237/1246/1247); `LOG_SISTEMA` sem resíduo de `CCE`.
+- **Coordenação:** outro agente ativo no app `:bipe`. Ler/escrever `Documentacao\COMUNICACAO_AGENTES.md` antes de mexer em arquivo compartilhado; **não editar `Android\android\bipe\**` sem pedido explícito**. API principal foi reiniciada com autorização e já contém as mudanças dele.
+- **Auditorias de completude concluídas** (desktop e API/Android/banco): itens priorizados em `Documentacao\ROADMAP_PRODUCAO.md`, com F3/T1/T4/D3/F4/D9/D4 concluídos. Ordem restante: D5/F5, D7/D8, F6/F9; gestão F5/F6/F9, F4/F13, relatórios/backup.
+- **Próximo passo:** bloco da **API** — (a) **D5**: `POST /api/estoque/movimento` usar Service, validar produto da empresa e atualizar saldo; (b) **F5**: numeração de orçamento por empresa; (c) **D7/D8** (banco novo) e **F6/F9** (paginação e erros de sync). Repetir a bateria completa (desktop **384/384**, API, ambos os smokes, Android, telas, permissões, schema e banco fresco) a cada marco.
 
 Comandos:
 
@@ -29,12 +30,13 @@ Comandos:
 - `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1` → gera `C:\certificados\teste.pfx` (só para validação local).
 - `Scripts\validar_nfe.bat 1003` → valida o XML sem SEFAZ; resultado em `Desktop\bin\nfe\validacao_1003.txt`.
 - `Scripts\validar_nfe.bat todos` → valida todos os pedidos; resultado em `Desktop\bin\nfe\validacao_todos.txt`; exit 1 se algum falhar.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_auditoria.ps1` → smoke D4 (API na 9000): confere 6 registros em `LOG_SISTEMA` e limpa tudo no `finally`.
 - `isql ... -i Scripts\preparar_cenario_fiscal.sql` → cria/reutiliza o cenário fiscal completo (pedido 3581).
 - `Scripts\backup_banco.bat [pasta]` → backup gbak em `Backups\DADOS_AAAAMMDD_HHMMSS.fbk`.
 - `Scripts\restaurar_banco.bat <arquivo.fbk> [destino.fdb] [forcar]` → restaura um banco novo.
 - Banco: `Banco\dados.fdb` (SYSDBA/masterkey); Firebird 5 em `C:\Program Files\Firebird\Firebird_5_0`.
 - Configuração de produção (banco/JWT): ver `Documentacao\CONFIGURACAO_AMBIENTE.md`.
 
-Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md` e o §3.70 do `Documentacao\PLANO_E_LOG.md`.
+Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md`, o §3.74 do `Documentacao\PLANO_E_LOG.md` e `Documentacao\COMUNICACAO_AGENTES.md`.
 
 ---

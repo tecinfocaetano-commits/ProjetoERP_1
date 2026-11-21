@@ -2177,6 +2177,44 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.74 D4 — auditoria `LOG_SISTEMA` nas rotas de escrita da API (21/11)
+
+- **Objetivo:** fechar a auditoria da API sem depender da sessão do desktop.
+  Toda escrita passa a registrar `EMPRESA_ID`/`USUARIO_ID` do JWT na mesma
+  transação da gravação, usando `RegistrarAuditoriaSeguraConexao` de
+  `uAuditoria` (tabela `LOG_SISTEMA`, `OPERACAO` VARCHAR(20)).
+- **Rotas auditadas:** `DELETE /api/clientes` (`PESSOA/D`, antes sem trilha),
+  `POST /api/produtos` (`PRODUTO/I`), `POST /api/estoque/movimento`
+  (`MOVIMENTO_ESTOQUE/I`) e `POST /api/orcamentos` + `/:id/converter`
+  (`PEDIDO_VENDA/I` e `PEDIDO_VENDA/CONVERTER`). `POST/PUT /api/clientes`
+  já eram auditados por `TPessoaService`, mas o log ficava **depois** do
+  `Confirmar` e podia ser perdido: `Inserir`/`Atualizar` agora gravam
+  `LOG_SISTEMA` antes do commit (ID lido do generator dentro da transação).
+- **Decisão:** não duplicar a auditoria nas rotas de cliente. O middleware
+  JWT define `TSessao.DefinirContexto` por thread; ao confirmar que o
+  Service auditava com empresa/usuário corretos, bastou tornar essa
+  auditoria atômica no Service. `DELETE` segue na rota (não usa Service).
+- **IDs e SQL:** produtos e movimentos passaram a ler `GEN_ID(...,1)` antes
+  do `INSERT` e a gravar o ID por parâmetro, para ligar a auditoria ao
+  registro; nenhum SQL concatenado foi introduzido.
+- **Smoke D4:** API temporária na porta 9010, login `admin/admin123`,
+  empresa 1; criou cliente, produto, movimento, orçamento, converteu e
+  excluiu o cliente. `LOG_SISTEMA` conferido via `isql`: **6 registros**
+  (cliente I/D, produto I, estoque I, orçamento I/converter), todos
+  ligados aos IDs criados. Limpeza explícita de dados e logs no `finally`.
+- **Teste de regressão corrigido:** `TestBiparFluxoCompleto` usava o código
+  fixo `T999999` como "inexistente"; o smoke do app `:bipe` criou um talão
+  real com esse código, e a suíte passou a ver `DUPLICADO`. O teste agora
+  usa `NovoCodigo('INV')`, único por execução — sem tocar nos dados do
+  outro agente.
+- **Verificação:** suíte desktop **384/384**, telas **33/33**,
+  `permissoes_menu.ps1` **0 falhas**, `schema_roundtrip.ps1` e
+  `banco_fresco.ps1` **OK** (585 campos, diff vazio), Android **OK**,
+  `build_api.bat` OK e `api_clientes_crud.ps1` **OK** na porta 9000.
+- **Commits:** `c9bf7f3` (código) + commit de docs deste marco.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

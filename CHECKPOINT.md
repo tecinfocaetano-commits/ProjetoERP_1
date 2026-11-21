@@ -35,19 +35,32 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `a6bdfd8` — "Bipe: login com empresa_id, erros HTTP visiveis e sufixo Tab"
-(logo abaixo, `91c420e` — "F4/D9: POST devolve ID, PUT de clientes e indices
-unicos"; o commit de docs deste marco vem acima). Árvore: limpa após os commits. Build: desktop **0/0** · suíte desktop
-**384/384** · API compilada com o startup atualizado · testes Android **OK** ·
-`:bipe` compila · smoke de telas **33/33** · `permissoes_menu.ps1`
-**0 falhas** · `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos,
-diff vazio) · smoke `api_clientes_crud.ps1` **OK**.
+**HEAD:** `c9bf7f3` — "API: auditoria LOG_SISTEMA nas rotas de escrita (D4)"
+(logo abaixo, `a30c4c6` — "Bipe: tela de historico de bipagens do servidor";
+o commit de docs deste marco vem acima). Build: desktop **0/0** · suíte
+desktop **384/384** · `build_api.bat` **OK** · testes Android **OK** ·
+smoke de telas **33/33** · `permissoes_menu.ps1` **0 falhas** ·
+`schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos, diff vazio) ·
+`api_clientes_crud.ps1` **OK** na porta 9000 · smoke D4 na porta 9010
+**OK** (6 registros em `LOG_SISTEMA`). Árvore: sem mudanças nossas após os
+commits; `tmp_shots/` (do smoke do `:bipe`) permanece untracked e não foi
+tocada.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.74 — D4: auditoria nas rotas da API)
+
+| Item | Entrega |
+|---|---|
+| **D4 (API)** | `DELETE /api/clientes` auditado (`PESSOA/D`); `POST /api/produtos`, `POST /api/estoque/movimento`, `POST /api/orcamentos` e `/:id/converter` gravam `LOG_SISTEMA` com empresa/usuário do JWT na mesma transação. IDs de produto/movimento lidos do generator e ligados por parâmetro ao log. |
+| **Service** | `TPessoaService.Inserir/Atualizar` passaram a auditar **antes** do `Confirmar` (o log ficava depois do commit e podia sumir); sem duplicação nas rotas, porque o middleware JWT já preenche a sessão por thread. |
+| **Smoke** | API temporária na 9010: cliente → produto → estoque → orçamento → converter → excluir cliente. `isql` confirmou 6 logs (cliente I/D, produto I, estoque I, orçamento I/converter); limpeza de dados e logs no `finally`. |
+| **Regressão** | `TestBiparFluxoCompleto` trocou o código fixo `T999999` por `NovoCodigo('INV')`: o smoke do `:bipe` tinha criado um talão real com aquele código e a suíte via `DUPLICADO` onde esperava `INVALIDO`. |
+| **Verificação** | Desktop **384/384**, telas **33/33**, permissões **0 falhas**, schema/banco fresco **OK** (585 campos), Android **OK**, API recompilada e `api_clientes_crud.ps1` **OK** na 9000. |
 
 ### O que fechou nesta sessão (marco 3.72 — F4 + D9: API de clientes e índices únicos)
 
