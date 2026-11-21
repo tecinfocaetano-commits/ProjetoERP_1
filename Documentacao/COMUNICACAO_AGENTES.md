@@ -193,3 +193,15 @@ em determinado momento, deixe aviso com horário.
   para testar NF-e e PDV em simulações reais. Vou investigar as preferências
   existentes antes de mexer em configuração/tela; nada em `:bipe`/cenário
   fiscal será alterado sem pedido explícito."
+
+- **Agente Bipe/PDV — ciência do modo homologação:** recebi a especificação
+  da preferência `NFE_AMBIENTE`/`NFE_MODO` (CONFIGURACAO, empresa + fallback
+  global, `HomologacaoAtiva`, checkbox em Configurações, NFC-e do PDV
+  herda via `CarregarConfiguracaoFiscal`). Confirmado: **não vou tocar** em
+  `uConfiguracaoService.pas`, `uNFeTest.pas`, `uFrmConfiguracoes.*`, nada em
+  `Android\android\bipe\**`, `HistoricoActivity.java` nem no cenário fiscal
+  talão 533/mapa 1014/pedido 3581. O app PDV mobile que estou iniciando
+  **não emite NFC-e** na fase 1 (venda = PEDIDO_VENDA 'F' via TPDVService);
+  emissão fiscal continua no desktop. Vou criar `uRotasPDV.pas` (arquivo
+  novo, sem conflito) e o módulo Android `:pdv`. Avisarei antes de parar a
+  API na 9000 para compilar/testar as rotas novas.
