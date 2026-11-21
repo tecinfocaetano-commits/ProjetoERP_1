@@ -29,45 +29,10 @@ unit uPagamentoService;
 interface
 
 uses
-  Classes, SysUtils, SQLDB, fpjson, jsonparser, uConexao;
+  Classes, SysUtils, SQLDB, fpjson, jsonparser, uConexao,
+  uPagamentoTipos;
 
 type
-  { Status possiveis de PAGAMENTO.STATUS (espelha CK_PAG_STATUS). }
-  TStatusPagamento = (
-    spPendente, spProcessando, spAprovado, spRecusado,
-    spCancelado, spExpirado);
-
-  { Dados que o provedor devolve ao iniciar a cobranca. }
-  TProviderCobranca = record
-    TxId: string;
-    QrPayload: string;
-    QrImagemUrl: string;
-    Instrucoes: string;
-  end;
-
-  { Contrato de um provedor de pagamento. Implementacoes reais
-    (Asaas, MercadoPago, EFI, TEF...) herdam esta classe; a escolha
-    do provedor ativo e por configuracao, nunca fixa no codigo. }
-  TPaymentProvider = class
-  public
-    { Identificador estavel usado em PAGAMENTO.PROVEDOR. }
-    function Codigo: string; virtual; abstract;
-
-    { Inicia a cobranca no PSP. ADadosJson e o payload normalizado
-      da intencao (valor, itens, descricao). }
-    procedure IniciarCobranca(const ADadosJson: string;
-      out ACobranca: TProviderCobranca); virtual; abstract;
-
-    { Consulta o estado atual da cobranca no PSP.
-      Retorna um TStatusPagamento. }
-    function ConsultarStatus(const ATxId: string): TStatusPagamento;
-      virtual; abstract;
-
-    { Cancela/estorna a cobranca pendente. Implementacao padrao
-      nao faz nada (provedores sem cancelamento remoto). }
-    procedure Cancelar(const ATxId: string); virtual;
-  end;
-
   TPagamentoService = class
   private
     FConexao: TConexao;
@@ -90,7 +55,7 @@ type
       IDEMPOTENCY_KEY devolve o ID existente sem duplicar. }
     function IniciarCobranca(ACaixaId, AFormaPagamentoId: Int64;
       AValor, ADesconto: Double; const AIItensJson,
-      AIdempotencyKey, ATipoCobranca: string): Int64;
+      AIdempotencyKey, ATipoCobranca, ABandeira: string): Int64;
 
     { Consulta o estado; se APROVADO e ainda nao finalizado, gera a
       venda via TPDVService (PEDIDO_VENDA + itens + movimento 'V').
@@ -118,13 +83,11 @@ function ProvedorPagamento(const ACodigo: string): TPaymentProvider;
 { Le a chave PAG_PROVIDER da empresa (fallback global). }
 function ProvedorPagamentoAtivo: string;
 
-{ StatusPagamento -> texto gravado em PAGAMENTO.STATUS. }
-function StatusParaTexto(AStatus: TStatusPagamento): string;
-
 implementation
 
 uses
-  uSessao, uAuditoria, uPDVService, uConfiguracaoService, DateUtils;
+  uSessao, uAuditoria, uPDVService, uConfiguracaoService, DateUtils,
+  uPagamentoMercadoPago;
 
 const
   STATUS_PENDENTE   = 'PENDENTE';
@@ -136,49 +99,6 @@ const
 
   CHAVE_PROVIDER = 'PAG_PROVIDER';
   PROVIDER_PADRAO = 'SIMULADO';
-
-{ ------------------------------------------------------------------
-  Status <-> texto
-  ------------------------------------------------------------------ }
-
-function StatusParaTexto(AStatus: TStatusPagamento): string;
-begin
-  case AStatus of
-    spPendente:     Result := STATUS_PENDENTE;
-    spProcessando:  Result := STATUS_PROCESSANDO;
-    spAprovado:     Result := STATUS_APROVADO;
-    spRecusado:     Result := STATUS_RECUSADO;
-    spCancelado:    Result := STATUS_CANCELADO;
-    spExpirado:     Result := STATUS_EXPIRADO;
-  else
-    Result := STATUS_PENDENTE;
-  end;
-end;
-
-function TextoParaStatus(const ATexto: string): TStatusPagamento;
-begin
-  if SameText(ATexto, STATUS_PROCESSANDO) then
-    Result := spProcessando
-  else if SameText(ATexto, STATUS_APROVADO) then
-    Result := spAprovado
-  else if SameText(ATexto, STATUS_RECUSADO) then
-    Result := spRecusado
-  else if SameText(ATexto, STATUS_CANCELADO) then
-    Result := spCancelado
-  else if SameText(ATexto, STATUS_EXPIRADO) then
-    Result := spExpirado
-  else
-    Result := spPendente;
-end;
-
-{ ------------------------------------------------------------------
-  TPaymentProvider - implementacao padrao de Cancelar (no-op)
-  ------------------------------------------------------------------ }
-
-procedure TPaymentProvider.Cancelar(const ATxId: string);
-begin
-  { provedores sem cancelamento remoto herdam este no-op }
-end;
 
 { ------------------------------------------------------------------
   Adapter SIMULADO - apenas para testes, NAO fala com PSP real.
@@ -269,10 +189,12 @@ function ProvedorPagamento(const ACodigo: string): TPaymentProvider;
 begin
   if SameText(Trim(ACodigo), 'SIMULADO') or (Trim(ACodigo) = '') then
     Result := TPaymentProviderSimulado.Create
+  else if SameText(Trim(ACodigo), 'MERCADOPAGO') then
+    Result := TPaymentProviderMercadoPago.Create
   else
     raise Exception.CreateFmt(
       'Provedor de pagamento "%s" ainda nao implementado. ' +
-      'Provedores previstos: ASAAS, MERCADOPAGO, EFI, TEF_*.',
+      'Provedores previstos: ASAAS, EFI, TEF_*.',
       [Trim(ACodigo)]);
 end;
 
@@ -526,7 +448,8 @@ end;
 
 function TPagamentoService.IniciarCobranca(ACaixaId,
   AFormaPagamentoId: Int64; AValor, ADesconto: Double;
-  const AIItensJson, AIdempotencyKey, ATipoCobranca: string): Int64;
+  const AIItensJson, AIdempotencyKey, ATipoCobranca,
+  ABandeira: string): Int64;
 var
   LProvider: TPaymentProvider;
   LCobranca: TProviderCobranca;
@@ -571,9 +494,11 @@ begin
         'INSERT INTO PAGAMENTO (EMPRESA_ID, USUARIO_ID, CAIXA_ID, ' +
         '  FORMA_PAGAMENTO_ID, PROVEDOR, TIPO_COBRANCA, STATUS, VALOR, ' +
         '  DESCONTO, DADOS_JSON, IDEMPOTENCY_KEY, PROVEDOR_TXID, ' +
-        '  QR_PAYLOAD, QR_IMAGEM_URL, EXPIRA_EM, OBSERVACOES) ' +
+        '  QR_PAYLOAD, QR_IMAGEM_URL, BANDEIRA, EXPIRA_EM, ' +
+        '  OBSERVACOES) ' +
         'VALUES (:EMP, :USR, :CX, :FP, :PROV, :TIPO, :STS, :VLR, ' +
-        '  :DESC, :JSON, :IDEM, :TX, :QR, :QRI, :EXP, :OBS) RETURNING ID';
+        '  :DESC, :JSON, :IDEM, :TX, :QR, :QRI, :BND, :EXP, :OBS) ' +
+        'RETURNING ID';
       LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQuery.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
       if ACaixaId > 0 then
@@ -597,6 +522,13 @@ begin
       LQuery.ParamByName('TX').AsString := LCobranca.TxId;
       LQuery.ParamByName('QR').AsString := LCobranca.QrPayload;
       LQuery.ParamByName('QRI').AsString := LCobranca.QrImagemUrl;
+      { bandeira: a do provedor tem prioridade sobre a digitada }
+      if Trim(LCobranca.Bandeira) <> '' then
+        LQuery.ParamByName('BND').AsString := Trim(LCobranca.Bandeira)
+      else if Trim(ABandeira) <> '' then
+        LQuery.ParamByName('BND').AsString := Trim(ABandeira)
+      else
+        LQuery.ParamByName('BND').Clear;
       if LExpira > 0 then
         LQuery.ParamByName('EXP').AsDateTime := LExpira
       else

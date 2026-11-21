@@ -688,6 +688,32 @@ public class PdvActivity extends AppCompatActivity {
         ((LinearLayout) v.findViewById(R.id.editValorPago)
                 .getParent()).addView(grupo, 0);
 
+        // Bandeira do cartão: só aparece quando a forma é CARTAO.
+        // É metadado para conciliação — o PAN nunca passa pelo app.
+        final RadioGroup grupoBandeira = new RadioGroup(this);
+        grupoBandeira.setOrientation(RadioGroup.HORIZONTAL);
+        final String[] bandeiras = {"VISA", "MASTERCARD", "ELO",
+                "AMEX", "OUTRO"};
+        final ArrayList<RadioButton> radiosBandeira = new ArrayList<>();
+        for (String b : bandeiras) {
+            RadioButton rb = new RadioButton(this);
+            rb.setText(b);
+            rb.setTextSize(12);
+            grupoBandeira.addView(rb);
+            radiosBandeira.add(rb);
+        }
+        radiosBandeira.get(0).setChecked(true);
+        grupoBandeira.setVisibility(View.GONE);
+        ((LinearLayout) v.findViewById(R.id.editValorPago)
+                .getParent()).addView(grupoBandeira, 1);
+
+        grupo.setOnCheckedChangeListener((g, checkedId) -> {
+            int sel = g.getCheckedRadioButtonId();
+            boolean ehCartao = sel >= 0 && sel < formas.size()
+                    && "CARTAO".equals(tipoCobranca(formas.get(sel)));
+            grupoBandeira.setVisibility(ehCartao ? View.VISIBLE : View.GONE);
+        });
+
         final EditText editPago = v.findViewById(R.id.editValorPago);
         final TextView txtTroco = v.findViewById(R.id.txtTroco);
         editPago.setText(String.format(Locale.getDefault(), "%.2f",
@@ -723,7 +749,10 @@ public class PdvActivity extends AppCompatActivity {
                     if ("DI".equals(f.tipo)) {
                         postarVenda(f.id, pago);
                     } else {
-                        iniciarCobrancaEletronica(f);
+                        int selB = grupoBandeira.getCheckedRadioButtonId();
+                        String bandeira = (selB >= 0 && selB < bandeiras.length)
+                                ? bandeiras[selB] : "";
+                        iniciarCobrancaEletronica(f, bandeira);
                     }
                 })
                 .setNegativeButton("Voltar", null)
@@ -750,7 +779,8 @@ public class PdvActivity extends AppCompatActivity {
      * servidor (provedor configurado em PAG_PROVIDER; hoje SIMULADO)
      * e abre a tela de espera com polling de status.
      */
-    private void iniciarCobrancaEletronica(FormaPagamento f) {
+    private void iniciarCobrancaEletronica(FormaPagamento f,
+                                           String bandeira) {
         btnFinalizar.setEnabled(false);
         new Thread(() -> {
             try {
@@ -767,6 +797,9 @@ public class PdvActivity extends AppCompatActivity {
                 corpo.put("desconto", desconto());
                 corpo.put("forma_pagamento_id", f.id);
                 corpo.put("tipo_cobranca", tipoCobranca(f));
+                if (bandeira != null && !bandeira.isEmpty()) {
+                    corpo.put("bandeira", bandeira);
+                }
                 corpo.put("idempotency_key", UUID.randomUUID().toString());
 
                 ApiClient.Result r = ApiClient.post(
@@ -832,6 +865,9 @@ public class PdvActivity extends AppCompatActivity {
                 .setTitle("Aguardando pagamento")
                 .setView(v)
                 .setCancelable(false)
+                .setPositiveButton("Já paguei — verificar", (d, w) ->
+                        consultarStatusPagamento(pagId,
+                                v.findViewById(R.id.txtStatusPagamento)))
                 .setNegativeButton("Cancelar cobrança", (d, w) ->
                         cancelarCobranca(pagId))
                 .show();

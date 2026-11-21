@@ -30,8 +30,8 @@ implementation
 
 uses
   SysUtils, DateUtils, fpjson, jsonparser, SQLDB, uConexao,
-  uMiddlewareJWT, uPDVService, uPagamentoService, uSessao,
-  uConfiguracaoService;
+  uMiddlewareJWT, uPDVService, uPagamentoService, uPagamentoTipos,
+  uSessao, uConfiguracaoService;
 
 const
   LIMITE_PRODUTOS = 60;
@@ -746,7 +746,7 @@ var
   LCaixaId, LFormaId, LPagamentoId: Int64;
   LDesconto, LSubtotal, LTotal: Double;
   LNumeroForma, LTipoForma, LTipoCobranca, LIdem, LJsonCarrinho,
-    LMensagem: string;
+    LBandeira, LMensagem: string;
   I: Integer;
 begin
   if not TokenOuErro(Req, Res, LUsuarioId, LEmpresaId) then
@@ -839,10 +839,13 @@ begin
         LIdem := 'PDV-' + IntToStr(LUsuarioId) + '-' +
           IntToStr(DateTimeToUnix(Now)) + '-' + IntToStr(Random(9999));
 
+      LBandeira := Trim(LBody.Get('bandeira', ''));
+
       LServicoPag := TPagamentoService.Create;
       try
         LPagamentoId := LServicoPag.IniciarCobranca(LCaixaId, LFormaId,
-          LTotal, LDesconto, LJsonCarrinho, LIdem, LTipoCobranca);
+          LTotal, LDesconto, LJsonCarrinho, LIdem, LTipoCobranca,
+          LBandeira);
       finally
         LServicoPag.Free;
       end;
@@ -1131,6 +1134,89 @@ begin
   end;
 end;
 
+{ ------------------------------------------------------------------
+  GET /api/pdv/pagamentos?status=&de=&ate=
+  Conciliacao: lista cobrancas da empresa com filtro opcional.
+  ------------------------------------------------------------------ }
+procedure GetPagamentos(Req: THorseRequest; Res: THorseResponse);
+var
+  LUsuarioId, LEmpresaId: Int64;
+  LConexao: TConexao;
+  LQuery: TSQLQuery;
+  LArray: TJSONArray;
+  LObj: TJSONObject;
+  LSql, LStatus, LDe, LAte: string;
+begin
+  if not TokenOuErro(Req, Res, LUsuarioId, LEmpresaId) then
+    Exit;
+
+  LStatus := Trim(Req.Query['status']);
+  LDe := Trim(Req.Query['de']);
+  LAte := Trim(Req.Query['ate']);
+
+  LSql :=
+    'SELECT ID, PROVEDOR, TIPO_COBRANCA, BANDEIRA, STATUS, VALOR, ' +
+    '  DESCONTO, PROVEDOR_TXID, PEDIDO_VENDA_ID, MOTIVO, ' +
+    '  DATA_CADASTRO, CONFIRMADO_EM, EXPIRA_EM ' +
+    'FROM PAGAMENTO WHERE EMPRESA_ID = :EMP ';
+  if LStatus <> '' then
+    LSql := LSql + 'AND STATUS = :STS ';
+  if LDe <> '' then
+    LSql := LSql + 'AND DATA_CADASTRO >= :DE ';
+  if LAte <> '' then
+    LSql := LSql + 'AND DATA_CADASTRO < :ATE ';
+  LSql := LSql + 'ORDER BY ID DESC ROWS 200';
+
+  LConexao := TConexao.GetInstance;
+  LQuery := TSQLQuery.Create(nil);
+  LArray := TJSONArray.Create;
+  try
+    LQuery.DataBase := LConexao.Connection;
+    LQuery.Transaction := LConexao.Transaction;
+    LQuery.SQL.Text := LSql;
+    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
+    if LStatus <> '' then
+      LQuery.ParamByName('STS').AsString := LStatus;
+    if LDe <> '' then
+      LQuery.ParamByName('DE').AsDateTime :=
+        StrToDateTimeDef(LDe + ' 00:00:00', Now);
+    if LAte <> '' then
+      LQuery.ParamByName('ATE').AsDateTime :=
+        StrToDateTimeDef(LAte + ' 23:59:59', Now);
+    LQuery.Open;
+    while not LQuery.EOF do
+    begin
+      LObj := TJSONObject.Create;
+      LObj.Add('id', LQuery.FieldByName('ID').AsLargeInt);
+      LObj.Add('provedor', LQuery.FieldByName('PROVEDOR').AsString);
+      LObj.Add('tipo_cobranca',
+        LQuery.FieldByName('TIPO_COBRANCA').AsString);
+      LObj.Add('bandeira', LQuery.FieldByName('BANDEIRA').AsString);
+      LObj.Add('status', LQuery.FieldByName('STATUS').AsString);
+      LObj.Add('valor', LQuery.FieldByName('VALOR').AsFloat);
+      LObj.Add('desconto', LQuery.FieldByName('DESCONTO').AsFloat);
+      LObj.Add('txid', LQuery.FieldByName('PROVEDOR_TXID').AsString);
+      if LQuery.FieldByName('PEDIDO_VENDA_ID').IsNull then
+        LObj.Add('venda_id', Int64(0))
+      else
+        LObj.Add('venda_id',
+          LQuery.FieldByName('PEDIDO_VENDA_ID').AsLargeInt);
+      LObj.Add('motivo', LQuery.FieldByName('MOTIVO').AsString);
+      LObj.Add('data_cadastro',
+        LQuery.FieldByName('DATA_CADASTRO').AsDateTime);
+      if not LQuery.FieldByName('CONFIRMADO_EM').IsNull then
+        LObj.Add('confirmado_em',
+          LQuery.FieldByName('CONFIRMADO_EM').AsDateTime);
+      LArray.Add(LObj);
+      LQuery.Next;
+    end;
+    Res.Send(LArray.AsJSON).Status(THTTPStatus.OK);
+    LArray.Free;
+  finally
+    LQuery.Free;
+  end;
+end;
+
 procedure RegistrarRotasPDV;
 begin
   THorse.Get('/api/pdv/status', @GetStatus);
@@ -1145,6 +1231,7 @@ begin
   THorse.Get('/api/pdv/pagamentos/:id/status', @GetPagamentoStatus);
   THorse.Post('/api/pdv/pagamentos/:id/cancelar', @PostPagamentoCancelar);
   THorse.Post('/api/pdv/pagamentos/webhook', @PostPagamentoWebhook);
+  THorse.Get('/api/pdv/pagamentos', @GetPagamentos);
 end;
 
 end.

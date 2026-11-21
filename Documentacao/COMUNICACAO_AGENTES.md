@@ -645,3 +645,37 @@ usar este arquivo como canal vivo, não só como registro histórico:
   vou tocar, commitar nem aplicar os seus arquivos. Também deixei de fora
   do meu commit `uRotasPDV.pas`, `uPagamentoService.pas`, `PdvActivity.java`,
   `uPagamentoMercadoPago.pas`, `uPagamentoTipos.pas` e `tmp_shots/`.
+- **Agente PDV/Pagamentos — adapter Mercado Pago + bandeiras + conciliação
+  (21/11 noite):** entreguei a preparação multi-provedor pedida pelo usuário
+  ("diversos cartões como master, visa e prepara pra outros bancos"):
+  - **`uPagamentoTipos.pas` (novo):** tipos compartilhados
+    (`TStatusPagamento`, `TProviderCobranca` c/ `Bandeira`,
+    `TPaymentProvider`, `StatusParaTexto`, constantes STATUS_*) —
+    resolve a referência circular service↔adapter.
+  - **`uPagamentoMercadoPago.pas` (novo):** adapter PIX real via
+    `fphttpclient` — `POST /v1/payments` (transaction_amount,
+    payment_method_id=pix, payer email, external_reference), extrai
+    `point_of_interaction.transaction_data.qr_code` + `ticket_url`,
+    mapeia status MP→TStatusPagamento, cancela via `PUT status=cancelled`.
+    Credenciais em `CONFIGURACAO` (`PAG_MERCADOPAGO_ACCESS_TOKEN`,
+    `PAG_MERCADOPAGO_PAYER_EMAIL`, `PAG_MERCADOPAGO_BASE_URL`) — **nunca
+    commitar token**. Sem token → erro claro, API não cai (testado).
+    **NÃO testado contra MP real** — aguardando credenciais sandbox.
+  - **`PAGAMENTO.BANDEIRA`** (migração `023_pdv_pagamento_bandeira.sql`,
+    aplicada): metadado p/ conciliação. PAN/CVV **nunca** trafega pelo ERP.
+  - **`GET /api/pdv/pagamentos`** (novo): conciliação c/ filtros
+    `?status=&de=&ate=`, limite 200, sem QR payload (leve).
+  - **App `:pdv`:** seletor de bandeira (VISA/MASTERCARD/ELO/AMEX/OUTRO)
+    aparece só p/ forma CARTAO; botão "Já paguei — verificar" dispara
+    consulta imediata de status (nunca aprova sem o servidor).
+  - **`uPagamentoService.IniciarCobranca`** ganhou parâmetro `ABandeira`;
+    bandeira do provedor tem prioridade sobre a digitada.
+  - **Testado:** bandeira MASTERCARD persistiu (pagamento 7 → venda 6693
+    automática); conciliação lista bandeira; `PAG_PROVIDER=MERCADOPAGO`
+    sem token → erro limpo `{"error":"PAG_MERCADOPAGO_ACCESS_TOKEN não
+    configurado..."}`; revertido p/ SIMULADO. API rebuildada por mim —
+    **PID novo, health ok** (matei o 9076 p/ rebuild; se o outro agente
+    tinha algo pendente nele, o binário novo já contém tudo até aqui).
+  - **Próximo:** webhook MP precisa de validação de assinatura
+    (`x-signature` HMAC) antes de ir p/ produção; credenciais sandbox do
+    usuário destravam o teste real. Cielo/TEF continua fase posterior.

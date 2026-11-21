@@ -2761,3 +2761,22 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Escopo:** nada em `:pdv/**`, `:bipe/**`, `uRotasPDV.pas`,
   `uMiddlewareJWT/Sessao.pas`, `uPagamentoService.pas`, cenário fiscal
   533/1014/3581 ou prompts do outro agente. `tmp_shots/` segue untracked.
+
+### 3.90 Pagamentos — adapter Mercado Pago + bandeiras + conciliação (21/11)
+
+- **Arquitetura multi-provedor consolidada:** tipos compartilhados em
+  `uPagamentoTipos.pas`; `TPaymentProvider` com `Codigo/IniciarCobranca/
+  ConsultarStatus/Cancelar`; `PAG_PROVIDER` por empresa escolhe o ativo
+  (padrão SIMULADO). Novo provedor = 1 unit + 1 linha no factory.
+- **`uPagamentoMercadoPago.pas`:** PIX real via `POST /v1/payments`
+  (Bearer token de `CONFIGURACAO`), QR via `point_of_interaction`,
+  cancelamento `PUT status=cancelled`. Sem credenciais → erro controlado.
+  Pendente: validação HMAC do webhook (`x-signature`) e teste sandbox.
+- **`PAGAMENTO.BANDEIRA`** (migração 023 aplicada): VISA/MASTERCARD/ELO/
+  AMEX/OUTRO como metadado — PAN nunca passa pelo ERP (PCI-DSS).
+- **API:** `GET /api/pdv/pagamentos` p/ conciliação (status/de/ate, 200).
+- **App `:pdv`:** bandeira só p/ CARTAO; "Já paguei — verificar" consulta
+  o servidor na hora (não aprova localmente).
+- **Validado:** pagamento 7 CARTAO/MASTERCARD → APROVADO → venda 6693;
+  conciliação retorna bandeira; provider MP sem token falha limpo.
+- **Bloqueio:** credenciais sandbox Mercado Pago (usuário) p/ teste real.
