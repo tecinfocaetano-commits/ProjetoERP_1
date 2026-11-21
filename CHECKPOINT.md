@@ -38,7 +38,7 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 **Últimos marcos:** 3.86 (pool/health da API — **a API caindo toda hora**),
 3.85 (pagamentos PDV do outro agente), 3.84 (cupom PDF), 3.83 (D10),
 3.81 (homologação) e 3.80 (`:bipe`); 3.82 é o app PDV mobile. O marco 3.86
-está em `<hash do commit>` (código + docs). Pode haver commit de outro agente
+está em `9fa4a87` (código + docs). Pode haver commit de outro agente
 acima. Build: desktop **0/0** ·
 suíte desktop **385/385** · `build_api.bat` **OK** (pare a API antes de
 compilar, senão o `.exe` fica travado) · testes Android **9/9** ·
