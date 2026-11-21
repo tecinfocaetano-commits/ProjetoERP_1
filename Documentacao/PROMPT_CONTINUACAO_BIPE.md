@@ -89,17 +89,13 @@ VERIFICAÇÃO JÁ FEITA
 
 O QUE FALTA / PRÓXIMOS PASSOS POSSÍVEIS (em ordem de prioridade)
 
-1. TESTE DE CAMPA (pendente, depende do usuário): instalar o APK num
-   aparelho/emulador com a API no ar (ERP2026API.exe na porta 9000 —
-   para celular na rede local use o IP da máquina, ex.:
-   http://192.168.x.x:9000), login com usuário real e bipar um
-   TALAO.CODIGO_BARRAS existente. O endpoint já foi smoke-testado via
-   curl: INVALIDO (inexistente e cancelado) e DUPLICADO (mapa
-   concluído) respondem correto após fix de double-free (`ccea527`).
-   O caminho OK (transição de status) só falta exercitar com um talão
-   GERADO/IMPRESSO/EM_PRODUCAO real. O contrato foi revisado contra
-   uRotasProducao.pas e uRotasLogin.pas — se houver defeito, corrigir
-   no app; a regra de negócio NÃO se toca (384/384).
+1. ~~TESTE DE CAMPO~~ — **FEITO NO EMULADOR** (marco 3.75): APK
+   instalado no AVD Pixel_9, login admin via `http://10.0.2.2:9000`,
+   ciclo OK/DUPLICADO/INVALIDO validado, **fila offline testada na
+   prática** (API reiniciou no meio e o app reenviou sozinho) e
+   histórico do servidor com 95 registros. Resta apenas aparelho
+   físico com leitor/câmera reais — hardware não exercitado no
+   emulador.
 
 2. ~~MODO OFFLINE / FILA~~ — **IMPLEMENTADO**: tabela `pendente` no
    BipeDb (FIFO), envio automático no onResume/após bipagem e botão

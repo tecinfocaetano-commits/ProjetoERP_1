@@ -2215,6 +2215,28 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.75 Teste dos dois apps Android no emulador (21/11)
+
+- **Emulador:** AVD `Pixel_9` (`%LOCALAPPDATA%\Android\Sdk`), API na
+  porta 9000 acessada do emulador via `http://10.0.2.2:9000`.
+- **App `:bipe` — aprovado de ponta a ponta:** login admin → bipagem
+  `T999999` → `DUPLICADO` com contador e histórico local; `XXXX999`
+  caiu na **fila offline** quando a API reiniciou no meio do teste e
+  sincronizou pelo botão "Enviar fila" → `INVALIDO` gravado no servidor
+  e no histórico (modo offline validado na prática, sem simulador de
+  rede); "Ver bipagens do servidor" listou 95 registros com operador.
+- **App `:app` (ERP2026 Mobile) — aprovado:** login → dashboard com
+  dados reais da API (faturamento, a receber/pagar, clientes, últimas
+  vendas) e aba Vendas com a lista completa.
+- **Coordenacao:** `Documentacao\COMUNICACAO_AGENTES.md` criado para os
+  dois agentes (ERP/desktop e `:bipe`) registrarem o que estão fazendo —
+  a reinicialização da API pelo outro agente foi absorvida pela fila
+  offline do app sem perda.
+- **Commits:** `71c18a5` (diagnóstico de erro no HistoricoActivity) +
+  docs deste marco.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

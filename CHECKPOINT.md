@@ -52,6 +52,14 @@ tocada.
 
 - Nada.
 
+### O que fechou nesta sessão (marco 3.75 — testes dos apps Android no emulador)
+
+| Item | Entrega |
+|---|---|
+| **`:bipe` no emulador** | AVD Pixel_9 + API na 9000 via `10.0.2.2`: login, bipagem `DUPLICADO`, **fila offline validada na prática** (API reiniciou no meio e o app reenviou sozinho), histórico do servidor com 95 registros. Falta só aparelho físico com leitor/câmera. |
+| **`:app` no emulador** | Login → dashboard com dados reais da API e aba Vendas funcionando. |
+| **Coordenação** | `Documentacao\COMUNICACAO_AGENTES.md` para os dois agentes registrarem o que fazem em paralelo. |
+
 ### O que fechou nesta sessão (marco 3.74 — D4: auditoria nas rotas da API)
 
 | Item | Entrega |
