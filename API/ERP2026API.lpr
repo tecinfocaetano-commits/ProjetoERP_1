@@ -74,7 +74,7 @@ begin
   WriteLn('Endpoints disponíveis:');
   WriteLn('  GET  /api/health');
   WriteLn('  POST /api/login');
-  WriteLn('  GET/POST /api/clientes');
+  WriteLn('  GET/POST/PUT/DELETE /api/clientes');
   WriteLn('  GET/POST /api/produtos');
   WriteLn('  GET/POST /api/estoque');
   WriteLn('  GET/POST /api/vendas');

@@ -6,19 +6,16 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * Sincronizacao entre o banco local (SQLite) e a API do ERP.
  *
  * <p><b>Envio:</b> percorre a fila {@code outbox} e manda primeiro os clientes
- * (a API nao devolve o id no POST, entao o id e localizado pela lista do
- * servidor) e depois os orcamentos, que precisam do id do cliente ja
- * cadastrado. Uma falha nao descarta a operacao: a linha continua na fila com
- * o erro anotado para a proxima tentativa.
+ * (o POST devolve o id criado, entao nao e mais preciso procurar na lista) e
+ * depois os orcamentos, que precisam do id do cliente ja cadastrado. Uma falha
+ * nao descarta a operacao: a linha continua na fila com o erro anotado para a
+ * proxima tentativa.
  *
  * <p><b>Download:</b> atualiza os caches de clientes, produtos e orcamentos em
  * aberto e, na sincronizacao total, tambem vendas, estoque e financeiro. Os
@@ -199,18 +196,6 @@ public final class Sincronizacao {
     // ------------------------------------------------------------------
 
     private static void enviarClientes(BancoLocal banco, Resultado r) {
-        Map<String, Long> idsServidor = new HashMap<>();
-        try {
-            for (ClienteLocal c : lerClientes(ApiClient.get("/api/clientes"))) {
-                if (c.idServidor != null) {
-                    idsServidor.put(chaveCliente(c.nome, c.cpfCnpj), c.idServidor);
-                }
-            }
-        } catch (Exception ignorado) {
-            // Sem a lista inicial ainda vale tentar o POST; se o envio der certo
-            // a lista e recarregada logo abaixo.
-        }
-
         for (ItemOutbox item : banco.pendentes(LIMITE_FILA)) {
             if (!ItemOutbox.TIPO_CLIENTE.equals(item.tipo)) {
                 continue;
@@ -227,16 +212,6 @@ public final class Sincronizacao {
                 continue;
             }
 
-            String chave = chaveCliente(cliente.nome, cliente.cpfCnpj);
-            Long idServidor = idsServidor.get(chave);
-            if (idServidor != null) {
-                // Ja existe no servidor (envio anterior confirmado sem baixar a fila).
-                banco.marcarClienteSincronizado(cliente.id, idServidor);
-                banco.removerDaFila(item.id);
-                r.clientesEnviados++;
-                continue;
-            }
-
             try {
                 ApiClient.Result res = ApiClient.post("/api/clientes", jsonCliente(cliente));
                 if (res.status == 401) {
@@ -249,34 +224,22 @@ public final class Sincronizacao {
                     continue;
                 }
 
-                r.clientesEnviados++;
-
-                // A API nao devolve o id criado: recarrega a lista e localiza
-                // pelo nome + documento (o cadastro recem-criado tem o maior id).
+                long idServidor = 0;
                 try {
-                    for (ClienteLocal c : lerClientes(ApiClient.get("/api/clientes"))) {
-                        if (c.idServidor == null) {
-                            continue;
-                        }
-                        String k = chaveCliente(c.nome, c.cpfCnpj);
-                        Long atual = idsServidor.get(k);
-                        if (atual == null || c.idServidor > atual) {
-                            idsServidor.put(k, c.idServidor);
-                        }
-                    }
+                    idServidor = new JSONObject(res.body).optLong("id", 0);
                 } catch (Exception ignorado) {
-                    // Mantem o mapa anterior; a proxima sincronizacao resolve.
+                    // resposta sem corpo JSON: o id obrigatorio nao veio
+                }
+                if (idServidor <= 0) {
+                    banco.marcarErro(item.id,
+                            "Cliente enviado, mas a API não devolveu o id.");
+                    falha(r, "cliente " + cliente.nome + " enviado sem id");
+                    continue;
                 }
 
-                idServidor = idsServidor.get(chave);
-                if (idServidor != null) {
-                    banco.marcarClienteSincronizado(cliente.id, idServidor);
-                    banco.removerDaFila(item.id);
-                } else {
-                    banco.marcarErro(item.id,
-                            "Cliente enviado, mas o id do servidor ainda não foi localizado.");
-                    falha(r, "cliente " + cliente.nome + " enviado, id não localizado");
-                }
+                banco.marcarClienteSincronizado(cliente.id, idServidor);
+                banco.removerDaFila(item.id);
+                r.clientesEnviados++;
             } catch (Exception e) {
                 banco.marcarErro(item.id, e.getMessage());
                 falha(r, "cliente " + cliente.nome + ": " + e.getMessage());
@@ -621,13 +584,6 @@ public final class Sincronizacao {
     // ------------------------------------------------------------------
     // Utilitarios
     // ------------------------------------------------------------------
-
-    /** Nome normalizado + digitos do documento: identifica o cliente no servidor. */
-    private static String chaveCliente(String nome, String documento) {
-        String n = nome == null ? "" : nome.trim().toUpperCase(Locale.ROOT);
-        String d = documento == null ? "" : documento.replaceAll("\\D", "");
-        return n + "|" + d;
-    }
 
     private static void registrar(Resultado r, ApiClient.Result res) {
         if (res.status == 401) {

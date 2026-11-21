@@ -352,7 +352,7 @@ public class SincronizacaoTest {
             // O servidor "cria" o cliente e passa a devolve-lo na lista.
             clientesDoServidor = "[{\"id\":77,\"nome\":\"Cliente Novo\","
                     + "\"cpf_cnpj\":\"12345678900\",\"status\":\"A\"}]";
-            responder(conexao, 201, "{\"ok\":true}");
+            responder(conexao, 201, "{\"id\":77,\"message\":\"Cliente criado com sucesso\"}");
             return;
         }
 

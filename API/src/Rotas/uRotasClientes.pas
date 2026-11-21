@@ -5,6 +5,8 @@ unit uRotasClientes;
 { ============================================================
   ERP 2026 - FASE 7 - Rotas de Clientes
   Endpoints: GET/POST/PUT/DELETE /api/clientes
+  F4/D9: POST devolve o ID criado, PUT edita e o Service valida
+  CPF/CNPJ por empresa+tipo (protegido por indice unico no banco).
   ============================================================ }
 
 interface
@@ -19,6 +21,99 @@ implementation
 uses
   SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT,
   uPessoaService, uPessoa;
+
+function TextoBody(ABody: TJSONObject; const AChave: string;
+  const AAtual: string): string;
+var
+  D: TJSONData;
+begin
+  Result := AAtual;
+  D := ABody.Find(AChave);
+  if D <> nil then
+    Result := D.AsString;
+end;
+
+function CharBody(ABody: TJSONObject; const AChave: string;
+  AAtual: Char): Char;
+var
+  D: TJSONData;
+  S: string;
+begin
+  Result := AAtual;
+  D := ABody.Find(AChave);
+  if D = nil then
+    Exit;
+  S := UpperCase(Trim(D.AsString));
+  if S <> '' then
+    Result := S[1];
+end;
+
+procedure AplicarBody(ABody: TJSONObject; APessoa: TPessoa);
+var
+  D: TJSONData;
+begin
+  APessoa.Nome := TextoBody(ABody, 'nome', APessoa.Nome);
+  APessoa.NomeFantasia := TextoBody(ABody, 'nome_fantasia', APessoa.NomeFantasia);
+  APessoa.CpfCnpj := TextoBody(ABody, 'cpf_cnpj', APessoa.CpfCnpj);
+  APessoa.RgIe := TextoBody(ABody, 'rg_ie', APessoa.RgIe);
+  APessoa.Endereco := TextoBody(ABody, 'endereco', APessoa.Endereco);
+  APessoa.Numero := TextoBody(ABody, 'numero', APessoa.Numero);
+  APessoa.Complemento := TextoBody(ABody, 'complemento', APessoa.Complemento);
+  APessoa.Bairro := TextoBody(ABody, 'bairro', APessoa.Bairro);
+  APessoa.Cidade := TextoBody(ABody, 'cidade', APessoa.Cidade);
+  APessoa.Uf := TextoBody(ABody, 'uf', APessoa.Uf);
+  APessoa.Cep := TextoBody(ABody, 'cep', APessoa.Cep);
+  APessoa.Telefone := TextoBody(ABody, 'telefone', APessoa.Telefone);
+  APessoa.Celular := TextoBody(ABody, 'celular', APessoa.Celular);
+  APessoa.Email := TextoBody(ABody, 'email', APessoa.Email);
+  APessoa.Contato := TextoBody(ABody, 'contato', APessoa.Contato);
+  APessoa.Observacoes := TextoBody(ABody, 'observacoes', APessoa.Observacoes);
+  APessoa.Ativo := CharBody(ABody, 'status', APessoa.Ativo);
+  APessoa.TipoPessoa := CharBody(ABody, 'tipo_pessoa', APessoa.TipoPessoa);
+
+  D := ABody.Find('limite_credito');
+  if D <> nil then
+    APessoa.LimiteCredito := D.AsFloat;
+end;
+
+function CorpoJSON(Req: THorseRequest; Res: THorseResponse;
+  out LBody: TJSONObject): Boolean;
+var
+  LData: TJSONData;
+begin
+  Result := False;
+  LBody := nil;
+  LData := nil;
+  try
+    LData := GetJSON(Req.Body);
+  except
+    LData := nil;
+  end;
+  if not (LData is TJSONObject) then
+  begin
+    if LData <> nil then
+      LData.Free;
+    Res.Send('{"error":"Corpo da requisição inválido (objeto JSON esperado)"}')
+      .Status(THTTPStatus.BadRequest);
+    Exit;
+  end;
+  LBody := TJSONObject(LData);
+  Result := True;
+end;
+
+procedure EnviarErro(Res: THorseResponse; const AMensagem: string;
+  AStatus: THTTPStatus);
+var
+  LObj: TJSONObject;
+begin
+  LObj := TJSONObject.Create;
+  try
+    LObj.Add('error', AMensagem);
+    Res.Send(LObj.AsJSON).Status(AStatus);
+  finally
+    LObj.Free;
+  end;
+end;
 
 procedure GetClientes(Req: THorseRequest; Res: THorseResponse);
 var
@@ -109,6 +204,7 @@ begin
       LObj.Add('nome', LPessoa.Nome);
       LObj.Add('cpf_cnpj', LPessoa.CpfCnpj);
       LObj.Add('email', LPessoa.Email);
+      LObj.Add('telefone', LPessoa.Telefone);
       LObj.Add('endereco', LPessoa.Endereco);
       LObj.Add('cidade', LPessoa.Cidade);
       LObj.Add('uf', LPessoa.Uf);
@@ -127,64 +223,123 @@ end;
 procedure PostCliente(Req: THorseRequest; Res: THorseResponse);
 var
   LBody: TJSONObject;
-  LData: TJSONData;
-  LConexao: TConexao;
-  LQuery: TSQLQuery;
+  LServico: TPessoaService;
+  LPessoa: TPessoa;
+  LResposta: TJSONObject;
+  LId: Int64;
   LUsuarioId, LEmpresaId: Int64;
 begin
-  try
-    DadosDoToken(Req, LUsuarioId, LEmpresaId);
-    if LEmpresaId <= 0 then
-    begin
-      Res.Send('{"error":"Token sem empresa. Entre novamente."}')
-        .Status(THTTPStatus.Unauthorized);
-      Exit;
-    end;
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
 
-    LData := nil;
+  if not CorpoJSON(Req, Res, LBody) then
+    Exit;
+  try
     try
-      LData := GetJSON(Req.Body);
-    except
-      LData := nil;
-    end;
-    if not (LData is TJSONObject) then
-    begin
-      if LData <> nil then
-        LData.Free;
-      Res.Send('{"error":"Corpo da requisição inválido (objeto JSON esperado)"}').Status(THTTPStatus.BadRequest);
-      Exit;
-    end;
-    LBody := TJSONObject(LData);
-    try
-      LConexao := TConexao.GetInstance;
-      LQuery := TSQLQuery.Create(nil);
+      LPessoa := TPessoa.Create;
       try
-        LQuery.DataBase := LConexao.Connection;
-        LQuery.Transaction := LConexao.Transaction;
-        LQuery.SQL.Text :=
-          'INSERT INTO PESSOA (ID, EMPRESA_ID, TIPO, TIPO_PESSOA, NOME, CPF_CNPJ, EMAIL, TELEFONE, ENDERECO, CIDADE, UF, CEP, ATIVO) ' +
-          'VALUES (GEN_ID(GEN_PESSOA_ID, 1), :EMP, ''C'', ''F'', :NOME, :CPF, :EMAIL, :TEL, :END, :CID, :UF, :CEP, ''A'')';
-        LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
-        LQuery.ParamByName('NOME').AsString := LBody.Get('nome', '');
-        LQuery.ParamByName('CPF').AsString := LBody.Get('cpf_cnpj', '');
-        LQuery.ParamByName('EMAIL').AsString := LBody.Get('email', '');
-        LQuery.ParamByName('TEL').AsString := LBody.Get('telefone', '');
-        LQuery.ParamByName('END').AsString := LBody.Get('endereco', '');
-        LQuery.ParamByName('CID').AsString := LBody.Get('cidade', '');
-        LQuery.ParamByName('UF').AsString := LBody.Get('uf', '');
-        LQuery.ParamByName('CEP').AsString := LBody.Get('cep', '');
-        LQuery.ExecSQL;
-        LConexao.Confirmar;
-        Res.Send('{"message":"Cliente criado com sucesso"}').Status(THTTPStatus.Created);
+        LPessoa.EmpresaId := LEmpresaId;
+        LPessoa.Tipo := 'C';
+        LPessoa.TipoPessoa := 'F';
+        LPessoa.Ativo := 'A';
+        AplicarBody(LBody, LPessoa);
+        LPessoa.Tipo := 'C';
+
+        LServico := TPessoaService.Create;
+        try
+          LId := LServico.Inserir(LPessoa);
+          LResposta := TJSONObject.Create;
+          try
+            LResposta.Add('id', LId);
+            LResposta.Add('message', 'Cliente criado com sucesso');
+            Res.Send(LResposta.AsJSON).Status(THTTPStatus.Created);
+          finally
+            LResposta.Free;
+          end;
+        finally
+          LServico.Free;
+        end;
       finally
-        LQuery.Free;
+        LPessoa.Free;
       end;
-    finally
-      LBody.Free;
+    except
+      on E: Exception do
+        EnviarErro(Res, E.Message, THTTPStatus.BadRequest);
     end;
-  except
-    on E: Exception do
-      Res.Send('{"error":"' + E.Message + '"}').Status(THTTPStatus.InternalServerError);
+  finally
+    LBody.Free;
+  end;
+end;
+
+procedure PutCliente(Req: THorseRequest; Res: THorseResponse);
+var
+  LId: Int64;
+  LBody: TJSONObject;
+  LServico: TPessoaService;
+  LPessoa: TPessoa;
+  LResposta: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
+begin
+  LId := StrToInt64Def(Req.Params['id'], 0);
+  if LId = 0 then
+  begin
+    Res.Send('{"error":"ID inválido"}').Status(THTTPStatus.BadRequest);
+    Exit;
+  end;
+
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    Res.Send('{"error":"Token sem empresa. Entre novamente."}')
+      .Status(THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
+  if not CorpoJSON(Req, Res, LBody) then
+    Exit;
+  try
+    try
+      LServico := TPessoaService.Create;
+      try
+        LPessoa := LServico.BuscarPorId(LId);
+        try
+          if (LPessoa = nil) or (LPessoa.EmpresaId <> LEmpresaId) or
+             (LPessoa.Tipo <> 'C') then
+          begin
+            Res.Send('{"error":"Cliente não encontrado"}').Status(THTTPStatus.NotFound);
+            Exit;
+          end;
+
+          AplicarBody(LBody, LPessoa);
+          LPessoa.EmpresaId := LEmpresaId;
+          LPessoa.Tipo := 'C';
+          LServico.Atualizar(LPessoa);
+
+          LResposta := TJSONObject.Create;
+          try
+            LResposta.Add('id', LId);
+            LResposta.Add('message', 'Cliente atualizado com sucesso');
+            Res.Send(LResposta.AsJSON).Status(THTTPStatus.OK);
+          finally
+            LResposta.Free;
+          end;
+        finally
+          LPessoa.Free;
+        end;
+      finally
+        LServico.Free;
+      end;
+    except
+      on E: Exception do
+        EnviarErro(Res, E.Message, THTTPStatus.BadRequest);
+    end;
+  finally
+    LBody.Free;
   end;
 end;
 
@@ -232,6 +387,7 @@ begin
   THorse.Get('/api/clientes', @GetClientes);
   THorse.Get('/api/clientes/:id', @GetClienteById);
   THorse.Post('/api/clientes', @PostCliente);
+  THorse.Put('/api/clientes/:id', @PutCliente);
   THorse.Delete('/api/clientes/:id', @DeleteCliente);
 end;
 

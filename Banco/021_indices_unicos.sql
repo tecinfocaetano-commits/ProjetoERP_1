@@ -1,0 +1,50 @@
+/* ============================================================
+   ERP 2026 - 021 - INDICES UNICOS (D9)
+   ------------------------------------------------------------
+   Integridade no banco para o que o Service ja validava:
+     - USUARIO(EMPRESA_ID, LOGIN)
+     - PESSOA(EMPRESA_ID, TIPO, CPF_CNPJ)
+     - PEDIDO_VENDA(EMPRESA_ID, NUMERO)
+
+   Antes dos indices, remove duplicatas antigas de PESSOA: fica
+   o menor ID de cada (EMPRESA_ID, CPF_CNPJ) e so sao apagadas
+   linhas sem qualquer vinculo (cliente/fornecedor). No banco de
+   desenvolvimento isso eliminou os IDs 1237, 1246 e 1247 (o ID
+   999, que tem pedido, foi mantido).
+
+   SET BAIL + AUTODDL OFF: se qualquer indice falhar, nada e
+   commitado (inclusive a limpeza).
+   ============================================================ */
+
+SET NAMES UTF8;
+SET ECHO ON;
+SET BAIL ON;
+SET AUTODDL OFF;
+
+DELETE FROM PESSOA
+WHERE ID IN (
+  SELECT P.ID
+  FROM PESSOA P
+  WHERE EXISTS (
+    SELECT 1 FROM PESSOA Q
+    WHERE Q.EMPRESA_ID = P.EMPRESA_ID
+      AND Q.CPF_CNPJ = P.CPF_CNPJ
+      AND Q.ID < P.ID
+  )
+  AND NOT EXISTS (SELECT 1 FROM CONTA_RECEBER WHERE CLIENTE_ID = P.ID)
+  AND NOT EXISTS (SELECT 1 FROM NOTA_SAIDA WHERE CLIENTE_ID = P.ID)
+  AND NOT EXISTS (SELECT 1 FROM PEDIDO_VENDA WHERE CLIENTE_ID = P.ID)
+  AND NOT EXISTS (SELECT 1 FROM FINANCEIRO WHERE CLIENTE_ID = P.ID)
+  AND NOT EXISTS (SELECT 1 FROM CONTA_PAGAR WHERE FORNECEDOR_ID = P.ID)
+  AND NOT EXISTS (SELECT 1 FROM NOTA_ENTRADA WHERE FORNECEDOR_ID = P.ID)
+  AND NOT EXISTS (SELECT 1 FROM PEDIDO_COMPRA WHERE FORNECEDOR_ID = P.ID)
+  AND NOT EXISTS (SELECT 1 FROM PRODUTO WHERE FORNECEDOR_ID = P.ID)
+  AND NOT EXISTS (SELECT 1 FROM FINANCEIRO F WHERE F.FORNECEDOR_ID = P.ID)
+);
+
+CREATE UNIQUE INDEX UQ_USUARIO_EMPRESA_LOGIN ON USUARIO (EMPRESA_ID, LOGIN);
+CREATE UNIQUE INDEX UQ_PESSOA_EMPRESA_TIPO_CPF ON PESSOA (EMPRESA_ID, TIPO, CPF_CNPJ);
+CREATE UNIQUE INDEX UQ_PEDIDO_VENDA_EMPRESA_NUMERO ON PEDIDO_VENDA (EMPRESA_ID, NUMERO);
+
+COMMIT;
+SET AUTODDL ON;

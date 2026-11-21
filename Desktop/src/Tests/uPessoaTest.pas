@@ -475,8 +475,10 @@ var
       LTabelasAntigas := LQuery.FieldByName('ANTIGAS').AsLargeInt;
       LQuery.Close;
 
-      AssertTrue(LClientes >= 9,
-        'PESSOA deve manter ao menos os 9 clientes migrados (atual: ' +
+      { D9: a migration 021 removeu 3 duplicatas de CPF sem vinculos. O piso
+        acompanha a limpeza; a integridade das referencias e conferida abaixo. }
+      AssertTrue(LClientes >= 8,
+        'PESSOA deve manter ao menos os 8 clientes apos a limpeza D9 (atual: ' +
         IntToStr(LClientes) + ')');
       AssertTrue(LFornecedores >= 2,
         'PESSOA deve manter ao menos os 2 fornecedores migrados (atual: ' +

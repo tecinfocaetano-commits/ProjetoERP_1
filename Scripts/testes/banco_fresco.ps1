@@ -81,8 +81,10 @@ try {
   $qtdTabelas = Query-One $scratch 'SELECT COUNT(*) FROM RDB$RELATIONS WHERE COALESCE(RDB$SYSTEM_FLAG,0)=0 AND RDB$VIEW_BLR IS NULL ;'
   if ($qtdTabelas -ne '49') { $falhas += "tabelas esperado 49, veio '$qtdTabelas'" }
 
+  # D3 fundiu CLIENTE+FORNECEDOR em PESSOA: GEN_CLIENTE_ID e
+  # GEN_FORNECEDOR_ID viraram GEN_PESSOA_ID (49 -> 48).
   $qtdGen = Query-One $scratch 'SELECT COUNT(*) FROM RDB$GENERATORS WHERE COALESCE(RDB$SYSTEM_FLAG,0)=0 ;'
-  if ($qtdGen -ne '49') { $falhas += "generators esperado 49, veio '$qtdGen'" }
+  if ($qtdGen -ne '48') { $falhas += "generators esperado 48, veio '$qtdGen'" }
 
   $admin = Query-One $scratch "SELECT LOGIN FROM USUARIO WHERE LOGIN = 'admin' ;"
   if ($admin -ne 'admin') { $falhas += "usuario admin ausente (veio '$admin')" }
@@ -110,7 +112,7 @@ try {
 
   Write-Host ""
   Write-Host ("OK: banco novo pelo fluxo consolidado = " + $real.Count +
-              " campos (diff vazio), 49 tabelas, 49 generators, admin/permissoes," +
+              " campos (diff vazio), 49 tabelas, 48 generators, admin/permissoes," +
               " Brasil + 27 UFs e USA_GRADE presentes.") -ForegroundColor Green
   exit 0
 }
