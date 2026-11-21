@@ -2703,3 +2703,24 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   build ou restart de API. Arquivos do outro agente (`Documentacao\PROMPT_CONTINUACAO_PDV.md`,
   `Documentacao\PROMPT_EXECUCAO_PAGAMENTOS.md`, commits `5e4e527`/`3f74ee5`)
   não foram editados nem incluídos. `tmp_shots/` continua untracked.
+
+### 3.88 PDV Pagamentos — fix crítico de idempotência na finalização (21/11)
+
+- **Bug encontrado no teste pós-reboot no Samsung:** após APROVADO, cada
+  `GET /status` gerava uma NOVA venda — reproduzido com vendas 11 e 12
+  da mesma cobrança. Causa: `FinalizarSeAprovado` fazia UPDATE de
+  `PEDIDO_VENDA_ID` fora de transação (o middleware de pool reverte
+  transações abertas) e não havia claim — `PEDIDO_VENDA_ID` ficava
+  sempre NULL.
+- **Correção (`b3dc8b6`):** claim atômico `STATUS APROVADO→PROCESSANDO`
+  (só um finalizador por vez) + vínculo `PEDIDO_VENDA_ID` em
+  `IniciarTransacao`/`Confirmar` explícitos + `status` devolve a venda
+  já vinculada em consultas repetidas.
+- **Validação:** 2x status na cobrança 5 → mesma venda 6541; ciclo novo
+  (cobrança 6) → 2x status → mesma venda 6545; duplicatas de teste
+  removidas e cobranças antigas revinculadas às vendas reais.
+- **Teste de campo (Samsung A55):** PIX SIMULADO de ponta a ponta —
+  venda → forma PIX → "Confirmar pagamento" → tela de espera com QR →
+  ~8s → cupom "Venda registrada" nº 10 (R$75) com PDF/compartilhar.
+- **Lição registrada no canal:** mutações sem transação explícita são
+  revertidas pelo pool — sempre `IniciarTransacao`/`Confirmar`.
