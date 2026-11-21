@@ -10,13 +10,13 @@ Regras: responder em português; terminar toda resposta com exatamente 3 linhas 
 
 Estado em 21/11/2026:
 
-- **HEAD:** `bf8bcce` ("API: estoque pelo Service e numeracao por empresa (D5+F5)"); logo abaixo, `270ac79` (docs do marco 3.75 dos apps Android). O commit de docs deste marco vem acima.
-- Suíte desktop **384/384**; build desktop **0/0**; `build_api.bat` **OK**; testes Android **OK** e `:bipe` compila; smoke de telas **33/33**; `permissoes_menu.ps1` **0 falhas**; `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos, diff vazio). Na API 9000: `api_clientes_crud.ps1`, `api_auditoria.ps1` (6 logs), `api_estoque_service.ps1` e `api_numeracao_empresa.ps1` **OK**.
-- **Concluído nesta etapa:** **D5 + F5** (marco 3.76, §3.76): estoque pelo Service (validação por empresa, saldo pela trigger, auditoria atômica, HTTP 400) e numeração de orçamento por empresa. Antes: **D4** (3.74), **F4 + D9** (3.72), **D3** (3.70), **T4** (3.69), **T1** (3.68) e **F3** (3.65–3.67, fiscal). Outro agente fechou o marco 3.75 com os dois apps Android no emulador.
+- **HEAD:** `90f2af2` ("Banco canonico e paginacao opcional na API (D7+D8+F6)"); logo abaixo, `f40b63b` (docs do marco 3.76). O commit de docs deste marco vem acima.
+- Suíte desktop **384/384**; build desktop **0/0**; `build_api.bat` **OK** (pare a API antes de compilar); testes Android **OK** e `:bipe` compila; smoke de telas **33/33**; `permissoes_menu.ps1` **0 falhas**; `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos, diff vazio, acentos conferidos). Na API 9000: `api_clientes_crud.ps1`, `api_auditoria.ps1` (6 logs), `api_estoque_service.ps1`, `api_numeracao_empresa.ps1` e `api_paginacao.ps1` **OK**.
+- **Concluído nesta etapa:** **D7 + D8 + F6** (marco 3.77, §3.77): banco novo pelo fluxo canônico (script com `INPUT` relativos, `SET NAMES UTF8` + isql `-ch UTF8`) e paginação opcional em vendas/financeiro sem quebrar o array legado. Antes: **D5 + F5** (3.76), **D4** (3.74), **F4 + D9** (3.72), **D3** (3.70), **T4** (3.69), **T1** (3.68) e **F3** (3.65–3.67, fiscal). Outro agente fechou o marco 3.75 com os dois apps Android no emulador.
 - Banco real com índices D9 conferidos; duplicatas sem vínculo removidas (IDs 1237/1246/1247); `LOG_SISTEMA` sem resíduo de `CCE`.
 - **Coordenação:** outro agente ativo no app `:bipe`. Ler/escrever `Documentacao\COMUNICACAO_AGENTES.md` antes de mexer em arquivo compartilhado; **não editar `Android\android\bipe\**` sem pedido explícito**. API principal foi reiniciada com aviso prévio no canal e já contém as mudanças dele.
-- **Auditorias de completude concluídas** (desktop e API/Android/banco): itens priorizados em `Documentacao\ROADMAP_PRODUCAO.md`, com F3/T1/T4/D3/F4/D9/D4/D5/F5 concluídos. Ordem restante: D7/D8, F6/F9; gestão F5/F6/F9, F4/F13, relatórios/backup.
-- **Próximo passo:** bloco da **API** — (a) **D7/D8**: banco novo (migrations consolidadas e validação de schema/seed em ambiente limpo); (b) **F6/F9**: paginação nas listagens e padronização de erros de sync. Repetir a bateria completa (desktop **384/384**, API + 4 smokes, Android, telas, permissões, schema e banco fresco) a cada marco.
+- **Auditorias de completude concluídas** (desktop e API/Android/banco): itens priorizados em `Documentacao\ROADMAP_PRODUCAO.md`, com F3/T1/T4/D3/F4/D9/D4/D5/F5/D7/D8/F6 concluídos. Ordem restante: **F9**; gestão F5/F6/F9, F4/F13, relatórios/backup.
+- **Próximo passo:** **F9** — visibilidade de erros de sincronização no Android (outbox sem tela, sem dead-letter/retry exponencial). **Coordenar antes pelo canal**: outro agente ativo no `:bipe`, não editar `Android\android\bipe\**` sem pedido explícito. Depois repetir a bateria completa (desktop **384/384**, API + 5 smokes, Android, telas, permissões, schema e banco fresco) a cada marco.
 
 Comandos:
 
@@ -33,12 +33,13 @@ Comandos:
 - `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_auditoria.ps1` → smoke D4 (API na 9000): confere 6 registros em `LOG_SISTEMA` e limpa tudo no `finally`.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_estoque_service.ps1` → smoke D5: 201, saldo pela trigger, 1 log `INSERT` e 400s.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_numeracao_empresa.ps1` → smoke F5: número 990000 de outra empresa não interfere na sequência.
+- `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_paginacao.ps1` → smoke F6: contrato legado, total/páginas, página além do fim e isolamento por empresa.
 - `isql ... -i Scripts\preparar_cenario_fiscal.sql` → cria/reutiliza o cenário fiscal completo (pedido 3581).
 - `Scripts\backup_banco.bat [pasta]` → backup gbak em `Backups\DADOS_AAAAMMDD_HHMMSS.fbk`.
 - `Scripts\restaurar_banco.bat <arquivo.fbk> [destino.fdb] [forcar]` → restaura um banco novo.
 - Banco: `Banco\dados.fdb` (SYSDBA/masterkey); Firebird 5 em `C:\Program Files\Firebird\Firebird_5_0`.
 - Configuração de produção (banco/JWT): ver `Documentacao\CONFIGURACAO_AMBIENTE.md`.
 
-Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md`, o §3.76 do `Documentacao\PLANO_E_LOG.md` e `Documentacao\COMUNICACAO_AGENTES.md`.
+Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md`, o §3.77 do `Documentacao\PLANO_E_LOG.md` e `Documentacao\COMUNICACAO_AGENTES.md`.
 
 ---

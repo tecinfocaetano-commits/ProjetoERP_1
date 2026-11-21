@@ -2272,7 +2272,56 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Coordenação:** API principal parada/recompilada/reiniciada na 9000 com
   aviso prévio em `COMUNICACAO_AGENTES.md`; nenhum arquivo de
   `Android\android\bipe\**` foi tocado.
-- **Commits:** código D5+F5 + docs deste marco.
+- **Commits:** código D5+F5 (`bf8bcce`) + docs (`f40b63b`).
+
+---
+
+### 3.77 D7 + D8 + F6 — banco novo confiável e paginação opcional (21/11)
+
+- **D7 — `Banco\script_completo.sql`:** o script legado (caminhos absolutos
+  e `INPUT` de `002..008`) foi reescrito para o fluxo canônico, com apenas
+  dois `INPUT` **relativos a `Banco\`**: `schema_canonico.sql` e
+  `007_initial_data.sql`. Teste isolado com cópias em temp (o
+  `CREATE DATABASE` da cópia apontava para um `.fdb` descartável)
+  confirmou que os `INPUT` relativos funcionam, o banco é criado e a seed
+  grava `Peça` com 4 caracteres / 5 bytes. `banco_fresco.ps1` agora
+  valida a forma do script (2 INPUTs, só os dois arquivos canônicos, sem
+  caminho absoluto nem migration antiga).
+- **D8 — acentos no banco novo:** `007_initial_data.sql` ganhou
+  `SET NAMES UTF8;` no início. Medição controlada mostrou que, com o isql
+  em `-ch WIN1252`, `Peça` virava 5 caracteres / 7 bytes mesmo com
+  `SET NAMES` no seed — o charset do **cliente** também precisa ser
+  UTF-8. Por isso `executar_banco.bat` e `Invoke-Iql` do
+  `banco_fresco.ps1` passaram a usar `-ch UTF8`. O teste confere
+  `CHAR_LENGTH=4` e `OCTET_LENGTH=5` na `UNIDADE` `PC`.
+- **F6 — paginação:** novo helper `API\src\Rotas\uPaginacao.pas`.
+  `GET /api/vendas`, `GET /api/financeiro/receber` e
+  `GET /api/financeiro/pagar` continuam devolvendo o **array de até 100**
+  quando chamados sem parâmetros (contrato usado pelo `:app`); com
+  `?pagina=N&por_pagina=M` devolvem
+  `total`, `pagina`, `por_pagina`, `total_paginas` e `itens`.
+  O `total` vem de `COUNT(*)` com o mesmo filtro de empresa/status da
+  listagem; a fatia usa `ROWS :LINI TO :LIMF`. Parâmetros inválidos são
+  normalizados (`pagina=0` → 1, `por_pagina>200` → 200, nunca 500).
+  Corrigido um `double-free` no helper: `TJSONObject.Add` assume a posse
+  do array, então a resposta clona `AItens` antes de liberar o original.
+- **Smoke `api_paginacao.ps1`:** contrato legado preservado nas 3 rotas;
+  página 1/2 com total e `total_paginas` corretos; página 2 sem repetir
+  itens; página 999999 vazia com total preservado; parâmetros inválidos
+  normalizados; pedido fantasma da empresa 2 não alterou o total da
+  empresa 1. Limpeza no `finally`.
+- **Armadilha de teste:** no Windows PowerShell 5.1,
+  `@(ConvertFrom-Json -InputObject $json)` devolve o array como um único
+  objeto; é preciso atribuir a uma variável e só então fazer `@($var)`.
+- **Bateria:** desktop **384/384**, telas **33/33**, `permissoes_menu.ps1`
+  **0 falhas**, `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585
+  campos, diff vazio), Android **OK**, `build_api.bat` **OK**, 5 smokes
+  da API **OK** na 9000. O `build_api.bat` só falhou uma vez porque o
+  `.exe` estava travado pela API rodando — parar/recompilar/reiniciar
+  resolveu; não é regressão de código.
+- **Coordenação:** API parada/recompilada/reiniciada na 9000 com aviso no
+  canal. Nada de `Android\android\bipe\**` foi tocado.
+- **Commits:** código D7+D8+F6 (`90f2af2`) + docs deste marco.
 
 ---
 

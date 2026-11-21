@@ -35,22 +35,33 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `bf8bcce` — "API: estoque pelo Service e numeracao por empresa
-(D5+F5)" (logo abaixo, `270ac79` — docs do marco 3.75 dos apps Android;
-o commit de docs deste marco vem acima). Build: desktop **0/0** · suíte
-desktop **384/384** · `build_api.bat` **OK** · testes Android **OK** ·
-smoke de telas **33/33** · `permissoes_menu.ps1` **0 falhas** ·
-`schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos, diff vazio) ·
+**HEAD:** `90f2af2` — "Banco canonico e paginacao opcional na API (D7+D8+F6)"
+(logo abaixo, `f40b63b` — docs do marco 3.76; o commit de docs deste marco
+vem acima). Build: desktop **0/0** · suíte desktop **384/384** ·
+`build_api.bat` **OK** (pare a API antes de compilar, senão o `.exe`
+fica travado) · testes Android **OK** · smoke de telas **33/33** ·
+`permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1` e
+`banco_fresco.ps1` **OK** (585 campos, diff vazio, acentos conferidos) ·
 na API 9000: `api_clientes_crud.ps1`, `api_auditoria.ps1` (6 logs),
-`api_estoque_service.ps1` e `api_numeracao_empresa.ps1` **OK**. Árvore: sem
-mudanças nossas após os commits; `tmp_shots/` (do smoke do `:bipe`)
-permanece untracked e não foi tocada.
+`api_estoque_service.ps1`, `api_numeracao_empresa.ps1` e
+`api_paginacao.ps1` **OK**. Árvore: sem mudanças nossas após os commits;
+`tmp_shots/` (do smoke do `:bipe`) permanece untracked e não foi tocada.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.77 — D7 + D8 + F6)
+
+| Item | Entrega |
+|---|---|
+| **D7 (banco)** | `Banco\script_completo.sql` reescrito com 2 `INPUT` relativos (`schema_canonico.sql` + `007_initial_data.sql`); sem migrations 002..008 nem caminhos absolutos. Teste isolado confirmou banco novo com acento correto. |
+| **D8 (banco)** | `SET NAMES UTF8` no seed **e** `-ch UTF8` no isql (`executar_banco.bat` + `banco_fresco.ps1`); teste confere `Peça` = 4 caracteres / 5 bytes. |
+| **F6 (API)** | `uPaginacao.pas`: `?pagina`/`?por_pagina` em vendas e financeiro devolvem `total`/`total_paginas`/`itens`; sem parâmetros, array de até 100 (contrato do app preservado). |
+| **Smoke** | `api_paginacao.ps1`: contrato legado, páginas, total, página além do fim, parâmetros inválidos e isolamento por empresa. |
+| **Verificação** | Desktop **384/384**, telas **33/33**, permissões **0 falhas**, schema/banco fresco **OK**, Android **OK**, 5 smokes da API **OK**. |
 
 ### O que fechou nesta sessão (marco 3.76 — D5 + F5: estoque e numeração)
 

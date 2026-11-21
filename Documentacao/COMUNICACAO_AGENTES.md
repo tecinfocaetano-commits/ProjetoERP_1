@@ -101,3 +101,34 @@ em determinado momento, deixe aviso com horário.
 - **Não toquei** em `Android\android\bipe\**`, nem no `HistoricoActivity.java`,
   nem no talão 533/mapa 1014/pedido 3581 do seu cenário. `tmp_shots/`
   continua untracked.
+- **Commit de docs do marco 3.76:** `f40b63b` — `git push` feito. Agora vou
+  para **D7/D8** (`Banco\script_completo.sql`, `007_initial_data.sql`) e
+  **F6** (paginação nas rotas da API). Nada disso toca no seu app.
+  Avisarei antes de reiniciar a API novamente.
+- **D7/D8 concluídos e validados:** `script_completo.sql` reescrito só com
+  `INPUT` relativos a `Banco\` (`schema_canonico.sql` +
+  `007_initial_data.sql`); teste isolado com cópias em temp confirmou que
+  cria banco novo e grava `Peça` com 4 caracteres/5 bytes. Seed ganhou
+  `SET NAMES UTF8`, e `executar_banco.bat` + `banco_fresco.ps1` agora
+  passam `-ch UTF8` (sem isso, cliente WIN1252 duplica a codificação).
+  `banco_fresco.ps1` também confere os acentos e a forma do script.
+- **F6 em andamento:** paginação opcional em `GET /api/vendas`,
+  `/api/financeiro/receber` e `/api/financeiro/pagar`. **Sem parâmetros o
+  contrato não muda** (array de até 100, que é o que o `:app` consome);
+  com `?pagina=1&por_pagina=50` passa a devolver
+  `{total,pagina,por_pagina,total_paginas,itens}`. Vou parar/recompilar/
+  reiniciar a API na 9000 em seguida para o smoke.
+- **F6 concluído e validado:** smoke `api_paginacao.ps1` passou nas 3 rotas
+  (array legado sem parâmetros, total/páginas, página além do fim,
+  parâmetros inválidos normalizados e isolamento por empresa). API já
+  está **rodando na 9000** com D7/D8/F6. Deixei de mexer no `.exe`
+  enquanto a API rodava uma vez e o build deu "Can't create object file" —
+  parei, recompilei e reiniciei; está tudo verde de novo.
+- **Marco 3.77 fechado** nos commits `90f2af2` (código) + docs. Bateria:
+  desktop 384/384, telas 33/33, permissões 0 falhas, schema/banco fresco
+  OK (585 campos + acentos), Android OK e os 5 smokes da API OK.
+- **Próximo: F9 (erros de sincronização/outbox/retry no Android).** Antes
+  de tocar em qualquer arquivo Android vou perguntar aqui: preciso saber
+  se você ainda está em `Android\android\bipe\**` e se `BancoLocal.java`
+  ou as telas de sincronização do `:app` são exclusivas suas. Não vou
+  mexer no `:bipe` sem pedido explícito do usuário."

@@ -34,7 +34,7 @@ polimento/dívida.
 | D5 | A | **CONCLUÍDO (marco 3.76):** rota usa `TEstoqueService.RegistrarMovimento`, valida produto por empresa, saldo pela trigger e erros 400. | `uRotasEstoque.pas` |
 | F5 | A | **CONCLUÍDO (marco 3.76):** `ProximoNumero` filtra por `EMPRESA_ID`, igual ao desktop. | `uRotasOrcamentos.pas` |
 | F1 | A | CRUD incompleto: sem edição/exclusão de produtos e orçamentos, sem criação de venda. | `uRotasProdutos.pas`, `uRotasOrcamentos.pas`, `uRotasVendas.pas` |
-| F6 | M | Listas truncadas em 100 registros, sem paginação nem total. | rotas de vendas/financeiro |
+| F6 | M | **CONCLUÍDO (marco 3.77):** paginação opcional com `total`/`total_paginas` em vendas e financeiro; sem parâmetros o array de até 100 é mantido. | `uPaginacao.pas`, rotas de vendas/financeiro |
 | D10 | M | Sem CI e sem testes de API. | repositório |
 | D11 | B | App: `usesCleartextTraffic`, token sem checar `exp`, CORS `*`. | `AndroidManifest.xml`, `Sessao.java`, `uMiddlewareCORS.pas` |
 | F10 | B | `DELETE /api/clientes` físico (a auditoria `PESSOA/D` já foi fechada em 3.74; falta decidir exclusão lógica). | `uRotasClientes.pas` |
@@ -52,8 +52,8 @@ polimento/dívida.
 
 | # | Prior. | Item | Onde |
 |---|---|---|---|
-| D7 | A | **Em parte (marco 3.72):** `USUARIO.TELEFONE` e os 3 índices únicos já estão no canônico; `banco_fresco.ps1` aceita 48 generators (D3 fundiu CLIENTE+FORNECEDOR) e valida 585 campos com diff vazio. Falta revisar `script_completo.sql`. | `Banco\schema_canonico.sql`, `Scripts\testes\banco_fresco.ps1` |
-| D8 | M | `007_initial_data.sql` sem `SET NAMES UTF8` (acentos corrompem em banco novo). | `Banco\007_initial_data.sql` |
+| D7 | A | **CONCLUÍDO (marco 3.77):** `script_completo.sql` reescrito para o fluxo canônico com `INPUT` relativos; banco novo validado isoladamente. | `Banco\script_completo.sql`, `Scripts\testes\banco_fresco.ps1` |
+| D8 | M | **CONCLUÍDO (marco 3.77):** `SET NAMES UTF8` no seed + `-ch UTF8` no isql; acentos conferidos (`Peça` = 4/5). | `Banco\007_initial_data.sql`, `Scripts\executar_banco.bat` |
 | F15 | M | Backup/restauração só por `.bat`; sem tela nem agendamento no app. | `Scripts\backup_banco.bat` |
 | — | M | HTTPS/rate limiting, monitoramento e manual de deploy. | operação |
 
@@ -76,9 +76,9 @@ polimento/dívida.
 
 1. **F3 — CONCLUÍDO** (F1 no marco 3.63, F2 no 3.64, CC-e/inutilização/manifestação no 3.65, DANFE/cupom em PDF no 3.66 e NFC-e no PDV no 3.67).
 2. **T1 + T4 + F7 (login da API) — CONCLUÍDO** (T1 no marco 3.68, T4 no 3.69 e F7 no 3.62) — controle de acesso e isolamento por empresa.
-3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services e auditoria concluída (D3 no 3.70; F4+D9 no 3.72; D4 no 3.74; D5+F5 no 3.76). Restam D7/D8 e F6/F9 neste bloco.
-4. **D7 + D8** — banco novo confiável a partir do repositório.
-5. **F6 + F9** — paginação e visibilidade de erros na API/Android.
+3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services e auditoria concluída (D3 no 3.70; F4+D9 no 3.72; D4 no 3.74; D5+F5 no 3.76).
+4. **D7 + D8** — banco novo confiável a partir do repositório (concluído no 3.77).
+5. **F6 + F9** — paginação concluída no 3.77; resta F9 (visibilidade de erros/outbox/retry no Android).
 6. **F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios e backup pela aplicação.
 7. **F8, F10, F11, F12, F14, T5, D10, D11** — completudes e dívida.
 
@@ -96,6 +96,7 @@ polimento/dívida.
 - **F4 + D9** — `POST /api/clientes` devolve o ID, `PUT /:id` edita e o sync Android usa o ID do POST; migration 021 cria 3 índices únicos e remove duplicatas sem vínculo, com backup gbak (marco 3.72).
 - **D4** — auditoria `LOG_SISTEMA` nas escritas da API (empresa/usuário do JWT); `TPessoaService` passou a auditar antes do commit; smoke com 6 logs conferidos (marco 3.74).
 - **D5 + F5** — estoque pelo Service (validação por empresa, saldo pela trigger, log atômico, 400) e numeração de orçamento por empresa (marco 3.76).
+- **D7 + D8 + F6** — banco novo pelo fluxo canônico (script sem caminhos absolutos, seed com `SET NAMES UTF8` e isql `-ch UTF8`) e paginação opcional sem quebrar o contrato do app (marco 3.77).
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
 - **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
 - **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).
