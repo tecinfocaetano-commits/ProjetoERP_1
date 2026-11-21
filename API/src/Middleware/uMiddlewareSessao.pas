@@ -33,7 +33,8 @@ var
 begin
   { Rotas publicas nao tem token nem contexto: mesma regra do MiddlewareJWT. }
   if SameText(Req.RawWebRequest.PathInfo, '/api/login') or
-     SameText(Req.RawWebRequest.PathInfo, '/api/health') then
+     SameText(Req.RawWebRequest.PathInfo, '/api/health') or
+     SameText(Req.RawWebRequest.PathInfo, '/api/pdv/pagamentos/webhook') then
   begin
     Next;
     Exit;

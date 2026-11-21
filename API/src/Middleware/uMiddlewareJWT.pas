@@ -234,7 +234,8 @@ var
 begin
   // Rotas publicas: nao exigem token
   if SameText(Req.RawWebRequest.PathInfo, '/api/login') or
-     SameText(Req.RawWebRequest.PathInfo, '/api/health') then
+     SameText(Req.RawWebRequest.PathInfo, '/api/health') or
+     SameText(Req.RawWebRequest.PathInfo, '/api/pdv/pagamentos/webhook') then
   begin
     Next;
     Exit;

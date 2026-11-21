@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -40,6 +42,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 /**
  * Tela principal do PDV Mobile: busca produto (texto ou câmera),
@@ -113,6 +116,11 @@ public class PdvActivity extends AppCompatActivity {
     private long caixaId = 0;
     private String numeroCaixa = "";
     private double saldoCaixa = 0;
+
+    // polling da cobrança eletrônica (cartão/PIX)
+    private final Handler handlerPoll = new Handler(Looper.getMainLooper());
+    private volatile boolean pollingPagamento = false;
+    private AlertDialog dialogEspera;
     private int itemSelecionado = -1;
 
     private final NumberFormat NF = NumberFormat.getCurrencyInstance(
@@ -221,6 +229,14 @@ public class PdvActivity extends AppCompatActivity {
         if (caixaId > 0) {
             carregarStatus();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        pollingPagamento = false;
+        handlerPoll.removeCallbacksAndMessages(null);
+        encerrarEspera();
+        super.onDestroy();
     }
 
     // ------------------------------------------------------------------
@@ -700,37 +716,291 @@ public class PdvActivity extends AppCompatActivity {
                     }
                     FormaPagamento f = formas.get(sel);
                     double pago = lerValor(editPago.getText().toString());
-                    // Dinheiro é instantâneo: registra direto. Cartão/PIX
-                    // passam por um segundo passo — o cupom só sai depois
-                    // do operador confirmar que a cobrança foi aprovada
-                    // na maquininha/app do banco.
+                    // Dinheiro é instantâneo: registra direto.
+                    // Cartão/PIX/etc viram cobrança eletrônica no
+                    // servidor — o cupom só sai quando o provedor
+                    // confirmar (APROVADO) e a venda for gravada.
                     if ("DI".equals(f.tipo)) {
                         postarVenda(f.id, pago);
                     } else {
-                        dialogoConfirmacaoPagamento(f, pago);
+                        iniciarCobrancaEletronica(f);
                     }
                 })
                 .setNegativeButton("Voltar", null)
                 .show();
     }
 
-    /** Segundo passo: a cobrança já foi aprovada no terminal/PIX? */
-    private void dialogoConfirmacaoPagamento(FormaPagamento f,
-                                             double valorPago) {
-        String instrucao = "DI".equals(f.tipo)
-                ? ""
-                : "Cobrança em " + f.descricao + " de " + moeda(total())
-                        + ".\n\n"
-                        + "Confirme SOMENTE depois que a maquininha ou o "
-                        + "app do banco aprovar o pagamento.\n\n"
-                        + "Pagamento aprovado?";
-        new AlertDialog.Builder(this)
+    // ------------------------------------------------------------------
+    // Cobrança eletrônica (cartão/PIX) — esqueleto multi-provedor
+    // ------------------------------------------------------------------
+
+    /** TIPO da FORMA_PAGAMENTO -> tipo_cobranca da API. */
+    private String tipoCobranca(FormaPagamento f) {
+        if (f.tipo == null) return "OUTRO";
+        switch (f.tipo.trim().toUpperCase(Locale.ROOT)) {
+            case "PI": return "PIX";
+            case "CC":
+            case "CD": return "CARTAO";
+            default: return "OUTRO";
+        }
+    }
+
+    /**
+     * POST /api/pdv/pagamentos/iniciar — cria a cobrança PENDENTE no
+     * servidor (provedor configurado em PAG_PROVIDER; hoje SIMULADO)
+     * e abre a tela de espera com polling de status.
+     */
+    private void iniciarCobrancaEletronica(FormaPagamento f) {
+        btnFinalizar.setEnabled(false);
+        new Thread(() -> {
+            try {
+                JSONObject corpo = new JSONObject();
+                JSONArray itens = new JSONArray();
+                for (ItemCarrinho i : carrinho) {
+                    JSONObject it = new JSONObject();
+                    it.put("produto_id", i.produtoId);
+                    it.put("quantidade", i.quantidade);
+                    it.put("preco_unitario", i.precoUnitario);
+                    itens.put(it);
+                }
+                corpo.put("itens", itens);
+                corpo.put("desconto", desconto());
+                corpo.put("forma_pagamento_id", f.id);
+                corpo.put("tipo_cobranca", tipoCobranca(f));
+                corpo.put("idempotency_key", UUID.randomUUID().toString());
+
+                ApiClient.Result r = ApiClient.post(
+                        "/api/pdv/pagamentos/iniciar", corpo.toString());
+                if (!verificarSessao(r)) {
+                    runOnUiThread(() -> btnFinalizar.setEnabled(true));
+                    return;
+                }
+                if (r.ok()) {
+                    JSONObject j = new JSONObject(r.body);
+                    final long pagId = j.optLong("pagamento_id");
+                    final String status = j.optString("status", "PENDENTE");
+                    final String qr = j.optString("qr_payload", "");
+                    final String instr = j.optString("instrucoes", "");
+                    runOnUiThread(() -> {
+                        if ("PENDENTE".equals(status) ||
+                            "PROCESSANDO".equals(status)) {
+                            dialogoAguardandoPagamento(pagId, qr, instr);
+                        } else {
+                            btnFinalizar.setEnabled(true);
+                            Toast.makeText(this,
+                                    "Cobrança " + status.toLowerCase(
+                                            Locale.ROOT) + ".",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+                } else {
+                    final String msg = mensagemErro(r,
+                            "Falha ao iniciar a cobrança.");
+                    runOnUiThread(() -> {
+                        btnFinalizar.setEnabled(true);
+                        Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+                    });
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    btnFinalizar.setEnabled(true);
+                    Toast.makeText(this, "Sem conexão com o servidor.",
+                            Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
+    /** Tela "Aguardando pagamento": polling a cada 4s até estado
+        terminal; cancelar chama /cancelar no servidor. */
+    private void dialogoAguardandoPagamento(final long pagId,
+                                            final String qrPayload,
+                                            final String instrucoes) {
+        View v = LayoutInflater.from(this)
+                .inflate(R.layout.dialog_espera_pagamento, null);
+        final TextView txtStatus = v.findViewById(R.id.txtStatusPagamento);
+        final TextView txtInstr = v.findViewById(R.id.txtInstrPagamento);
+        final TextView txtQr = v.findViewById(R.id.txtQrPagamento);
+        txtInstr.setText(instrucoes.isEmpty()
+                ? "Confirme o pagamento no app do banco/maquininha."
+                : instrucoes);
+        txtQr.setText(qrPayload.isEmpty() ? "(sem QR Code)" : qrPayload);
+        txtQr.setVisibility(qrPayload.isEmpty() ? View.GONE : View.VISIBLE);
+
+        pollingPagamento = true;
+        dialogEspera = new AlertDialog.Builder(this)
                 .setTitle("Aguardando pagamento")
-                .setMessage(instrucao)
-                .setPositiveButton("Aprovado — gerar cupom", (d, w) ->
-                        postarVenda(f.id, valorPago))
-                .setNegativeButton("Cancelar", null)
+                .setView(v)
                 .setCancelable(false)
+                .setNegativeButton("Cancelar cobrança", (d, w) ->
+                        cancelarCobranca(pagId))
+                .show();
+
+        agendarConsultaPagamento(pagId, txtStatus);
+    }
+
+    private void agendarConsultaPagamento(final long pagId,
+                                          final TextView txtStatus) {
+        handlerPoll.postDelayed(() -> consultarStatusPagamento(pagId,
+                txtStatus), 4000);
+    }
+
+    private void consultarStatusPagamento(final long pagId,
+                                          final TextView txtStatus) {
+        if (!pollingPagamento) return;
+        new Thread(() -> {
+            try {
+                ApiClient.Result r = ApiClient.get(
+                        "/api/pdv/pagamentos/" + pagId + "/status");
+                if (!verificarSessao(r)) {
+                    pollingPagamento = false;
+                    return;
+                }
+                String status = "";
+                JSONObject venda = null;
+                if (r.ok()) {
+                    JSONObject j = new JSONObject(r.body);
+                    status = j.optString("status", "");
+                    if (j.has("venda_id")) venda = j;
+                }
+                final String st = status;
+                final JSONObject v = venda;
+                runOnUiThread(() -> {
+                    if (!pollingPagamento) return;
+                    switch (st) {
+                        case "PENDENTE":
+                        case "PROCESSANDO":
+                            txtStatus.setText("Aguardando confirmação... ("
+                                    + st.toLowerCase(Locale.ROOT) + ")");
+                            agendarConsultaPagamento(pagId, txtStatus);
+                            break;
+                        case "APROVADO":
+                            pollingPagamento = false;
+                            encerrarEspera();
+                            if (v != null) {
+                                exibirCupomAprovado(v);
+                            } else {
+                                btnFinalizar.setEnabled(true);
+                                Toast.makeText(this,
+                                        "Pagamento aprovado — atualize a tela.",
+                                        Toast.LENGTH_LONG).show();
+                                carregarStatus();
+                            }
+                            break;
+                        case "RECUSADO":
+                        case "CANCELADO":
+                        case "EXPIRADO":
+                            pollingPagamento = false;
+                            encerrarEspera();
+                            btnFinalizar.setEnabled(true);
+                            Toast.makeText(this,
+                                    "Pagamento " + st.toLowerCase(
+                                            Locale.ROOT)
+                                            + " — nenhum cupom gerado.",
+                                    Toast.LENGTH_LONG).show();
+                            break;
+                        default:
+                            if (r.ok()) {
+                                agendarConsultaPagamento(pagId, txtStatus);
+                            } else {
+                                pollingPagamento = false;
+                                encerrarEspera();
+                                btnFinalizar.setEnabled(true);
+                                Toast.makeText(this,
+                                        "Falha ao consultar o pagamento.",
+                                        Toast.LENGTH_LONG).show();
+                            }
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    if (pollingPagamento) {
+                        agendarConsultaPagamento(pagId, txtStatus);
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void encerrarEspera() {
+        if (dialogEspera != null) {
+            dialogEspera.dismiss();
+            dialogEspera = null;
+        }
+    }
+
+    /** Cancela a cobrança no servidor e fecha a espera. */
+    private void cancelarCobranca(final long pagId) {
+        pollingPagamento = false;
+        encerrarEspera();
+        btnFinalizar.setEnabled(true);
+        new Thread(() -> {
+            try {
+                ApiClient.post("/api/pdv/pagamentos/" + pagId + "/cancelar",
+                        "{}");
+            } catch (Exception ignorado) { }
+        }).start();
+        Toast.makeText(this, "Cobrança cancelada — nada foi cobrado.",
+                Toast.LENGTH_LONG).show();
+    }
+
+    /** Monta o JSON de cupom a partir da resposta do status
+        (numero/total) + carrinho local e reutiliza o fluxo de
+        exibição/PDF da venda normal. */
+    private void exibirCupomAprovado(JSONObject statusJson) {
+        try {
+            JSONObject j = new JSONObject();
+            j.put("numero", statusJson.optString("numero", "-"));
+            j.put("subtotal", subtotal());
+            j.put("desconto", desconto());
+            j.put("total", statusJson.optDouble("total", total()));
+            j.put("valor_pago", statusJson.optDouble("total", total()));
+            j.put("troco", 0);
+            exibirCupomVenda(j);
+        } catch (Exception e) {
+            btnFinalizar.setEnabled(true);
+            Toast.makeText(this, "Pagamento aprovado — atualize a tela.",
+                    Toast.LENGTH_LONG).show();
+            carregarStatus();
+        }
+    }
+
+    /** Exibe o cupom após venda registrada (dinheiro ou cobrança
+        aprovada) e limpa o carrinho. */
+    private void exibirCupomVenda(JSONObject j) {
+        final String cupom = montarCupom(j);
+        final String numeroVenda = j.optString("numero", "-");
+        final List<String> linhasItens = new ArrayList<>();
+        for (ItemCarrinho i : carrinho) {
+            linhasItens.add(i.descricao + "  x"
+                    + String.format(Locale.getDefault(), "%.2f",
+                            i.quantidade)
+                    + "  =  " + moeda(i.total()));
+        }
+        final double sub = j.optDouble("subtotal", 0);
+        final double desc = j.optDouble("desconto", 0);
+        final double tot = j.optDouble("total", 0);
+        final double pago = j.optDouble("valor_pago", 0);
+        final double troco = j.optDouble("troco", 0);
+        btnFinalizar.setEnabled(true);
+        carrinho.clear();
+        editDesconto.setText("");
+        adapterCarrinho.notifyDataSetChanged();
+        atualizarTotal();
+        carregarStatus();
+        new AlertDialog.Builder(this)
+                .setTitle("Venda registrada")
+                .setMessage(cupom)
+                .setPositiveButton("OK", null)
+                .setNeutralButton("Compartilhar", (d, w) -> {
+                    Intent send = new Intent(Intent.ACTION_SEND);
+                    send.setType("text/plain");
+                    send.putExtra(Intent.EXTRA_TEXT, cupom);
+                    startActivity(Intent.createChooser(send, "Enviar cupom"));
+                })
+                .setNegativeButton("PDF", (d, w) ->
+                        compartilharPdfCupom(numeroVenda, linhasItens,
+                                sub, desc, tot, pago, troco))
                 .show();
     }
 
@@ -758,45 +1028,7 @@ public class PdvActivity extends AppCompatActivity {
                 if (!verificarSessao(r)) return;
                 if (r.ok()) {
                     JSONObject j = new JSONObject(r.body);
-                    final String cupom = montarCupom(j);
-                    // dados do cupom em PDF — montados antes de limpar o carrinho
-                    final String numeroVenda = j.optString("numero", "-");
-                    final List<String> linhasItens = new ArrayList<>();
-                    for (ItemCarrinho i : carrinho) {
-                        linhasItens.add(i.descricao + "  x"
-                                + String.format(Locale.getDefault(), "%.2f",
-                                        i.quantidade)
-                                + "  =  " + moeda(i.total()));
-                    }
-                    final double sub = j.optDouble("subtotal", 0);
-                    final double desc = j.optDouble("desconto", 0);
-                    final double tot = j.optDouble("total", 0);
-                    final double pago = j.optDouble("valor_pago", 0);
-                    final double troco = j.optDouble("troco", 0);
-                    runOnUiThread(() -> {
-                        btnFinalizar.setEnabled(true);
-                        carrinho.clear();
-                        editDesconto.setText("");
-                        adapterCarrinho.notifyDataSetChanged();
-                        atualizarTotal();
-                        carregarStatus();
-                        new AlertDialog.Builder(this)
-                                .setTitle("Venda registrada")
-                                .setMessage(cupom)
-                                .setPositiveButton("OK", null)
-                                .setNeutralButton("Compartilhar", (d, w) -> {
-                                    Intent send = new Intent(Intent.ACTION_SEND);
-                                    send.setType("text/plain");
-                                    send.putExtra(Intent.EXTRA_TEXT, cupom);
-                                    startActivity(Intent.createChooser(send,
-                                            "Enviar cupom"));
-                                })
-                                .setNegativeButton("PDF", (d, w) ->
-                                        compartilharPdfCupom(numeroVenda,
-                                                linhasItens, sub, desc, tot,
-                                                pago, troco))
-                                .show();
-                    });
+                    runOnUiThread(() -> exibirCupomVenda(j));
                 } else {
                     runOnUiThread(() -> {
                         btnFinalizar.setEnabled(true);

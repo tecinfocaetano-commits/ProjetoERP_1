@@ -29,8 +29,9 @@ procedure RegistrarRotasPDV;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT,
-  uPDVService;
+  SysUtils, DateUtils, fpjson, jsonparser, SQLDB, uConexao,
+  uMiddlewareJWT, uPDVService, uPagamentoService, uSessao,
+  uConfiguracaoService;
 
 const
   LIMITE_PRODUTOS = 60;
@@ -667,6 +668,469 @@ begin
   end;
 end;
 
+{ ============================================================
+  PAGAMENTOS ELETRONICOS (esqueleto multi-provedor)
+  POST /api/pdv/pagamentos/iniciar   - cria cobranca PENDENTE
+  GET  /api/pdv/pagamentos/:id/status- polling; finaliza a venda
+                                       quando APROVADO
+  POST /api/pdv/pagamentos/:id/cancelar
+  POST /api/pdv/pagamentos/webhook   - rota PUBLICA (sem JWT):
+                                       o PSP nao tem token; a
+                                       autenticidade e pela
+                                       assinatura PAG_WEBHOOK_SECRET
+  Nenhuma venda/cupom existe ate APROVADO. Regras em
+  TPagamentoService (Desktop\src\Services).
+  ============================================================ }
+
+{ Tipo da cobranca a partir do TIPO da FORMA_PAGAMENTO:
+  PI->PIX, CC/CD->CARTAO, demais->OUTRO. }
+function TipoCobrancaDaForma(const ATipoForma: string): string;
+begin
+  if SameText(Trim(ATipoForma), 'PI') then
+    Result := 'PIX'
+  else if SameText(Trim(ATipoForma), 'CC') or
+          SameText(Trim(ATipoForma), 'CD') then
+    Result := 'CARTAO'
+  else
+    Result := 'OUTRO';
+end;
+
+{ Carrinho normalizado para DADOS_JSON:
+  {"itens":[...],"desconto":N,"valor":N} - o "valor" alimenta o
+  payload de cobranca do provedor (ex.: QR PIX). }
+function JsonCarrinho(const AItens: TItensPDVEntrada;
+  ADesconto, AValor: Double): string;
+var
+  LRoot, LItem: TJSONObject;
+  LArr: TJSONArray;
+  I: Integer;
+begin
+  LRoot := TJSONObject.Create;
+  LArr := TJSONArray.Create;
+  try
+    for I := 0 to High(AItens) do
+    begin
+      LItem := TJSONObject.Create;
+      LItem.Add('produto_id', AItens[I].ProdutoId);
+      LItem.Add('quantidade', AItens[I].Quantidade);
+      LItem.Add('preco_unitario', AItens[I].PrecoUnitario);
+      LArr.Add(LItem);
+    end;
+    LRoot.Add('itens', LArr);
+    LRoot.Add('desconto', ADesconto);
+    LRoot.Add('valor', AValor);
+    Result := LRoot.AsJSON;
+  finally
+    LRoot.Free;
+    { LArr pertence ao root; nao liberar }
+  end;
+end;
+
+{ ------------------------------------------------------------------
+  POST /api/pdv/pagamentos/iniciar
+  Body: { itens, desconto?, forma_pagamento_id, tipo_cobranca?,
+          idempotency_key? }
+  ------------------------------------------------------------------ }
+procedure PostPagamentoIniciar(Req: THorseRequest; Res: THorseResponse);
+var
+  LUsuarioId, LEmpresaId: Int64;
+  LBody: TJSONObject;
+  LDadosItens: TJSONData;
+  LItens: TJSONArray;
+  LItensServico: TItensPDVEntrada;
+  LConexao: TConexao;
+  LQuery: TSQLQuery;
+  LServicoPDV: TPDVService;
+  LServicoPag: TPagamentoService;
+  LObj, LCobrancaInfo: TJSONObject;
+  LCaixaId, LFormaId, LPagamentoId: Int64;
+  LDesconto, LSubtotal, LTotal: Double;
+  LNumeroForma, LTipoForma, LTipoCobranca, LIdem, LJsonCarrinho,
+    LMensagem: string;
+  I: Integer;
+begin
+  if not TokenOuErro(Req, Res, LUsuarioId, LEmpresaId) then
+    Exit;
+  if not CorpoJSON(Req, Res, LBody) then
+    Exit;
+  try
+    try
+      LDadosItens := LBody.Find('itens');
+      if not (LDadosItens is TJSONArray) then
+      begin
+        EnviarErro(Res, 'Informe os itens da venda (itens).',
+          THTTPStatus.BadRequest);
+        Exit;
+      end;
+      LItens := TJSONArray(LDadosItens);
+      if LItens.Count = 0 then
+      begin
+        EnviarErro(Res, 'Adicione pelo menos um item à venda.',
+          THTTPStatus.BadRequest);
+        Exit;
+      end;
+
+      LDesconto := LBody.Get('desconto', Double(0));
+      LFormaId := LBody.Get('forma_pagamento_id', Int64(0));
+      LIdem := Trim(LBody.Get('idempotency_key', ''));
+
+      LConexao := TConexao.GetInstance;
+      LQuery := TSQLQuery.Create(nil);
+      try
+        LQuery.DataBase := LConexao.Connection;
+        LQuery.Transaction := LConexao.Transaction;
+
+        { tipo da forma de pagamento (rejeita DINHEIRO: esse segue
+          direto em POST /api/pdv/vendas) }
+        LQuery.SQL.Text :=
+          'SELECT TRIM(TIPO) AS TIPO, DESCRICAO FROM FORMA_PAGAMENTO ' +
+          'WHERE ID = :ID AND ATIVO = ''A''';
+        LQuery.ParamByName('ID').AsLargeInt := LFormaId;
+        LQuery.Open;
+        if LQuery.IsEmpty then
+        begin
+          EnviarErro(Res, 'Forma de pagamento inválida.',
+            THTTPStatus.BadRequest);
+          Exit;
+        end;
+        LTipoForma := Trim(LQuery.FieldByName('TIPO').AsString);
+        LNumeroForma := LQuery.FieldByName('DESCRICAO').AsString;
+        LQuery.Close;
+        if SameText(LTipoForma, 'DI') then
+        begin
+          EnviarErro(Res, 'Dinheiro não usa cobrança eletrônica — ' +
+            'use POST /api/pdv/vendas.', THTTPStatus.BadRequest);
+          Exit;
+        end;
+
+        if not ItensDaVendaPDV(LItens, LQuery, LEmpresaId,
+          LItensServico, LMensagem) then
+        begin
+          EnviarErro(Res, LMensagem, THTTPStatus.BadRequest);
+          Exit;
+        end;
+      finally
+        LQuery.Free;
+      end;
+
+      LSubtotal := 0;
+      for I := 0 to High(LItensServico) do
+        LSubtotal := LSubtotal + TotalItemPDV(LItensServico[I].Quantidade,
+          LItensServico[I].PrecoUnitario);
+      LTotal := TotalVendaPDV(LSubtotal, LDesconto);
+      LTipoCobranca := LBody.Get('tipo_cobranca',
+        TipoCobrancaDaForma(LTipoForma));
+      LJsonCarrinho := JsonCarrinho(LItensServico, LDesconto, LTotal);
+
+      LServicoPDV := TPDVService.Create;
+      try
+        LCaixaId := LServicoPDV.CaixaAberto(LUsuarioId);
+      finally
+        LServicoPDV.Free;
+      end;
+      if LCaixaId <= 0 then
+      begin
+        EnviarErro(Res, 'Nenhum caixa aberto. Abra o caixa antes de vender.',
+          THTTPStatus.Conflict);
+        Exit;
+      end;
+
+      if LIdem = '' then
+        LIdem := 'PDV-' + IntToStr(LUsuarioId) + '-' +
+          IntToStr(DateTimeToUnix(Now)) + '-' + IntToStr(Random(9999));
+
+      LServicoPag := TPagamentoService.Create;
+      try
+        LPagamentoId := LServicoPag.IniciarCobranca(LCaixaId, LFormaId,
+          LTotal, LDesconto, LJsonCarrinho, LIdem, LTipoCobranca);
+      finally
+        LServicoPag.Free;
+      end;
+
+      { detalhes para a tela de espera (QR, instruções, expiração) }
+      LQuery := TSQLQuery.Create(nil);
+      LObj := TJSONObject.Create;
+      try
+        LQuery.DataBase := LConexao.Connection;
+        LQuery.Transaction := LConexao.Transaction;
+        LQuery.SQL.Text :=
+          'SELECT PROVEDOR, STATUS, PROVEDOR_TXID, QR_PAYLOAD, ' +
+          '  QR_IMAGEM_URL, EXPIRA_EM, OBSERVACOES FROM PAGAMENTO ' +
+          'WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LPagamentoId;
+        LQuery.Open;
+        LObj.Add('pagamento_id', LPagamentoId);
+        LObj.Add('status', LQuery.FieldByName('STATUS').AsString);
+        LObj.Add('provedor', LQuery.FieldByName('PROVEDOR').AsString);
+        LObj.Add('tipo_cobranca', LTipoCobranca);
+        LObj.Add('valor', LTotal);
+        LObj.Add('forma_pagamento', LNumeroForma);
+        LObj.Add('txid', LQuery.FieldByName('PROVEDOR_TXID').AsString);
+        LObj.Add('qr_payload', LQuery.FieldByName('QR_PAYLOAD').AsString);
+        LObj.Add('qr_imagem_url',
+          LQuery.FieldByName('QR_IMAGEM_URL').AsString);
+        LObj.Add('instrucoes', LQuery.FieldByName('OBSERVACOES').AsString);
+        if not LQuery.FieldByName('EXPIRA_EM').IsNull then
+          LObj.Add('expira_em',
+            LQuery.FieldByName('EXPIRA_EM').AsDateTime);
+      finally
+        LQuery.Free;
+      end;
+      Res.Send(LObj.AsJSON).Status(THTTPStatus.Created);
+      LObj.Free;
+    except
+      on E: Exception do
+        EnviarErro(Res, E.Message, THTTPStatus.BadRequest);
+    end;
+  finally
+    LBody.Free;
+  end;
+end;
+
+{ ------------------------------------------------------------------
+  GET /api/pdv/pagamentos/:id/status
+  Polling da tela de espera. Quando APROVADO e ainda nao havia
+  venda, TPagamentoService.ConsultarStatus finaliza a venda.
+  ------------------------------------------------------------------ }
+procedure GetPagamentoStatus(Req: THorseRequest; Res: THorseResponse);
+var
+  LUsuarioId, LEmpresaId: Int64;
+  LPagamentoId, LVendaId: Int64;
+  LServico: TPagamentoService;
+  LStatus: TStatusPagamento;
+  LNumero: string;
+  LTotal: Double;
+  LObj: TJSONObject;
+begin
+  if not TokenOuErro(Req, Res, LUsuarioId, LEmpresaId) then
+    Exit;
+
+  LPagamentoId := StrToInt64Def(Req.Params['id'], 0);
+  if LPagamentoId <= 0 then
+  begin
+    EnviarErro(Res, 'Pagamento inválido.', THTTPStatus.BadRequest);
+    Exit;
+  end;
+
+  LServico := TPagamentoService.Create;
+  try
+    LStatus := LServico.ConsultarStatus(LPagamentoId, LVendaId,
+      LNumero, LTotal);
+  finally
+    LServico.Free;
+  end;
+
+  LObj := TJSONObject.Create;
+  try
+    LObj.Add('pagamento_id', LPagamentoId);
+    LObj.Add('status', StatusParaTexto(LStatus));
+    if LVendaId > 0 then
+    begin
+      LObj.Add('venda_id', LVendaId);
+      LObj.Add('numero', LNumero);
+      LObj.Add('total', LTotal);
+    end;
+    Res.Send(LObj.AsJSON).Status(THTTPStatus.OK);
+  finally
+    LObj.Free;
+  end;
+end;
+
+{ ------------------------------------------------------------------
+  POST /api/pdv/pagamentos/:id/cancelar
+  ------------------------------------------------------------------ }
+procedure PostPagamentoCancelar(Req: THorseRequest; Res: THorseResponse);
+var
+  LUsuarioId, LEmpresaId: Int64;
+  LPagamentoId: Int64;
+  LServico: TPagamentoService;
+  LObj: TJSONObject;
+begin
+  if not TokenOuErro(Req, Res, LUsuarioId, LEmpresaId) then
+    Exit;
+
+  LPagamentoId := StrToInt64Def(Req.Params['id'], 0);
+  if LPagamentoId <= 0 then
+  begin
+    EnviarErro(Res, 'Pagamento inválido.', THTTPStatus.BadRequest);
+    Exit;
+  end;
+
+  try
+    LServico := TPagamentoService.Create;
+    try
+      LServico.CancelarCobranca(LPagamentoId);
+    finally
+      LServico.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      EnviarErro(Res, E.Message, THTTPStatus.BadRequest);
+      Exit;
+    end;
+  end;
+
+  LObj := TJSONObject.Create;
+  try
+    LObj.Add('pagamento_id', LPagamentoId);
+    LObj.Add('status', 'CANCELADO');
+    LObj.Add('message', 'Cobrança cancelada.');
+    Res.Send(LObj.AsJSON).Status(THTTPStatus.OK);
+  finally
+    LObj.Free;
+  end;
+end;
+
+{ Mapeia o status textual do PSP para TStatusPagamento.
+  Aceita sinônimos comuns (approved/paid/confirmed...). }
+function StatusDoWebhook(const AStatus: string): TStatusPagamento;
+begin
+  if SameText(AStatus, 'APROVADO') or SameText(AStatus, 'APPROVED') or
+     SameText(AStatus, 'PAID') or SameText(AStatus, 'CONFIRMED') or
+     SameText(AStatus, 'RECEIVED') then
+    Result := spAprovado
+  else if SameText(AStatus, 'CANCELADO') or SameText(AStatus, 'CANCELLED')
+          or SameText(AStatus, 'CANCELED') or SameText(AStatus, 'VOIDED') then
+    Result := spCancelado
+  else if SameText(AStatus, 'EXPIRADO') or SameText(AStatus, 'EXPIRED')
+          or SameText(AStatus, 'EXPIRED_BY_TIMEOUT') then
+    Result := spExpirado
+  else if SameText(AStatus, 'RECUSADO') or SameText(AStatus, 'REFUSED')
+          or SameText(AStatus, 'REJECTED') or SameText(AStatus, 'FAILED')
+          or SameText(AStatus, 'DENIED') then
+    Result := spRecusado
+  else
+    Result := spProcessando;
+end;
+
+{ ------------------------------------------------------------------
+  POST /api/pdv/pagamentos/webhook  (PUBLICA - sem JWT)
+  Body: { provedor, txid, status, assinatura? }
+  O PSP nao tem token: a autenticidade e pela assinatura
+  configurada em PAG_WEBHOOK_SECRET (CONFIGURACAO da empresa).
+  Quando a cobranca consta APROVADO, finaliza a venda.
+  ------------------------------------------------------------------ }
+procedure PostPagamentoWebhook(Req: THorseRequest; Res: THorseResponse);
+var
+  LBody: TJSONObject;
+  LConexao: TConexao;
+  LQuery: TSQLQuery;
+  LServico: TPagamentoService;
+  LConfig: TConfiguracaoService;
+  LEmpresaId, LUsuarioId, LPagamentoId, LVendaId: Int64;
+  LProvider, LTxId, LStatusTxt, LAssinatura, LSecret: string;
+  LStatus: TStatusPagamento;
+  LNumero: string;
+  LTotal: Double;
+  LObj: TJSONObject;
+  LAplicado: Boolean;
+begin
+  if not CorpoJSON(Req, Res, LBody) then
+    Exit;
+  try
+    LProvider := Trim(LBody.Get('provedor', ''));
+    LTxId := Trim(LBody.Get('txid', ''));
+    LStatusTxt := Trim(LBody.Get('status', ''));
+    LAssinatura := Trim(LBody.Get('assinatura', ''));
+    if (LProvider = '') or (LTxId = '') or (LStatusTxt = '') then
+    begin
+      EnviarErro(Res, 'provedor, txid e status são obrigatórios.',
+        THTTPStatus.BadRequest);
+      Exit;
+    end;
+
+    { localiza a cobranca pelo par provedor+txid (sem empresa ainda) }
+    LConexao := TConexao.GetInstance;
+    LQuery := TSQLQuery.Create(nil);
+    try
+      LQuery.DataBase := LConexao.Connection;
+      LQuery.Transaction := LConexao.Transaction;
+      LQuery.SQL.Text :=
+        'SELECT FIRST 1 ID, EMPRESA_ID, USUARIO_ID FROM PAGAMENTO ' +
+        'WHERE PROVEDOR = :PROV AND PROVEDOR_TXID = :TX';
+      LQuery.ParamByName('PROV').AsString := LProvider;
+      LQuery.ParamByName('TX').AsString := LTxId;
+      LQuery.Open;
+      if LQuery.IsEmpty then
+      begin
+        { PSP pode reenviar txid desconhecido: responde 200 para
+          nao gerar retentativa infinita, mas nao altera nada }
+        LObj := TJSONObject.Create;
+        try
+          LObj.Add('recebido', True);
+          LObj.Add('encontrado', False);
+          Res.Send(LObj.AsJSON).Status(THTTPStatus.OK);
+        finally
+          LObj.Free;
+        end;
+        Exit;
+      end;
+      LPagamentoId := LQuery.FieldByName('ID').AsLargeInt;
+      LEmpresaId := LQuery.FieldByName('EMPRESA_ID').AsLargeInt;
+      LUsuarioId := LQuery.FieldByName('USUARIO_ID').AsLargeInt;
+    finally
+      LQuery.Free;
+    end;
+
+    { contexto de sessao da empresa dona da cobranca }
+    TSessao.DefinirContexto(LUsuarioId, LEmpresaId, 0, '', '', False);
+    try
+      { assinatura: se PAG_WEBHOOK_SECRET estiver configurado,
+        exige correspondencia; sem secret configurado aceita
+        (ambiente de desenvolvimento — configurar em producao) }
+      LConfig := TConfiguracaoService.Create;
+      try
+        LSecret := Trim(LConfig.LerValor('PAG_WEBHOOK_SECRET'));
+      finally
+        LConfig.Free;
+      end;
+      if (LSecret <> '') and not SameText(LAssinatura, LSecret) then
+      begin
+        EnviarErro(Res, 'Assinatura de webhook inválida.',
+          THTTPStatus.Unauthorized);
+        Exit;
+      end;
+
+      LStatus := StatusDoWebhook(LStatusTxt);
+      LServico := TPagamentoService.Create;
+      try
+        LAplicado := LServico.AplicarStatusExterno(LPagamentoId, LStatus,
+          'Webhook ' + LProvider + ': ' + LStatusTxt);
+
+        { se ficou aprovado e ainda nao gerou venda, finaliza agora }
+        if LAplicado and (LStatus = spAprovado) then
+          LServico.ConsultarStatus(LPagamentoId, LVendaId, LNumero, LTotal)
+        else
+          LVendaId := 0;
+      finally
+        LServico.Free;
+      end;
+
+      LObj := TJSONObject.Create;
+      try
+        LObj.Add('recebido', True);
+        LObj.Add('pagamento_id', LPagamentoId);
+        LObj.Add('status', StatusParaTexto(LStatus));
+        LObj.Add('aplicado', LAplicado);
+        if LVendaId > 0 then
+        begin
+          LObj.Add('venda_id', LVendaId);
+          LObj.Add('numero', LNumero);
+          LObj.Add('total', LTotal);
+        end;
+        Res.Send(LObj.AsJSON).Status(THTTPStatus.OK);
+      finally
+        LObj.Free;
+      end;
+    finally
+      TSessao.LimparContexto;
+    end;
+  finally
+    LBody.Free;
+  end;
+end;
+
 procedure RegistrarRotasPDV;
 begin
   THorse.Get('/api/pdv/status', @GetStatus);
@@ -677,6 +1141,10 @@ begin
   THorse.Get('/api/pdv/produtos/buscar', @GetProdutoBuscar);
   THorse.Get('/api/pdv/formas-pagamento', @GetFormasPagamento);
   THorse.Post('/api/pdv/vendas', @PostVendaPDV);
+  THorse.Post('/api/pdv/pagamentos/iniciar', @PostPagamentoIniciar);
+  THorse.Get('/api/pdv/pagamentos/:id/status', @GetPagamentoStatus);
+  THorse.Post('/api/pdv/pagamentos/:id/cancelar', @PostPagamentoCancelar);
+  THorse.Post('/api/pdv/pagamentos/webhook', @PostPagamentoWebhook);
 end;
 
 end.
