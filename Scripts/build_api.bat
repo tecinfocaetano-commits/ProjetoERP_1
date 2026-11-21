@@ -19,6 +19,8 @@ if not exist "%ROOT%\API\bin\units" mkdir "%ROOT%\API\bin\units"
   -Fu"%ROOT%\API\src\Config" ^
   -Fu"%ROOT%\Desktop\src\Models" ^
   -Fu"%ROOT%\Desktop\src\Utils" ^
+  -Fu"%ROOT%\Desktop\src\Repositories" ^
+  -Fu"%ROOT%\Desktop\src\Services" ^
   -FU"%ROOT%\API\bin\units" ^
   -FE"%ROOT%\API\bin" ^
   "%ROOT%\API\ERP2026API.lpr"

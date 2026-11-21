@@ -17,11 +17,12 @@ procedure RegistrarRotasClientes;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT,
+  uPessoaService, uPessoa;
 
 procedure GetClientes(Req: THorseRequest; Res: THorseResponse);
 var
-  LConexao: TConexao;
+  LServico: TPessoaService;
   LQuery: TSQLQuery;
   LArray: TJSONArray;
   LObj: TJSONObject;
@@ -36,44 +37,42 @@ begin
     Exit;
   end;
 
-  LConexao := TConexao.GetInstance;
-  LQuery := TSQLQuery.Create(nil);
+  { D3: a regra de listar pessoas da empresa (e filtrar TIPO='C') fica no
+    Service compartilhado com o desktop; sem SQL duplicado na rota. }
+  LServico := TPessoaService.Create;
   try
-    LQuery.DataBase := LConexao.Connection;
-    LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text :=
-      'SELECT ID, NOME, CPF_CNPJ, EMAIL, TELEFONE, CIDADE, UF, ATIVO ' +
-      'FROM PESSOA WHERE TIPO = ''C'' AND EMPRESA_ID = :EMP ORDER BY NOME';
-    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
-    LQuery.Open;
-
+    LQuery := LServico.BuscarTodos('C');
     LArray := TJSONArray.Create;
-    while not LQuery.EOF do
-    begin
-      LObj := TJSONObject.Create;
-      LObj.Add('id', LQuery.FieldByName('ID').AsLargeInt);
-      LObj.Add('nome', LQuery.FieldByName('NOME').AsString);
-      LObj.Add('cpf_cnpj', LQuery.FieldByName('CPF_CNPJ').AsString);
-      LObj.Add('email', LQuery.FieldByName('EMAIL').AsString);
-      LObj.Add('telefone', LQuery.FieldByName('TELEFONE').AsString);
-      LObj.Add('cidade', LQuery.FieldByName('CIDADE').AsString);
-      LObj.Add('uf', LQuery.FieldByName('UF').AsString);
-      LObj.Add('status', LQuery.FieldByName('ATIVO').AsString);
-      LArray.Add(LObj);
-      LQuery.Next;
+    try
+      while not LQuery.EOF do
+      begin
+        LObj := TJSONObject.Create;
+        LObj.Add('id', LQuery.FieldByName('ID').AsLargeInt);
+        LObj.Add('nome', LQuery.FieldByName('NOME').AsString);
+        LObj.Add('cpf_cnpj', LQuery.FieldByName('CPF_CNPJ').AsString);
+        LObj.Add('email', LQuery.FieldByName('EMAIL').AsString);
+        LObj.Add('telefone', LQuery.FieldByName('TELEFONE').AsString);
+        LObj.Add('cidade', LQuery.FieldByName('CIDADE').AsString);
+        LObj.Add('uf', LQuery.FieldByName('UF').AsString);
+        LObj.Add('status', LQuery.FieldByName('ATIVO').AsString);
+        LArray.Add(LObj);
+        LQuery.Next;
+      end;
+      Res.Send(LArray.AsJSON).Status(THTTPStatus.OK);
+    finally
+      LArray.Free;
+      LQuery.Close;
     end;
-    Res.Send(LArray.AsJSON).Status(THTTPStatus.OK);
-    LArray.Free;
   finally
-    LQuery.Free;
+    LServico.Free;
   end;
 end;
 
 procedure GetClienteById(Req: THorseRequest; Res: THorseResponse);
 var
   LId: Int64;
-  LConexao: TConexao;
-  LQuery: TSQLQuery;
+  LServico: TPessoaService;
+  LPessoa: TPessoa;
   LObj: TJSONObject;
   LUsuarioId, LEmpresaId: Int64;
 begin
@@ -92,38 +91,36 @@ begin
     Exit;
   end;
 
-  LConexao := TConexao.GetInstance;
-  LQuery := TSQLQuery.Create(nil);
+  { D3: leitura pelo Service; a rota so garante que o registro e um cliente
+    da empresa autenticada (o Service e compartilhado com o desktop). }
+  LServico := TPessoaService.Create;
   try
-    LQuery.DataBase := LConexao.Connection;
-    LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text :=
-      'SELECT * FROM PESSOA WHERE ID = :ID AND TIPO = ''C'' AND EMPRESA_ID = :EMP';
-    LQuery.ParamByName('ID').AsLargeInt := LId;
-    LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
-    LQuery.Open;
+    LPessoa := LServico.BuscarPorId(LId);
+    try
+      if (LPessoa = nil) or (LPessoa.EmpresaId <> LEmpresaId) or
+         (LPessoa.Tipo <> 'C') then
+        begin
+          Res.Send('{"error":"Cliente não encontrado"}').Status(THTTPStatus.NotFound);
+          Exit;
+        end;
 
-    if LQuery.IsEmpty then
-    begin
-      Res.Send('{"error":"Cliente não encontrado"}').Status(THTTPStatus.NotFound);
-      Exit;
+      LObj := TJSONObject.Create;
+      LObj.Add('id', LPessoa.Id);
+      LObj.Add('nome', LPessoa.Nome);
+      LObj.Add('cpf_cnpj', LPessoa.CpfCnpj);
+      LObj.Add('email', LPessoa.Email);
+      LObj.Add('endereco', LPessoa.Endereco);
+      LObj.Add('cidade', LPessoa.Cidade);
+      LObj.Add('uf', LPessoa.Uf);
+      LObj.Add('cep', LPessoa.Cep);
+      LObj.Add('status', LPessoa.Ativo);
+      Res.Send(LObj.AsJSON).Status(THTTPStatus.OK);
+      LObj.Free;
+    finally
+      LPessoa.Free;
     end;
-
-    LObj := TJSONObject.Create;
-    LObj.Add('id', LQuery.FieldByName('ID').AsLargeInt);
-    LObj.Add('nome', LQuery.FieldByName('NOME').AsString);
-    LObj.Add('cpf_cnpj', LQuery.FieldByName('CPF_CNPJ').AsString);
-    LObj.Add('email', LQuery.FieldByName('EMAIL').AsString);
-    LObj.Add('telefone', LQuery.FieldByName('TELEFONE').AsString);
-    LObj.Add('endereco', LQuery.FieldByName('ENDERECO').AsString);
-    LObj.Add('cidade', LQuery.FieldByName('CIDADE').AsString);
-    LObj.Add('uf', LQuery.FieldByName('UF').AsString);
-    LObj.Add('cep', LQuery.FieldByName('CEP').AsString);
-    LObj.Add('status', LQuery.FieldByName('ATIVO').AsString);
-    Res.Send(LObj.AsJSON).Status(THTTPStatus.OK);
-    LObj.Free;
   finally
-    LQuery.Free;
+    LServico.Free;
   end;
 end;
 
