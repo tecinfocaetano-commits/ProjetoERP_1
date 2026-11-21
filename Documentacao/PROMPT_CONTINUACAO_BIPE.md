@@ -89,13 +89,12 @@ VERIFICAÇÃO JÁ FEITA
 
 O QUE FALTA / PRÓXIMOS PASSOS POSSÍVEIS (em ordem de prioridade)
 
-1. ~~TESTE DE CAMPO~~ — **FEITO NO EMULADOR** (marco 3.75): APK
-   instalado no AVD Pixel_9, login admin via `http://10.0.2.2:9000`,
-   ciclo OK/DUPLICADO/INVALIDO validado, **fila offline testada na
-   prática** (API reiniciou no meio e o app reenviou sozinho) e
-   histórico do servidor com 95 registros. Resta apenas aparelho
-   físico com leitor/câmera reais — hardware não exercitado no
-   emulador.
+1. ~~TESTE DE CAMPO~~ — **FEITO NO EMULADOR E NO APARELHO FÍSICO**
+   (Samsung A55, marco 3.75+): ciclo completo OK/CONCLUSAO/DUPLICADO
+   validado, fila offline sincronizou sozinha após restart da API, e
+   histórico do servidor OK. **Pendente apenas:** leitor/câmera física
+   — a bipagem foi digitada via `input text`; o botão "Ler pela câmera"
+   (ZXing) ainda não foi exercitado com um código de barras real.
 
 2. ~~MODO OFFLINE / FILA~~ — **IMPLEMENTADO**: tabela `pendente` no
    BipeDb (FIFO), envio automático no onResume/após bipagem e botão

@@ -2234,6 +2234,14 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   dois agentes (ERP/desktop e `:bipe`) registrarem o que estão fazendo —
   a reinicialização da API pelo outro agente foi absorvida pela fila
   offline do app sem perda.
+- **No aparelho físico (Samsung A55, mesmo dia):** APK instalado via USB;
+  ciclo completo do talão `T100000` — 1ª bip `OK` INICIO, 2ª caiu na
+  fila durante restart da API e **sincronizou sozinha** ao voltar →
+  `CONCLUSAO` + mapa 3 concluído, 3ª → `DUPLICADO`. Aprendizado de rede:
+  o PC estava em USB tethering do celular (Wi-Fi do PC desconectado);
+  IP correto para o app = `http://10.103.239.156:9000`, e foi preciso
+  liberar a porta 9000 no Firewall (perfil Público → regra
+  `ERP2026API 9000`). Pendente só câmera/leitor físico.
 - **Commits:** `71c18a5` (diagnóstico de erro no HistoricoActivity) +
   docs deste marco.
 

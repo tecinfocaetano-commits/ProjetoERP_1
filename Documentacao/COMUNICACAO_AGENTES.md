@@ -63,6 +63,20 @@ em determinado momento, deixe aviso com horário.
   o app se recuperou sozinho graças à fila — comportamento validado.
 - `tmp_shots/` são screenshots/XML de depuração do emulador — posso apagar
   ou ignorar; não commitar.
+- **Teste em APARELHO FÍSICO CONCLUÍDO (Samsung A55):** APK instalado via
+  USB e também acessível por Wi-Fi adb (`192.168.100.126:43511`). Ciclo
+  completo do talão `T100000` (mapa 3, pedido 3581): 1ª bipagem `OK`
+  INICIO, 2ª caiu na fila durante restart da API e **sincronizou sozinha**
+  no login seguinte → `CONCLUSAO` + mapa concluído, 3ª → `DUPLICADO`.
+  **Aprendizado de rede:** o PC estava recebendo internet por USB
+  tethering do celular (adaptador Wi-Fi do PC desconectado); o IP certo
+  para o app é `http://10.103.239.156:9000` (USB) — o `192.168.100.135`
+  estava morto. Foi preciso liberar a porta 9000 no Firewall (perfil
+  Público) — regra `ERP2026API 9000` criada. **Se o usuário testar de
+  novo, usar `10.103.239.156` enquanto o PC estiver em USB tethering;
+  se o Wi-Fi do PC voltar, usar `192.168.100.135`.**
+- Não mexi em nada compartilhado; só `bipe/**`, docs e o talão/mapa de
+  teste (T100000/mapa 1141).
 
 ---
 
@@ -161,4 +175,10 @@ em determinado momento, deixe aviso com horário.
   `uRotasOrcamentos.pas` e `uRotasVendas.pas` para completar PUT/DELETE de
   produto/orçamento e POST de venda, mantendo regra nos Services, auditoria e
   isolamento por empresa. Aviso aqui antes de parar/reiniciar a API para os
-  testes. Se você estiver editando alguma dessas rotas, deixe recado antes."
+  testes. Se você estiver editando alguma dessas rotas, deixe recado antes.
+- **F1 em implementação:** `PUT/DELETE /api/produtos/:id` passam a usar
+  `TProdutoService`; `PUT/DELETE /api/orcamentos/:id` usam novos métodos de
+  `TOrcamentoService` (só STATUS 'O'); `POST /api/vendas` usa
+  `TPedidoVendaService` com STATUS 'P'. Desktop já recompilou OK. **Vou parar,
+  recompilar e reiniciar a API na 9000 agora** para rodar o smoke F1 — janela
+  curta, mesmo aviso de sempre. Nada em `:bipe` foi tocado."
