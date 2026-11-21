@@ -263,8 +263,11 @@ begin
       '  SUM(CASE WHEN T.STATUS = ''CONCLUIDO'' THEN 1 ELSE 0 END) AS CONCLUIDOS ' +
       'FROM TALAO T ' +
       '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
-      'WHERE MI.MAPA_PRODUCAO_ID = :MAPA AND T.STATUS <> ''CANCELADO''';
+      '  JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
+      'WHERE MI.MAPA_PRODUCAO_ID = :MAPA AND T.STATUS <> ''CANCELADO'' ' +
+      '  AND M.EMPRESA_ID = :EMP';
     LQry.ParamByName('MAPA').AsLargeInt := AMapaId;
+    LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQry.Open;
     LTotal := LQry.FieldByName('TOTAL').AsInteger;
     LConcluidos := LQry.FieldByName('CONCLUIDOS').AsInteger;
@@ -282,10 +285,12 @@ begin
     LUpd.SQL.Text :=
       'UPDATE CONSUMO_MATERIAL_ITEM SET STATUS_PRODUCAO = :NOVO ' +
       'WHERE CONSUMO_MATERIAL_ID IN ' +
-      '  (SELECT ID FROM CONSUMO_MATERIAL WHERE MAPA_PRODUCAO_ID = :MAPA) ' +
+      '  (SELECT ID FROM CONSUMO_MATERIAL WHERE MAPA_PRODUCAO_ID = :MAPA ' +
+      '     AND EMPRESA_ID = :EMP) ' +
       '  AND COALESCE(STATUS_PRODUCAO, '''') <> :NOVO';
     LUpd.ParamByName('NOVO').AsString := LNovoStatus;
     LUpd.ParamByName('MAPA').AsLargeInt := AMapaId;
+    LUpd.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LUpd.ExecSQL;
 
     RegistrarAuditoria('CONSUMO_MATERIAL_ITEM', 'STATUS_PRODUCAO', AMapaId,
@@ -323,8 +328,10 @@ begin
   Result := '';
   LQuery := NovaConsulta;
   try
-    LQuery.SQL.Text := 'SELECT STATUS FROM MAPA_PRODUCAO WHERE ID = :ID';
+    LQuery.SQL.Text :=
+      'SELECT STATUS FROM MAPA_PRODUCAO WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := AMapaId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := Trim(LQuery.FieldByName('STATUS').AsString);
@@ -343,8 +350,10 @@ begin
     LQuery.SQL.Text :=
       'SELECT FIRST 1 ID FROM MAPA_PRODUCAO ' +
       'WHERE PEDIDO_VENDA_ID = :PED AND STATUS IN (''ABERTO'', ''EM_PRODUCAO'') ' +
+      '  AND EMPRESA_ID = :EMP ' +
       'ORDER BY ID DESC';
     LQuery.ParamByName('PED').AsLargeInt := APedidoId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := LQuery.FieldByName('ID').AsLargeInt;
@@ -364,9 +373,12 @@ begin
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text :=
-      'SELECT PEDIDO_VENDA_ID, PRODUTO_ID, QUANTIDADE ' +
-      'FROM ITEM_PEDIDO WHERE ID = :ID';
+      'SELECT I.PEDIDO_VENDA_ID, I.PRODUTO_ID, I.QUANTIDADE ' +
+      'FROM ITEM_PEDIDO I ' +
+      '  JOIN PEDIDO_VENDA PV ON PV.ID = I.PEDIDO_VENDA_ID ' +
+      'WHERE I.ID = :ID AND PV.EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := AItemPedidoId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
       raise EProducao.Create('Item do pedido não encontrado (ID ' +
@@ -392,9 +404,11 @@ begin
       'FROM MAPA_PRODUCAO_ITEM MI ' +
       '  JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
       'WHERE MI.ITEM_PEDIDO_ID = :ITEM ' +
-      '  AND M.STATUS <> ''CANCELADO'' AND M.ID <> :EXCETO';
+      '  AND M.STATUS <> ''CANCELADO'' AND M.ID <> :EXCETO ' +
+      '  AND M.EMPRESA_ID = :EMP';
     LQuery.ParamByName('ITEM').AsLargeInt := AItemPedidoId;
     LQuery.ParamByName('EXCETO').AsLargeInt := AExcetoMapaId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := LQuery.FieldByName('QTD').AsFloat;
@@ -432,12 +446,15 @@ begin
       '       CAST(I.QUANTIDADE - COALESCE((SELECT SUM(MI.QUANTIDADE) ' +
       '           FROM MAPA_PRODUCAO_ITEM MI ' +
       '             JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
-      '           WHERE MI.ITEM_PEDIDO_ID = I.ID AND M.STATUS <> ''CANCELADO''), 0) ' +
+      '           WHERE MI.ITEM_PEDIDO_ID = I.ID AND M.STATUS <> ''CANCELADO'' ' +
+      '             AND M.EMPRESA_ID = :EMP), 0) ' +
       '         AS NUMERIC(18,4)) AS PENDENTE ' +
       'FROM ITEM_PEDIDO I ' +
-      'WHERE I.PEDIDO_VENDA_ID = :PED ' +
+      '  JOIN PEDIDO_VENDA PV ON PV.ID = I.PEDIDO_VENDA_ID ' +
+      'WHERE I.PEDIDO_VENDA_ID = :PED AND PV.EMPRESA_ID = :EMP ' +
       'ORDER BY I.ID';
     LQuery.ParamByName('PED').AsLargeInt := APedidoId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     while not LQuery.EOF do
     begin
@@ -464,9 +481,12 @@ begin
   LQuery := NovaConsulta;
   try
     LQuery.SQL.Text :=
-      'SELECT COUNT(*) AS TOTAL FROM MAPA_PRODUCAO_ITEM ' +
-      'WHERE MAPA_PRODUCAO_ID = :ID AND STATUS <> ''CANCELADO''';
+      'SELECT COUNT(*) AS TOTAL FROM MAPA_PRODUCAO_ITEM MI ' +
+      '  JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
+      'WHERE MI.MAPA_PRODUCAO_ID = :ID AND MI.STATUS <> ''CANCELADO'' ' +
+      '  AND M.EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := AMapaId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := LQuery.FieldByName('TOTAL').AsInteger;
@@ -490,15 +510,23 @@ begin
     LQuery.SQL.Text :=
       'SELECT ' +
       '  CAST(COALESCE((SELECT SUM(MI.QUANTIDADE) FROM MAPA_PRODUCAO_ITEM MI ' +
-      '      WHERE MI.MAPA_PRODUCAO_ID = :ID AND MI.STATUS <> ''CANCELADO''), 0) AS NUMERIC(18,4)) AS TOTAL, ' +
+      '      JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
+      '      WHERE MI.MAPA_PRODUCAO_ID = :ID AND MI.STATUS <> ''CANCELADO'' ' +
+      '        AND M.EMPRESA_ID = :EMP), 0) AS NUMERIC(18,4)) AS TOTAL, ' +
       '  CAST(COALESCE((SELECT SUM(T.QUANTIDADE) FROM TALAO T ' +
       '      JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
-      '      WHERE MI.MAPA_PRODUCAO_ID = :ID AND T.STATUS = ''CONCLUIDO''), 0) AS NUMERIC(18,4)) AS PRODUZIDO, ' +
+      '      JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
+      '      WHERE MI.MAPA_PRODUCAO_ID = :ID AND T.STATUS = ''CONCLUIDO'' ' +
+      '        AND M.EMPRESA_ID = :EMP), 0) AS NUMERIC(18,4)) AS PRODUZIDO, ' +
       '  CAST(COALESCE((SELECT SUM(T.QUANTIDADE) FROM TALAO T ' +
       '      JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
-      '      WHERE MI.MAPA_PRODUCAO_ID = :ID AND T.STATUS IN (''GERADO'', ''IMPRESSO'', ''EM_PRODUCAO'')), 0) AS NUMERIC(18,4)) AS EM_PRODUCAO ' +
+      '      JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
+      '      WHERE MI.MAPA_PRODUCAO_ID = :ID ' +
+      '        AND T.STATUS IN (''GERADO'', ''IMPRESSO'', ''EM_PRODUCAO'') ' +
+      '        AND M.EMPRESA_ID = :EMP), 0) AS NUMERIC(18,4)) AS EM_PRODUCAO ' +
       'FROM RDB$DATABASE';
     LQuery.ParamByName('ID').AsLargeInt := AMapaId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
     begin
@@ -520,8 +548,10 @@ var
 begin
   LQuery := NovaConsulta;
   try
-    LQuery.SQL.Text := 'SELECT STATUS FROM PEDIDO_VENDA WHERE ID = :ID';
+    LQuery.SQL.Text :=
+      'SELECT STATUS FROM PEDIDO_VENDA WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := APedidoId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
       raise EProducao.Create('Pedido de venda não encontrado (ID ' +
@@ -535,9 +565,11 @@ begin
     ValidarTransicao(LAtual, ANovoStatus);
 
     LQuery.SQL.Text :=
-      'UPDATE PEDIDO_VENDA SET STATUS = :STATUS WHERE ID = :ID';
+      'UPDATE PEDIDO_VENDA SET STATUS = :STATUS ' +
+      'WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('STATUS').AsString := ANovoStatus;
     LQuery.ParamByName('ID').AsLargeInt := APedidoId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.ExecSQL;
 
     RegistrarAuditoria('PEDIDO_VENDA', 'STATUS', APedidoId,
@@ -565,16 +597,20 @@ begin
     LQuery.SQL.Text :=
       'SELECT STATUS, ' +
       '  (SELECT COUNT(*) FROM MAPA_PRODUCAO M ' +
-      '     WHERE M.PEDIDO_VENDA_ID = :PED AND M.STATUS IN (''ABERTO'', ''EM_PRODUCAO'')) AS ATIVOS, ' +
+      '     WHERE M.PEDIDO_VENDA_ID = :PED AND M.STATUS IN (''ABERTO'', ''EM_PRODUCAO'') ' +
+      '       AND M.EMPRESA_ID = :EMP) AS ATIVOS, ' +
       '  CAST(COALESCE((SELECT SUM(MI.QUANTIDADE) FROM MAPA_PRODUCAO_ITEM MI ' +
       '      JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
-      '      WHERE M.PEDIDO_VENDA_ID = :PED AND M.STATUS <> ''CANCELADO''), 0) AS NUMERIC(18,4)) AS TOTAL, ' +
+      '      WHERE M.PEDIDO_VENDA_ID = :PED AND M.STATUS <> ''CANCELADO'' ' +
+      '        AND M.EMPRESA_ID = :EMP), 0) AS NUMERIC(18,4)) AS TOTAL, ' +
       '  CAST(COALESCE((SELECT SUM(T.QUANTIDADE) FROM TALAO T ' +
       '      JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
       '      JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
-      '      WHERE M.PEDIDO_VENDA_ID = :PED AND T.STATUS = ''CONCLUIDO''), 0) AS NUMERIC(18,4)) AS PRODUZIDO ' +
-      'FROM PEDIDO_VENDA WHERE ID = :PED';
+      '      WHERE M.PEDIDO_VENDA_ID = :PED AND T.STATUS = ''CONCLUIDO'' ' +
+      '        AND M.EMPRESA_ID = :EMP), 0) AS NUMERIC(18,4)) AS PRODUZIDO ' +
+      'FROM PEDIDO_VENDA WHERE ID = :PED AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('PED').AsLargeInt := APedidoId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if LQuery.IsEmpty then
       Exit;
@@ -642,6 +678,11 @@ begin
     if LEmpresaId = 0 then
       LEmpresaId := TSessao.GetInstance.EmpresaId;
     LPed.Close;
+
+    { T4: só é possível mapear pedido da empresa da sessão }
+    if LEmpresaId <> TSessao.GetInstance.EmpresaId then
+      raise EProducao.Create(
+        'O pedido de venda pertence a outra empresa.');
 
     LNumero := ProximoNumeroMapa(LEmpresaId);
 
@@ -749,8 +790,10 @@ begin
   LUpd := NovaConsulta;
   try
     LMapa.SQL.Text :=
-      'SELECT STATUS, PEDIDO_VENDA_ID FROM MAPA_PRODUCAO WHERE ID = :ID';
+      'SELECT STATUS, PEDIDO_VENDA_ID FROM MAPA_PRODUCAO ' +
+      'WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LMapa.ParamByName('ID').AsLargeInt := AMapaId;
+    LMapa.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LMapa.Open;
     if LMapa.IsEmpty then
       raise EProducao.Create('Mapa de produção não encontrado.');
@@ -857,8 +900,10 @@ begin
   Result := 0;
   LQuery := NovaConsulta;
   try
-    LQuery.SQL.Text := 'SELECT NUMERO FROM MAPA_PRODUCAO WHERE ID = :ID';
+    LQuery.SQL.Text :=
+      'SELECT NUMERO FROM MAPA_PRODUCAO WHERE ID = :ID AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := AMapaId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := LQuery.FieldByName('NUMERO').AsInteger;
@@ -895,8 +940,10 @@ begin
   try
     LQuery.SQL.Text :=
       'SELECT COUNT(*) AS QTDT FROM TALAO ' +
-      'WHERE MAPA_PRODUCAO_ITEM_ID = :ITEM AND STATUS <> ''CANCELADO''';
+      'WHERE MAPA_PRODUCAO_ITEM_ID = :ITEM AND STATUS <> ''CANCELADO'' ' +
+      '  AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ITEM').AsLargeInt := AMapaItemId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := LQuery.FieldByName('QTDT').AsInteger;
@@ -915,8 +962,10 @@ begin
     LQuery.SQL.Text :=
       'SELECT CAST(COALESCE(SUM(QUANTIDADE), 0) AS NUMERIC(18,4)) AS QTD ' +
       'FROM TALAO ' +
-      'WHERE MAPA_PRODUCAO_ITEM_ID = :ITEM AND STATUS <> ''CANCELADO''';
+      'WHERE MAPA_PRODUCAO_ITEM_ID = :ITEM AND STATUS <> ''CANCELADO'' ' +
+      '  AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ITEM').AsLargeInt := AMapaItemId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := LQuery.FieldByName('QTD').AsFloat;
@@ -965,8 +1014,9 @@ begin
         '  M.STATUS AS MAPA_STATUS, M.EMPRESA_ID ' +
         'FROM MAPA_PRODUCAO_ITEM MI ' +
         '  JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
-        'WHERE MI.ID = :ID';
+        'WHERE MI.ID = :ID AND M.EMPRESA_ID = :EMP';
       LItem.ParamByName('ID').AsLargeInt := AMapaItemId;
+      LItem.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LItem.Open;
       if LItem.IsEmpty then
         raise EProducao.Create('Item do mapa de produção não encontrado.');
@@ -993,8 +1043,10 @@ begin
         'SELECT COUNT(*) AS QTDT, ' +
         '  CAST(COALESCE(SUM(QUANTIDADE), 0) AS NUMERIC(18,4)) AS QTDQ ' +
         'FROM TALAO ' +
-        'WHERE MAPA_PRODUCAO_ITEM_ID = :ITEM AND STATUS <> ''CANCELADO''';
+        'WHERE MAPA_PRODUCAO_ITEM_ID = :ITEM AND STATUS <> ''CANCELADO'' ' +
+        '  AND EMPRESA_ID = :EMP';
       LTaloes.ParamByName('ITEM').AsLargeInt := AMapaItemId;
+      LTaloes.ParamByName('EMP').AsLargeInt := LEmpresaId;
       LTaloes.Open;
       LSeqBase := LTaloes.FieldByName('QTDT').AsInteger;
       LQtdTaloes := LTaloes.FieldByName('QTDQ').AsFloat;
@@ -1134,8 +1186,10 @@ begin
         'FROM TALAO T ' +
         '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
         'WHERE MI.MAPA_PRODUCAO_ID = :MAPA AND T.STATUS <> ''CANCELADO'' ' +
+        '  AND T.EMPRESA_ID = :EMP ' +
         'ORDER BY T.NUMERO';
       LLista.ParamByName('MAPA').AsLargeInt := AMapaId;
+      LLista.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LLista.Open;
       if LLista.IsEmpty then
         raise EProducao.CreateFmt(
@@ -1211,8 +1265,9 @@ begin
         '  MI.STATUS AS ITEM_STATUS, MI.MAPA_PRODUCAO_ID ' +
         'FROM TALAO T ' +
         '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
-        'WHERE T.ID = :ID';
+        'WHERE T.ID = :ID AND T.EMPRESA_ID = :EMP';
       LTalao.ParamByName('ID').AsLargeInt := ATalaoId;
+      LTalao.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LTalao.Open;
       if LTalao.IsEmpty then
         raise EProducao.Create('Talão não encontrado.');
@@ -1249,8 +1304,10 @@ begin
       begin
         LUpd.SQL.Text :=
           'SELECT COUNT(*) AS QTDT FROM TALAO ' +
-          'WHERE MAPA_PRODUCAO_ITEM_ID = :ITEM AND STATUS <> ''CANCELADO''';
+          'WHERE MAPA_PRODUCAO_ITEM_ID = :ITEM AND STATUS <> ''CANCELADO'' ' +
+          '  AND EMPRESA_ID = :EMP';
         LUpd.ParamByName('ITEM').AsLargeInt := LItemId;
+        LUpd.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
         LUpd.Open;
         if LUpd.FieldByName('QTDT').AsInteger = 0 then
         begin
@@ -1363,8 +1420,9 @@ begin
         '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
         '  JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
         '  LEFT JOIN PRODUTO PR ON PR.ID = MI.PRODUTO_ID ' +
-        'WHERE T.CODIGO_BARRAS = :COD';
+        'WHERE T.CODIGO_BARRAS = :COD AND T.EMPRESA_ID = :EMP';
       LTalao.ParamByName('COD').AsString := LCodigo;
+      LTalao.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LTalao.Open;
 
       if LTalao.IsEmpty then
@@ -1758,7 +1816,7 @@ begin
       '       CAST(COALESCE(P.PRECO_CUSTO, 0) AS NUMERIC(18,4)) AS PRECO_CUSTO ' +
       'FROM PRODUTO P LEFT JOIN ESTOQUE E ' +
       '  ON E.PRODUTO_ID = P.ID AND E.EMPRESA_ID = :EMP ' +
-      'WHERE P.ID = :PROD';
+      'WHERE P.ID = :PROD AND P.EMPRESA_ID = :EMP';
     LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.ParamByName('PROD').AsLargeInt := AProdutoId;
     LQuery.Open;
@@ -1783,8 +1841,10 @@ begin
     LQuery.SQL.Text :=
       'SELECT FIRST 1 ID FROM CONSUMO_MATERIAL ' +
       'WHERE MAPA_PRODUCAO_ID = :MAPA AND STATUS IN (''PENDENTE'', ''CONFIRMADO'') ' +
+      '  AND EMPRESA_ID = :EMP ' +
       'ORDER BY ID DESC';
     LQuery.ParamByName('MAPA').AsLargeInt := AMapaId;
+    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
     if not LQuery.IsEmpty then
       Result := LQuery.FieldByName('ID').AsLargeInt;
@@ -2006,9 +2066,10 @@ begin
         'FROM MAPA_PRODUCAO M ' +
         '  LEFT JOIN CONSUMO_MATERIAL C ON C.MAPA_PRODUCAO_ID = M.ID ' +
         '     AND C.STATUS IN (''PENDENTE'', ''CONFIRMADO'') ' +
-        'WHERE M.ID = :MAPA ' +
+        'WHERE M.ID = :MAPA AND M.EMPRESA_ID = :EMP ' +
         'ORDER BY C.ID DESC';
       LQry.ParamByName('MAPA').AsLargeInt := AMapaId;
+      LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQry.Open;
       if LQry.IsEmpty then
         raise EProducao.Create('Mapa de produção não encontrado.');
@@ -2051,10 +2112,13 @@ begin
         '     WHERE T.MAPA_PRODUCAO_ITEM_ID = MI.ID ' +
         '       AND T.STATUS = ''CONCLUIDO''), 0) AS NUMERIC(18,4)) AS PRODUZIDO ' +
         'FROM MAPA_PRODUCAO_ITEM MI ' +
+        '  JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
         '  JOIN PRODUTO P ON P.ID = MI.PRODUTO_ID ' +
         'WHERE MI.MAPA_PRODUCAO_ID = :MAPA AND MI.STATUS <> ''CANCELADO'' ' +
+        '  AND M.EMPRESA_ID = :EMP ' +
         'ORDER BY MI.ID';
       LQry.ParamByName('MAPA').AsLargeInt := AMapaId;
+      LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQry.Open;
       while not LQry.EOF do
       begin
@@ -2212,8 +2276,9 @@ begin
       LQry.SQL.Text :=
         'SELECT C.STATUS, M.NUMERO FROM CONSUMO_MATERIAL C ' +
         '  JOIN MAPA_PRODUCAO M ON M.ID = C.MAPA_PRODUCAO_ID ' +
-        'WHERE C.ID = :ID';
+        'WHERE C.ID = :ID AND C.EMPRESA_ID = :EMP';
       LQry.ParamByName('ID').AsLargeInt := AConsumoId;
+      LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQry.Open;
       if LQry.IsEmpty then
         raise EProducao.Create('Consumo de materiais não encontrado.');
@@ -2411,8 +2476,9 @@ begin
     try
       LQry.SQL.Text :=
         'SELECT STATUS, COALESCE(JUSTIFICATIVA, '''') AS JUSTIFICATIVA ' +
-        'FROM CONSUMO_MATERIAL WHERE ID = :ID';
+        'FROM CONSUMO_MATERIAL WHERE ID = :ID AND EMPRESA_ID = :EMP';
       LQry.ParamByName('ID').AsLargeInt := AConsumoId;
+      LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
       LQry.Open;
       if LQry.IsEmpty then
         raise EProducao.Create('Consumo de materiais não encontrado.');

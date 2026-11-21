@@ -753,11 +753,13 @@ var
 
   procedure TestMapaEscopoEmpresa;
   var
-    LPed, LItem, LMapa, LProdOutra, LClienteOutra: Int64;
+    LPed, LItem, LProdOutra, LClienteOutra: Int64;
     LItens: TItensMapa;
+    LFalhou: Boolean;
+    LMapasDoPedido: Integer;
   begin
     try
-      { pedido de OUTRA empresa: o mapa herda a empresa do pedido }
+      { T4: pedido de OUTRA empresa não pode gerar mapa na sessão atual }
       LClienteOutra := CriarPessoa(NovoNome('CLI OUTRA'), 'C', 999999);
       LProdOutra := CriarProduto(NovoCodigo('MPE'),
         NovoNome('PROD OUTRA EMP'), 5, 10, 999999);
@@ -768,17 +770,124 @@ var
       LItens[0].ItemPedidoId := LItem;
       LItens[0].ProdutoId := LProdOutra;
       LItens[0].Quantidade := 2;
-      LMapa := LService.CriarMapa(LPed, LItens, '', 0);
-      AssertTrue(LMapa > 0, 'mapa de outra empresa deve ser criado');
-      RegistrarId(LMapas, LMapa);
-      AssertEquals('999999',
-        IntToStr(CampoInteiro('MAPA_PRODUCAO', 'EMPRESA_ID', LMapa)),
-        'mapa deve herdar EMPRESA_ID do pedido');
+
+      LFalhou := False;
+      try
+        LService.CriarMapa(LPed, LItens, '', 0);
+      except
+        on E: EProducao do
+          LFalhou := Pos('outra empresa', LowerCase(E.Message)) > 0;
+      end;
+      AssertTrue(LFalhou, 'CriarMapa deve recusar pedido de outra empresa');
+
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'SELECT COUNT(*) FROM MAPA_PRODUCAO WHERE PEDIDO_VENDA_ID = :PED';
+      LQuery.ParamByName('PED').AsLargeInt := LPed;
+      LQuery.Open;
+      LMapasDoPedido := LQuery.Fields[0].AsInteger;
+      LQuery.Close;
+      AssertEquals('0', IntToStr(LMapasDoPedido),
+        'nenhum mapa deve ser criado para pedido de outra empresa');
 
       ASuite.AddResult('TestMapaEscopoEmpresa', True, '');
     except
       on E: Exception do
         ASuite.AddResult('TestMapaEscopoEmpresa', False, E.Message);
+    end;
+  end;
+
+  procedure TestIsolamentoEmpresaProducao;
+  var
+    LPed, LItemPed, LProd, LCliente, LMapa, LItemMapa, LTalao: Int64;
+  begin
+    LMapa := 0;
+    LItemMapa := 0;
+    LTalao := 0;
+    try
+      try
+        { T4: outro mapa/talão, de outra empresa, não pode ser visto nem
+          alterado pela sessão (empresa 1) }
+        LCliente := CriarPessoa(NovoNome('CLI ISO'), 'C', 999998);
+      LProd := CriarProduto(NovoCodigo('ISO'),
+        NovoNome('PROD ISO'), 5, 10, 999998);
+      LPed := CriarPedido(LCliente, 'P', 999998);
+      LItemPed := AdicionarItem(LPed, LProd, 2, 10);
+
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'INSERT INTO MAPA_PRODUCAO (EMPRESA_ID, NUMERO, PEDIDO_VENDA_ID, ' +
+        '  STATUS, USUARIO_ID) VALUES (:EMP, :NUM, :PED, ''ABERTO'', :USR) ' +
+        'RETURNING ID';
+      LQuery.ParamByName('EMP').AsLargeInt := 999998;
+      LQuery.ParamByName('NUM').AsInteger := 990001;
+      LQuery.ParamByName('PED').AsLargeInt := LPed;
+      LQuery.ParamByName('USR').AsLargeInt := LSessao.UsuarioId;
+      LQuery.Open;
+      LMapa := LQuery.FieldByName('ID').AsLargeInt;
+      LQuery.Close;
+
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'INSERT INTO MAPA_PRODUCAO_ITEM (MAPA_PRODUCAO_ID, ITEM_PEDIDO_ID, ' +
+        '  PRODUTO_ID, QUANTIDADE, STATUS) ' +
+        'VALUES (:MAPA, :ITEM, :PROD, 2, ''PENDENTE'') RETURNING ID';
+      LQuery.ParamByName('MAPA').AsLargeInt := LMapa;
+      LQuery.ParamByName('ITEM').AsLargeInt := LItemPed;
+      LQuery.ParamByName('PROD').AsLargeInt := LProd;
+      LQuery.Open;
+      LItemMapa := LQuery.FieldByName('ID').AsLargeInt;
+      LQuery.Close;
+
+      LQuery.Close;
+      LQuery.SQL.Text :=
+        'INSERT INTO TALAO (EMPRESA_ID, NUMERO, MAPA_PRODUCAO_ITEM_ID, ' +
+        '  QUANTIDADE, CODIGO_BARRAS, STATUS, DATA_GERACAO, USUARIO_ID) ' +
+        'VALUES (:EMP, :NUM, :ITEM, 2, :COD, ''GERADO'', ' +
+        '  CURRENT_TIMESTAMP, :USR) RETURNING ID';
+      LQuery.ParamByName('EMP').AsLargeInt := 999998;
+      LQuery.ParamByName('NUM').AsInteger := 990002;
+      LQuery.ParamByName('ITEM').AsLargeInt := LItemMapa;
+      LQuery.ParamByName('COD').AsString := 'T999991';
+      LQuery.ParamByName('USR').AsLargeInt := LSessao.UsuarioId;
+      LQuery.Open;
+      LTalao := LQuery.FieldByName('ID').AsLargeInt;
+      LQuery.Close;
+      LConexao.Confirmar;
+
+      AssertEquals('', LService.StatusMapa(LMapa),
+        'StatusMapa não deve ver mapa de outra empresa');
+      AssertEquals('0', IntToStr(LService.MapaAtivoDoPedido(LPed)),
+        'MapaAtivoDoPedido não deve ver mapa de outra empresa');
+      AssertEquals('0', IntToStr(LService.ConsumoAtivoDoMapa(LMapa)),
+        'ConsumoAtivoDoMapa não deve ver mapa de outra empresa');
+      AssertTrue(CancelarMapaFalhou(LMapa, 'ISOLAMENTO'),
+        'CancelarMapa deve recusar mapa de outra empresa');
+      AssertTrue(CancelarTalaoFalhou(LTalao, 'ISOLAMENTO'),
+        'CancelarTalao deve recusar talão de outra empresa');
+      AssertTrue(TaloesFalhou(LItemMapa, 'UNIDADE'),
+        'GerarTaloes deve recusar item de outra empresa');
+
+      ASuite.AddResult('TestIsolamentoEmpresaProducao', True, '');
+      except
+        on E: Exception do
+          ASuite.AddResult('TestIsolamentoEmpresaProducao', False, E.Message);
+      end;
+    finally
+      LQuery.Close;
+      LQuery.SQL.Text := 'DELETE FROM TALAO_BIPAGEM WHERE TALAO_ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := LTalao;
+      LQuery.ExecSQL;
+      LQuery.SQL.Text := 'DELETE FROM TALAO WHERE ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := LTalao;
+      LQuery.ExecSQL;
+      LQuery.SQL.Text := 'DELETE FROM MAPA_PRODUCAO_ITEM WHERE ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := LItemMapa;
+      LQuery.ExecSQL;
+      LQuery.SQL.Text := 'DELETE FROM MAPA_PRODUCAO WHERE ID = :ID';
+      LQuery.ParamByName('ID').AsLargeInt := LMapa;
+      LQuery.ExecSQL;
+      LConexao.Confirmar;
     end;
   end;
 
@@ -1286,6 +1395,7 @@ begin
     TestMapaValidacoes;
     TestMapaCriarParciais;
     TestMapaEscopoEmpresa;
+    TestIsolamentoEmpresaProducao;
     TestTaloesGerar;
     TestBiparFluxoCompleto;
     TestCancelarMapaETalao;

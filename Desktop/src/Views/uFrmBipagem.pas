@@ -142,8 +142,13 @@ begin
     '  LEFT JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
     '  LEFT JOIN PRODUTO PR ON PR.ID = MI.PRODUTO_ID ' +
     '  LEFT JOIN USUARIO U ON U.ID = B.USUARIO_ID ' +
+    { T4: TALAO_BIPAGEM nao tem EMPRESA_ID; isola pelo talão e, quando
+      o evento não tem talão (TALAO_ID = 0), pelo usuário que bipou. }
+    'WHERE (T.EMPRESA_ID = :EMP) OR ' +
+    '  ((B.TALAO_ID = 0) AND (U.EMPRESA_ID = :EMP)) ' +
     'ORDER BY B.ID DESC ' +
     'ROWS 50';
+  FBipagens.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   FBipagens.Open;
 
   LField := FBipagens.FieldByName('DATA_HORA');

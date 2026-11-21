@@ -118,8 +118,11 @@ begin
     'CASE MC.TIPO WHEN ''E'' THEN ''ENTRADA'' WHEN ''S'' THEN ''SAIDA'' ' +
     'WHEN ''V'' THEN ''VENDA'' ELSE MC.TIPO END AS TIPO, MC.VALOR, MC.DESCRICAO, MC.DATA_MOVIMENTO, ' +
     'U.NOME AS USUARIO FROM MOVIMENTO_CAIXA MC ' +
+    'JOIN CAIXA C ON C.ID = MC.CAIXA_ID ' +
     'LEFT JOIN USUARIO U ON U.ID = MC.USUARIO_ID ' +
-    'WHERE MC.CAIXA_ID = :CX';
+    { T4: MOVIMENTO_CAIXA nao tem EMPRESA_ID; isola pelo caixa. }
+    'WHERE MC.CAIXA_ID = :CX ' +
+    '  AND (C.EMPRESA_ID = :EMP OR C.EMPRESA_ID IS NULL)';
 
   if Trim(AFiltro) <> '' then
     LSQL := LSQL + ' AND (UPPER(COALESCE(MC.DESCRICAO, '''')) CONTAINING ' +
@@ -136,6 +139,7 @@ begin
   AQuery.Close;
   AQuery.SQL.Text := LSQL;
   AQuery.ParamByName('CX').AsLargeInt := ACaixaId;
+  AQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   if Trim(AFiltro) <> '' then
   begin
     AQuery.ParamByName('PESQ').AsString := Trim(AFiltro);
@@ -162,8 +166,12 @@ begin
     'CAST(COALESCE(SUM(CASE WHEN MC.TIPO IN (''E'',''V'') THEN MC.VALOR ' +
     'WHEN MC.TIPO = ''S'' THEN -MC.VALOR ELSE 0 END), 0) ' +
     'AS NUMERIC(18,4)) AS SALDO ' +
-    'FROM MOVIMENTO_CAIXA MC WHERE MC.CAIXA_ID = :CX';
+    'FROM MOVIMENTO_CAIXA MC ' +
+    'JOIN CAIXA C ON C.ID = MC.CAIXA_ID ' +
+    'WHERE MC.CAIXA_ID = :CX ' +
+    '  AND (C.EMPRESA_ID = :EMP OR C.EMPRESA_ID IS NULL)';
   AQuery.ParamByName('CX').AsLargeInt := ACaixaId;
+  AQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
   AQuery.Open;
 end;
 

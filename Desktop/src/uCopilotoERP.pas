@@ -59,6 +59,9 @@ type
 
 implementation
 
+uses
+  uSessao;
+
 constructor TCopilotoERP.Create(AConnection: TIBConnection; ATransaction: TSQLTransaction);
 begin
   inherited Create;
@@ -135,40 +138,46 @@ end;
 
 function TCopilotoERP.GerarSQL(ATipo: TTipoPergunta; const APergunta: string): string;
 begin
+  { Todas as consultas são da empresa da sessão (T4). O parâmetro :EMP
+    é ligado em ExecutarSQL; pode aparecer mais de uma vez na mesma
+    consulta (subconsultas e UNION) — o SQLDB liga todas as ocorrências. }
   case ATipo of
     tpFaturamento:
       Result := 'SELECT COALESCE(SUM(TOTAL), 0) AS VALOR FROM PEDIDO_VENDA ' +
-                'WHERE STATUS IN (''F'', ''A'') ' + ExtrairPeriodo(APergunta);
+                'WHERE EMPRESA_ID = :EMP AND STATUS IN (''F'', ''A'') ' + ExtrairPeriodo(APergunta);
 
     tpInadimplentes:
       Result := 'SELECT C.NOME, CR.VALOR, CR.DATA_VENCIMENTO ' +
                 'FROM CONTA_RECEBER CR JOIN PESSOA C ON C.ID = CR.CLIENTE_ID AND C.TIPO = ''C'' ' +
-                'WHERE CR.STATUS = ''A'' AND CR.DATA_VENCIMENTO < CURRENT_DATE ' +
+                'WHERE CR.EMPRESA_ID = :EMP AND CR.STATUS = ''A'' AND CR.DATA_VENCIMENTO < CURRENT_DATE ' +
                 'ORDER BY CR.DATA_VENCIMENTO';
 
     tpEstoque:
       Result := 'SELECT P.DESCRICAO, COALESCE(E.QUANTIDADE, 0) AS QTD ' +
                 'FROM PRODUTO P LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
-                'WHERE P.ATIVO = ''A'' ORDER BY P.DESCRICAO';
+                '  AND E.EMPRESA_ID = :EMP ' +
+                'WHERE P.EMPRESA_ID = :EMP AND P.ATIVO = ''A'' ORDER BY P.DESCRICAO';
 
     tpEstoqueBaixo:
       Result := 'SELECT P.DESCRICAO, COALESCE(E.QUANTIDADE, 0) AS QTD_ATUAL, P.ESTOQUE_MINIMO ' +
                 'FROM PRODUTO P LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
-                'WHERE P.CONTROLA_ESTOQUE = ''S'' AND COALESCE(E.QUANTIDADE, 0) < P.ESTOQUE_MINIMO ' +
+                '  AND E.EMPRESA_ID = :EMP ' +
+                'WHERE P.EMPRESA_ID = :EMP AND P.CONTROLA_ESTOQUE = ''S'' ' +
+                'AND COALESCE(E.QUANTIDADE, 0) < P.ESTOQUE_MINIMO ' +
                 'AND P.ESTOQUE_MINIMO > 0 ORDER BY (P.ESTOQUE_MINIMO - COALESCE(E.QUANTIDADE, 0)) DESC';
 
     tpProdutosSemVenda:
       Result := 'SELECT P.DESCRICAO, P.PRECO_VENDA FROM PRODUTO P ' +
-                'WHERE P.ATIVO = ''A'' AND P.ID NOT IN ' +
+                'WHERE P.EMPRESA_ID = :EMP AND P.ATIVO = ''A'' AND P.ID NOT IN ' +
                 '(SELECT DISTINCT IP.PRODUTO_ID FROM ITEM_PEDIDO IP ' +
                 'JOIN PEDIDO_VENDA PV ON PV.ID = IP.PEDIDO_VENDA_ID ' +
-                'WHERE PV.DATA_EMISSAO >= CURRENT_DATE - 90) ' +
+                'WHERE PV.EMPRESA_ID = :EMP AND PV.DATA_EMISSAO >= CURRENT_DATE - 90) ' +
                 'ORDER BY P.DESCRICAO';
 
     tpTopClientes:
       Result := 'SELECT FIRST 10 C.NOME, SUM(PV.TOTAL) AS TOTAL_COMPRAS, COUNT(*) AS QTD ' +
                 'FROM PEDIDO_VENDA PV JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
-                'WHERE PV.STATUS IN (''F'', ''A'') ' +
+                'WHERE PV.EMPRESA_ID = :EMP AND PV.STATUS IN (''F'', ''A'') ' +
                 'GROUP BY C.NOME ORDER BY TOTAL_COMPRAS DESC';
 
     tpTopProdutos:
@@ -176,38 +185,39 @@ begin
                 'SUM(IP.VALOR_TOTAL) AS VALOR_TOTAL ' +
                 'FROM ITEM_PEDIDO IP JOIN PRODUTO P ON P.ID = IP.PRODUTO_ID ' +
                 'JOIN PEDIDO_VENDA PV ON PV.ID = IP.PEDIDO_VENDA_ID ' +
-                'WHERE PV.STATUS IN (''F'', ''A'') ' +
+                'WHERE PV.EMPRESA_ID = :EMP AND PV.STATUS IN (''F'', ''A'') ' +
                 'GROUP BY P.DESCRICAO ORDER BY QTD_VENDIDA DESC';
 
     tpContasVencidas:
       Result := 'SELECT ''A Receber'' AS TIPO, C.NOME AS ENTIDADE, CR.VALOR, CR.DATA_VENCIMENTO ' +
                 'FROM CONTA_RECEBER CR LEFT JOIN PESSOA C ON C.ID = CR.CLIENTE_ID AND C.TIPO = ''C'' ' +
-                'WHERE CR.STATUS = ''A'' AND CR.DATA_VENCIMENTO <= CURRENT_DATE ' +
+                'WHERE CR.EMPRESA_ID = :EMP AND CR.STATUS = ''A'' AND CR.DATA_VENCIMENTO <= CURRENT_DATE ' +
                 'UNION ALL ' +
                 'SELECT ''A Pagar'', F.NOME, CP.VALOR, CP.DATA_VENCIMENTO ' +
                 'FROM CONTA_PAGAR CP LEFT JOIN PESSOA F ON F.ID = CP.FORNECEDOR_ID AND F.TIPO = ''F'' ' +
-                'WHERE CP.STATUS = ''A'' AND CP.DATA_VENCIMENTO <= CURRENT_DATE ' +
+                'WHERE CP.EMPRESA_ID = :EMP AND CP.STATUS = ''A'' AND CP.DATA_VENCIMENTO <= CURRENT_DATE ' +
                 'ORDER BY 4';
 
     tpFornecedorCredito:
       Result := 'SELECT FIRST 10 F.NOME, SUM(CP.VALOR) AS TOTAL_COMPRAS ' +
                 'FROM CONTA_PAGAR CP JOIN PESSOA F ON F.ID = CP.FORNECEDOR_ID AND F.TIPO = ''F'' ' +
+                'WHERE CP.EMPRESA_ID = :EMP ' +
                 'GROUP BY F.NOME ORDER BY TOTAL_COMPRAS DESC';
 
     tpFluxoCaixa:
       { CAST obrigatório: o SQLDB lê COALESCE((subquery),0) sem tipo como 0 }
       Result := 'SELECT ' +
-                'CAST(COALESCE((SELECT SUM(VALOR) FROM CONTA_RECEBER WHERE STATUS = ''A'' AND DATA_VENCIMENTO <= CURRENT_DATE + 30), 0) AS NUMERIC(18,4)) AS RECEBER_30D, ' +
-                'CAST(COALESCE((SELECT SUM(VALOR) FROM CONTA_PAGAR WHERE STATUS = ''A'' AND DATA_VENCIMENTO <= CURRENT_DATE + 30), 0) AS NUMERIC(18,4)) AS PAGAR_30D ' +
+                'CAST(COALESCE((SELECT SUM(VALOR) FROM CONTA_RECEBER WHERE EMPRESA_ID = :EMP AND STATUS = ''A'' AND DATA_VENCIMENTO <= CURRENT_DATE + 30), 0) AS NUMERIC(18,4)) AS RECEBER_30D, ' +
+                'CAST(COALESCE((SELECT SUM(VALOR) FROM CONTA_PAGAR WHERE EMPRESA_ID = :EMP AND STATUS = ''A'' AND DATA_VENCIMENTO <= CURRENT_DATE + 30), 0) AS NUMERIC(18,4)) AS PAGAR_30D ' +
                 'FROM RDB$DATABASE';
 
     tpComparativoMensal:
       { CAST obrigatório: idem (SQLDB lê 0 sem tipo) }
       Result := 'SELECT ' +
-                'CAST(COALESCE((SELECT SUM(TOTAL) FROM PEDIDO_VENDA WHERE STATUS IN (''F'',''A'') ' +
+                'CAST(COALESCE((SELECT SUM(TOTAL) FROM PEDIDO_VENDA WHERE EMPRESA_ID = :EMP AND STATUS IN (''F'',''A'') ' +
                 'AND EXTRACT(MONTH FROM DATA_EMISSAO) = EXTRACT(MONTH FROM CURRENT_DATE) ' +
                 'AND EXTRACT(YEAR FROM DATA_EMISSAO) = EXTRACT(YEAR FROM CURRENT_DATE)), 0) AS NUMERIC(18,4)) AS MES_ATUAL, ' +
-                'CAST(COALESCE((SELECT SUM(TOTAL) FROM PEDIDO_VENDA WHERE STATUS IN (''F'',''A'') ' +
+                'CAST(COALESCE((SELECT SUM(TOTAL) FROM PEDIDO_VENDA WHERE EMPRESA_ID = :EMP AND STATUS IN (''F'',''A'') ' +
                 'AND EXTRACT(MONTH FROM DATA_EMISSAO) = EXTRACT(MONTH FROM CURRENT_DATE) - 1 ' +
                 'AND EXTRACT(YEAR FROM DATA_EMISSAO) = EXTRACT(YEAR FROM CURRENT_DATE)), 0) AS NUMERIC(18,4)) AS MES_ANTERIOR ' +
                 'FROM RDB$DATABASE';
@@ -217,7 +227,9 @@ begin
                 'P.ESTOQUE_MINIMO, (P.ESTOQUE_MAXIMO - COALESCE(E.QUANTIDADE, 0)) AS QTD_SUGERIDA, ' +
                 'P.PRECO_CUSTO, ((P.ESTOQUE_MAXIMO - COALESCE(E.QUANTIDADE, 0)) * P.PRECO_CUSTO) AS VALOR_ESTIMADO ' +
                 'FROM PRODUTO P LEFT JOIN ESTOQUE E ON E.PRODUTO_ID = P.ID ' +
-                'WHERE P.CONTROLA_ESTOQUE = ''S'' AND COALESCE(E.QUANTIDADE, 0) < P.ESTOQUE_MINIMO ' +
+                '  AND E.EMPRESA_ID = :EMP ' +
+                'WHERE P.EMPRESA_ID = :EMP AND P.CONTROLA_ESTOQUE = ''S'' ' +
+                'AND COALESCE(E.QUANTIDADE, 0) < P.ESTOQUE_MINIMO ' +
                 'AND P.ESTOQUE_MINIMO > 0 ORDER BY QTD_SUGERIDA DESC';
   else
     Result := '';
@@ -239,6 +251,10 @@ begin
     LQuery.DataBase := FConnection;
     LQuery.Transaction := FTransaction;
     LQuery.SQL.Text := ASQL;
+    { :EMP pode aparecer várias vezes na mesma consulta; o SQLDB liga
+      todas as ocorrências a partir de um único parâmetro (TParamBinding). }
+    if LQuery.Params.FindParam('EMP') <> nil then
+      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
     LQuery.Open;
 
     LCount := 0;

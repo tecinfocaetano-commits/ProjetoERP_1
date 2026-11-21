@@ -368,6 +368,9 @@ var
       { o CAST tipa o campo: sem ele o SQLDB devolve o valor como 0 }
       LQuery.Close;
       LQuery.SQL.Text := LResp.SQL;
+      { T4: a consulta é da empresa da sessão }
+      if LQuery.Params.FindParam('EMP') <> nil then
+        LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
       LQuery.Open;
       AssertTrue(LQuery.FieldByName('RECEBER_30D').DataType <> ftUnknown,
         'RECEBER_30D deve vir tipado apos o CAST');
