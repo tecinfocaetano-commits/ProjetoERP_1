@@ -15,6 +15,8 @@ polimento/dívida.
 | F3 | A | **Fechado nos marcos 3.65–3.67:** CC-e, inutilização e manifestação (3.65), DANFE/cupom em PDF (3.66) e NFC-e no PDV com destinatário opcional (3.67). | `uFrmNFe.pas`, `uFrmPDV.pas` |
 | F13 | M | Cadastro de produto não expõe/persiste peso, `PRODUTO_FISCAL_ID`, fornecedor e imagem. | `uProdutoService.pas`, `uFrmProdutos.pas` |
 | F14 | M | `ACRESCIMO` de pedido/item nunca é lido nem gravado (frete/encargos). | `uPedidoVendaService.pas`, telas de pedido |
+| F16 | M | **PLANO (marco 3.86, não implementado): NFS-e de prefeitura.** Preferência por **Código do provedor** (`SIGCORP`, `BETA`, `NACIONAL`, `OUTRO`) em `CONFIGURACAO`, adapter do padrão nacional 2026 como principal e adapters legados por provedor; sem envio em testes locais. Detalhes em `PROMPT_TESTES_FISCAIS_GRATUITOS.md` §5. | `CONFIGURACAO`, `TNFSeHelper` (futuro) |
+| F17 | M | **PLANO (marco 3.86, não implementado): nota de entrada aceitar serviços/comunicação/internet e notas municipais.** Detectar `infNFS-e`/`RPS`/`InfDeclaracaoPrestacaoServico`, item sem NCM/CFOP/estoque, migração aditiva com `TIPO_DOCUMENTO`/`PROVEDOR` e dedupe por tipo. Detalhes no prompt §6. | `uNFeXmlParser`, `uNFeImportService`, `NOTA_ENTRADA` |
 
 ## 2. Acesso e isolamento por empresa
 
@@ -36,6 +38,7 @@ polimento/dívida.
 | F1 | A | **CONCLUÍDO (marco 3.79):** `PUT/DELETE /api/produtos/:id`, `PUT/DELETE /api/orcamentos/:id` (só STATUS 'O') e `POST /api/vendas` (STATUS 'P'), todos via Services com validação, isolamento e auditoria atômica. | `uRotasProdutos.pas`, `uRotasOrcamentos.pas`, `uRotasVendas.pas`, `uOrcamentoService.pas`, `uProdutoService.pas` |
 | F6 | M | **CONCLUÍDO (marco 3.77):** paginação opcional com `total`/`total_paginas` em vendas e financeiro; sem parâmetros o array de até 100 é mantido. | `uPaginacao.pas`, rotas de vendas/financeiro |
 | D10 | M | **CONCLUÍDO (marco 3.83):** `.github\workflows\bateria.yml` (self-hosted) e `Scripts\testes\api_todos.ps1` com os 6 smokes e checagem de `/api/health`. | repositório |
+| D13 | A | **CONCLUÍDO (marco 3.86):** instabilidade da API eliminada — pool devolve a conexão viva (não destrói a `TIBConnection` por request), ping real ao retirar a vaga, renovação do socket e `/api/health` com 503 quando o banco falha. 60/60 logins concorrentes, 0 exceções. | `uConexao.pas`, `ERP2026API.lpr` |
 | D11 | B | App: `usesCleartextTraffic`, token sem checar `exp`, CORS `*`. | `AndroidManifest.xml`, `Sessao.java`, `uMiddlewareCORS.pas` |
 | F10 | B | `DELETE /api/clientes` físico (a auditoria `PESSOA/D` já foi fechada em 3.74; falta decidir exclusão lógica). | `uRotasClientes.pas` |
 
@@ -80,7 +83,11 @@ polimento/dívida.
 4. **D7 + D8** — banco novo confiável a partir do repositório (concluído no 3.77).
 5. **F6 + F9 + F1 + bipe + preferência de homologação** — paginação no 3.77; F9 no 3.78; F1 no 3.79; app `:bipe` fechado e testado no 3.80; interruptor único de NF-e/NFC-e e PDV em homologação no 3.81. `:bipe` agora entra na bateria padrão.
 6. **D10 (concluído 3.83), app `:pdv` (3.82, outro agente), D11, F3/F2/F8 (Android), F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — HTTPS/CORS/token, ciclo de vida de pedidos, cadastros estruturantes, relatórios, deploy e backup pela aplicação.
-7. **F8, F10, F11, F12, F14, T5, D10, D11** — completudes e dívida.
+7. **F8, F10, F11, F12, F14, T5, D11** — completudes e dívida.
+8. **D13 — CONCLUÍDO (3.86)** — estabilidade da API (pool/health), pedido
+   explícito do usuário. **F16/F17** — NFS-e e nota de entrada de serviços:
+   apenas plano registrado no `PROMPT_TESTES_FISCAIS_GRATUITOS.md`, aguardando
+   decisão de provedor e prazos do padrão nacional antes de virar código.
 
 ## Já resolvido (não reabrir)
 
@@ -103,7 +110,8 @@ polimento/dívida.
 - **App `:bipe` de talão — CONCLUÍDO** (marco 3.80, outro agente): feedback visual/vibração/código lido e resultado acima do teclado; ciclo validado no Samsung A55. Incluído na bateria via `Scripts\build_bipe.bat`; código de `Android\android\bipe\**` não é alterado por esta sessão.
 - **D10 — CI local e smokes unificados** (marco 3.83): `.github\workflows\bateria.yml` roda desktop/testes/`:bipe`/`:app`/telas/permissões e, em job separado, `Scripts\testes\api_todos.ps1` (6 smokes com `/api/health`). API não é recompilada nem reiniciada pela pipeline.
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
-- **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
+- **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61). Reforçado no marco 3.86: passou a checar o banco de verdade (`"banco":"ok"`) e a devolver 503 quando ele falha, em vez de mentir dizendo `ok`.
+- **D13 (estabilidade da API)** — pool devolve a conexão viva (o `Conexao.Free` por request causava `connection shutdown` com 20 threads), ping real na retirada, renovação do socket e retry; 60/60 logins concorrentes sem exceções (marco 3.86).
 - **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).
 - Backup/restauração por `gbak` (marco 3.59).
 - Cenário fiscal de teste e validação local/em lote da NF-e (marcos 3.55–3.58).

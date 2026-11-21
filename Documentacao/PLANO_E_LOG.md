@@ -2610,3 +2610,52 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Pendente:** rebuild+restart da API para o fix do txid entrar no ar
   (janela combinada com o agente do pool); adapters reais PSP/TEF
   aguardam escolha de provedor (PROMPT_PAGAMENTOS_TEF_PIX.md).
+  **Resolvido no marco 3.86:** o rebuild/subida foi feito, API em
+  PID 18576, Fase 0 no ar e 6 smokes OK.
+
+### 3.86 API — fim da instabilidade (`connection shutdown`) e prompt fiscal (21/11)
+
+- **Pedido do usuário:** "lembrando de resolver aquela questão a api caindo
+  toda hora resolva isto". O outro agente já havia relatado a 3ª recorrência
+  no canal; por isso a prioridade deste bloco foi o pool/health da API.
+- **Diagnóstico (19:37):** `/api/health` = `ok`, `POST /api/login` =
+  500 `TIBConnection : DoInternalConnect : -connection shutdown`;
+  `isql ... -i ping.sql` no mesmo `dados.fdb` conectava normal. Ou seja, não
+  era banco parado nem configuração: era estado morto dentro do processo da
+  API.
+- **Causa raiz (2ª rodada de teste):** com PID estável, 10/60 logins
+  concorrentes caíam e o health passava a 503. `TConexaoPool.Devolver`
+  chamava `Conexao.Free` a cada requisição; criar/anexar/desanexar
+  `TIBConnection` com 20 threads derruba o fbclient local. A 1ª correção
+  (ping + renovação) tratava o sintoma; a 2ª (reutilizar a conexão viva)
+  tratou a causa.
+- **`uConexao.pas`:** `RenovarObjetos` recria `TIBConnection`/
+  `TSQLTransaction` quando o socket morre; `Ping` (`SELECT 1`),
+  `PingComReconexao` (2 tentativas com renovação) e `Conectar` com 3
+  tentativas; `Obter` pinga antes de entregar a conexão à rota; `Devolver`
+  cancela a transação e mantém a conexão viva na vaga.
+- **`ERP2026API.lpr`:** `/api/health` chama `GetInstance` (que já pinga),
+  devolve `"banco":"ok"` + pool no sucesso e **503** com `"status":"erro"`
+  e a mensagem escapada em JSON quando o banco falha. Antes dizia `ok` mesmo
+  com o banco inacessível.
+- **`uMiddlewareConexao.pas`:** comentário atualizado para descrever a
+  devolução com socket vivo (sem mudança de comportamento no middleware).
+- **Validação:** 3 janelas de restart, sempre avisadas no
+  `COMUNICACAO_AGENTES.md`. Build `build_api.bat` OK. Health normal
+  `ok/banco=ok`; health com `ERP_DB_PATH` inválido = **503**. 20/20 e
+  60/60 logins sequenciais; 60/60 logins concorrentes (20 simultâneos) com
+  `KeepAlive=false`, **0 exceções** e PID 18576→18576. Com `KeepAlive=true`
+  sobraram apenas exceções de keep-alive no **cliente** (não do banco) —
+  por isso a carga segue o padrão `KeepAlive=false` de `pool_api.ps1`.
+  `api_todos.ps1` **6 smokes OK**; suíte desktop **385/385**.
+- **Prompt fiscal:** `PROMPT_TESTES_FISCAIS_GRATUITOS.md` criado com bateria
+  autocontida (regras, pré-requisitos, `run_tests.bat` 385/385,
+  `validar_nfe.bat 1003` com `.pfx` autoassinado, DANFE off-line, venda no
+  PDV desktop com `NFE_MODO=SIMULADO`, importação de XML e health da API),
+  relatório modelo e dois planos futuros: **NFS-e** com preferência de
+  **Código do provedor** (Sigcorp/Beta/NACIONAL e padrão nacional 2026) e
+  **nota de entrada** ampliada para serviços/comunicação/internet e notas
+  municipais. Nada disso foi implementado — é plano documentado.
+- **Escopo preservado:** nada em `:pdv/**`, `uRotasPDV.pas`, `:bipe/**`,
+  `HistoricoActivity.java`, `settings.gradle`, cenário fiscal 533/1014/3581
+  ou arquivos de pagamentos do outro agente. `tmp_shots/` segue untracked.

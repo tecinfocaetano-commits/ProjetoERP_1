@@ -42,6 +42,10 @@ type
   TConexao = class
   private
     class var FPool: TConexaoPool;
+    { Descarta TIBConnection/TSQLTransaction e cria objetos novos. Necessario
+      quando o socket morreu mas Connected continua True, ou quando o cliente
+      Firebird fica com estado interno invalido apos restart do servidor. }
+    procedure RenovarObjetos;
   public
     Connection: TIBConnection;
     Transaction: TSQLTransaction;
@@ -67,6 +71,12 @@ type
     procedure Conectar;
     procedure Desconectar;
     function  Conectado: Boolean;
+    { Ping real: SELECT 1 no banco. Diferente de Connection.Connected, detecta
+      socket morto (erro "DoInternalConnect / connection shutdown"). }
+    function  Ping: Boolean;
+    { Ping com renovacao/reconexao automatica; usado ao retirar do pool e
+      pelo /api/health. Devolve a mensagem do ultimo erro em AMensagem. }
+    function  PingComReconexao(out AMensagem: string): Boolean;
 
     procedure IniciarTransacao;
     procedure Confirmar;
@@ -242,22 +252,139 @@ begin
     Result := FPool.Descricao;
 end;
 
-procedure TConexao.Conectar;
+procedure TConexao.RenovarObjetos;
 begin
-  if not Connection.Connected then
-  begin
-    Connection.HostName := Host;
-    Connection.DatabaseName := Database;
-    Connection.UserName := User;
-    Connection.Password := Password;
-    Connection.Port := Port;
-    Connection.LoginPrompt := False;
-    // IMPORTANTE (API): NAO definir CharSet='UTF8'.
-    // Com CharSet=UTF8 o FPC converte o texto para o codepage do sistema (CP1252),
-    // o que corrompe o JSON (que precisa de UTF-8). Sem CharSet, o Firebird
-    // entrega os bytes UTF-8 crus, que e exatamente o que a API deve repassar.
-    Connection.Connected := True;
+  try
+    if (Transaction <> nil) and Transaction.Active then
+      Transaction.Rollback;
+  except
   end;
+  FreeAndNil(Transaction);
+  FreeAndNil(Connection);
+
+  Connection := TIBConnection.Create(nil);
+  Transaction := TSQLTransaction.Create(nil);
+  // READ COMMITTED + rec_version + nowait: mesma configuracao do Create.
+  Transaction.Params.Add('read_committed');
+  Transaction.Params.Add('rec_version');
+  Transaction.Params.Add('nowait');
+  Connection.Transaction := Transaction;
+  Transaction.DataBase := Connection;
+end;
+
+procedure TConexao.Conectar;
+const
+  TENTATIVAS = 3;
+var
+  LTentativa: Integer;
+begin
+  for LTentativa := 1 to TENTATIVAS do
+  begin
+    try
+      if not Connection.Connected then
+      begin
+        Connection.HostName := Host;
+        Connection.DatabaseName := Database;
+        Connection.UserName := User;
+        Connection.Password := Password;
+        Connection.Port := Port;
+        Connection.LoginPrompt := False;
+        // IMPORTANTE (API): NAO definir CharSet='UTF8'.
+        // Com CharSet=UTF8 o FPC converte o texto para o codepage do sistema
+        // (CP1252), o que corrompe o JSON. Sem CharSet o Firebird entrega os
+        // bytes UTF-8 crus, exatamente o que a API deve repassar.
+        Connection.Connected := True;
+      end;
+      Exit;
+    except
+      on E: Exception do
+      begin
+        if LTentativa = TENTATIVAS then
+          raise;
+        { Limpa o estado antes de tentar de novo. Na segunda falha os objetos
+          sao recriados: so fechar Connected nao resolve quando o fbclient
+          guardou um handle invalido apos o servidor reiniciar. }
+        try
+          if Connection.Connected then
+            Connection.Connected := False;
+        except
+        end;
+        if LTentativa >= 2 then
+          RenovarObjetos;
+        Sleep(200 * LTentativa);
+      end;
+    end;
+  end;
+end;
+
+function TConexao.Ping: Boolean;
+var
+  LQuery: TSQLQuery;
+  LTransacaoAberta: Boolean;
+begin
+  Result := False;
+  LTransacaoAberta := Transaction.Active;
+  LQuery := TSQLQuery.Create(nil);
+  try
+    try
+      LQuery.DataBase := Connection;
+      LQuery.Transaction := Transaction;
+      if not LTransacaoAberta then
+        Transaction.StartTransaction;
+      LQuery.SQL.Text := 'SELECT 1 FROM RDB$DATABASE';
+      LQuery.Open;
+      Result := (LQuery.Fields[0].AsInteger = 1);
+      LQuery.Close;
+      if not LTransacaoAberta then
+        Transaction.Commit;
+    except
+      on E: Exception do
+      begin
+        try
+          if Transaction.Active and (not LTransacaoAberta) then
+            Transaction.Rollback;
+        except
+        end;
+        raise;
+      end;
+    end;
+  finally
+    LQuery.Free;
+  end;
+end;
+
+function TConexao.PingComReconexao(out AMensagem: string): Boolean;
+var
+  LTentativa: Integer;
+begin
+  AMensagem := '';
+  for LTentativa := 1 to 2 do
+  begin
+    try
+      if not Connection.Connected then
+        Conectar;
+      if Ping then
+        Exit(True);
+      AMensagem := 'ping do banco nao confirmou a consulta';
+    except
+      on E: Exception do
+        AMensagem := E.Message;
+    end;
+
+    if LTentativa < 2 then
+    begin
+      try
+        RenovarObjetos;
+      except
+      end;
+      try
+        Conectar;
+      except
+        on E: Exception do AMensagem := E.Message;
+      end;
+    end;
+  end;
+  Result := False;
 end;
 
 procedure TConexao.Desconectar;
@@ -374,6 +501,7 @@ function TConexaoPool.Obter: TConexao;
 var
   LThread: TThreadId;
   LIdx, LEspera: Integer;
+  LMsgBanco: string;
 begin
   LThread := GetCurrentThreadId;
   Result := nil;
@@ -404,9 +532,13 @@ begin
     begin
       try
         Result.Conectar;   { idempotente: so conecta se preciso }
+        { Connected=True nao garante socket vivo. O ping evita entregar uma
+          conexao morta a uma rota (erro "connection shutdown" no login). }
+        if not Result.PingComReconexao(LMsgBanco) then
+          raise Exception.Create('Banco indisponivel: ' + LMsgBanco);
       except
-        { falhou ao conectar (banco fora do ar): devolve a vaga para nao
-          deixar uma conexao presa na thread }
+        { falhou ao conectar/pingar: devolve a vaga para nao deixar uma
+          conexao presa na thread }
         Devolver(LThread);
         raise;
       end;
@@ -426,14 +558,26 @@ end;
 procedure TConexaoPool.Devolver(AThreadId: TThreadId);
 var
   LIdx: Integer;
+  LConexao: TConexao;
 begin
   EnterCriticalSection(FLock);
   try
     LIdx := IndexDaThread(AThreadId);
     if LIdx >= 0 then
     begin
-      FItens[LIdx].Conexao.Free;   { Destroy faz Rollback + Desconectar }
-      FItens[LIdx].Conexao := nil;
+      LConexao := FItens[LIdx].Conexao;
+      if LConexao <> nil then
+      begin
+        { Nao destruir a conexao a cada requisicao: criar/anexar/desanexar
+          uma TIBConnection por request com 20 threads simultaneas leva o
+          fbclient local a "connection shutdown" e derruba TODA a API.
+          Devolve a conexao VIVA para a vaga, cancelando so a transacao.
+          O ping em Obter detecta socket morto e renova se necessario. }
+        try
+          LConexao.Cancelar;
+        except
+        end;
+      end;
       FItens[LIdx].ThreadId := 0;
     end;
   finally

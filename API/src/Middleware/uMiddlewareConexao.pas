@@ -12,8 +12,8 @@ unit uMiddlewareConexao;
 
   Este middleware envolve a requisicao inteira: depois que a rota
   responde (ou falha), a conexao da thread volta ao pool. O
-  TConexao.Destroy faz Rollback de qualquer transacao pendente e
-  fecha a conexao, entao a proxima requisicao comeca limpa.
+  A conexao volta VIVA para a vaga (so a transacao pendente e
+  cancelada); o pool faz ping ao retirar a vaga e renova se preciso.
   ============================================================ }
 
 interface

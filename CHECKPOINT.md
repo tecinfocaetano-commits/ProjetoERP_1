@@ -35,26 +35,43 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**Últimos marcos:** 3.83 (D10 — CI e `api_todos.ps1`), 3.81 (homologação) e
-3.80 (`:bipe`); 3.82 é o app PDV mobile do outro agente. O marco 3.81 está em
-`5da0c7d` (docs) e `462531f` (código). Pode haver commit de outro agente
+**Últimos marcos:** 3.86 (pool/health da API — **a API caindo toda hora**),
+3.85 (pagamentos PDV do outro agente), 3.84 (cupom PDF), 3.83 (D10),
+3.81 (homologação) e 3.80 (`:bipe`); 3.82 é o app PDV mobile. O marco 3.86
+está em `<hash do commit>` (código + docs). Pode haver commit de outro agente
 acima. Build: desktop **0/0** ·
 suíte desktop **385/385** · `build_api.bat` **OK** (pare a API antes de
 compilar, senão o `.exe` fica travado) · testes Android **9/9** ·
 `build_bipe.bat` **OK** (APK do app de bipagem de talão) · smoke de
 telas **33/33** · `permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1`
 e `banco_fresco.ps1` **OK** (585 campos, diff vazio, acentos conferidos) · na
-API 9000: `api_clientes_crud.ps1`, `api_auditoria.ps1` (6 logs),
-`api_estoque_service.ps1`, `api_numeracao_empresa.ps1`, `api_paginacao.ps1` e
-`api_f1.ps1` (7 logs) **OK**. Árvore: sem mudanças nossas após os commits;
-`tmp_shots/` (do smoke do `:bipe`) permanece untracked e não foi tocada.
-API não foi reiniciada neste marco (mudança desktop-only); `/api/health` = `ok`.
+API 9000: `api_todos.ps1` **6 smokes OK** (`api_clientes_crud.ps1`,
+`api_auditoria.ps1` 6 logs, `api_estoque_service.ps1`,
+`api_numeracao_empresa.ps1`, `api_paginacao.ps1`, `api_f1.ps1` 7 logs).
+API recompilada e no ar em **PID 18576** com o fix do pool **e** a Fase 0 de
+pagamentos do outro agente. `/api/health` =
+`{"status":"ok","servico":"ERP2026API","banco":"ok","pool":"pool=8 conexoes, 1 em uso"}`;
+com `ERP_DB_PATH` inválido devolve **503**. Carga final: 60/60 logins
+sequenciais e **60/60 concorrentes (20 simultâneos, `KeepAlive=false`)**,
+0 exceções, PID estável. `tmp_shots/` permanece untracked e não foi tocada.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
-- Nada.
+- Nada deste agente. Outro agente segue no app `:pdv` (tela de espera/polling
+  de pagamento); arquivos dele não são editados nem commitados aqui.
+
+### O que fechou nesta sessão (marco 3.86 — API estável: pool/health)
+
+| Item | Entrega |
+|---|---|
+| **Sintoma** | `/api/health` dizia `ok`, mas `POST /api/login` devolvia `TIBConnection : DoInternalConnect : -connection shutdown`; `isql` conectava normal. Aparecia "toda hora", inclusive no celular (outro agente relatou 3ª vez no canal). |
+| **Causa raiz** | `TConexaoPool.Devolver` **destruía** a `TIBConnection` a cada requisição; com ~20 threads o fbclient local entrava em `connection shutdown` e derrubava as requisições. |
+| **Correção** | `Devolver` só cancela a transação e **devolve a conexão viva** à vaga. `Obter` faz ping real (`SELECT 1 FROM RDB$DATABASE`) e renova os objetos Firebird se o socket morreu. `Conectar` tem retry com renovação. `/api/health` consulta o banco, devolve `"banco":"ok"` e **503** com a mensagem do erro quando falha. |
+| **Arquivos** | `API\src\Config\uConexao.pas`, `API\ERP2026API.lpr`, `API\src\Middleware\uMiddlewareConexao.pas` (só comentário). Nenhum arquivo do outro agente foi tocado. |
+| **Validação** | 3 janelas de restart avisadas no canal. Build OK. 20/20 e 60/60 logins sequenciais; 60/60 concorrentes com 20 simultâneos e `KeepAlive=false`, 0 exceções, PID 18576 estável; health 503 com banco inválido; `api_todos.ps1` 6 smokes OK; suíte desktop 385/385. |
+| **Prompt fiscal** | `PROMPT_TESTES_FISCAIS_GRATUITOS.md` — bateria local/gratuita sem MEI e sem SEFAZ (pedido 1003, certificado autoassinado, validação XML, DANFE, importação de nota de entrada). Anota NFS-e futura com **Código do provedor** (Sigcorp/Beta/NACIONAL + padrão nacional) e nota de entrada de serviços/comunicação/internet/notas municipais — só documentação. |
 
 ### O que fechou nesta sessão (marco 3.83 — D10: CI e smokes unificados)
 

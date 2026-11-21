@@ -26,10 +26,38 @@ uses
   uRotasProducao,
   uRotasPDV;
 
-procedure RotaHealth(Req: THorseRequest; Res: THorseResponse);
+function JsonTexto(const ATexto: string): string;
 begin
-  Res.Send('{"status":"ok","servico":"ERP2026API","pool":"' +
-    TConexao.PoolDescricao + '"}');
+  Result := StringReplace(ATexto, '\', '\\', [rfReplaceAll]);
+  Result := StringReplace(Result, '"', '\"', [rfReplaceAll]);
+  Result := StringReplace(Result, #13, ' ', [rfReplaceAll]);
+  Result := StringReplace(Result, #10, ' ', [rfReplaceAll]);
+end;
+
+procedure RotaHealth(Req: THorseRequest; Res: THorseResponse);
+var
+  LMensagem: string;
+  LBancoOk: Boolean;
+begin
+  LMensagem := '';
+  LBancoOk := False;
+  try
+    { GetInstance ja pinga o banco e renova a conexao se ela estiver morta.
+      Antes o health so lia Connection.Connected e podia dizer "ok" com o
+      banco inacessivel. }
+    TConexao.GetInstance;
+    LBancoOk := True;
+  except
+    on E: Exception do LMensagem := E.Message;
+  end;
+
+  if LBancoOk then
+    Res.Send('{"status":"ok","servico":"ERP2026API","banco":"ok","pool":"' +
+      TConexao.PoolDescricao + '"}').Status(THTTPStatus.OK)
+  else
+    Res.Send('{"status":"erro","servico":"ERP2026API","banco":"' +
+      JsonTexto(LMensagem) + '","pool":"' + TConexao.PoolDescricao + '"}')
+      .Status(THTTPStatus.ServiceUnavailable);
 end;
 
 var
