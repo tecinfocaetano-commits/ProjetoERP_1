@@ -2561,3 +2561,19 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - `PRODUTO` é o produto de produção (nome físico mantido; `PRODUTO_PRODUCAO` é conceitual).
 - `PRODUTO_FINANCEIRO` não existe mais.
 - Android: preservar todos os `android:id`.
+
+### 3.84 PDV Mobile — cupom da venda em PDF (21/11)
+
+- **`CupomPdf.java`** (novo): gera o cupom não fiscal em PDF com
+  `PdfDocument` nativo do Android — sem dependência Gradle nova.
+  Cabeçalho "ERP 2026 - PDV", número/data da venda, itens, subtotal,
+  desconto, total, pago, troco e aviso "Documento não fiscal".
+- **`PdvActivity`:** diálogo pós-venda ganha botão **PDF** ao lado de
+  OK/Compartilhar; o arquivo vai para o cache do app e é compartilhado
+  via `FileProvider` (`res/xml/file_paths.xml` + provider no manifest).
+- **Teste real (Samsung A55, adb):** venda nº 4 — Produto Demo +
+  Produto Teste Simulação (R$175), pago R$200 → troco R$25 — PDF
+  `cupom_venda_4.pdf` gerado e extraído do aparelho com sucesso.
+- **Nota de rede documentada:** com o USB tethering fora, o celular
+  não alcança 10.103.239.156; `adb reverse tcp:9000` + URL
+  `http://127.0.0.1:9000` resolveu o teste via Wi-Fi ADB.

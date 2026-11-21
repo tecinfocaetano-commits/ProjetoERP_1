@@ -19,8 +19,9 @@ na API (`/api/pdv/*` → `TPDVService`); o app só coleta e exibe dados.
   valor pago com troco calculado na hora; `POST /api/pdv/vendas` grava
   a venda STATUS 'F' + itens + movimento de caixa 'V' (mesma transação
   e auditoria do PDV desktop).
-- Cupom não fiscal exibido após a venda, com opção de **compartilhar**
-  (WhatsApp etc.).
+- Cupom não fiscal exibido após a venda, com opções de **compartilhar**
+  texto (WhatsApp etc.) e **PDF** (`CupomPdf.java`, PdfDocument nativo,
+  compartilhado via FileProvider — sem dependência nova).
 - Caixa: abrir (valor inicial), suprimento ('E'), sangria ('S') e
   fechamento com saldo apurado — tudo via `/api/pdv/caixa/*`.
 - Sessão expirada (HTTP 401) volta ao login automaticamente.
@@ -50,5 +51,6 @@ APK gerado em `pdv\build\outputs\apk\debug\pdv-debug.apk`.
   aplica aqui).
 - TEF, múltiplas formas de pagamento por venda, cliente identificado
   (usa sempre o "Consumidor Final" da empresa).
-- Impressão térmica/PDF do cupom — hoje o cupom é texto compartilhável.
+- Impressão térmica direta — o PDF pode ser enviado a qualquer app de
+  impressão; cupom dedicado 80mm fica para uma fase futura.
 - Funciona **somente online** (vendas exigem a API no ar).

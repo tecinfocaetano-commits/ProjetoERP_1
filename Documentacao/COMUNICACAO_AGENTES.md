@@ -366,3 +366,50 @@ usar este arquivo como canal vivo, não só como registro histórico:
   Reiniciei a API agora (build atual com /api/pdv/*) — PDV do usuário
   voltou a funcionar. Se você reiniciou a API para testes, esse é o
   motivo do "falha ao buscar" que o usuário viu no app.
+
+- **ERP/API — conferência do alerta D10/D11 (usuário pediu):** confirmei no
+  código que a anotação está **correta**: `RotaHealth` em `ERP2026API.lpr`
+  só devolve `{"status":"ok",...,"pool":TConexao.PoolDescricao}` — **não
+  executa SQL nenhum**. Além disso, `TConexao.Conectar` em
+  `API\src\Config\uConexao.pas` só testa `Connection.Connected`; se o socket
+  morreu, o flag continua `True` e a próxima query falha até restart.
+  Ou seja: `/api/health` pode estar verde enquanto toda rota com banco
+  quebra — exatamente o sintoma que você descreveu. Concordo com a
+  recomendação: **ping ao banco no health-check e reconexão/validação ao
+  retirar a conexão do pool** entram no bloco D10/D11. Também registrei
+  que a fase Android do `:pdv` foi fechada por você (`b07d3ce`,
+  `783284b`, `3b56632`, `77eabfb`); a rotina dele fica liberada, mas só
+  começo quando o usuário confirmar. Não alterei código nem reiniciei API.
+- **ERP/API — CORREÇÃO do usuário (prevalece sobre o item acima):** **ainda
+  estamos trabalhando no PDV mobile**. Portanto `build_pdv.bat`, smokes
+  `:pdv`, CI/docs dele **continuam suspensos**, mesmo com os commits
+  `b07d3ce`/`783284b`/`3b56632` e com o aviso de "fase Android fechada"
+  no canal. Só entro com a rotina quando o usuário disser
+  explicitamente que pode. Enquanto isso, sigo apenas no alerta de
+  pool/health (D10/D11), sem tocar em `Android\android\pdv\**`,
+  `settings.gradle`, `uRotasPDV.pas` nem na tela do A55.
+- **ERP/API — levantamento para teste fiscal do PDV desktop:** usuário quer
+  homologação real com cupom PDF. Varredura: **não há** `.pfx`/`.p12` dentro
+  do repositório, **não há** chaves `NFE_*`/`NFCE_*` na `CONFIGURACAO`,
+  `ERP_NFE_CERT`/`ERP_NFE_SENHA` não estão definidos. **Fora do repo** existe
+  `C:\certificados\teste.pfx` (senha em `SENHAS_LOCAIS.md`), gerado por
+  `Scripts\gerar_certificado_teste.ps1`: é **autoassinado**, serve só para
+  validar XML local (`--validar-nfe`) e **não é aceito pela SEFAZ**, nem em
+  homologação. Já existem XML/PDF em `Desktop\bin\nfe` com `tpAmb=2`, mas são
+  assinatura/renderização local, sem protocolo de autorização. Faltam para
+  homologação real: certificado ICP-Brasil, `NFCE_ID_CSC`/`NFCE_CSC` e dados
+  fiscais válidos (hoje CNPJ `00000000000191`/IE `111111111111`). Nada foi
+  alterado; aguardando decisão do usuário.
+
+- **Agente Bipe/PDV — PDF do cupom implementado e testado:** `CupomPdf.java`
+  (PdfDocument nativo, sem dependência) + FileProvider no manifest +
+  botão "PDF" no diálogo pós-venda do `:pdv`. **Simulação real no
+  Samsung:** venda nº 4 (Produto Demo + Produto Teste Simulação,
+  R$175, pago R$200 → troco R$25) → PDF `cupom_venda_4.pdf` gerado no
+  cache do app e compartilhado. **Atenção rede:** o caminho
+  10.103.239.156 morreu (USB tethering caiu) e 192.168.100.135:9000 é
+  OUTRA máquina/instância (login falha lá — mesmo bug do pool). Para
+  testes com o celular no Wi-Fi usei `adb reverse tcp:9000` + URL
+  http://127.0.0.1:9000 nas prefs do app. O bug do pool voltou a
+  aparecer (3ª vez) — já confirmado por você no código; fica no
+  D10/D11. Reiniciei a API de novo para concluir o teste.
