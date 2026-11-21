@@ -60,6 +60,17 @@ O QUE JÁ FOI FEITO (marco 3.71 — não refaça, apenas mantenha)
      exibidos com a mensagem real. Bipe sonoro distinto por resultado
      (ToneGenerator), contadores do turno e histórico SQLite
      (BipeDb.java, últimas 50 bipagens em bipe.db).
+   - MODO OFFLINE implementado: sem rede a bipagem entra na fila
+     `pendente` do SQLite (DB v2, FIFO com hora original); sincroniza
+     sozinha no onResume e após cada bipagem, ou pelo botão "Enviar
+     fila". Envio usa origem=APP_BIPE_OFFLINE; resultado real do
+     servidor grava no histórico. "Zerar turno" NÃO apaga a fila.
+   - Endpoint extra: GET /api/producao/bipagens?limite=N lista as
+     últimas bipagens da empresa (isolamento via USUARIO.EMPRESA_ID);
+     o app tem HistoricoActivity + botão "Ver bipagens do servidor".
+   - SMOKE TEST REAL FEITO (marco 3.73): ciclo OK/DUPLICADO/INVALIDO
+     exercitado via curl com talão de teste T999999 — achou e corrigiu
+     Access violation (double-free) no endpoint (`ccea527`).
    - ApiClient.java: POST JSON mínimo com header Bearer.
    - Sessao expirada → volta ao login automaticamente.
    - Layouts: activity_login.xml, activity_bipagem.xml
@@ -87,17 +98,14 @@ O QUE FALTA / PRÓXIMOS PASSOS POSSÍVEIS (em ordem de prioridade)
    uRotasProducao.pas e uRotasLogin.pas — se houver defeito, corrigir
    no app; a regra de negócio NÃO se toca (384/384).
 
-2. MODO OFFLINE / FILA (melhoria opcional): hoje a bipagem é
-   online-only — se o Wi-Fi da fábrica cair, o operador fica sem
-   bipar. Se o usuário pedir, implementar fila local (tabela outbox
-   no BipeDb ou padrão Sincronizacao.java do app base) que grava o
-   código como PENDENTE e reenvia quando houver rede; o servidor é a
-   fonte da verdade do status, então o app deve mostrar badge de
-   "aguardando sincronização" e reconciliar o resultado depois.
+2. ~~MODO OFFLINE / FILA~~ — **IMPLEMENTADO**: tabela `pendente` no
+   BipeDb (FIFO), envio automático no onResume/após bipagem e botão
+   "Enviar fila"; origem APP_BIPE_OFFLINE; resultado real do servidor
+   vai para o histórico com a hora original do bipe.
 
-3. LISTA DE TALÕES DO TURNO / RELATÓRIO: se pedido, GET na API para
-   listar bipagens do dia por usuário/empresa (TALAO_BIPAGEM já
-   registra tudo) e tela de resumo no app.
+3. ~~LISTA DE TALÕES DO TURNO / RELATÓRIO~~ — **IMPLEMENTADO**:
+   GET /api/producao/bipagens + HistoricoActivity no app (botão
+   "Ver bipagens do servidor").
 
 4. APP PDV MOBILE (projeto separado — PROMPT 2 do arquivo de prompts):
    NÃO misturar com este. Se o usuário pedir PDV, é outro módulo e

@@ -2148,6 +2148,35 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.73 Bipe — smoke test real, modo offline e histórico do servidor (21/11)
+
+- **Smoke test de verdade:** API no ar + `curl` exercitou o endpoint com
+  talões reais. Achou e corrigiu **Access violation** por double-free de
+  `TJSONObject` em `uRotasProducao.pas` (`ccea527`). Depois do fix:
+  `INVALIDO` (inexistente/cancelado), `DUPLICADO` (mapa concluído) e o
+  ciclo completo `OK`: talão de teste `T999999` (GERADO→EM_PRODUCAO→
+  CONCLUIDO, `mapa_concluido=true`) — o mapa 1014/pedido 3581 foi
+  concluído pelo teste (dados de cenário, "Produto cenario fiscal").
+- **App — revisão de contrato:** `empresa_id` opcional no login
+  (multiempresa), histórico local zerado ao trocar de empresa, erros
+  `{"error":...}` exibidos, sufixo Tab/DPAD_CENTER para leitores (`a6bdfd8`).
+- **Modo offline:** `BipeDb` v2 com tabela `pendente` (FIFO + hora
+  original). Sem rede a bipagem enfileira; sincroniza no `onResume`,
+  após cada bipagem e pelo botão "Enviar fila". Envio com
+  `origem=APP_BIPE_OFFLINE`; resultado real do servidor grava no
+  histórico. "Zerar turno" não apaga a fila (`ac013c2`).
+- **Histórico do servidor:** `GET /api/producao/bipagens?limite=N`
+  (máx. 500) lista `TALAO_BIPAGEM` da empresa via `USUARIO.EMPRESA_ID`
+  (a tabela não tem `EMPRESA_ID`); `LEFT JOIN TALAO` cobre
+  `TALAO_ID=0`. App ganhou `HistoricoActivity` + `ApiClient.get` e o
+  botão "Ver bipagens do servidor" (`1fce8fc` + `ac013c2`).
+- **Verificação:** `:bipe:assembleDebug` OK; endpoint testado via curl
+  (5 bipagens listadas corretamente); desktop **384/384** inalterado.
+- **Pendente:** teste no aparelho físico (instalar APK + API na rede
+  local) — único passo que depende do usuário.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.
