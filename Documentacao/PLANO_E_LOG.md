@@ -2093,6 +2093,18 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   (`bipe-debug.apk`); `run_tests_android.bat` OK; desktop build **0/0** e
   suíte **384/384** inalterados; API compilada.
 - **Commits:** `223b85e` (módulo) + commit de docs deste marco.
+- **Smoke test real (21/11):** API no ar + login `admin` + bipagens via
+  `curl` — encontrou e corrigiu um **Access violation** por double-free
+  de `TJSONObject` em `uRotasProducao.pas` (`LBody`/`LData` apontavam
+  para o mesmo objeto). Após o fix (`ccea527`): código inexistente →
+  `INVALIDO`, talão cancelado (`T000003`) → `INVALIDO`, talão de mapa
+  concluído (`T000001`) → `DUPLICADO`. O caminho `OK` (transição de
+  status) não foi exercitado porque o banco só tem talões concluídos/
+  cancelados — coberto pela suíte desktop (384/384). Também foi
+  revisado o app contra os contratos de `uRotasLogin`/`uRotasProducao`
+  e adicionados: `empresa_id` opcional no login, limpeza do histórico
+  ao trocar de empresa, exibição de `{"error": ...}` e sufixo `Tab`/
+  `DPAD_CENTER` para leitores que não usam Enter (`a6bdfd8`).
 
 ---
 

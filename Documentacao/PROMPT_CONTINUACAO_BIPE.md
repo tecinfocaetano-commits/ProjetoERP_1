@@ -75,14 +75,17 @@ VERIFICAÇÃO JÁ FEITA
 
 O QUE FALTA / PRÓXIMOS PASSOS POSSÍVEIS (em ordem de prioridade)
 
-1. TESTE DE CAMPO (pendente, depende do usuário): instalar o APK num
-   aparelho/emulador com a API no ar (ERP2026API.exe na porta 9000),
-   login com usuário real e bipar um TALAO.CODIGO_BARRAS existente.
-   Verificar os 3 resultados (OK, DUPLICADO, INVALIDO) e a persistência
-   do histórico após fechar o app. O contrato já foi revisado contra
-   uRotasProducao.pas e uRotasLogin.pas (campos batem; empresa_id
-   opcional coberto) — se houver defeito, corrigir no app; a regra de
-   negócio NÃO se toca, ela já está testada (384/384).
+1. TESTE DE CAMPA (pendente, depende do usuário): instalar o APK num
+   aparelho/emulador com a API no ar (ERP2026API.exe na porta 9000 —
+   para celular na rede local use o IP da máquina, ex.:
+   http://192.168.x.x:9000), login com usuário real e bipar um
+   TALAO.CODIGO_BARRAS existente. O endpoint já foi smoke-testado via
+   curl: INVALIDO (inexistente e cancelado) e DUPLICADO (mapa
+   concluído) respondem correto após fix de double-free (`ccea527`).
+   O caminho OK (transição de status) só falta exercitar com um talão
+   GERADO/IMPRESSO/EM_PRODUCAO real. O contrato foi revisado contra
+   uRotasProducao.pas e uRotasLogin.pas — se houver defeito, corrigir
+   no app; a regra de negócio NÃO se toca (384/384).
 
 2. MODO OFFLINE / FILA (melhoria opcional): hoje a bipagem é
    online-only — se o Wi-Fi da fábrica cair, o operador fica sem
