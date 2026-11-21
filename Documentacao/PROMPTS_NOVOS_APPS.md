@@ -4,6 +4,12 @@ Prompts profissionais prontos para colar em novas sessões do agente.
 Cada app é um entregável independente; siga na ordem sugerida
 (Bipagem primeiro — é menor e a regra de negócio já existe no desktop).
 
+> **Status:** PROMPT 1 (Bipagem) **executado** — módulo `Android/android/bipe`
+> + endpoint `POST /api/producao/bipar` + motor compartilhado
+> `uProducaoBipagem` (marco 3.71, commits `f651c0f`/`9dee0fd`/`223b85e`).
+> Pendente: teste de ponta a ponta num aparelho com a API no ar.
+> PROMPT 2 (PDV Mobile) ainda não iniciado.
+
 ---
 
 ## PROMPT 1 — App mobile de bipagem de talões

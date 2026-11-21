@@ -2030,6 +2030,72 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.70 D3 — API linka Services e sessão por thread (21/11)
+
+- **Objetivo:** acabar com a regra duplicada na API: `build_api.bat`
+  compilava apenas `API\src`, `Models` e `Utils`, então cada rota
+  reescrevia em SQL o que os Services do desktop já fazem.
+- **Build:** `Scripts\build_api.bat` passou a incluir
+  `-Fu"%ROOT%\Desktop\src\Repositories"` e
+  `-Fu"%ROOT%\Desktop\src\Services"`. `API\src\Config` continua na frente
+  para não substituir o pool de conexões pelo singleton do desktop. Sem
+  ACBr, LazReport ou UI na API (os Services são headless; `uACBrHelper`
+  compila em modo simulado sem `-dACBR`).
+- **Contexto por requisição:** os Services leem `TSessao.GetInstance`. Como a
+  API atende cada requisição numa thread, compartilhar o singleton do
+  desktop daria *race* entre empresas. `uSessao` ganhou
+  `DefinirContexto`/`LimparContexto` apoiados em `threadvar`;
+  `GetInstance` prefere o contexto da thread quando existe. O desktop
+  (thread principal) continua usando `FInstance`.
+- **Middleware:** novo `API\src\Middleware\uMiddlewareSessao.pas` roda depois
+  do JWT, lê `sub`/`empresa_id` do token, chama `DefinirContexto` e limpa no
+  `finally`. `/api/health` e `/api/login` são isentos, pela mesma regra do
+  `MiddlewareJWT` (sem essa isenção, as rotas públicas voltaram 401).
+- **Rotas migradas:** `GET /api/clientes` e `GET /api/clientes/:id` usam
+  `TPessoaService.BuscarTodos('C')` e `BuscarPorId` — sem SQL inline de
+  cliente na rota. A rota apenas confirma `EmpresaId` e `Tipo = 'C'` antes
+  de devolver o JSON; o contrato da resposta foi preservado.
+- **Verificação:** API compilada; smoke em runtime: `health=ok`, login com
+  empresa 1, `GET /api/clientes` com 10 registros e `GET /api/clientes/:id`
+  OK. Desktop build **0/0** e suíte **384/384**.
+- **Commit:** `f1b19ef`. Também foram para o remoto os commits paralelos do
+  app de bipagem (`f651c0f` — motor compartilhado `uProducaoBipagem`;
+  `9dee0fd` — `POST /api/producao/bipar`) e os arquivos do módulo Android
+  `bipe` que estavam no working tree.
+
+---
+
+### 3.71 App Android de bipagem de talões (21/11)
+
+- **Objetivo:** executar o Prompt 1 de `Documentacao/PROMPTS_NOVOS_APPS.md`
+  — app dedicado para o chão de fábrica bipar `TALAO.CODIGO_BARRAS` e dar
+  baixa na produção, espelhando `uFrmBipagem`/`TProducaoService.BiparTalao`.
+- **Motor único:** `Desktop\src\Utils\uProducaoBipagem.pas` concentra
+  `ExecutarBipagemTalao` — transição de status, gravação de `TALAO_BIPAGEM`
+  e `LOG_SISTEMA`, tudo em transação com `EMPRESA_ID`/`USUARIO_ID` da sessão.
+  `TProducaoService.BiparTalao` (desktop) e a API chamam a mesma unit.
+- **API:** `POST /api/producao/bipar` em `API\src\Rotas\uRotasProducao.pas`,
+  registrado em `ERP2026API.lpr`; JWT + `uMiddlewareSessao` preenchem o
+  contexto da thread; resposta JSON com `resultado`
+  (`OK`/`DUPLICADO`/`INVALIDO`), descrição do talão e novo status.
+- **App `:bipe`:** módulo Gradle novo em `Android\android\bipe`
+  (`com.example.erp2026_bipe`, compileSdk 34 / minSdk 21). Telas: login com
+  URL do servidor e bipagem. Três formas de bipar: leitor USB/Bluetooth
+  (teclado + Enter), digitação manual e câmera via ZXing
+  (`zxing-android-embedded:4.3.0`). Bipe sonoro distinto por resultado;
+  contadores do turno e histórico SQLite (`bipe.db`, últimas 50) que
+  sobrevivem ao fechamento do app. Token JWT em `SharedPreferences`;
+  sessão expirada volta ao login.
+- **Decisões:** bipagem **online-only** (o status só o servidor conhece);
+  sem fila off-line nesta versão — fábrica com Wi-Fi instável pode pedir
+  outbox depois. Histórico local é só cache do turno, não sincroniza.
+- **Verificação:** `gradlew :bipe:assembleDebug` OK
+  (`bipe-debug.apk`); `run_tests_android.bat` OK; desktop build **0/0** e
+  suíte **384/384** inalterados; API compilada.
+- **Commits:** `223b85e` (módulo) + commit de docs deste marco.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

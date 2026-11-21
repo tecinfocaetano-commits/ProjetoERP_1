@@ -27,7 +27,7 @@ polimento/dívida.
 
 | # | Prior. | Item | Onde |
 |---|---|---|---|
-| D3 | A | Build da API não linka `Desktop\src\Services`: regra de negócio duplicada em SQL inline (causa de F5/D5). | `Scripts\build_api.bat` |
+| D3 | A | **CONCLUÍDO (marco 3.70):** build linka Services/Repositories, sessão por thread via JWT e rotas de clientes migradas para `TPessoaService`. | `Scripts\build_api.bat`, `uMiddlewareSessao.pas`, `uRotasClientes.pas` |
 | F4 | A | `POST /api/clientes` não devolve o ID; app casa por nome+CPF. Sem `PUT /api/clientes`. | `uRotasClientes.pas`, `Sincronizacao.java` |
 | D9 | A | Faltam índices únicos `USUARIO(EMPRESA_ID,LOGIN)`, `PESSOA(EMPRESA_ID,CPF_CNPJ)`, `PEDIDO_VENDA(EMPRESA_ID,NUMERO)`. | `Banco\schema_canonico.sql` |
 | D4 | A | Zero auditoria (`LOG_SISTEMA`) na API. | `API\src\Rotas\*` |
@@ -76,7 +76,7 @@ polimento/dívida.
 
 1. **F3 — CONCLUÍDO** (F1 no marco 3.63, F2 no 3.64, CC-e/inutilização/manifestação no 3.65, DANFE/cupom em PDF no 3.66 e NFC-e no PDV no 3.67).
 2. **T1 + T4 + F7 (login da API) — CONCLUÍDO** (T1 no marco 3.68, T4 no 3.69 e F7 no 3.62) — controle de acesso e isolamento por empresa.
-3. **D3 + F4 + D9 + D4 + D5 + F5 (próximo bloco)** — API com Services, ID/índices, auditoria e numeração por empresa.
+3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services (D3 **concluído no marco 3.70**); restam ID/índices, auditoria e numeração por empresa.
 4. **D7 + D8** — banco novo confiável a partir do repositório.
 5. **F6 + F9** — paginação e visibilidade de erros na API/Android.
 6. **F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios e backup pela aplicação.
@@ -92,6 +92,7 @@ polimento/dívida.
 - **F3 completo (fiscal)** - NFC-e emitida ao finalizar a venda no PDV, com destinatário opcional no modelo 65 (regra única em `CamposFaltandoDestinatario`), configuração fiscal lida da `CONFIGURACAO` (`NFE_CERTIFICADO`, `NFE_AMBIENTE`, `NFE_MODO`, `NFCE_ID_CSC`, `NFCE_CSC`) e cupom em PDF aberto no leitor padrão (marco 3.67).
 - **T1** — permissões nas 33 telas via catálogo canônico, abertura em falha fechada, menu/ações por permissão e seed idempotente; teste de UI `permissoes_menu.ps1` com 0 falhas (marco 3.68).
 - **T4** — isolamento por empresa no copiloto (12 consultas com `:EMP`), produção (mapa/pedido/talão/consumo), bipagem (via `TALAO`/`USUARIO`) e caixa (via `JOIN CAIXA`); `CriarMapa` recusa pedido de outra empresa (marco 3.69).
+- **D3** — API compila com `Desktop\src\Services` + `Repositories`; `uSessao` por thread e `uMiddlewareSessao` levam `empresa_id` do JWT aos Services, sem singleton compartilhado; clientes passaram a usar `TPessoaService` (marco 3.70).
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
 - **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
 - **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).

@@ -10,12 +10,12 @@ Regras: responder em português; terminar toda resposta com exatamente 3 linhas 
 
 Estado em 21/11/2026:
 
-- **HEAD:** `5d17e17` (Isolamento por empresa nas consultas (T4)). Árvore limpa após o commit de docs.
+- **HEAD:** `f1b19ef` (D3: API linka Services e usa sessao por thread). Árvore limpa após o commit de docs.
 - Suíte desktop **384/384**; build desktop **0/0** (sem avisos do compilador); API compilada; testes Android **OK**; smoke de telas **33/33**; `permissoes_menu.ps1` **0 falhas**.
-- **Concluído nesta etapa:** **T4 — isolamento por empresa** (marco 3.69, §3.69): copiloto com 12 consultas filtrando `:EMP`, produção recusando mapa/pedido/talão de outra empresa, bipagem isolada via `TALAO`/`USUARIO` e caixa via `JOIN CAIXA`; novo `TestIsolamentoEmpresaProducao` (limpeza no `finally`). Antes: **T1 — permissões em todas as telas** (marco 3.68, §3.68): catálogo canônico de 33 telas, falha fechada na abertura, menu/ações por permissão e seed idempotente. O **bloco de acesso (T1/T4/F7) está fechado**, assim como o **bloco fiscal (F3)**.
+- **Concluído nesta etapa:** **D3 — API com Services e sessão por thread** (marco 3.70, §3.70): `build_api.bat` linka Services/Repositories; `uSessao` usa `threadvar` e o novo `uMiddlewareSessao` passa `empresa_id` do JWT aos Services (rotas públicas isentas); `GET /api/clientes` e `/:id` migrados para `TPessoaService`. Antes: **T4** (3.69, isolamento por empresa), **T1** (3.68, permissões em 33 telas) e **F3** (fiscal, 3.65–3.67). Também no remoto: motor de bipagem compartilhado (`uProducaoBipagem`) e `POST /api/producao/bipar`.
 - Banco real conferido sem resíduos (`LOG_SISTEMA` sem `CCE`).
 - **Auditorias de completude concluídas** (desktop e API/Android/banco): itens priorizados em `Documentacao\ROADMAP_PRODUCAO.md`, com T1/T4 marcados como concluídos. Ordem restante: API D3, F4+D9, D4, D7/D8, F6/F9; gestão F5/F6/F9, F4/F13, relatórios/backup.
-- **Próximo passo:** bloco da **API** — (a) **D3**: linkar `Desktop\src\Services` em `Scripts\build_api.bat` para acabar com SQL/regra duplicados; (b) **F4+D9**: devolver ID em `POST /api/clientes`, criar `PUT /api/clientes` e índices únicos; (c) **D4**: auditoria `LOG_SISTEMA` nas rotas; depois D5/F5, D7/D8 e F6/F9. Repetir a bateria completa (desktop, **384/384**, API, Android, smoke e permissões de menu) a cada marco.
+- **Próximo passo:** bloco da **API** — (a) **F4+D9**: devolver ID em `POST /api/clientes`, criar `PUT /api/clientes` e índices únicos; (b) **D4**: auditoria `LOG_SISTEMA` nas rotas; (c) **D5/F5**: movimento de estoque e numeração via Services; depois D7/D8 e F6/F9. Repetir a bateria completa (desktop, **384/384**, API, Android, smoke e permissões de menu) a cada marco.
 
 Comandos:
 
@@ -35,6 +35,6 @@ Comandos:
 - Banco: `Banco\dados.fdb` (SYSDBA/masterkey); Firebird 5 em `C:\Program Files\Firebird\Firebird_5_0`.
 - Configuração de produção (banco/JWT): ver `Documentacao\CONFIGURACAO_AMBIENTE.md`.
 
-Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md` e o §3.69 do `Documentacao\PLANO_E_LOG.md`.
+Antes de commitar: ler o "Estado atual" do `CHECKPOINT.md` e o §3.70 do `Documentacao\PLANO_E_LOG.md`.
 
 ---

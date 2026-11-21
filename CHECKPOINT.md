@@ -35,17 +35,44 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `5d17e17` — "Isolamento por empresa nas consultas (T4)" (o commit de
-docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
+**HEAD:** `223b85e` — "App Android de bipagem de taloes (modulo :bipe)" (o
+commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
 suíte desktop **384/384** · API compilada (`Scripts\build_api.bat`) ·
-testes Android **OK** (`Scripts\run_tests_android.bat`) · smoke de telas
-**33/33** · `permissoes_menu.ps1` **0 falhas**.
+testes Android **OK** (`Scripts\run_tests_android.bat`) · `:bipe` compila e
+gera `bipe-debug.apk` · smoke de telas
+**33/33** · `permissoes_menu.ps1` **0 falhas**. Smoke da API: health `ok`,
+login (empresa 1), 10 clientes e detalhe OK.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.71 — app Android de bipagem)
+
+| Item | Entrega |
+|---|---|
+| **Motor compartilhado** | `uProducaoBipagem.ExecutarBipagemTalao` concentra a máquina de estados (GERADO/IMPRESSO→EM_PRODUCAO→CONCLUIDO), auditoria `TALAO_BIPAGEM` e transação; `TProducaoService.BiparTalao` e a API chamam a mesma unit — regra única, sem duplicação. |
+| **API** | `POST /api/producao/bipar {codigo, origem?}` em `uRotasProducao.pas`, JWT + `EMPRESA_ID`/`USUARIO_ID` do token via `uMiddlewareSessao`; retorna `resultado` (OK/DUPLICADO/INVALIDO), descrição do talão e novo status. |
+| **App `:bipe`** | Novo módulo Gradle `Android/android/bipe` (`com.example.erp2026_bipe`): login com URL do servidor, bipagem por teclado (leitor USB/BT ou digitação + Enter), câmera via ZXing (`zxing-android-embedded`), bipe sonoro distinto por resultado, contadores do turno e histórico SQLite (50). Sessão expirada volta ao login. |
+| **Verificação** | `:bipe:assembleDebug` OK → `bipe/build/outputs/apk/debug/bipe-debug.apk`; testes Android do app base **OK**; desktop **0/0** e suíte **384/384** mantidos. README do app em `Android/android/bipe/README.md`. |
+
+> Ainda falta teste de ponta a ponta do app num aparelho/emulador com a API
+> no ar — o contrato foi validado por compilação e pelo smoke da API.
+
+### O que fechou nesta sessão (marco 3.70 — D3: API com Services)
+
+| Item | Entrega |
+|---|---|
+| **Build (D3)** | `Scripts\build_api.bat` passou a incluir `Desktop\src\Repositories` e `Desktop\src\Services`. `API\src\Config` continua na frente para não trocar o pool da API pelo singleton do desktop; sem ACBr/LazReport. |
+| **Sessão por thread** | `uSessao` ganhou `DefinirContexto`/`LimparContexto` com `threadvar`: `GetInstance` prefere o contexto da thread; o desktop segue no singleton. Novo `uMiddlewareSessao` (depois do JWT) preenche empresa/usuário com as claims do token e limpa no `finally`; `/api/health` e `/api/login` ficam isentos. |
+| **Rotas** | `GET /api/clientes` e `GET /api/clientes/:id` usam `TPessoaService` em vez de SQL inline; a rota só confirma que o registro é cliente da empresa autenticada. |
+| **Verificação** | API compila; health `ok`, login empresa 1, 10 clientes e detalhe OK; desktop **0/0**; suíte **384/384**. Commit `f1b19ef` (junto com os arquivos do módulo Android de bipagem que estavam no working tree). |
+
+> Também entraram no histórico os commits do app de bipagem: extração do motor
+> compartilhado `uProducaoBipagem` (`f651c0f`) e endpoint
+> `POST /api/producao/bipar` (`9dee0fd`).
 
 ### O que fechou nesta sessão (marco 3.69 — isolamento por empresa, T4)
 
@@ -333,9 +360,9 @@ cabeçalho pai.
    - **Acesso e empresa — CONCLUÍDO:** T1 (permissões em todas as telas)
      no marco 3.68 e T4 (consultas por `EMPRESA_ID`) no 3.69.
      T2/T3/F7 (login) fechados no marco 3.62.
-   - **API (próximo bloco):** D3 (linkar `Desktop\src\Services` no build),
-     F4+D9 (ID na resposta + índices únicos), D4 (auditoria `LOG_SISTEMA`),
-     D7/D8
+   - **API:** D3 CONCLUÍDO no marco 3.70 (Services + sessão por thread).
+     Próximos: F4+D9 (ID na resposta + índices únicos), D4 (auditoria
+     `LOG_SISTEMA`), D5/F5 (estoque e numeração via Services), D7/D8
      (schema reproduzível e `SET NAMES UTF8`), F6/F9 (paginação e erros
      visíveis).
    - **Gestão:** F5/F6/F9 (ciclo de vida de pedidos e financeiro com baixa
