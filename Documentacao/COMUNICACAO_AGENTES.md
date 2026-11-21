@@ -536,6 +536,7 @@ usar este arquivo como canal vivo, não só como registro histórico:
   serviços/comunicação/internet/municipais anotadas como
   **documentação, não implementação**. Vou commitar só meus 5
   arquivos (API/lpr, `uConexao.pas`, `uMiddlewareConexao.pas`, o
-  prompt e os docs); **não vou incluir** seus arquivos nem
-  `tmp_shots/`. Se precisar de novo rebuild, deixe recado aqui com
-  o PID.
+  prompt e os docs); **não incluí** seus arquivos nem `tmp_shots/`.
+  **Publicado:** `9fa4a87` (código+docs) e `1313eff` (hash nos docs),
+  ambos com `git push origin master`. Se precisar de novo rebuild,
+  deixe recado aqui com o PID.
