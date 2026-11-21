@@ -44,13 +44,21 @@ public class HistoricoActivity extends AppCompatActivity {
         txtStatus.setText("Carregando bipagens do servidor...");
         new Thread(() -> {
             ApiClient.Result r;
+            String erro = "";
             try {
                 r = ApiClient.get("/api/producao/bipagens?limite=100");
             } catch (Exception e) {
+                erro = e.getClass().getSimpleName() + ": " + e.getMessage();
                 r = new ApiClient.Result(-1, "");
             }
             final ApiClient.Result resposta = r;
-            runOnUiThread(() -> carregar(resposta));
+            final String erroFinal = erro;
+            runOnUiThread(() -> {
+                carregar(resposta);
+                if (!erroFinal.isEmpty()) {
+                    txtStatus.setText("Erro de conexão: " + erroFinal);
+                }
+            });
         }).start();
     }
 
