@@ -26,7 +26,7 @@ procedure RegistrarRotasOrcamentos;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT, uAuditoria;
 
 const
   { DM_DESCRICAO em PEDIDO_VENDA.OBSERVACOES }
@@ -485,6 +485,12 @@ begin
           LQuery.ExecSQL;
         end;
 
+        { D4: gravação do orçamento auditada antes do commit }
+        RegistrarAuditoriaSeguraConexao(LConexao.Connection, LConexao.Transaction,
+          LEmpresaId, LUsuarioId, 'PEDIDO_VENDA', 'I', LOrcamentoId, '',
+          ResumoAuditoria(['NUMERO=' + IntToStr(LNumero), 'STATUS=O',
+            'TOTAL=' + FormatFloat('0.00', LTotal)]));
+
         LConexao.Confirmar;
 
         LResposta := TJSONObject.Create;
@@ -589,6 +595,11 @@ begin
         .Status(THTTPStatus.Conflict);
       Exit;
     end;
+
+    { D4: a conversão também fica registrada (antes/depois do STATUS) }
+    RegistrarAuditoriaSeguraConexao(LConexao.Connection, LConexao.Transaction,
+      LEmpresaId, LUsuarioId, 'PEDIDO_VENDA', 'CONVERTER', LId,
+      'STATUS=O', 'STATUS=P');
 
     LConexao.Confirmar;
 

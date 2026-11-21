@@ -247,23 +247,26 @@ begin
       ':DATA_NASC, :LIMITE, :OBS, :ATIVO)';
     PreencherParametros(LQuery, AObj, LTipo);
     LQuery.ExecSQL;
+
+    { D4: ID e auditoria lidos antes do commit, para LOG_SISTEMA entrar
+      na mesma transação da gravação (antes ficava depois do commit e
+      podia ser perdida silenciosamente). }
+    LGerador := TSQLQuery.Create(nil);
+    try
+      LGerador.DataBase := Conexao.Connection;
+      LGerador.Transaction := Conexao.Transaction;
+      LGerador.SQL.Text := 'SELECT GEN_ID(GEN_PESSOA_ID, 0) FROM RDB$DATABASE';
+      LGerador.Open;
+      Result := LGerador.Fields[0].AsLargeInt;
+    finally
+      LGerador.Free;
+    end;
+
+    LogOperacao('PESSOA', 'I', Result);
     Conexao.Confirmar;
   finally
     LQuery.Free;
   end;
-
-  LGerador := TSQLQuery.Create(nil);
-  try
-    LGerador.DataBase := Conexao.Connection;
-    LGerador.Transaction := Conexao.Transaction;
-    LGerador.SQL.Text := 'SELECT GEN_ID(GEN_PESSOA_ID, 0) FROM RDB$DATABASE';
-    LGerador.Open;
-    Result := LGerador.Fields[0].AsLargeInt;
-  finally
-    LGerador.Free;
-  end;
-
-  LogOperacao('PESSOA', 'I', Result);
 end;
 
 function TPessoaService.Atualizar(AObj: TPessoa): Boolean;
@@ -317,12 +320,14 @@ begin
     PreencherParametros(LQuery, AObj, LTipo);
     LQuery.ParamByName('ID').AsLargeInt := AObj.Id;
     LQuery.ExecSQL;
+
+    { D4: auditoria atômica com o UPDATE }
+    LogOperacao('PESSOA', 'U', AObj.Id);
     Conexao.Confirmar;
   finally
     LQuery.Free;
   end;
 
-  LogOperacao('PESSOA', 'U', AObj.Id);
   Result := True;
 end;
 

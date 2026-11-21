@@ -17,7 +17,7 @@ procedure RegistrarRotasProdutos;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT, uAuditoria;
 
 procedure GetProdutos(Req: THorseRequest; Res: THorseResponse);
 var
@@ -128,6 +128,7 @@ var
   LConexao: TConexao;
   LQuery: TSQLQuery;
   LUsuarioId, LEmpresaId: Int64;
+  LId: Int64;
 begin
   try
     DadosDoToken(Req, LUsuarioId, LEmpresaId);
@@ -158,10 +159,18 @@ begin
       try
         LQuery.DataBase := LConexao.Connection;
         LQuery.Transaction := LConexao.Transaction;
+        LConexao.IniciarTransacao;
+        { D4: o ID é lido do generator antes do INSERT para a auditoria }
+        LQuery.SQL.Text := 'SELECT GEN_ID(GEN_PRODUTO_ID, 1) FROM RDB$DATABASE';
+        LQuery.Open;
+        LId := LQuery.Fields[0].AsLargeInt;
+        LQuery.Close;
+
         LQuery.SQL.Text :=
           'INSERT INTO PRODUTO (ID, EMPRESA_ID, CATEGORIA_ID, UNIDADE_ID, CODIGO, DESCRICAO, ' +
           'PRECO_VENDA, PRECO_CUSTO, ATIVO, CONTROLA_ESTOQUE) ' +
-          'VALUES (GEN_ID(GEN_PRODUTO_ID, 1), :EMP, :CAT, :UNI, :COD, :DESC, :PV, :PC, ''A'', ''S'')';
+          'VALUES (:ID, :EMP, :CAT, :UNI, :COD, :DESC, :PV, :PC, ''A'', ''S'')';
+        LQuery.ParamByName('ID').AsLargeInt := LId;
         LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
         LQuery.ParamByName('CAT').AsLargeInt := LBody.Get('categoria_id', Int64(1));
         LQuery.ParamByName('UNI').AsLargeInt := LBody.Get('unidade_id', Int64(1));
@@ -170,6 +179,13 @@ begin
         LQuery.ParamByName('PV').AsFloat := LBody.Get('preco_venda', Double(0));
         LQuery.ParamByName('PC').AsFloat := LBody.Get('preco_custo', Double(0));
         LQuery.ExecSQL;
+
+        { D4: auditoria na mesma transação da gravação }
+        RegistrarAuditoriaSeguraConexao(LConexao.Connection, LConexao.Transaction,
+          LEmpresaId, LUsuarioId, 'PRODUTO', 'I', LId, '',
+          ResumoAuditoria(['CODIGO=' + LBody.Get('codigo', ''),
+            'DESCRICAO=' + LBody.Get('descricao', '')]));
+
         LConexao.Confirmar;
         Res.Send('{"message":"Produto criado com sucesso"}').Status(THTTPStatus.Created);
       finally

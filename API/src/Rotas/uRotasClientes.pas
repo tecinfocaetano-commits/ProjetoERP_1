@@ -20,7 +20,7 @@ implementation
 
 uses
   SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT,
-  uPessoaService, uPessoa;
+  uPessoaService, uPessoa, uAuditoria;
 
 function TextoBody(ABody: TJSONObject; const AChave: string;
   const AAtual: string): string;
@@ -252,6 +252,8 @@ begin
 
         LServico := TPessoaService.Create;
         try
+          { D4: o Service já audita PESSOA/I usando o contexto de sessão
+            da thread, definido pelo middleware JWT (empresa/usuário). }
           LId := LServico.Inserir(LPessoa);
           LResposta := TJSONObject.Create;
           try
@@ -318,6 +320,7 @@ begin
           AplicarBody(LBody, LPessoa);
           LPessoa.EmpresaId := LEmpresaId;
           LPessoa.Tipo := 'C';
+          { D4: o Service já audita PESSOA/U com o contexto da thread }
           LServico.Atualizar(LPessoa);
 
           LResposta := TJSONObject.Create;
@@ -370,11 +373,18 @@ begin
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
+    LConexao.IniciarTransacao;
     LQuery.SQL.Text :=
       'DELETE FROM PESSOA WHERE ID = :ID AND TIPO = ''C'' AND EMPRESA_ID = :EMP';
     LQuery.ParamByName('ID').AsLargeInt := LId;
     LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
     LQuery.ExecSQL;
+
+    { D4: escrita na API também entra em LOG_SISTEMA, com empresa/usuário
+      do JWT, na mesma transação da operação principal. }
+    RegistrarAuditoriaSeguraConexao(LConexao.Connection, LConexao.Transaction,
+      LEmpresaId, LUsuarioId, 'PESSOA', 'D', LId, '', '');
+
     LConexao.Confirmar;
     Res.Send('{"message":"Cliente removido"}').Status(THTTPStatus.OK);
   finally

@@ -17,7 +17,7 @@ procedure RegistrarRotasEstoque;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT, uAuditoria;
 
 procedure GetEstoque(Req: THorseRequest; Res: THorseResponse);
 var
@@ -77,6 +77,7 @@ var
   LConexao: TConexao;
   LQuery: TSQLQuery;
   LUsuarioId, LEmpresaId: Int64;
+  LId: Int64;
 begin
   try
     DadosDoToken(Req, LUsuarioId, LEmpresaId);
@@ -107,10 +108,18 @@ begin
       try
         LQuery.DataBase := LConexao.Connection;
         LQuery.Transaction := LConexao.Transaction;
+        LConexao.IniciarTransacao;
+        { D4: ID lido do generator para vincular a auditoria ao movimento }
+        LQuery.SQL.Text := 'SELECT GEN_ID(GEN_MOVIMENTO_ESTOQUE_ID, 1) FROM RDB$DATABASE';
+        LQuery.Open;
+        LId := LQuery.Fields[0].AsLargeInt;
+        LQuery.Close;
+
         LQuery.SQL.Text :=
           'INSERT INTO MOVIMENTO_ESTOQUE (ID, EMPRESA_ID, PRODUTO_ID, TIPO, QUANTIDADE, ' +
           'CUSTO_UNITARIO, DOCUMENTO, OBSERVACAO, USUARIO_ID) ' +
-          'VALUES (GEN_ID(GEN_MOVIMENTO_ESTOQUE_ID, 1), :EMP, :PROD, :TIPO, :QTD, :CUSTO, :DOC, :OBS, :USU)';
+          'VALUES (:ID, :EMP, :PROD, :TIPO, :QTD, :CUSTO, :DOC, :OBS, :USU)';
+        LQuery.ParamByName('ID').AsLargeInt := LId;
         LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
         LQuery.ParamByName('USU').AsLargeInt := LUsuarioId;
         LQuery.ParamByName('PROD').AsLargeInt := LBody.Get('produto_id', Int64(0));
@@ -120,6 +129,14 @@ begin
         LQuery.ParamByName('DOC').AsString := LBody.Get('documento', '');
         LQuery.ParamByName('OBS').AsString := LBody.Get('observacao', '');
         LQuery.ExecSQL;
+
+        { D4: auditoria atômica com o movimento de estoque }
+        RegistrarAuditoriaSeguraConexao(LConexao.Connection, LConexao.Transaction,
+          LEmpresaId, LUsuarioId, 'MOVIMENTO_ESTOQUE', 'I', LId, '',
+          ResumoAuditoria(['PRODUTO=' + IntToStr(LBody.Get('produto_id', Int64(0))),
+            'TIPO=' + LBody.Get('tipo', 'E'),
+            'QTD=' + FloatToStr(LBody.Get('quantidade', Double(0)))]));
+
         LConexao.Confirmar;
         Res.Send('{"message":"Movimento registrado com sucesso"}').Status(THTTPStatus.Created);
       finally

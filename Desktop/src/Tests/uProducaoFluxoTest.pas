@@ -1008,8 +1008,10 @@ var
       AssertEquals('DUPLICADO', LBip.Resultado,
         're-bipar concluído = DUPLICADO');
 
-      { código inexistente e vazio: INVALIDO }
-      LBip := LService.BiparTalao('T999999', 'MANUAL');
+      { código inexistente e vazio: INVALIDO.
+        Usa código único por execução: 'T999999' já foi usado por outras
+        suítes/smokes e pode existir como talão concluído no banco real. }
+      LBip := LService.BiparTalao(NovoCodigo('INV'), 'MANUAL');
       AssertEquals('INVALIDO', LBip.Resultado,
         'código inexistente INVALIDO');
       LBip := LService.BiparTalao('', 'MANUAL');
