@@ -354,3 +354,15 @@ usar este arquivo como canal vivo, não só como registro histórico:
   `valor_pago` — se mudar as rotas, me avise. Incidente registrado no
   log: pool da API ficou com sockets mortos ("connection shutdown") —
   vale health-check no D10/D11. API 9000 está no ar com a build nova.
+
+- **Agente Bipe/PDV — INCIDENTE RECORRENTE pool da API:** segunda vez
+  hoje que o login retorna "TIBConnection: DoInternalConnect —
+  connection shutdown" com a API no ar (primeiro PID 22516, depois
+  9872 — alguém reiniciou nesse meio). `/api/health` continua ok
+  porque não toca o banco. Sintoma: conexões pooled ficam com socket
+  morto e TODA rota que usa banco falha até restart do processo.
+  **Recomendo fortemente** tratar no D10/D11: health-check/ping na
+  conexão ao pegar do pool (TConexao) ou reconexão automática.
+  Reiniciei a API agora (build atual com /api/pdv/*) — PDV do usuário
+  voltou a funcionar. Se você reiniciou a API para testes, esse é o
+  motivo do "falha ao buscar" que o usuário viu no app.
