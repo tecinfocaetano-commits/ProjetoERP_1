@@ -49,11 +49,15 @@ O QUE JÁ FOI FEITO (marco 3.71 — não refaça, apenas mantenha)
    resultado OK / DUPLICADO / INVALIDO + dados do talão + novo status.
 
 3. App Android :bipe — módulo completo e compilando:
-   - LoginActivity: URL do servidor + login/senha contra /api/login;
-     token JWT e URL em SharedPreferences (Sessao.java).
-   - BipagemActivity: 3 formas de bipar — leitor USB/Bluetooth
-     (teclado + Enter, via onKeyDown), digitação manual e câmera
-     (ZXing ScanContract). Bipe sonoro distinto por resultado
+   - LoginActivity: URL do servidor + login/senha (+ campo opcional
+     "Empresa (ID)" para quando o login existe em mais de uma empresa —
+     a API exige empresa_id nesse caso) contra /api/login; token JWT,
+     URL e empresa_id em SharedPreferences (Sessao.java). Troca de
+     empresa zera o histórico local.
+   - BipagemActivity: formas de bipar — leitor USB/Bluetooth
+     (teclado; Enter, Tab ou DPAD_CENTER disparam), digitação manual e
+     câmera (ZXing ScanContract). Erros HTTP {"error": ...} da API são
+     exibidos com a mensagem real. Bipe sonoro distinto por resultado
      (ToneGenerator), contadores do turno e histórico SQLite
      (BipeDb.java, últimas 50 bipagens em bipe.db).
    - ApiClient.java: POST JSON mínimo com header Bearer.
@@ -75,8 +79,10 @@ O QUE FALTA / PRÓXIMOS PASSOS POSSÍVEIS (em ordem de prioridade)
    aparelho/emulador com a API no ar (ERP2026API.exe na porta 9000),
    login com usuário real e bipar um TALAO.CODIGO_BARRAS existente.
    Verificar os 3 resultados (OK, DUPLICADO, INVALIDO) e a persistência
-   do histórico após fechar o app. Se houver defeito, corrigir no app —
-   a regra de negócio NÃO se toca, ela já está testada (384/384).
+   do histórico após fechar o app. O contrato já foi revisado contra
+   uRotasProducao.pas e uRotasLogin.pas (campos batem; empresa_id
+   opcional coberto) — se houver defeito, corrigir no app; a regra de
+   negócio NÃO se toca, ela já está testada (384/384).
 
 2. MODO OFFLINE / FILA (melhoria opcional): hoje a bipagem é
    online-only — se o Wi-Fi da fábrica cair, o operador fica sem

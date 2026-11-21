@@ -18,7 +18,7 @@ import org.json.JSONObject;
  */
 public class LoginActivity extends Activity {
 
-    private EditText editUrl, editUsuario, editSenha;
+    private EditText editUrl, editUsuario, editEmpresa, editSenha;
     private TextView txtErro;
     private Button btnEntrar;
 
@@ -29,6 +29,7 @@ public class LoginActivity extends Activity {
 
         editUrl = findViewById(R.id.editUrlServidor);
         editUsuario = findViewById(R.id.editUsuario);
+        editEmpresa = findViewById(R.id.editEmpresa);
         editSenha = findViewById(R.id.editSenha);
         txtErro = findViewById(R.id.txtErro);
         btnEntrar = findViewById(R.id.btnEntrar);
@@ -55,6 +56,7 @@ public class LoginActivity extends Activity {
     private void autenticar() {
         final String url = editUrl.getText().toString().trim();
         final String usuario = editUsuario.getText().toString().trim();
+        final String empresa = editEmpresa.getText().toString().trim();
         final String senha = editSenha.getText().toString();
 
         if (url.isEmpty()) {
@@ -86,6 +88,10 @@ public class LoginActivity extends Activity {
                     JSONObject corpo = new JSONObject();
                     corpo.put("login", usuario);
                     corpo.put("senha", senha);
+                    String empresaDigitos = empresa.replaceAll("\\D", "");
+                    if (!empresaDigitos.isEmpty()) {
+                        corpo.put("empresa_id", Long.parseLong(empresaDigitos));
+                    }
 
                     final ApiClient.Result r = ApiClient.postSemToken("/api/login",
                             corpo.toString());
@@ -98,7 +104,17 @@ public class LoginActivity extends Activity {
                             falhar("Resposta do servidor sem token.");
                             return;
                         }
-                        Sessao.guardar(LoginActivity.this, token, usuario, nome);
+                        final long empresaId =
+                                json.optLong("empresa_id",
+                                        Sessao.empresaIdSalvo(LoginActivity.this));
+                        // trocou de empresa no mesmo aparelho? o histórico
+                        // local é por empresa — zera para não misturar
+                        if (empresaId > 0
+                                && Sessao.empresaIdSalvo(LoginActivity.this) != empresaId) {
+                            BipeDb.get(LoginActivity.this).limpar();
+                        }
+                        Sessao.guardar(LoginActivity.this, token, usuario,
+                                nome, empresaId);
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {

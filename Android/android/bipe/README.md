@@ -8,11 +8,20 @@ a mesma máquina de estados do `uFrmBipagem` do desktop.
 
 - **Login:** mesmas credenciais do ERP (`POST /api/login`). A URL do
   servidor é configurada na tela de login (ex.:
-  `http://192.168.0.10:9000`).
-- **Bipagem:** três caminhos para o mesmo código:
-  - leitor USB/Bluetooth — funciona como teclado, o `Enter` dispara;
+  `http://192.168.0.10:9000`). Se o mesmo login existir em mais de uma
+  empresa, o campo opcional **Empresa (ID)** é enviado como
+  `empresa_id` — exigência da API.
+- **Isolamento do histórico:** o `empresa_id` do login fica salvo; se o
+  aparelho trocar de empresa, o histórico SQLite é zerado para não
+  misturar bipagens de empresas diferentes.
+- **Bipagem:** quatro caminhos para o mesmo código:
+  - leitor USB/Bluetooth — funciona como teclado; `Enter`, `Tab` ou
+    `DPAD_CENTER` disparam a bipagem (a maioria usa Enter; alguns usam Tab);
   - digitação manual + Enter/botão BIPAR;
   - câmera (botão "Ler pela câmera", ZXing).
+- **Erros HTTP:** respostas `{"error": "..."}` da API (400/401/500) são
+  exibidas com a mensagem real — ex.: "login existe em mais de uma
+  empresa, informe empresa_id".
 - **Resposta da API** `POST /api/producao/bipar`:
   `OK` (talão avança GERADO/IMPRESSO→EM_PRODUCAO→CONCLUIDO),
   `DUPLICADO` (já concluído) e `INVALIDO` (não encontrado/cancelado),

@@ -46,6 +46,15 @@
             android:textSize="16sp"/>
 
         <EditText
+            android:id="@+id/editEmpresa"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="Empresa (ID — só se o login existir em mais de uma)"
+            android:inputType="number"
+            android:textSize="16sp"/>
+
+        <EditText
             android:id="@+id/editSenha"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

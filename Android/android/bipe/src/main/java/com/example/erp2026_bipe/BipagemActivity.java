@@ -96,6 +96,17 @@ public class BipagemActivity extends AppCompatActivity {
             }
             return false;
         });
+        // alguns leitores usam Tab como sufixo em vez de Enter
+        editCodigo.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN
+                    && (keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == KeyEvent.KEYCODE_TAB
+                        || keyCode == KeyEvent.KEYCODE_DPAD_CENTER)) {
+                bipar(editCodigo.getText().toString());
+                return true;
+            }
+            return false;
+        });
 
         btnBipar.setOnClickListener(v -> bipar(editCodigo.getText().toString()));
         btnCamera.setOnClickListener(v -> {
@@ -175,6 +186,18 @@ public class BipagemActivity extends AppCompatActivity {
 
         try {
             JSONObject json = new JSONObject(r.body);
+
+            // erros HTTP (400/500) voltam como {"error": "..."} — sem
+            // campo "resultado"; exibe a mensagem real da API
+            if (!json.has("resultado") && json.has("error")) {
+                String erroApi = json.optString("error", "Erro na requisição.");
+                tocar(ToneGenerator.TONE_CDMA_ABBR_ALERT);
+                txtResultado.setText("✗ " + erroApi);
+                totalInvalido++;
+                atualizarContadores();
+                return;
+            }
+
             String resultado = json.optString("resultado", "INVALIDO");
             String mensagem = json.optString("mensagem", "");
             String etapa = json.optString("etapa", "");

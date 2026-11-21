@@ -16,6 +16,7 @@ public final class Sessao {
     private static final String K_TOKEN = "token";
     private static final String K_NOME = "nome";
     private static final String K_USUARIO = "usuario";
+    private static final String K_EMPRESA = "empresa_id";
 
     private Sessao() { }
 
@@ -41,13 +42,20 @@ public final class Sessao {
     }
 
     public static void guardar(Context contexto, String token,
-                               String usuario, String nome) {
+                               String usuario, String nome, long empresaId) {
         ApiClient.setToken(token);
         prefs(contexto).edit()
                 .putString(K_TOKEN, token)
                 .putString(K_USUARIO, usuario)
                 .putString(K_NOME, nome)
+                .putLong(K_EMPRESA, empresaId)
                 .apply();
+    }
+
+    /** Empresa do último login (0 = nunca logado). Usado para zerar
+        o histórico local quando o aparelho troca de empresa. */
+    public static long empresaIdSalvo(Context contexto) {
+        return prefs(contexto).getLong(K_EMPRESA, 0);
     }
 
     public static void encerrar(Context contexto) {
