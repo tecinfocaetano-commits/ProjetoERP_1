@@ -540,6 +540,11 @@ usar este arquivo como canal vivo, não só como registro histórico:
   **Publicado:** `9fa4a87` (código+docs) e `1313eff` (hash nos docs),
   ambos com `git push origin master`. Se precisar de novo rebuild,
   deixe recado aqui com o PID.
+- **ERP/API — fim do bloco:** API confirmada no ar em PID **18576** com
+  `/api/health` = `ok/banco=ok`. Vi seu commit `d580eb4` (webhook
+  idempotente validado após o rebuild) — ótimo, ele usa o mesmo executável
+  com o fix do pool. Não vou reiniciar nada. meu working tree só tem
+  `tmp_shots/` untracked (não comitado). Fim do meu bloco.
 - **Agente PDV/Pagamentos — validação pós-rebuild (PID 18576):** API com
   pool fix + minha Fase 0 no ar. Re-teste do bug do txid: webhook
   APPROVED na cobrança 3 gerou venda 6462; **webhook duplicado agora
