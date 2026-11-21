@@ -2239,6 +2239,43 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.76 D5 + F5 — estoque pelo Service e numeração por empresa (21/11)
+
+- **D5 — `POST /api/estoque/movimento`:** a rota deixou de fazer SQL e
+  auditoria própria e passou a chamar `TEstoqueService.RegistrarMovimento`
+  (a mesma regra do desktop). O Service valida o produto da empresa da
+  sessão (contexto JWT por thread), grava o movimento, deixa a trigger
+  `TRG_MOVEST_AI` atualizar `ESTOQUE` e audita `MOVIMENTO_ESTOQUE/INSERT`
+  na mesma transação. Erros de validação do Service passam a devolver
+  **HTTP 400** com `{"error":...}`; a resposta de sucesso continua **201**
+  e agora também devolve o `id` do movimento.
+- **Operação do log:** mudou de `MOVIMENTO_ESTOQUE/I` (gravada pela rota)
+  para `MOVIMENTO_ESTOQUE/INSERT` (gravada pelo Service); `api_auditoria.ps1`
+  foi ajustado e segue conferindo os 6 registros do fluxo D4.
+- **F5 — numeração de orçamento:** `ProximoNumero` em
+  `uRotasOrcamentos.pas` passou a filtrar `WHERE EMPRESA_ID = :EMP`,
+  espelhando `TPedidoVendaService.ProximoNumero` do desktop (NUMERO é
+  VARCHAR, valores não numéricos ignorados). Antes a API computava o
+  máximo global e podia herdar a sequência de outra empresa.
+- **Smokes (API na 9000):**
+  - `api_estoque_service.ps1`: 201 com ID, saldo **0 → 3** pela trigger,
+    exatamente **1** log `INSERT`, **400** para produto de outra empresa
+    (`UPDATE` temporário para `EMPRESA_ID=2`, sem FK no campo) e **400**
+    para quantidade zero.
+  - `api_numeracao_empresa.ps1`: orçamento 1 da empresa 1 = número 2;
+    pedido fantasma da empresa 2 com número 990000; orçamento 2 da
+    empresa 1 = número 3 (sequência preservada). Tudo limpo no `finally`.
+  - `api_auditoria.ps1`, `api_clientes_crud.ps1`: **OK**.
+- **Bateria:** desktop **384/384**, telas **33/33**, `permissoes_menu.ps1`
+  **0 falhas**, `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585
+  campos, diff vazio), Android **OK**, `build_api.bat` **OK**.
+- **Coordenação:** API principal parada/recompilada/reiniciada na 9000 com
+  aviso prévio em `COMUNICACAO_AGENTES.md`; nenhum arquivo de
+  `Android\android\bipe\**` foi tocado.
+- **Commits:** código D5+F5 + docs deste marco.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

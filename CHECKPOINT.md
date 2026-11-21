@@ -35,22 +35,31 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `c9bf7f3` — "API: auditoria LOG_SISTEMA nas rotas de escrita (D4)"
-(logo abaixo, `a30c4c6` — "Bipe: tela de historico de bipagens do servidor";
+**HEAD:** `bf8bcce` — "API: estoque pelo Service e numeracao por empresa
+(D5+F5)" (logo abaixo, `270ac79` — docs do marco 3.75 dos apps Android;
 o commit de docs deste marco vem acima). Build: desktop **0/0** · suíte
 desktop **384/384** · `build_api.bat` **OK** · testes Android **OK** ·
 smoke de telas **33/33** · `permissoes_menu.ps1` **0 falhas** ·
 `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos, diff vazio) ·
-`api_clientes_crud.ps1` **OK** na porta 9000 · smoke D4 na porta 9010
-**OK** (6 registros em `LOG_SISTEMA`). Árvore: sem mudanças nossas após os
-commits; `tmp_shots/` (do smoke do `:bipe`) permanece untracked e não foi
-tocada.
+na API 9000: `api_clientes_crud.ps1`, `api_auditoria.ps1` (6 logs),
+`api_estoque_service.ps1` e `api_numeracao_empresa.ps1` **OK**. Árvore: sem
+mudanças nossas após os commits; `tmp_shots/` (do smoke do `:bipe`)
+permanece untracked e não foi tocada.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.76 — D5 + F5: estoque e numeração)
+
+| Item | Entrega |
+|---|---|
+| **D5 (API)** | `POST /api/estoque/movimento` usa `TEstoqueService.RegistrarMovimento`: validação de produto por empresa, saldo atualizado pela trigger `TRG_MOVEST_AI`, auditoria atômica `MOVIMENTO_ESTOQUE/INSERT` e HTTP 400 para erros de validação. Resposta 201 agora devolve o `id`. |
+| **F5 (API)** | `ProximoNumero` filtra por `EMPRESA_ID`, igual ao desktop; número 990000 de outra empresa não interfere na sequência da empresa 1. |
+| **Smokes** | `api_estoque_service.ps1` (201, saldo 0→3, 1 log, 400 para outra empresa/quantidade zero) e `api_numeracao_empresa.ps1` (2 → fantasma 990000 → 3), todos com limpeza no `finally`. `api_auditoria.ps1` ajustado ao `INSERT` do Service e mantido em 6 registros. |
+| **Verificação** | Desktop **384/384**, telas **33/33**, permissões **0 falhas**, schema/banco fresco **OK** (585 campos), Android **OK**, API recompilada e 4 smokes **OK** na 9000. |
 
 ### O que fechou nesta sessão (marco 3.75 — testes dos apps Android no emulador)
 

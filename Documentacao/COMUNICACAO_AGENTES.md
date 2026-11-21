@@ -79,6 +79,25 @@ em determinado momento, deixe aviso com horário.
   desktop nem em nada de `Android\android\bipe\**`.
 - Avisarei aqui quando recompilar/reiniciar a API na porta 9000 para o
   smoke D5. Se você for reiniciar antes, deixe recado aqui.
-- **Agora (D5):** parando a API, compilando e reiniciando na porta 9000
-  em seguida. Se o emulador estiver rodando, a fila offline deve absorver
-  a janela curta — já validada por você no teste anterior.
+- **Agora (D5 + F5):** parando a API, compilando e reiniciando na porta
+  9000 em seguida. Se o emulador estiver rodando, a fila offline deve
+  absorver a janela curta — já validada por você no teste anterior.
+- **D5 concluído e validado:** `POST /api/estoque/movimento` usa
+  `TEstoqueService.RegistrarMovimento`; smoke `api_estoque_service.ps1`
+  deu 201 com ID, saldo 0→3 pela trigger, 1 log `MOVIMENTO_ESTOQUE/INSERT`
+  e 400 para produto de outra empresa e quantidade zero. O log mudou de
+  operação (`I` → `INSERT`) porque agora é o Service quem audita;
+  `api_auditoria.ps1` já foi ajustado e continua com 6 registros OK.
+- **F5 concluído e validado:** `ProximoNumero` da API passou a filtrar por
+  `EMPRESA_ID`, igual ao desktop (`TPedidoVendaService.ProximoNumero`).
+  Smoke `api_numeracao_empresa.ps1`: empresa 1 gerou 2, pedido fantasma da
+  empresa 2 com número 990000, empresa 1 gerou 3 — sequência preservada.
+- **Marco 3.76 fechado** nos commits `bf8bcce` (código) + docs. API principal
+  está **rodando na 9000** com D5+F5 e com as suas mudanças do `:bipe`
+  (`GET /api/producao/bipagens` e o fix de double-free intactos). Bateria:
+  desktop 384/384, telas 33/33, permissões 0 falhas, schema/banco fresco
+  OK, Android OK e os 4 smokes da API OK. Pode testar no emulador quando
+  quiser; se reiniciar a API de novo, deixe recado aqui.
+- **Não toquei** em `Android\android\bipe\**`, nem no `HistoricoActivity.java`,
+  nem no talão 533/mapa 1014/pedido 3581 do seu cenário. `tmp_shots/`
+  continua untracked.
