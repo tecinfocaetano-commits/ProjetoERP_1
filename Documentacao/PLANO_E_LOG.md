@@ -1969,6 +1969,67 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.68 Permissões aplicadas em todas as telas — T1 (21/11)
+
+- **Objetivo:** fechar a auditoria T1: antes só 8 telas checavam permissão;
+  usuários, produtos, pessoas, contas, NF-e, PDV e compras abriam sem
+  checagem.
+- **Catálogo canônico:** `Desktop\src\Utils\uPermissao.pas` ganhou
+  `CATALOGO_TELAS`, com uma linha por tela do menu (classe, módulo, tela e
+  descrição — 33 telas), mais `PermissaoDaTela` e acesso ao catálogo para
+  testes e seed. Tela fora do catálogo é **bloqueada (falha fechada)**.
+- **Abertura e ações:** `uFrmPrincipal.AbrirFormulario` consulta o catálogo e
+  recusa a abertura sem `View`; o menu desabilita os itens que o grupo não
+  pode ver. `uFrmCadastroBase` aplica permissão a Novo/Editar/Excluir e à
+  gravação, com mensagem clara quando a ação é negada. `uPermissaoUI`
+  (`AplicarPermissaoAcao`) desabilita controles de ação em PDV, NF-e, notas,
+  compras, pedidos, orçamento, contas e estoque.
+- **Módulos corrigidos:** Consumo passou a `SUPRIMENTOS`, Lista de Pedidos a
+  `VENDAS` e Central de Relatórios a `RELATORIOS`, para casar com as chaves
+  usadas nas permissões.
+- **Banco:** `Banco\020_permissoes_telas.sql` semeia o grupo 1 em todas as
+  telas de forma idempotente; `Banco\007_initial_data.sql` acompanha a seed.
+- **Testes e verificação:** `uTelasAdmTest` cobre catálogo completo, seed e
+  falha fechada (suíte passou a **383/383**). Novo
+  `Scripts\testes\permissoes_menu.ps1` abre o menu com usuário sem permissão:
+  item bloqueado não abre, item liberado abre — **0 falhas**. Smoke de telas
+  **33/33**, build desktop **0/0**.
+- **Commit:** `cddf5c6` (prompts dos apps de bipagem/PDV mobile em `fca106c`).
+
+---
+
+### 3.69 Isolamento por empresa nas consultas — T4 (21/11)
+
+- **Objetivo:** eliminar consultas/gravações que cruzam empresas no desktop:
+  copiloto, produção, bipagem e caixa legado.
+- **Copiloto:** `uCopilotoERP` — todas as 12 consultas passaram a filtrar
+  `EMPRESA_ID = :EMP`, inclusive subconsultas, `UNION` e o `LEFT JOIN` de
+  estoque. `ExecutarSQL` liga `:EMP` com a empresa da sessão; o SQLDB/FPC
+  aceita parâmetro nomeado repetido (`TParamBinding`), então `:EMP` pode
+  aparecer várias vezes na mesma instrução.
+- **Produção:** `uProducaoService` filtra/verifica a empresa da sessão em
+  mapa, pedido, item de pedido, talão, bipagem, consumo e ficha técnica, tanto
+  em leituras como em gravações por ID. **Mudança de comportamento:**
+  `CriarMapa` agora recusa pedido de outra empresa (antes o mapa herdava a
+  empresa do pedido — desenho do marco 3.50).
+- **Exceções de schema:** `TALAO_BIPAGEM` não tem `EMPRESA_ID`, então
+  `uFrmBipagem` isola o histórico via `TALAO.EMPRESA_ID` — ou via
+  `USUARIO.EMPRESA_ID` quando `TALAO_ID = 0`. `MOVIMENTO_CAIXA` também não tem
+  `EMPRESA_ID`: `uCaixaService` isola movimentos e resumo com `JOIN CAIXA` e
+  `(C.EMPRESA_ID = :EMP OR C.EMPRESA_ID IS NULL)` (o `NULL` preserva caixas
+  globais/legadas, conforme decisão já usada em `CONFIGURACAO`).
+- **Testes:** `TestMapaEscopoEmpresa` passou a exigir a recusa de pedido de
+  outra empresa; novo `TestIsolamentoEmpresaProducao` cria cliente/produto/
+  pedido/mapa/talão na empresa 999998, verifica que `StatusMapa`,
+  `MapaAtivoDoPedido`, `ConsumoAtivoDoMapa`, `CancelarMapa`, `CancelarTalao` e
+  `GerarTaloes` não veem nem alteram esses registros, e limpa tudo no
+  `finally`. O teste do Copiloto passou a ligar `:EMP`. Suíte **384/384**.
+- **Verificação:** build desktop **0/0**, API compilada, Android OK, smoke de
+  telas **33/33** (relatório regenerado) e `permissoes_menu.ps1` **0 falhas**.
+- **Commit:** `5d17e17`.
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

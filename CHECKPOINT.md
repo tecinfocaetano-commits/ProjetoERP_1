@@ -1,4 +1,4 @@
-# CHECKPOINT - último ponto de parada (15/11/2026)
+# CHECKPOINT - último ponto de parada (21/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **380/380**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **384/384**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
@@ -33,14 +33,13 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ---
 
-## Estado atual da sessão (15/11/2026)
+## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `9d4a445` — "PDV: NFC-e na finalizacao da venda" (o commit de docs
-deste marco vem logo acima). Árvore: limpa, exceto o relatório de telas
-(`Documentacao\TESTE_TELAS_DESKTOP.md`), que é regenerado pelo smoke.
-Build: desktop **0/0** · suíte desktop **380/380** · API compilada
-(`Scripts\build_api.bat`) · testes Android **OK**
-(`Scripts\run_tests_android.bat`) · smoke de telas **33/33**.
+**HEAD:** `5d17e17` — "Isolamento por empresa nas consultas (T4)" (o commit de
+docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
+suíte desktop **384/384** · API compilada (`Scripts\build_api.bat`) ·
+testes Android **OK** (`Scripts\run_tests_android.bat`) · smoke de telas
+**33/33** · `permissoes_menu.ps1` **0 falhas**.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
@@ -48,7 +47,27 @@ Build: desktop **0/0** · suíte desktop **380/380** · API compilada
 
 - Nada.
 
-### O que fechou nesta sessão (marco 3.67 — NFC-e no PDV)
+### O que fechou nesta sessão (marco 3.69 — isolamento por empresa, T4)
+
+| Item | Entrega |
+|---|---|
+| **Copiloto (T4)** | `uCopilotoERP`: todas as 12 consultas filtram `EMPRESA_ID = :EMP` (incluindo subconsultas, `UNION` e `LEFT JOIN` de estoque); o parâmetro é ligado em `ExecutarSQL` com a empresa da sessão. |
+| **Produção (T4)** | `uProducaoService`: mapa, pedido, item, talão, bipagem, consumo e ficha técnica filtram/verificam a empresa em consultas e gravações por ID. `CriarMapa` recusa pedido de outra empresa (mudança de comportamento em relação ao marco 3.50). |
+| **Bipagem e caixa (T4)** | `uFrmBipagem` isola o histórico por `TALAO.EMPRESA_ID` (ou `USUARIO.EMPRESA_ID` quando `TALAO_ID = 0`, pois `TALAO_BIPAGEM` não tem `EMPRESA_ID`); `uCaixaService` isola movimentos/resumo via `JOIN CAIXA`. |
+| **Testes** | `TestMapaEscopoEmpresa` passou a exigir recusa; novo `TestIsolamentoEmpresaProducao` cria mapa/talão de outra empresa e verifica que não são vistos nem alterados, com limpeza no `finally`; teste do Copiloto liga `:EMP`. Suíte **384/384**. |
+| **Verificação** | desktop **0/0**, API compilada, Android OK, telas **33/33**, permissões de menu **0 falhas**. Commit `5d17e17`. |
+
+### O que fechou nesta sessão (marco 3.68 — permissões em todas as telas, T1)
+
+| Item | Entrega |
+|---|---|
+| **Catálogo** | `uPermissao.CATALOGO_TELAS` com as 33 telas do menu (classe, módulo, tela, descrição); `PermissaoDaTela` e acesso ao catálogo para testes/seed. |
+| **Falha fechada** | `uFrmPrincipal.AbrirFormulario` consulta o catálogo e bloqueia tela sem permissão de visualizar; o menu desabilita itens não permitidos. `uFrmCadastroBase` aplica permissão a Novo/Editar/Excluir e gravação; `uPermissaoUI.AplicarPermissaoAcao` cobre ações de PDV, NF-e, notas, compras, pedidos, orçamento, contas e estoque. |
+| **Módulos** | Consumo → `SUPRIMENTOS`, Lista de Pedidos → `VENDAS`, Central de Relatórios → `RELATORIOS`. |
+| **Banco** | `Banco\020_permissoes_telas.sql` semeia o grupo 1 em todas as telas de forma idempotente; `007_initial_data.sql` acompanha. |
+| **Testes** | catálogo completo, seed e falha fechada (383 no total) + `Scripts\testes\permissoes_menu.ps1` (0 falhas). Commit `cddf5c6`; docs dos prompts mobile em `fca106c`. |
+
+### O que fechou em 15/11 (marco 3.67 — NFC-e no PDV)
 
 | Item | Entrega |
 |---|---|
@@ -283,7 +302,7 @@ cabeçalho pai.
 ### Próximo passo (executável)
 
 1. **Antes de qualquer commit:** `Scripts\build_desktop.bat` (0/0) e
-   `Scripts\run_tests.bat` (**380/380** ou mais); API
+   `Scripts\run_tests.bat` (**384/384** ou mais); API
    `Scripts\build_api.bat`; Android `Scripts\run_tests_android.bat`
    (**5/5**). Configuração de banco/JWT por ambiente já está no marco
    3.60 (ver `Documentacao\CONFIGURACAO_AMBIENTE.md`).
@@ -311,11 +330,12 @@ cabeçalho pai.
      F2 no 3.64 (materialização de `NOTA_SAIDA`, estoque, financeiro e
      XML após a autorização), F3 no 3.65 (CC-e, inutilização e
      manifestação), 3.66 (DANFE/cupom em PDF) e 3.67 (NFC-e no PDV).
-   - **Acesso e empresa (próximo bloco):** T1 (permissões em todas as
-     telas) e T4 (consultas por `EMPRESA_ID`). T2/T3/F7 (login) fechados
-     no marco 3.62.
-   - **API:** D3 (linkar `Desktop\src\Services` no build), F4+D9 (ID na
-     resposta + índices únicos), D4 (auditoria `LOG_SISTEMA`), D7/D8
+   - **Acesso e empresa — CONCLUÍDO:** T1 (permissões em todas as telas)
+     no marco 3.68 e T4 (consultas por `EMPRESA_ID`) no 3.69.
+     T2/T3/F7 (login) fechados no marco 3.62.
+   - **API (próximo bloco):** D3 (linkar `Desktop\src\Services` no build),
+     F4+D9 (ID na resposta + índices únicos), D4 (auditoria `LOG_SISTEMA`),
+     D7/D8
      (schema reproduzível e `SET NAMES UTF8`), F6/F9 (paginação e erros
      visíveis).
    - **Gestão:** F5/F6/F9 (ciclo de vida de pedidos e financeiro com baixa

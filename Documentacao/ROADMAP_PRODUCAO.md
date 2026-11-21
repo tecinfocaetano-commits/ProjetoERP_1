@@ -20,8 +20,8 @@ polimento/dívida.
 
 | # | Prior. | Item | Onde |
 |---|---|---|---|
-| T1 | A | Permissões aplicadas em apenas 8 telas; usuários, produtos, pessoas, contas, NF-e, PDV e compras não checam permissão. | `Desktop\src\Views\*` |
-| T4 | A | Consultas/gravações cruzando empresas (bipagem, consumo, produção, copiloto, caixa legado). | `uFrmBipagem.pas`, `uProducaoService.pas`, `uCopilotoERP.pas`, `uCaixaService.pas` |
+| T1 | A | **CONCLUÍDO (marco 3.68):** catálogo canônico de 33 telas, falha fechada na abertura, menu desabilitado e ações protegidas em todas as telas. | `uPermissao.pas`, `uPermissaoUI.pas`, `uFrmPrincipal.pas`, `uFrmCadastroBase.pas` |
+| T4 | A | **CONCLUÍDO (marco 3.69):** copiloto, produção, bipagem e caixa filtram/verificam `EMPRESA_ID`; `CriarMapa` recusa pedido de outra empresa. | `uFrmBipagem.pas`, `uProducaoService.pas`, `uCopilotoERP.pas`, `uCaixaService.pas` |
 
 ## 3. API REST
 
@@ -75,8 +75,8 @@ polimento/dívida.
 ## Ordem de execução acordada
 
 1. **F3 — CONCLUÍDO** (F1 no marco 3.63, F2 no 3.64, CC-e/inutilização/manifestação no 3.65, DANFE/cupom em PDF no 3.66 e NFC-e no PDV no 3.67).
-2. **T1 + T4 + F7 (login da API)** — controle de acesso e isolamento por empresa.
-3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services, ID/índices, auditoria e numeração por empresa.
+2. **T1 + T4 + F7 (login da API) — CONCLUÍDO** (T1 no marco 3.68, T4 no 3.69 e F7 no 3.62) — controle de acesso e isolamento por empresa.
+3. **D3 + F4 + D9 + D4 + D5 + F5 (próximo bloco)** — API com Services, ID/índices, auditoria e numeração por empresa.
 4. **D7 + D8** — banco novo confiável a partir do repositório.
 5. **F6 + F9** — paginação e visibilidade de erros na API/Android.
 6. **F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios e backup pela aplicação.
@@ -90,6 +90,8 @@ polimento/dívida.
 - **F3 parcial (fiscal)** — CC-e (com sequência derivada do `LOG_SISTEMA`), inutilização de numeração e manifestação do destinatário na tela de NF-e, com validação, auditoria e 7 testes novos (marco 3.65).
 - **F3 parcial (fiscal)** - DANFE (modelo 55) e cupom (modelo 65) em PDF a partir do XML autorizado, com botão na tela de NF-e e `--danfe=<chave>` para reimpressão; units FPDF no path do projeto, sem pacote novo (marco 3.66).
 - **F3 completo (fiscal)** - NFC-e emitida ao finalizar a venda no PDV, com destinatário opcional no modelo 65 (regra única em `CamposFaltandoDestinatario`), configuração fiscal lida da `CONFIGURACAO` (`NFE_CERTIFICADO`, `NFE_AMBIENTE`, `NFE_MODO`, `NFCE_ID_CSC`, `NFCE_CSC`) e cupom em PDF aberto no leitor padrão (marco 3.67).
+- **T1** — permissões nas 33 telas via catálogo canônico, abertura em falha fechada, menu/ações por permissão e seed idempotente; teste de UI `permissoes_menu.ps1` com 0 falhas (marco 3.68).
+- **T4** — isolamento por empresa no copiloto (12 consultas com `:EMP`), produção (mapa/pedido/talão/consumo), bipagem (via `TALAO`/`USUARIO`) e caixa (via `JOIN CAIXA`); `CriarMapa` recusa pedido de outra empresa (marco 3.69).
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
 - **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
 - **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).
