@@ -58,6 +58,15 @@ type
       const ANomes, AValores, ANulos: array of string): Int64;
     function AtualizarParamN(AId: Int64; const ACamposParam: string;
       const ANomes, AValores, ANulos: array of string): Boolean;
+
+    { F1: variantes que NÃO confirmam a transação. Quem chama deve abrir,
+      auditar e confirmar (ou cancelar) no mesmo bloco — é o que garante
+      LOG_SISTEMA atômico com a gravação, inclusive na API. }
+    function InserirParamNNaTransacao(const ACampos, AValoresParam: string;
+      const ANomes, AValores, ANulos: array of string): Int64;
+    function AtualizarParamNNaTransacao(AId: Int64; const ACamposParam: string;
+      const ANomes, AValores, ANulos: array of string): Boolean;
+    function ExcluirNaTransacao(AId: Int64): Boolean;
     function BuscarTodosParam(const ACondicaoParam: string;
       const ANomes, AValores: array of string;
       const AOrdem: string = 'ID'): TSQLQuery;
@@ -273,6 +282,37 @@ begin
   FQuery.ParamByName('ID').AsLargeInt := AId;
   ExecutarQuery;
   FConexao.Confirmar;
+  Result := True;
+end;
+
+function TRepositoryBase.InserirParamNNaTransacao(const ACampos,
+  AValoresParam: string; const ANomes, AValores, ANulos: array of string): Int64;
+begin
+  PrepararQuery(Format('INSERT INTO %s (%s) VALUES (%s)',
+    [FTableName, ACampos, AValoresParam]));
+  AplicarParamsN(ANomes, AValores, ANulos);
+  ExecutarQuery;
+
+  Result := Int64(ExecutarScalar(
+    Format('SELECT GEN_ID(GEN_%s_ID, 0) FROM RDB$DATABASE', [FTableName])));
+end;
+
+function TRepositoryBase.AtualizarParamNNaTransacao(AId: Int64;
+  const ACamposParam: string; const ANomes, AValores,
+  ANulos: array of string): Boolean;
+begin
+  PrepararQuery(Format('UPDATE %s SET %s WHERE ID = :ID',
+    [FTableName, ACamposParam]));
+  AplicarParamsN(ANomes, AValores, ANulos);
+  FQuery.ParamByName('ID').AsLargeInt := AId;
+  ExecutarQuery;
+  Result := True;
+end;
+
+function TRepositoryBase.ExcluirNaTransacao(AId: Int64): Boolean;
+begin
+  PrepararQuery(Format('DELETE FROM %s WHERE ID = %d', [FTableName, AId]));
+  ExecutarQuery;
   Result := True;
 end;
 

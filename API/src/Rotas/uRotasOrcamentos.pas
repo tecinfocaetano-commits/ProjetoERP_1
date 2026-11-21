@@ -3,12 +3,14 @@ unit uRotasOrcamentos;
 {$mode objfpc}{$H+}
 
 { ============================================================
-  ERP 2026 - FASE 7 - Rotas de Orçamentos
+  ERP 2026 - Rotas de Orçamentos
   Endpoints:
-    GET  /api/orcamentos              lista os orçamentos em aberto
-    GET  /api/orcamentos/:id          cabeçalho + itens
-    POST /api/orcamentos              grava um orçamento novo
-    POST /api/orcamentos/:id/converter converte em pedido (STATUS 'P')
+    GET    /api/orcamentos              lista os orçamentos em aberto
+    GET    /api/orcamentos/:id          cabeçalho + itens
+    POST   /api/orcamentos              grava um orçamento novo
+    PUT    /api/orcamentos/:id          edita um orçamento em aberto (F1)
+    DELETE /api/orcamentos/:id          exclui um orçamento em aberto (F1)
+    POST   /api/orcamentos/:id/converter converte em pedido (STATUS 'P')
 
   Regra de negócio: o orçamento é um PEDIDO_VENDA com STATUS 'O'.
   Os totais (item, subtotal, total) são sempre recalculados aqui, a
@@ -26,7 +28,8 @@ procedure RegistrarRotasOrcamentos;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT, uAuditoria;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT, uAuditoria,
+  uPedidoVendaService, uOrcamentoService;
 
 const
   { DM_DESCRICAO em PEDIDO_VENDA.OBSERVACOES }
@@ -47,6 +50,100 @@ begin
   finally
     LObj.Free;
   end;
+end;
+
+procedure EnviarErro(Res: THorseResponse; const AMensagem: string;
+  AStatus: THTTPStatus);
+begin
+  Res.Send(ErroJSON(AMensagem)).Status(AStatus);
+end;
+
+function CorpoJSON(Req: THorseRequest; Res: THorseResponse;
+  out LBody: TJSONObject): Boolean;
+var
+  LData: TJSONData;
+begin
+  Result := False;
+  LBody := nil;
+  LData := nil;
+  try
+    LData := GetJSON(Req.Body);
+  except
+    LData := nil;
+  end;
+  if not (LData is TJSONObject) then
+  begin
+    LData.Free;
+    EnviarErro(Res, 'Corpo da requisição inválido (objeto JSON esperado)',
+      THTTPStatus.BadRequest);
+    Exit;
+  end;
+  LBody := TJSONObject(LData);
+  Result := True;
+end;
+
+{ F1: converte o JSON dos itens para o mesmo record usado pelo Service do
+  pedido. O preço de venda do produto é buscado quando o app não informa
+  valor_unitario; a validação completa fica no Service. }
+function ItensDoBody(AItens: TJSONArray; AQuery: TSQLQuery;
+  AEmpresaId: Int64; out AItensServico: TItensPedidoEntrada;
+  out AMensagem: string): Boolean;
+var
+  LItem: TJSONObject;
+  LDado: TJSONData;
+  I: Integer;
+begin
+  Result := False;
+  AMensagem := '';
+  SetLength(AItensServico, AItens.Count);
+  for I := 0 to AItens.Count - 1 do
+  begin
+    if not (AItens.Items[I] is TJSONObject) then
+    begin
+      AMensagem := Format('Item %d inválido.', [I + 1]);
+      Exit;
+    end;
+    LItem := TJSONObject(AItens.Items[I]);
+    AItensServico[I].ProdutoId := LItem.Get('produto_id', Int64(0));
+    AItensServico[I].Quantidade := LItem.Get('quantidade', Double(0));
+    AItensServico[I].Desconto := LItem.Get('desconto', Double(0));
+    AItensServico[I].Cfop := LItem.Get('cfop', '');
+    LDado := LItem.Find('valor_unitario');
+    if LDado <> nil then
+      AItensServico[I].ValorUnitario := LDado.AsFloat
+    else
+    begin
+      AQuery.SQL.Text :=
+        'SELECT PRECO_VENDA FROM PRODUTO WHERE ID = :ID AND ATIVO = ''A'' ' +
+        'AND EMPRESA_ID = :EMP';
+      AQuery.ParamByName('ID').AsLargeInt := AItensServico[I].ProdutoId;
+      AQuery.ParamByName('EMP').AsLargeInt := AEmpresaId;
+      AQuery.Open;
+      if AQuery.IsEmpty then
+      begin
+        AQuery.Close;
+        AMensagem := Format('Item %d: produto não encontrado ou inativo.', [I + 1]);
+        Exit;
+      end;
+      AItensServico[I].ValorUnitario := AQuery.FieldByName('PRECO_VENDA').AsFloat;
+      AQuery.Close;
+    end;
+  end;
+  Result := True;
+end;
+
+{ Erro de regra de negócio do Service: 404 para "não encontrado", 409
+  para status já alterado e 400 para validação de dados. }
+function StatusErroService(const AMensagem: string): THTTPStatus;
+begin
+  if (Pos('não encontrado', AMensagem) > 0) or
+     (Pos('nao encontrado', AMensagem) > 0) then
+    Result := THTTPStatus.NotFound
+  else if (Pos('Somente orçamentos', AMensagem) > 0) or
+          (Pos('convertido', AMensagem) > 0) then
+    Result := THTTPStatus.Conflict
+  else
+    Result := THTTPStatus.BadRequest;
 end;
 
 { Próximo número sequencial, mantendo a regra do desktop
@@ -525,6 +622,165 @@ begin
 end;
 
 { ------------------------------------------------------------
+  PUT /api/orcamentos/:id (F1)
+  ------------------------------------------------------------ }
+
+procedure PutOrcamento(Req: THorseRequest; Res: THorseResponse);
+var
+  LId, LClienteId: Int64;
+  LBody: TJSONObject;
+  LDadosItens: TJSONData;
+  LItens: TJSONArray;
+  LItensServico: TItensPedidoEntrada;
+  LConexao: TConexao;
+  LQuery: TSQLQuery;
+  LServico: TOrcamentoService;
+  LResposta: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
+  LDesconto: Double;
+  LMensagem: string;
+begin
+  LId := StrToInt64Def(Req.Params['id'], 0);
+  if LId <= 0 then
+  begin
+    EnviarErro(Res, 'ID inválido', THTTPStatus.BadRequest);
+    Exit;
+  end;
+
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if (LUsuarioId <= 0) or (LEmpresaId <= 0) then
+  begin
+    EnviarErro(Res, 'Token sem usuário/empresa. Entre novamente.',
+      THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
+  if not CorpoJSON(Req, Res, LBody) then
+    Exit;
+  try
+    try
+      LClienteId := LBody.Get('cliente_id', Int64(0));
+      if LClienteId <= 0 then
+      begin
+        EnviarErro(Res, 'Informe o cliente (cliente_id).', THTTPStatus.BadRequest);
+        Exit;
+      end;
+
+      LDadosItens := LBody.Find('itens');
+      if not (LDadosItens is TJSONArray) then
+      begin
+        EnviarErro(Res, 'Informe os itens do orçamento (itens).',
+          THTTPStatus.BadRequest);
+        Exit;
+      end;
+      LItens := TJSONArray(LDadosItens);
+      if LItens.Count = 0 then
+      begin
+        EnviarErro(Res, 'Adicione pelo menos um item ao orçamento.',
+          THTTPStatus.BadRequest);
+        Exit;
+      end;
+
+      LDesconto := LBody.Get('desconto', Double(0));
+      if LDesconto < 0 then
+      begin
+        EnviarErro(Res, 'O desconto do orçamento não pode ser negativo.',
+          THTTPStatus.BadRequest);
+        Exit;
+      end;
+
+      LConexao := TConexao.GetInstance;
+      LQuery := TSQLQuery.Create(nil);
+      try
+        LQuery.DataBase := LConexao.Connection;
+        LQuery.Transaction := LConexao.Transaction;
+        if not ItensDoBody(LItens, LQuery, LEmpresaId, LItensServico, LMensagem) then
+        begin
+          EnviarErro(Res, LMensagem, THTTPStatus.BadRequest);
+          Exit;
+        end;
+      finally
+        LQuery.Free;
+      end;
+
+      LServico := TOrcamentoService.Create;
+      try
+        { F1: o Service garante STATUS 'O', empresa, itens e totais, e
+          grava PEDIDO_VENDA/U antes do commit. }
+        LServico.AtualizarOrcamento(LId, LClienteId, LItensServico,
+          LDesconto, LBody.Get('observacoes', ''));
+      finally
+        LServico.Free;
+      end;
+
+      LResposta := TJSONObject.Create;
+      try
+        LResposta.Add('id', LId);
+        LResposta.Add('message', 'Orçamento atualizado com sucesso');
+        Res.Send(LResposta.AsJSON).Status(THTTPStatus.OK);
+      finally
+        LResposta.Free;
+      end;
+    except
+      on E: Exception do
+        EnviarErro(Res, E.Message, StatusErroService(E.Message));
+    end;
+  finally
+    LBody.Free;
+  end;
+end;
+
+{ ------------------------------------------------------------
+  DELETE /api/orcamentos/:id (F1)
+  ------------------------------------------------------------ }
+
+procedure DeleteOrcamento(Req: THorseRequest; Res: THorseResponse);
+var
+  LId: Int64;
+  LServico: TOrcamentoService;
+  LResposta: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
+begin
+  LId := StrToInt64Def(Req.Params['id'], 0);
+  if LId <= 0 then
+  begin
+    EnviarErro(Res, 'ID inválido', THTTPStatus.BadRequest);
+    Exit;
+  end;
+
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    EnviarErro(Res, 'Token sem empresa. Entre novamente.',
+      THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
+  try
+    LServico := TOrcamentoService.Create;
+    try
+      { F1: o Service não apaga orçamento convertido, grava PEDIDO_VENDA/D
+        e remove os itens na mesma transação. }
+      LServico.ExcluirOrcamento(LId);
+    finally
+      LServico.Free;
+    end;
+
+    LResposta := TJSONObject.Create;
+    try
+      LResposta.Add('id', LId);
+      LResposta.Add('message', 'Orçamento removido');
+      Res.Send(LResposta.AsJSON).Status(THTTPStatus.OK);
+    finally
+      LResposta.Free;
+    end;
+  except
+    on E: Exception do
+      EnviarErro(Res, E.Message, StatusErroService(E.Message));
+  end;
+end;
+
+{ ------------------------------------------------------------
   POST /api/orcamentos/:id/converter
   ------------------------------------------------------------ }
 
@@ -622,6 +878,8 @@ begin
   THorse.Get('/api/orcamentos', @GetOrcamentos);
   THorse.Get('/api/orcamentos/:id', @GetOrcamentoById);
   THorse.Post('/api/orcamentos', @PostOrcamento);
+  THorse.Put('/api/orcamentos/:id', @PutOrcamento);
+  THorse.Delete('/api/orcamentos/:id', @DeleteOrcamento);
   THorse.Post('/api/orcamentos/:id/converter', @ConverterOrcamento);
 end;
 

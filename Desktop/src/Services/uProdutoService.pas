@@ -140,21 +140,31 @@ begin
     LNulls[0] := 'GRADE';
   end;
 
-  Result := FRepo.InserirParamN(
-    CAMPOS, VALORES_PARAM,
-    ['EMP', 'CAT', 'UNID', 'COD', 'BAR', 'DESC', 'PDV',
-     'NCM', 'CEST', 'CFOP', 'CUSTO', 'VENDA', 'MARGEM',
-     'MIN', 'MAX', 'CTRL', 'ATIVO', 'OBS', 'GRADE'],
-    [IntToStr(AObj.EmpresaId), IntToStr(AObj.CategoriaId),
-     IntToStr(AObj.UnidadeId), AObj.Codigo, AObj.CodigoBarras,
-     AObj.Descricao, AObj.DescricaoPDV, AObj.Ncm, AObj.Cest,
-     AObj.CfopVenda, CurrToStr(AObj.PrecoCusto), CurrToStr(AObj.PrecoVenda),
-     FloatToStr(AObj.MargemLucro), FloatToStr(AObj.EstoqueMinimo),
-     FloatToStr(AObj.EstoqueMaximo), LCtrl, AObj.Ativo,
-     AObj.Observacoes, IntToStr(AObj.GradeId)],
-    LNulls);
+  { F1: a auditoria entra na MESMA transação do INSERT. As variantes
+    antigas do Repository confirmavam antes do LogOperacao e a API
+    perdia o log silenciosamente. }
+  Conexao.IniciarTransacao;
+  try
+    Result := FRepo.InserirParamNNaTransacao(
+      CAMPOS, VALORES_PARAM,
+      ['EMP', 'CAT', 'UNID', 'COD', 'BAR', 'DESC', 'PDV',
+       'NCM', 'CEST', 'CFOP', 'CUSTO', 'VENDA', 'MARGEM',
+       'MIN', 'MAX', 'CTRL', 'ATIVO', 'OBS', 'GRADE'],
+      [IntToStr(AObj.EmpresaId), IntToStr(AObj.CategoriaId),
+       IntToStr(AObj.UnidadeId), AObj.Codigo, AObj.CodigoBarras,
+       AObj.Descricao, AObj.DescricaoPDV, AObj.Ncm, AObj.Cest,
+       AObj.CfopVenda, CurrToStr(AObj.PrecoCusto), CurrToStr(AObj.PrecoVenda),
+       FloatToStr(AObj.MargemLucro), FloatToStr(AObj.EstoqueMinimo),
+       FloatToStr(AObj.EstoqueMaximo), LCtrl, AObj.Ativo,
+       AObj.Observacoes, IntToStr(AObj.GradeId)],
+      LNulls);
 
-  LogOperacao('PRODUTO', 'I', Result);
+    LogOperacao('PRODUTO', 'I', Result);
+    Conexao.Confirmar;
+  except
+    Conexao.Cancelar;
+    raise;
+  end;
 end;
 
 procedure TProdutoService.GarantirDaEmpresa(AId: Int64);
@@ -198,28 +208,43 @@ begin
     LNulls[0] := 'GRADE';
   end;
 
-  Result := FRepo.AtualizarParamN(
-    AObj.Id, CAMPOS_PARAM,
-    ['CAT', 'UNID', 'COD', 'BAR', 'DESC', 'PDV',
-     'NCM', 'CEST', 'CFOP', 'CUSTO', 'VENDA', 'MARGEM',
-     'MIN', 'MAX', 'CTRL', 'ATIVO', 'OBS', 'GRADE'],
-    [IntToStr(AObj.CategoriaId), IntToStr(AObj.UnidadeId),
-     AObj.Codigo, AObj.CodigoBarras, AObj.Descricao, AObj.DescricaoPDV,
-     AObj.Ncm, AObj.Cest, AObj.CfopVenda, CurrToStr(AObj.PrecoCusto),
-     CurrToStr(AObj.PrecoVenda), FloatToStr(AObj.MargemLucro),
-     FloatToStr(AObj.EstoqueMinimo), FloatToStr(AObj.EstoqueMaximo),
-     LCtrl, AObj.Ativo, AObj.Observacoes, IntToStr(AObj.GradeId)],
-    LNulls);
+  Conexao.IniciarTransacao;
+  try
+    Result := FRepo.AtualizarParamNNaTransacao(
+      AObj.Id, CAMPOS_PARAM,
+      ['CAT', 'UNID', 'COD', 'BAR', 'DESC', 'PDV',
+       'NCM', 'CEST', 'CFOP', 'CUSTO', 'VENDA', 'MARGEM',
+       'MIN', 'MAX', 'CTRL', 'ATIVO', 'OBS', 'GRADE'],
+      [IntToStr(AObj.CategoriaId), IntToStr(AObj.UnidadeId),
+       AObj.Codigo, AObj.CodigoBarras, AObj.Descricao, AObj.DescricaoPDV,
+       AObj.Ncm, AObj.Cest, AObj.CfopVenda, CurrToStr(AObj.PrecoCusto),
+       CurrToStr(AObj.PrecoVenda), FloatToStr(AObj.MargemLucro),
+       FloatToStr(AObj.EstoqueMinimo), FloatToStr(AObj.EstoqueMaximo),
+       LCtrl, AObj.Ativo, AObj.Observacoes, IntToStr(AObj.GradeId)],
+      LNulls);
 
-  LogOperacao('PRODUTO', 'U', AObj.Id);
+    LogOperacao('PRODUTO', 'U', AObj.Id);
+    Conexao.Confirmar;
+  except
+    Conexao.Cancelar;
+    raise;
+  end;
 end;
 
 function TProdutoService.Excluir(AId: Int64): Boolean;
 begin
   ValidarId(AId, 'Produto');
   GarantirDaEmpresa(AId);
-  Result := FRepo.Excluir(AId);
-  LogOperacao('PRODUTO', 'D', AId);
+
+  Conexao.IniciarTransacao;
+  try
+    Result := FRepo.ExcluirNaTransacao(AId);
+    LogOperacao('PRODUTO', 'D', AId);
+    Conexao.Confirmar;
+  except
+    Conexao.Cancelar;
+    raise;
+  end;
 end;
 
 function TProdutoService.Pesquisar(const ATermo: string): TSQLQuery;

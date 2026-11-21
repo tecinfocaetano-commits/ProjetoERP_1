@@ -3,8 +3,11 @@ unit uRotasProdutos;
 {$mode objfpc}{$H+}
 
 { ============================================================
-  ERP 2026 - FASE 7 - Rotas de Produtos
-  Endpoints: GET/POST /api/produtos
+  ERP 2026 - Rotas de Produtos
+  Endpoints: GET/POST /api/produtos, GET/PUT/DELETE /api/produtos/:id
+  F1: edição/exclusão pelo TProdutoService compartilhado com o desktop
+  (validação de descrição/categoria/unidade/preço, isolamento por empresa
+  e auditoria PRODUTO/U e PRODUTO/D).
   ============================================================ }
 
 interface
@@ -17,7 +20,132 @@ procedure RegistrarRotasProdutos;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT, uAuditoria;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT, uAuditoria,
+  uProdutoService, uProduto;
+
+function ErroJSON(const AMensagem: string): string;
+var
+  LObj: TJSONObject;
+begin
+  LObj := TJSONObject.Create;
+  try
+    LObj.Add('error', AMensagem);
+    Result := LObj.AsJSON;
+  finally
+    LObj.Free;
+  end;
+end;
+
+procedure EnviarErro(Res: THorseResponse; const AMensagem: string;
+  AStatus: THTTPStatus);
+begin
+  Res.Send(ErroJSON(AMensagem)).Status(AStatus);
+end;
+
+function CorpoJSON(Req: THorseRequest; Res: THorseResponse;
+  out LBody: TJSONObject): Boolean;
+var
+  LData: TJSONData;
+begin
+  Result := False;
+  LBody := nil;
+  LData := nil;
+  try
+    LData := GetJSON(Req.Body);
+  except
+    LData := nil;
+  end;
+  if not (LData is TJSONObject) then
+  begin
+    LData.Free;
+    EnviarErro(Res, 'Corpo da requisição inválido (objeto JSON esperado)',
+      THTTPStatus.BadRequest);
+    Exit;
+  end;
+  LBody := TJSONObject(LData);
+  Result := True;
+end;
+
+function TextoBody(ABody: TJSONObject; const AChave, AAtual: string): string;
+var
+  D: TJSONData;
+begin
+  Result := AAtual;
+  D := ABody.Find(AChave);
+  if D <> nil then
+    Result := D.AsString;
+end;
+
+function InteiroBody(ABody: TJSONObject; const AChave: string;
+  AAtual: Int64): Int64;
+var
+  D: TJSONData;
+begin
+  Result := AAtual;
+  D := ABody.Find(AChave);
+  if D <> nil then
+    Result := D.AsInt64;
+end;
+
+function NumeroBody(ABody: TJSONObject; const AChave: string;
+  AAtual: Double): Double;
+var
+  D: TJSONData;
+begin
+  Result := AAtual;
+  D := ABody.Find(AChave);
+  if D <> nil then
+    Result := D.AsFloat;
+end;
+
+function StatusBody(ABody: TJSONObject; AAtual: Char): Char;
+var
+  D: TJSONData;
+  S: string;
+begin
+  Result := AAtual;
+  D := ABody.Find('status');
+  if D = nil then
+    D := ABody.Find('ativo');
+  if D = nil then
+    Exit;
+  S := LowerCase(Trim(D.AsString));
+  if (S = 'i') or (S = 'inativo') or (S = 'false') or (S = '0') then
+    Result := 'I'
+  else if (S = 'a') or (S = 'ativo') or (S = 'true') or (S = '1') then
+    Result := 'A';
+end;
+
+function ControlaEstoqueBody(ABody: TJSONObject; AAtual: Boolean): Boolean;
+var
+  D: TJSONData;
+  S: string;
+begin
+  Result := AAtual;
+  D := ABody.Find('controla_estoque');
+  if D = nil then
+    Exit;
+  S := LowerCase(Trim(D.AsString));
+  Result := (S = 's') or (S = 'sim') or (S = 'true') or (S = '1');
+end;
+
+procedure AplicarBody(ABody: TJSONObject; AProduto: TProduto);
+begin
+  AProduto.Codigo := TextoBody(ABody, 'codigo', AProduto.Codigo);
+  AProduto.CodigoBarras := TextoBody(ABody, 'codigo_barras', AProduto.CodigoBarras);
+  AProduto.Descricao := TextoBody(ABody, 'descricao', AProduto.Descricao);
+  AProduto.DescricaoPDV := TextoBody(ABody, 'descricao_pdv', AProduto.DescricaoPDV);
+  AProduto.Ncm := TextoBody(ABody, 'ncm', AProduto.Ncm);
+  AProduto.CategoriaId := InteiroBody(ABody, 'categoria_id', AProduto.CategoriaId);
+  AProduto.UnidadeId := InteiroBody(ABody, 'unidade_id', AProduto.UnidadeId);
+  AProduto.PrecoVenda := NumeroBody(ABody, 'preco_venda', AProduto.PrecoVenda);
+  AProduto.PrecoCusto := NumeroBody(ABody, 'preco_custo', AProduto.PrecoCusto);
+  AProduto.EstoqueMinimo := NumeroBody(ABody, 'estoque_minimo', AProduto.EstoqueMinimo);
+  AProduto.EstoqueMaximo := NumeroBody(ABody, 'estoque_maximo', AProduto.EstoqueMaximo);
+  AProduto.Observacoes := TextoBody(ABody, 'observacoes', AProduto.Observacoes);
+  AProduto.Ativo := StatusBody(ABody, AProduto.Ativo);
+  AProduto.ControlaEstoque := ControlaEstoqueBody(ABody, AProduto.ControlaEstoque);
+end;
 
 procedure GetProdutos(Req: THorseRequest; Res: THorseResponse);
 var
@@ -200,11 +328,138 @@ begin
   end;
 end;
 
+procedure PutProduto(Req: THorseRequest; Res: THorseResponse);
+var
+  LId: Int64;
+  LBody: TJSONObject;
+  LServico: TProdutoService;
+  LProduto: TProduto;
+  LResposta: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
+begin
+  LId := StrToInt64Def(Req.Params['id'], 0);
+  if LId <= 0 then
+  begin
+    EnviarErro(Res, 'ID inválido', THTTPStatus.BadRequest);
+    Exit;
+  end;
+
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    EnviarErro(Res, 'Token sem empresa. Entre novamente.',
+      THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
+  if not CorpoJSON(Req, Res, LBody) then
+    Exit;
+  try
+    try
+      LServico := TProdutoService.Create;
+      try
+        LProduto := LServico.BuscarPorId(LId);
+        try
+          if (LProduto = nil) or (LProduto.EmpresaId <> LEmpresaId) then
+          begin
+            EnviarErro(Res, 'Produto não encontrado', THTTPStatus.NotFound);
+            Exit;
+          end;
+
+          AplicarBody(LBody, LProduto);
+          LProduto.EmpresaId := LEmpresaId;
+          { F1: o Service valida descrição/categoria/unidade/preço, garante
+            a empresa e grava PRODUTO/U na auditoria da thread. }
+          LServico.Atualizar(LProduto);
+
+          LResposta := TJSONObject.Create;
+          try
+            LResposta.Add('id', LId);
+            LResposta.Add('message', 'Produto atualizado com sucesso');
+            Res.Send(LResposta.AsJSON).Status(THTTPStatus.OK);
+          finally
+            LResposta.Free;
+          end;
+        finally
+          LProduto.Free;
+        end;
+      finally
+        LServico.Free;
+      end;
+    except
+      on E: Exception do
+        EnviarErro(Res, E.Message, THTTPStatus.BadRequest);
+    end;
+  finally
+    LBody.Free;
+  end;
+end;
+
+procedure DeleteProduto(Req: THorseRequest; Res: THorseResponse);
+var
+  LId: Int64;
+  LServico: TProdutoService;
+  LProduto: TProduto;
+  LResposta: TJSONObject;
+  LUsuarioId, LEmpresaId: Int64;
+begin
+  LId := StrToInt64Def(Req.Params['id'], 0);
+  if LId <= 0 then
+  begin
+    EnviarErro(Res, 'ID inválido', THTTPStatus.BadRequest);
+    Exit;
+  end;
+
+  DadosDoToken(Req, LUsuarioId, LEmpresaId);
+  if LEmpresaId <= 0 then
+  begin
+    EnviarErro(Res, 'Token sem empresa. Entre novamente.',
+      THTTPStatus.Unauthorized);
+    Exit;
+  end;
+
+  try
+    LServico := TProdutoService.Create;
+    try
+      LProduto := LServico.BuscarPorId(LId);
+      try
+        if (LProduto = nil) or (LProduto.EmpresaId <> LEmpresaId) then
+        begin
+          EnviarErro(Res, 'Produto não encontrado', THTTPStatus.NotFound);
+          Exit;
+        end;
+
+        { F1: o Service grava PRODUTO/D (auditoria da empresa/usuário da
+          thread) e devolve erro se o ID não pertencer à empresa. }
+        LServico.Excluir(LId);
+
+        LResposta := TJSONObject.Create;
+        try
+          LResposta.Add('id', LId);
+          LResposta.Add('message', 'Produto removido');
+          Res.Send(LResposta.AsJSON).Status(THTTPStatus.OK);
+        finally
+          LResposta.Free;
+        end;
+      finally
+        LProduto.Free;
+      end;
+    finally
+      LServico.Free;
+    end;
+  except
+    on E: Exception do
+      EnviarErro(Res, E.Message, THTTPStatus.BadRequest);
+  end;
+end;
+
 procedure RegistrarRotasProdutos;
 begin
   THorse.Get('/api/produtos', @GetProdutos);
   THorse.Get('/api/produtos/:id', @GetProdutoById);
   THorse.Post('/api/produtos', @PostProduto);
+  THorse.Put('/api/produtos/:id', @PutProduto);
+  THorse.Delete('/api/produtos/:id', @DeleteProduto);
 end;
 
 end.

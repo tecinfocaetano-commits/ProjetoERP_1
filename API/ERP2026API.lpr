@@ -75,10 +75,10 @@ begin
   WriteLn('  GET  /api/health');
   WriteLn('  POST /api/login');
   WriteLn('  GET/POST/PUT/DELETE /api/clientes');
-  WriteLn('  GET/POST /api/produtos');
+  WriteLn('  GET/POST /api/produtos, PUT/DELETE /api/produtos/:id');
   WriteLn('  GET/POST /api/estoque');
   WriteLn('  GET/POST /api/vendas');
-  WriteLn('  GET/POST /api/orcamentos');
+  WriteLn('  GET/POST /api/orcamentos, PUT/DELETE /api/orcamentos/:id');
   WriteLn('  POST /api/orcamentos/:id/converter');
   WriteLn('  GET/POST /api/financeiro');
   WriteLn('  POST /api/producao/bipar');
