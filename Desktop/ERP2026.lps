@@ -27,9 +27,9 @@
         <UsageCount Value="23"/>
       </Unit>
       <Unit>
-        <Filename Value="src\Models\uCliente.pas"/>
+        <Filename Value="src\Models\uPessoa.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="23"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="src\Models\uProduto.pas"/>
@@ -37,9 +37,39 @@
         <UsageCount Value="23"/>
       </Unit>
       <Unit>
-        <Filename Value="src\Models\uFornecedor.pas"/>
+        <Filename Value="src\Models\uProdutoFiscal.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="23"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uMaterial.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uCor.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uPais.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uEstado.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uCidade.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uGrade.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="src\Repositories\uRepositoryBase.pas"/>
@@ -52,9 +82,59 @@
         <UsageCount Value="23"/>
       </Unit>
       <Unit>
-        <Filename Value="src\Services\uClienteService.pas"/>
+        <Filename Value="src\Services\uPessoaService.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="23"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uProdutoFiscalService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uMaterialService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uCorService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uCategoriaService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uProdutoService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uUsuarioService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uPaisService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uEstadoService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uCidadeService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uGradeService.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="src\Services\uACBrHelper.pas"/>
@@ -103,24 +183,17 @@
         <UsageCount Value="23"/>
       </Unit>
       <Unit>
-        <Filename Value="src\Views\uFrmClientes.pas"/>
+        <Filename Value="src\Views\uFrmPessoas.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frmClientes"/>
+        <ComponentName Value="frmPessoas"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="-1"/>
-        <TopLine Value="133"/>
-        <CursorPos X="39" Y="152"/>
-        <UsageCount Value="23"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
-        <Filename Value="src\Views\uFrmFornecedores.pas"/>
+        <Filename Value="src\Views\uGeoCombos.pas"/>
         <IsPartOfProject Value="True"/>
-        <ComponentName Value="frmFornecedores"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <UsageCount Value="23"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmProdutos.pas"/>
@@ -129,6 +202,14 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UsageCount Value="23"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmCoresProduto.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmCoresProduto"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmCategorias.pas"/>
@@ -148,6 +229,78 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UsageCount Value="23"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmProdutoFiscal.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmProdutoFiscal"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmMaterial.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmMaterial"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmPais.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmPais"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmEstado.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmEstado"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmCidade.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmCidade"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmGrade.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmGrade"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmGradeQuantidades.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmGradeQuantidades"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmMovimentoFinanceiro.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmMovimentoFinanceiro"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmCompras.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmCompras"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmMovEstoque.pas"/>
@@ -198,6 +351,14 @@
         <UsageCount Value="23"/>
       </Unit>
       <Unit>
+        <Filename Value="src\Views\uFrmPedidoDetalhe.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmPedidoDetalhe"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\Views\uFrmOrcamento.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmOrcamento"/>
@@ -242,9 +403,10 @@
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
         <TopLine Value="61"/>
-        <CursorPos Y="78"/>
+        <CursorPos X="49" Y="75"/>
         <UsageCount Value="23"/>
         <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="src\Views\uFrmCopiloto.pas"/>
@@ -265,9 +427,9 @@
         <UsageCount Value="21"/>
       </Unit>
       <Unit>
-        <Filename Value="src\Tests\uFrmClientesTest.pas"/>
+        <Filename Value="src\Tests\uPessoaTest.pas"/>
         <IsPartOfProject Value="True"/>
-        <UsageCount Value="21"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="src\Tests\uFrmProdutosTest.pas"/>
@@ -287,6 +449,40 @@
       <Unit>
         <Filename Value="src\Tests\uTestRunner.pas"/>
         <IsPartOfProject Value="True"/>
+        <UsageCount Value="21"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uCliente.pas"/>
+        <UsageCount Value="23"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Models\uFornecedor.pas"/>
+        <UsageCount Value="23"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Services\uClienteService.pas"/>
+        <UsageCount Value="23"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmClientes.pas"/>
+        <ComponentName Value="frmClientes"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
+        <TopLine Value="133"/>
+        <CursorPos X="39" Y="152"/>
+        <UsageCount Value="23"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Views\uFrmFornecedores.pas"/>
+        <ComponentName Value="frmFornecedores"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UsageCount Value="23"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src\Tests\uFrmClientesTest.pas"/>
         <UsageCount Value="21"/>
       </Unit>
     </Units>
