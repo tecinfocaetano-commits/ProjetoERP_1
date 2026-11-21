@@ -445,11 +445,48 @@ var
   LItens: TItensPDVEntrada;
   LDesc: Double;
   LServico: TPDVService;
+  LQuery: TSQLQuery;
 begin
-  Result := 0;
+  { CLAIM ATOMICO: so um finalizador por vez. O UPDATE so casa se a
+    cobranca ainda esta APROVADO e sem venda vinculada; o lock da
+    linha impede duas threads de entrarem juntas. Em caso de falha
+    na gravacao da venda, o status volta para APROVADO. }
+  FConexao.IniciarTransacao;
+  LQuery := TSQLQuery.Create(nil);
+  try
+    try
+      LQuery.DataBase := FConexao.Connection;
+      LQuery.Transaction := FConexao.Transaction;
+      LQuery.SQL.Text :=
+        'UPDATE PAGAMENTO SET STATUS = ''PROCESSANDO'' ' +
+        'WHERE ID = :ID AND EMPRESA_ID = :EMP ' +
+        '  AND STATUS = ''APROVADO'' AND PEDIDO_VENDA_ID IS NULL';
+      LQuery.ParamByName('ID').AsLargeInt := APagamentoId;
+      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+      LQuery.ExecSQL;
+      if LQuery.RowsAffected = 0 then
+      begin
+        { outro processo ja vinculou a venda (ou estado mudou) }
+        FConexao.Confirmar;
+        Result := 0;
+        Exit;
+      end;
+      FConexao.Confirmar;
+    except
+      FConexao.Cancelar;
+      raise;
+    end;
+  finally
+    LQuery.Free;
+  end;
+
   if not ItensDoDadosJson(LDadosJson, LItens, LDesc) then
+  begin
+    AtualizarStatus(APagamentoId, spAprovado,
+      'Aprovado mas carrinho inválido.');
     raise Exception.Create('Pagamento aprovado mas o carrinho está ' +
       'vazio ou inválido — finalize manualmente ou cancele.');
+  end;
 
   LServico := TPDVService.Create;
   try
@@ -460,21 +497,30 @@ begin
     LServico.Free;
   end;
 
-  { marca a cobrança com a venda gerada (mesma transação já commitada
-    pelo SalvarVenda; este UPDATE é idempotente via PEDIDO_VENDA_ID) }
-  with TSQLQuery.Create(nil) do
+  { vincula a venda a cobranca em transacao explicita — sem isso o
+    middleware devolve a conexao com a transacao aberta e o UPDATE
+    e revertido (bug que gerava venda duplicada a cada consulta) }
+  FConexao.IniciarTransacao;
+  LQuery := TSQLQuery.Create(nil);
   try
-    DataBase := FConexao.Connection;
-    Transaction := FConexao.Transaction;
-    SQL.Text :=
-      'UPDATE PAGAMENTO SET PEDIDO_VENDA_ID = :PED ' +
-      'WHERE ID = :ID AND EMPRESA_ID = :EMP AND PEDIDO_VENDA_ID IS NULL';
-    ParamByName('PED').AsLargeInt := Result;
-    ParamByName('ID').AsLargeInt := APagamentoId;
-    ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    ExecSQL;
+    try
+      LQuery.DataBase := FConexao.Connection;
+      LQuery.Transaction := FConexao.Transaction;
+      LQuery.SQL.Text :=
+        'UPDATE PAGAMENTO SET PEDIDO_VENDA_ID = :PED, ' +
+        '  STATUS = ''APROVADO'' ' +
+        'WHERE ID = :ID AND EMPRESA_ID = :EMP';
+      LQuery.ParamByName('PED').AsLargeInt := Result;
+      LQuery.ParamByName('ID').AsLargeInt := APagamentoId;
+      LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
+      LQuery.ExecSQL;
+      FConexao.Confirmar;
+    except
+      FConexao.Cancelar;
+      raise;
+    end;
   finally
-    Free;
+    LQuery.Free;
   end;
 end;
 
@@ -668,10 +714,16 @@ begin
   end;
 
   { aprovado -> finaliza a venda UMA vez (idempotente por
-    PEDIDO_VENDA_ID preenchido) }
-  if (LStatus = spAprovado) and (LVendaId = 0) then
-    AVendaId := FinalizarSeAprovado(APagamentoId, LDadosJson, LTipo,
-      LValor, LDesconto, LCaixaId, LFormaId);
+    PEDIDO_VENDA_ID preenchido); se ja vinculado, devolve a venda
+    existente para a tela de espera nao ficar sem o cupom }
+  if LStatus = spAprovado then
+  begin
+    if LVendaId = 0 then
+      AVendaId := FinalizarSeAprovado(APagamentoId, LDadosJson, LTipo,
+        LValor, LDesconto, LCaixaId, LFormaId)
+    else
+      AVendaId := LVendaId;
+  end;
 
   if AVendaId > 0 then
   begin
