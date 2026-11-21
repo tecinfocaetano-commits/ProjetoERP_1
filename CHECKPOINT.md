@@ -16,7 +16,7 @@
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
    (deve dar **384/384**). Ruído conhecido: `InitializeFppkg failed`.
-   Para o Android: `Scripts\run_tests_android.bat` (deve dar **5/5**).
+   Para o Android: `Scripts\run_tests_android.bat` (deve dar **9/9**).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
    (uma vez, gera `C:\certificados\teste.pfx`) e `Scripts\validar_nfe.bat 1003`
@@ -35,23 +35,33 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `58f34b9` — "Docs: marco 3.77 (D7+D8+F6), checkpoint e canal de
-agentes" (acima dele entra o commit de código F9 e, depois, o de docs deste
-marco). Build: desktop **0/0** · suíte desktop **384/384** · `build_api.bat`
-**OK** (pare a API antes de compilar, senão o `.exe` fica travado) · testes
-Android **9/9** · smoke de telas **33/33** · `permissoes_menu.ps1`
-**0 falhas** · `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos,
-diff vazio, acentos conferidos) · na API 9000: `api_clientes_crud.ps1`,
-`api_auditoria.ps1` (6 logs), `api_estoque_service.ps1`,
-`api_numeracao_empresa.ps1` e `api_paginacao.ps1` **OK**. Árvore: sem
-mudanças nossas após os commits; `tmp_shots/` (do smoke do `:bipe`)
-permanece untracked e não foi tocada.
+**HEAD:** `5a3bd7b` — "F1: CRUD completo na API com auditoria atomica"
+(acima dele entra o commit de docs do marco 3.79). Build: desktop **0/0** ·
+suíte desktop **384/384** · `build_api.bat` **OK** (pare a API antes de
+compilar, senão o `.exe` fica travado) · testes Android **9/9** · smoke de
+telas **33/33** · `permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1`
+e `banco_fresco.ps1` **OK** (585 campos, diff vazio, acentos conferidos) · na
+API 9000: `api_clientes_crud.ps1`, `api_auditoria.ps1` (6 logs),
+`api_estoque_service.ps1`, `api_numeracao_empresa.ps1`, `api_paginacao.ps1` e
+`api_f1.ps1` (7 logs) **OK**. Árvore: sem mudanças nossas após os commits;
+`tmp_shots/` (do smoke do `:bipe`) permanece untracked e não foi tocada.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.79 — F1: CRUD completo na API)
+
+| Item | Entrega |
+|---|---|
+| **Produtos** | `PUT/DELETE /api/produtos/:id` usam `TProdutoService`: validação do desktop, isolamento por empresa e logs `PRODUTO/U`/`PRODUTO/D`. |
+| **Orçamentos** | Novos `TOrcamentoService.AtualizarOrcamento`/`ExcluirOrcamento`: só STATUS 'O', itens recalculados/substituídos na mesma transação e logs `PEDIDO_VENDA/U`/`D`. |
+| **Vendas** | `POST /api/vendas` usa `TPedidoVendaService` com STATUS 'P', numeração e totais pelo Service, resposta 201 com `id`/`numero`/`subtotal`/`desconto`/`total` e log `PEDIDO_VENDA/INSERT`. |
+| **Auditoria** | `TProdutoService` passou a auditar antes do `Commit`: novas variantes em `TRepositoryBase` mantêm I/U/D atômicos também na API. |
+| **Smoke** | `Scripts\testes\api_f1.ps1` cobre os 5 endpoints e as 7 auditorias, com limpeza no `finally`. |
+| **Verificação** | Desktop **384/384**, telas **33/33**, permissões **0 falhas**, schema/banco fresco **OK**, Android **9/9**, 6 smokes da API **OK**. |
 
 ### O que fechou nesta sessão (marco 3.78 — F9: fila offline com backoff e dead-letter)
 

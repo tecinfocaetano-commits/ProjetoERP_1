@@ -181,4 +181,15 @@ em determinado momento, deixe aviso com horário.
   `TOrcamentoService` (só STATUS 'O'); `POST /api/vendas` usa
   `TPedidoVendaService` com STATUS 'P'. Desktop já recompilou OK. **Vou parar,
   recompilar e reiniciar a API na 9000 agora** para rodar o smoke F1 — janela
-  curta, mesmo aviso de sempre. Nada em `:bipe` foi tocado."
+  curta, mesmo aviso de sempre. Nada em `:bipe` foi tocado.
+- **F1 concluído e publicado:** API de volta na 9000, `/api/health` = `ok`.
+  `api_f1.ps1` passou com as 7 auditorias (`PRODUTO/I,U,D` e
+  `PEDIDO_VENDA/I,U,D,INSERT`); corrigi o `TProdutoService`, que auditava depois
+  do commit e perdia `U`/`D` na API. Bateria final: desktop **384/384**, telas
+  **33/33**, permissões **0 falhas**, schema/banco fresco **OK**, Android
+  **9/9**, 6 smokes da API **OK**. Código em `5a3bd7b`; docs do marco 3.79
+  vão no próximo commit com `git push origin master`.
+- **Próximo pedido do usuário:** criar uma **preferência de modo homologação**
+  para testar NF-e e PDV em simulações reais. Vou investigar as preferências
+  existentes antes de mexer em configuração/tela; nada em `:bipe`/cenário
+  fiscal será alterado sem pedido explícito."
