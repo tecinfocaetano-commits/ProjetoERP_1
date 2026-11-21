@@ -2418,6 +2418,30 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.80 Bipe — feedback de erro evidente e layout acima do teclado (21/11)
+
+- **Pedido do usuário em campo:** no Samsung A55 a mensagem de erro já
+  aparecia, mas o teclado virtual a cobria — e o operador não percebia
+  quando a bipagem falhava.
+- **`BipagemActivity.java`:** resultado agora tem **cor semântica** —
+  verde `#2E7D32` (OK), amarelo `#F9A825` (DUPLICADO), vermelho
+  `#C62828` (INVALIDO/erro de API), cinza `#616161` (fila offline).
+  **Vibração** distinta por resultado (OK 80 ms, duplicado/offline
+  200 ms, erro 400 ms) via `VIBRATOR_SERVICE` — permissão `VIBRATE`
+  adicionada ao manifest. Em INVALIDO o app exibe também o
+  **código como o servidor o interpretou** (`codigo_barras` da
+  resposta) — resolve a dúvida do caso "1001" → `T001001` que não
+  existe.
+- **`activity_bipagem.xml`:** `txtResultado` movido de baixo para
+  logo abaixo do campo de código (minHeight 64dp) — fica sempre
+  acima do teclado virtual, sem depender de rolagem.
+- **Verificação:** `:bipe:assembleDebug` OK; APK reinstalado no
+  Samsung A55 via adb Wi-Fi (`192.168.100.126:43511`).
+- **Talão de teste criado para o usuário:** `T100001` (talão nº 1001,
+  mapa de produção nº 4, status GERADO, empresa 1).
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

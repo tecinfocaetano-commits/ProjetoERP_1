@@ -74,8 +74,13 @@ O QUE JÁ FOI FEITO (marco 3.71 — não refaça, apenas mantenha)
    - SMOKE TEST REAL FEITO (marco 3.73): ciclo OK/DUPLICADO/INVALIDO
      exercitado via curl com talão de teste T999999 — achou e corrigiu
      Access violation (double-free) no endpoint (`ccea527`).
-   - ApiClient.java: POST JSON mínimo com header Bearer.
+   - ApiClient.java: POST/GET JSON mínimo com header Bearer.
    - Sessao expirada → volta ao login automaticamente.
+   - Feedback de erro evidente (marco 3.80): resultado colorido
+     (verde/amarelo/vermelho/cinza), vibração por resultado
+     (permissão VIBRATE), código interpretado pelo servidor
+     exibido em INVALIDO, e txtResultado posicionado acima do
+     teclado virtual no layout.
    - Layouts: activity_login.xml, activity_bipagem.xml
      (telas grandes, uso industrial).
    - README completo em Android\android\bipe\README.md.
@@ -133,11 +138,20 @@ COMO COMEÇAR
 
 ## Observações para quem colar o prompt
 
-- O app **compila e gera APK**, mas nunca foi testado em aparelho
-  físico/emulador com a API no ar — o primeiro contato real pode
-  revelar ajustes de UX ou de leitura de câmera.
-- Se o objetivo for só **validar** o que existe, peça ao agente para
-  revisar `BipagemActivity.java` contra o contrato real da API
-  (`uRotasProducao.pas`) antes do teste de campo.
+- O app **já foi testado de ponta a ponta**: emulador Pixel_9 e
+  aparelho físico Samsung A55 (ciclo OK/CONCLUSAO/DUPLICADO, fila
+  offline, câmera ZXing com EAN-13 real). Marcos 3.73–3.80 no
+  PLANO_E_LOG.md.
+- O Samsung A55 fica acessível por adb Wi-Fi em
+  `192.168.100.126:43511` quando o USB debugging Wi-Fi estiver ativo.
+- **Atenção à rede do PC:** o PC pode receber internet pelo USB do
+  celular (adaptador Wi-Fi do PC desconectado). Nesse caso o IP certo
+  para o app é `10.103.239.156` (USB networking), não o `192.168.x.x`
+  do Wi-Fi — e a porta 9000 precisa da regra de firewall
+  "ERP2026API 9000" (já criada).
+- Digitação manual de talão exige o código completo `T000001`;
+  digitar só o número `1` vira `T000001` por sorte, mas `1001` vira
+  `T001001` (que não existe — o código real é `T100001`). O app agora
+  exibe o código interpretado quando dá INVALIDO.
 - O próximo projeto grande é o **PDV Mobile** (PROMPT 2) — não comece
   sem o usuário pedir explicitamente.

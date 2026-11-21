@@ -4,7 +4,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
@@ -156,6 +159,7 @@ public class BipagemActivity extends AppCompatActivity {
         }
         bipando = true;
         btnBipar.setEnabled(false);
+        corResultado(0xFF212121);
         txtResultado.setText("Enviando...");
 
         new Thread(() -> {
@@ -189,6 +193,8 @@ public class BipagemActivity extends AppCompatActivity {
             // sem rede: entra na fila offline e será enviado depois —
             // o servidor é quem decide o resultado real da bipagem
             tocar(ToneGenerator.TONE_CDMA_ABBR_ALERT);
+            vibrar(200);
+            corResultado(COR_OFFLINE);
             String hora = horaAgora();
             BipeDb.get(this).enfileirar(codigo, hora);
             txtResultado.setText("⚡ Sem conexão — bipagem na fila.\n"
@@ -205,7 +211,10 @@ public class BipagemActivity extends AppCompatActivity {
             if (!json.has("resultado") && json.has("error")) {
                 String erroApi = json.optString("error", "Erro na requisição.");
                 tocar(ToneGenerator.TONE_CDMA_ABBR_ALERT);
-                txtResultado.setText("✗ " + erroApi);
+                vibrar(400);
+                corResultado(COR_ERRO);
+                txtResultado.setText("✗ " + erroApi
+                        + "\n\nConfira o código e tente de novo.");
                 totalInvalido++;
                 atualizarContadores();
                 return;
@@ -218,6 +227,7 @@ public class BipagemActivity extends AppCompatActivity {
             String produto = json.optString("produto", "");
             int mapa = json.optInt("mapa_numero", 0);
             boolean mapaConcluido = json.optBoolean("mapa_concluido", false);
+            String codigoLido = json.optString("codigo_barras", codigo);
 
             String hora = new SimpleDateFormat("HH:mm:ss", Locale.getDefault())
                     .format(new Date());
@@ -229,23 +239,35 @@ public class BipagemActivity extends AppCompatActivity {
                 case "OK":
                     totalOk++;
                     tocar(ToneGenerator.TONE_PROP_ACK);
+                    vibrar(80);
+                    corResultado(COR_OK);
                     txtResultado.setText("✓ " + mensagem);
                     break;
                 case "DUPLICADO":
                     totalDuplicado++;
                     tocar(ToneGenerator.TONE_PROP_NACK);
+                    vibrar(200);
+                    corResultado(COR_DUPLICADO);
                     txtResultado.setText("⚠ " + mensagem);
                     break;
                 default:
                     totalInvalido++;
                     tocar(ToneGenerator.TONE_CDMA_ABBR_ALERT);
-                    txtResultado.setText("✗ " + mensagem);
+                    vibrar(400);
+                    corResultado(COR_ERRO);
+                    // mostra o código como o servidor o interpretou —
+                    // ex.: digitar "1001" vira "T001001" e pode não existir
+                    txtResultado.setText("✗ " + mensagem
+                            + "\n\nCódigo lido: " + codigoLido);
                     break;
             }
             atualizarContadores();
         } catch (Exception e) {
             tocar(ToneGenerator.TONE_CDMA_ABBR_ALERT);
-            txtResultado.setText("✗ Resposta inesperada do servidor.");
+            vibrar(400);
+            corResultado(COR_ERRO);
+            txtResultado.setText("✗ Resposta inesperada do servidor."
+                    + "\n\nTente bipar de novo.");
             totalInvalido++;
             atualizarContadores();
         }
@@ -347,6 +369,33 @@ public class BipagemActivity extends AppCompatActivity {
                 }
             });
         }).start();
+    }
+
+    // cores do resultado: erro tem que saltar aos olhos no chão de fábrica
+    private static final int COR_OK = 0xFF2E7D32;
+    private static final int COR_DUPLICADO = 0xFFF9A825;
+    private static final int COR_ERRO = 0xFFC62828;
+    private static final int COR_OFFLINE = 0xFF616161;
+
+    private void corResultado(int cor) {
+        txtResultado.setTextColor(cor);
+    }
+
+    private void vibrar(long ms) {
+        Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+        if (v == null || !v.hasVibrator()) {
+            return;
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= 26) {
+                v.vibrate(VibrationEffect.createOneShot(ms,
+                        VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                v.vibrate(ms);
+            }
+        } catch (Exception ignorado) {
+            // vibração é acessório — nunca pode impedir a bipagem
+        }
     }
 
     private void tocar(int tom) {
