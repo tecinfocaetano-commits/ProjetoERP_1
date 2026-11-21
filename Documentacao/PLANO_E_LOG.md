@@ -2577,3 +2577,36 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Nota de rede documentada:** com o USB tethering fora, o celular
   não alcança 10.103.239.156; `adb reverse tcp:9000` + URL
   `http://127.0.0.1:9000` resolveu o teste via Wi-Fi ADB.
+
+### 3.85 PDV — esqueleto multi-provedor de pagamentos eletrônicos (21/11)
+
+- **Banco (`022_pdv_pagamentos.sql`, aplicada):** tabela `PAGAMENTO`
+  com máquina de estados `PENDENTE → PROCESSANDO → APROVADO | RECUSADO |
+  CANCELADO | EXPIRADO`, `IDEMPOTENCY_KEY` única por empresa,
+  `PROVEDOR_TXID` imutável (chave de correlação do webhook),
+  `DADOS_JSON` com o carrinho normalizado e `PEDIDO_VENDA_ID` só após
+  a finalização. Rollback em `022_pdv_pagamentos_rollback.sql`.
+- **`uPagamentoService.pas` (novo):** `TPaymentProvider` abstrato +
+  factory `ProvedorPagamento` — provedor ativo vem de `PAG_PROVIDER`
+  em `CONFIGURACAO` (padrão `SIMULADO`, aprova ~8s após o início,
+  **sem PSP real**). `IniciarCobranca`/`ConsultarStatus`/
+  `CancelarCobranca`/`AplicarStatusExterno`. Ao aprovar, a venda é
+  gravada via `TPDVService.SalvarVenda` (mesma transação/auditoria).
+- **API (`uRotasPDV.pas`):** `POST /api/pdv/pagamentos/iniciar`,
+  `GET /:id/status` (finaliza a venda quando APROVADO),
+  `POST /:id/cancelar`, `POST /webhook` **pública** (sem JWT;
+  autenticidade por `PAG_WEBHOOK_SECRET` em CONFIGURACAO — sem secret
+  configurado aceita, documentado como dev). Webhook isenta nos
+  middlewares JWT/Sessão.
+- **App `:pdv`:** formas não-DINHEIRO abrem cobrança eletrônica em
+  vez da confirmação manual; tela "Aguardando pagamento"
+  (`dialog_espera_pagamento.xml`) com polling 4s, payload/QR e botão
+  "Cancelar cobrança". Cupom/PDF somente no caminho APROVADO.
+  `exibirCupomVenda` unificou a exibição para dinheiro e eletrônico.
+- **Smoke test ao vivo:** cobrança PIX SIMULADO → PENDENTE → APROVADO
+  gerou venda 6383 e 6384 automaticamente; idempotency_key não
+  duplicou; webhook com txid desconhecido respondeu 200 sem efeito.
+  Bug corrigido no caminho: `AtualizarStatus` apagava `PROVEDOR_TXID`.
+- **Pendente:** rebuild+restart da API para o fix do txid entrar no ar
+  (janela combinada com o agente do pool); adapters reais PSP/TEF
+  aguardam escolha de provedor (PROMPT_PAGAMENTOS_TEF_PIX.md).
