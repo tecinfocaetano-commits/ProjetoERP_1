@@ -126,7 +126,8 @@ try {
         $p = $linha -split '\|'
         $tipos[$p[1].Trim() + '/' + $p[2].Trim()] = $true
     }
-    $esperados = @('PESSOA/I', 'PESSOA/D', 'PRODUTO/I', 'MOVIMENTO_ESTOQUE/I', 'PEDIDO_VENDA/I', 'PEDIDO_VENDA/CONVERTER')
+    # D5: o Service grava MOVIMENTO_ESTOQUE/INSERT (a rota antiga gravava I)
+    $esperados = @('PESSOA/I', 'PESSOA/D', 'PRODUTO/I', 'MOVIMENTO_ESTOQUE/INSERT', 'PEDIDO_VENDA/I', 'PEDIDO_VENDA/CONVERTER')
     foreach ($e in $esperados) { Verificar ($tipos.ContainsKey($e)) "log ausente: $e" }
     Verificar ($linhas.Count -eq 6) "quantidade de logs inesperada: $($linhas.Count) (esperado 6)"
 

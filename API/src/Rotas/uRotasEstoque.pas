@@ -17,7 +17,36 @@ procedure RegistrarRotasEstoque;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT, uAuditoria;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT,
+  uEstoqueService;
+
+function ErroJSON(const AMensagem: string): string;
+var
+  LObj: TJSONObject;
+begin
+  LObj := TJSONObject.Create;
+  try
+    LObj.Add('error', AMensagem);
+    Result := LObj.AsJSON;
+  finally
+    LObj.Free;
+  end;
+end;
+
+{ D5: as mensagens do Service são erros do cliente (validação ou produto
+  de outra empresa); qualquer outra exceção continua sendo 500. Os
+  prefixos não usam acentos para não depender do encoding do fonte. }
+function EhErroValidacao(const AMensagem: string): Boolean;
+begin
+  Result :=
+    (Pos('Selecione um produto', AMensagem) = 1) or
+    (Pos('Tipo de movimenta', AMensagem) = 1) or
+    (Pos('A quantidade deve', AMensagem) = 1) or
+    (Pos('O custo unit', AMensagem) = 1) or
+    (Pos('O documento deve', AMensagem) = 1) or
+    (Pos('A observa', AMensagem) = 1) or
+    (Pos('Produto n', AMensagem) = 1);
+end;
 
 procedure GetEstoque(Req: THorseRequest; Res: THorseResponse);
 var
@@ -74,17 +103,19 @@ procedure PostMovimento(Req: THorseRequest; Res: THorseResponse);
 var
   LBody: TJSONObject;
   LData: TJSONData;
-  LConexao: TConexao;
-  LQuery: TSQLQuery;
+  LResposta: TJSONObject;
+  LServico: TEstoqueService;
   LUsuarioId, LEmpresaId: Int64;
-  LId: Int64;
+  LProdutoId, LId: Int64;
+  LQuantidade, LCusto: Double;
+  LTipo, LDocumento, LObservacao: string;
 begin
   try
     DadosDoToken(Req, LUsuarioId, LEmpresaId);
     if LEmpresaId <= 0 then
     begin
-      Res.Send('{"error":"Token sem empresa. Entre novamente."}')
-        .Status(THTTPStatus.Unauthorized);
+      Res.Status(THTTPStatus.Unauthorized)
+        .Send('{"error":"Token sem empresa. Entre novamente."}');
       Exit;
     end;
 
@@ -98,56 +129,49 @@ begin
     begin
       if LData <> nil then
         LData.Free;
-      Res.Send('{"error":"Corpo da requisição inválido (objeto JSON esperado)"}').Status(THTTPStatus.BadRequest);
+      Res.Status(THTTPStatus.BadRequest)
+        .Send('{"error":"Corpo da requisição inválido (objeto JSON esperado)"}');
       Exit;
     end;
     LBody := TJSONObject(LData);
     try
-      LConexao := TConexao.GetInstance;
-      LQuery := TSQLQuery.Create(nil);
+      LProdutoId := LBody.Get('produto_id', Int64(0));
+      LTipo := LBody.Get('tipo', 'E');
+      LQuantidade := LBody.Get('quantidade', Double(0));
+      LCusto := LBody.Get('custo_unitario', Double(0));
+      LDocumento := LBody.Get('documento', '');
+      LObservacao := LBody.Get('observacao', '');
+
+      { D5: mesma regra do desktop — validação, produto da empresa da
+        sessão (contexto JWT por thread), trigger de saldo e auditoria
+        atômica. A rota não faz SQL nem auditoria própria. }
+      LServico := TEstoqueService.Create;
       try
-        LQuery.DataBase := LConexao.Connection;
-        LQuery.Transaction := LConexao.Transaction;
-        LConexao.IniciarTransacao;
-        { D4: ID lido do generator para vincular a auditoria ao movimento }
-        LQuery.SQL.Text := 'SELECT GEN_ID(GEN_MOVIMENTO_ESTOQUE_ID, 1) FROM RDB$DATABASE';
-        LQuery.Open;
-        LId := LQuery.Fields[0].AsLargeInt;
-        LQuery.Close;
-
-        LQuery.SQL.Text :=
-          'INSERT INTO MOVIMENTO_ESTOQUE (ID, EMPRESA_ID, PRODUTO_ID, TIPO, QUANTIDADE, ' +
-          'CUSTO_UNITARIO, DOCUMENTO, OBSERVACAO, USUARIO_ID) ' +
-          'VALUES (:ID, :EMP, :PROD, :TIPO, :QTD, :CUSTO, :DOC, :OBS, :USU)';
-        LQuery.ParamByName('ID').AsLargeInt := LId;
-        LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
-        LQuery.ParamByName('USU').AsLargeInt := LUsuarioId;
-        LQuery.ParamByName('PROD').AsLargeInt := LBody.Get('produto_id', Int64(0));
-        LQuery.ParamByName('TIPO').AsString := LBody.Get('tipo', 'E');
-        LQuery.ParamByName('QTD').AsFloat := LBody.Get('quantidade', Double(0));
-        LQuery.ParamByName('CUSTO').AsFloat := LBody.Get('custo_unitario', Double(0));
-        LQuery.ParamByName('DOC').AsString := LBody.Get('documento', '');
-        LQuery.ParamByName('OBS').AsString := LBody.Get('observacao', '');
-        LQuery.ExecSQL;
-
-        { D4: auditoria atômica com o movimento de estoque }
-        RegistrarAuditoriaSeguraConexao(LConexao.Connection, LConexao.Transaction,
-          LEmpresaId, LUsuarioId, 'MOVIMENTO_ESTOQUE', 'I', LId, '',
-          ResumoAuditoria(['PRODUTO=' + IntToStr(LBody.Get('produto_id', Int64(0))),
-            'TIPO=' + LBody.Get('tipo', 'E'),
-            'QTD=' + FloatToStr(LBody.Get('quantidade', Double(0)))]));
-
-        LConexao.Confirmar;
-        Res.Send('{"message":"Movimento registrado com sucesso"}').Status(THTTPStatus.Created);
+        LId := LServico.RegistrarMovimento(LProdutoId, LTipo,
+          LQuantidade, LCusto, LDocumento, LObservacao);
       finally
-        LQuery.Free;
+        LServico.Free;
+      end;
+
+      LResposta := TJSONObject.Create;
+      try
+        LResposta.Add('message', 'Movimento registrado com sucesso');
+        LResposta.Add('id', LId);
+        Res.Send(LResposta.AsJSON).Status(THTTPStatus.Created);
+      finally
+        LResposta.Free;
       end;
     finally
       LBody.Free;
     end;
   except
     on E: Exception do
-      Res.Send('{"error":"' + E.Message + '"}').Status(THTTPStatus.InternalServerError);
+    begin
+      if EhErroValidacao(E.Message) then
+        Res.Status(THTTPStatus.BadRequest).Send(ErroJSON(E.Message))
+      else
+        Res.Status(THTTPStatus.InternalServerError).Send(ErroJSON(E.Message));
+    end;
   end;
 end;
 

@@ -50,9 +50,9 @@ begin
 end;
 
 { Próximo número sequencial, mantendo a regra do desktop
-  (uFrmPedidoVenda.ProximoNumero): NUMERO é VARCHAR e valores não
-  numéricos são ignorados. }
-function ProximoNumero(AConexao: TConexao): Integer;
+  (TPedidoVendaService.ProximoNumero): NUMERO é VARCHAR, valores não
+  numéricos são ignorados e a sequência é POR EMPRESA (F5). }
+function ProximoNumero(AConexao: TConexao; AEmpresaId: Int64): Integer;
 var
   LQuery: TSQLQuery;
   LNum: Integer;
@@ -62,7 +62,8 @@ begin
   try
     LQuery.DataBase := AConexao.Connection;
     LQuery.Transaction := AConexao.Transaction;
-    LQuery.SQL.Text := 'SELECT NUMERO FROM PEDIDO_VENDA';
+    LQuery.SQL.Text := 'SELECT NUMERO FROM PEDIDO_VENDA WHERE EMPRESA_ID = :EMP';
+    LQuery.ParamByName('EMP').AsLargeInt := AEmpresaId;
     LQuery.Open;
     while not LQuery.EOF do
     begin
@@ -424,7 +425,7 @@ begin
         end;
 
         LTotal := LSubtotal - LDesconto;
-        LNumero := ProximoNumero(LConexao);
+        LNumero := ProximoNumero(LConexao, LEmpresaId);
 
         { ID vem do generator antes do INSERT: evita depender do valor
           corrente do generator (que outra thread poderia já ter avançado) }
