@@ -19,7 +19,7 @@ unit uAuditoria;
 interface
 
 uses
-  SysUtils;
+  SysUtils, SQLDB, IBConnection;
 
 type
   EAuditoria = class(Exception);
@@ -47,6 +47,20 @@ procedure RegistrarAuditoriaSegura(const ATabela, AOperacao: string;
   ARegistroId: Int64; const ADadosAnteriores: string = '';
   const ADadosNovos: string = '');
 
+{ Variante para quem não tem TSessao (API REST, threads do Horse):
+  recebe conexão/transação e empresa/usuário explícitos. Mesma
+  gravação em LOG_SISTEMA dentro da transação informada. }
+procedure RegistrarAuditoriaConexao(AConnection: TIBConnection;
+  ATransaction: TSQLTransaction; AEmpresaId, AUsuarioId: Int64;
+  const ATabela, AOperacao: string; ARegistroId: Int64;
+  const ADadosAnteriores: string = '';
+  const ADadosNovos: string = '');
+procedure RegistrarAuditoriaSeguraConexao(AConnection: TIBConnection;
+  ATransaction: TSQLTransaction; AEmpresaId, AUsuarioId: Int64;
+  const ATabela, AOperacao: string; ARegistroId: Int64;
+  const ADadosAnteriores: string = '';
+  const ADadosNovos: string = '');
+
 { Monta "CAMPO=valor; CAMPO=valor" para o resumo da auditoria,
   truncando o resultado no limite da coluna. }
 function ResumoAuditoria(const ACampos: array of string): string;
@@ -54,7 +68,7 @@ function ResumoAuditoria(const ACampos: array of string): string;
 implementation
 
 uses
-  SQLDB, uConexao, uSessao;
+  uConexao, uSessao;
 
 function Truncar(const AValor: string; ATamanho: Integer): string;
 begin
@@ -92,16 +106,28 @@ begin
     raise EAuditoria.Create('Sem conexão com o banco para registrar a auditoria.');
 
   LSessao := TSessao.GetInstance;
+  RegistrarAuditoriaConexao(LConexao.Connection, LConexao.Transaction,
+    LSessao.EmpresaId, LSessao.UsuarioId, ATabela, AOperacao, ARegistroId,
+    ADadosAnteriores, ADadosNovos);
+end;
+
+procedure RegistrarAuditoriaConexao(AConnection: TIBConnection;
+  ATransaction: TSQLTransaction; AEmpresaId, AUsuarioId: Int64;
+  const ATabela, AOperacao: string; ARegistroId: Int64;
+  const ADadosAnteriores, ADadosNovos: string);
+var
+  LQuery: TSQLQuery;
+begin
   LQuery := TSQLQuery.Create(nil);
   try
-    LQuery.DataBase := LConexao.Connection;
-    LQuery.Transaction := LConexao.Transaction;
+    LQuery.DataBase := AConnection;
+    LQuery.Transaction := ATransaction;
     LQuery.SQL.Text :=
       'INSERT INTO LOG_SISTEMA (EMPRESA_ID, USUARIO_ID, TABELA, OPERACAO, ' +
       '  REGISTRO_ID, DADOS_ANTERIORES, DADOS_NOVOS, DATA_OPERACAO, DATA_HORA) ' +
       'VALUES (:EMP, :USR, :TAB, :OP, :REG, :ANT, :NOV, CURRENT_DATE, CURRENT_TIMESTAMP)';
-    LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
-    LQuery.ParamByName('USR').AsLargeInt := LSessao.UsuarioId;
+    LQuery.ParamByName('EMP').AsLargeInt := AEmpresaId;
+    LQuery.ParamByName('USR').AsLargeInt := AUsuarioId;
     LQuery.ParamByName('TAB').AsString := Truncar(ATabela, AUDITORIA_TAMANHO_TABELA);
     LQuery.ParamByName('OP').AsString := Truncar(AOperacao, AUDITORIA_TAMANHO_OPERACAO);
     LQuery.ParamByName('REG').AsLargeInt := ARegistroId;
@@ -110,6 +136,20 @@ begin
     LQuery.ExecSQL;
   finally
     LQuery.Free;
+  end;
+end;
+
+procedure RegistrarAuditoriaSeguraConexao(AConnection: TIBConnection;
+  ATransaction: TSQLTransaction; AEmpresaId, AUsuarioId: Int64;
+  const ATabela, AOperacao: string; ARegistroId: Int64;
+  const ADadosAnteriores, ADadosNovos: string);
+begin
+  try
+    RegistrarAuditoriaConexao(AConnection, ATransaction, AEmpresaId,
+      AUsuarioId, ATabela, AOperacao, ARegistroId,
+      ADadosAnteriores, ADadosNovos);
+  except
+    // Auditoria não pode interromper a operação principal
   end;
 end;
 

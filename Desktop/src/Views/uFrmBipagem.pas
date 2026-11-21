@@ -24,7 +24,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls,
   ExtCtrls, Buttons, Grids, DBGrids, DB, SQLDB,
-  uConexao, uSessao, uProducaoService, uPermissao;
+  uConexao, uSessao, uProducaoService, uProducaoBipagem, uPermissao;
 
 type
   { TfrmBipagem }

@@ -28,7 +28,7 @@ interface
 
 uses
   Classes, SysUtils, DB, SQLDB, uAssert, uConexao, uSessao,
-  uProducaoService;
+  uProducaoService, uProducaoBipagem;
 
 type
   TProducaoFluxoTest = class

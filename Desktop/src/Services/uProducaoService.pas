@@ -28,7 +28,7 @@ unit uProducaoService;
 interface
 
 uses
-  Classes, SysUtils, SQLDB, DB, uConexao, uPedidoStatus;
+  Classes, SysUtils, SQLDB, DB, uConexao, uPedidoStatus, uProducaoBipagem;
 
 type
   EProducao = class(Exception);
@@ -42,26 +42,9 @@ type
   end;
   TItensMapa = array of TItemMapa;
 
-  { Resultado de uma bipagem de talão (Fase 4). Uma bipagem OK
-    representa uma transição de status:
-      GERADO/IMPRESSO -> EM_PRODUCAO (Etapa = 'INICIO')
-      EM_PRODUCAO     -> CONCLUIDO   (Etapa = 'CONCLUSAO')
-    Bipagens rejeitadas são registradas com DUPLICADO/INVALIDO. }
-  TBipagemTalao = record
-    TalaoId: Int64;
-    NumeroTalao: Integer;
-    CodigoBarras: string;
-    Produto: string;
-    Quantidade: Double;
-    MapaId: Int64;
-    MapaNumero: Integer;
-    StatusAnterior: string;  { status do talão antes da bipagem }
-    StatusNovo: string;      { status após a bipagem (igual ao anterior em erro) }
-    Etapa: string;           { INICIO | CONCLUSAO | BIPAGEM }
-    Resultado: string;       { OK | DUPLICADO | INVALIDO }
-    Mensagem: string;        { mensagem amigável para o operador }
-    MapaConcluido: Boolean;  { esta bipagem concluiu o mapa de produção }
-  end;
+  { TBipagemTalao mora em uProducaoBipagem (unit compartilhada com a
+    API): a bipagem em si é executada por ExecutarBipagemTalao para
+    que desktop e API usem exatamente a mesma máquina de estados. }
 
   { Item da ficha técnica (BOM) - Fase 5.
     QUANTIDADE = consumo do material para produzir QUANTIDADE_BASE;
@@ -113,8 +96,6 @@ type
     function  QuantidadeMapeadaItem(AItemPedidoId: Int64;
       AExcetoMapaId: Int64 = 0): Double;
     procedure AplicarStatusPedido(APedidoId: Int64; const ANovoStatus: string);
-    procedure RegistrarBipagem(ATalaoId: Int64; const AEtapa, AOrigem,
-      AResultado, AObservacao: string);
     { Fase 5: custo do material (CUSTO_MEDIO do estoque, senão
       PRECO_CUSTO do produto). }
     function  CustoMaterial(AProdutoId: Int64): Double;
@@ -246,60 +227,12 @@ begin
 end;
 
 procedure TProducaoService.AtualizarStatusProducaoConsumo(AMapaId: Int64);
-var
-  LQry, LUpd: TSQLQuery;
-  LTotal, LConcluidos: Integer;
-  LNovoStatus: string;
 begin
-  if AMapaId <= 0 then
-    Exit;
-
-  LQry := NovaConsulta;
-  LUpd := NovaConsulta;
-  try
-    { total de talões do mapa (exclui cancelados) e quantos concluídos }
-    LQry.SQL.Text :=
-      'SELECT COUNT(*) AS TOTAL, ' +
-      '  SUM(CASE WHEN T.STATUS = ''CONCLUIDO'' THEN 1 ELSE 0 END) AS CONCLUIDOS ' +
-      'FROM TALAO T ' +
-      '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
-      '  JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
-      'WHERE MI.MAPA_PRODUCAO_ID = :MAPA AND T.STATUS <> ''CANCELADO'' ' +
-      '  AND M.EMPRESA_ID = :EMP';
-    LQry.ParamByName('MAPA').AsLargeInt := AMapaId;
-    LQry.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQry.Open;
-    LTotal := LQry.FieldByName('TOTAL').AsInteger;
-    LConcluidos := LQry.FieldByName('CONCLUIDOS').AsInteger;
-    LQry.Close;
-
-    if (LTotal > 0) and (LConcluidos >= LTotal) then
-      LNovoStatus := 'CONCLUIDO'
-    else if LConcluidos > 0 then
-      LNovoStatus := 'PARCIALMENTE_CONCLUIDO'
-    else
-      LNovoStatus := 'ABERTO';
-
-    { consumo é por mapa (agregado por material): aplica o andamento a
-      todos os itens de consumo do mapa; só grava o que mudou }
-    LUpd.SQL.Text :=
-      'UPDATE CONSUMO_MATERIAL_ITEM SET STATUS_PRODUCAO = :NOVO ' +
-      'WHERE CONSUMO_MATERIAL_ID IN ' +
-      '  (SELECT ID FROM CONSUMO_MATERIAL WHERE MAPA_PRODUCAO_ID = :MAPA ' +
-      '     AND EMPRESA_ID = :EMP) ' +
-      '  AND COALESCE(STATUS_PRODUCAO, '''') <> :NOVO';
-    LUpd.ParamByName('NOVO').AsString := LNovoStatus;
-    LUpd.ParamByName('MAPA').AsLargeInt := AMapaId;
-    LUpd.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LUpd.ExecSQL;
-
-    RegistrarAuditoria('CONSUMO_MATERIAL_ITEM', 'STATUS_PRODUCAO', AMapaId,
-      '', LNovoStatus + '; CONCLUIDOS=' + IntToStr(LConcluidos) +
-      '; TOTAL=' + IntToStr(LTotal));
-  finally
-    LQry.Free;
-    LUpd.Free;
-  end;
+  { implementação compartilhada em uProducaoBipagem (usada também
+    pela API): mantém uma única fonte da regra }
+  ProducaoAtualizarStatusConsumo(FConexao.Connection,
+    FConexao.Transaction, TSessao.GetInstance.EmpresaId,
+    TSessao.GetInstance.UsuarioId, AMapaId);
 end;
 
 function TProducaoService.ProximoNumeroMapa(AEmpresaId: Int64): Integer;
@@ -542,101 +475,19 @@ end;
 
 procedure TProducaoService.AplicarStatusPedido(APedidoId: Int64;
   const ANovoStatus: string);
-var
-  LQuery: TSQLQuery;
-  LAtual: string;
 begin
-  LQuery := NovaConsulta;
-  try
-    LQuery.SQL.Text :=
-      'SELECT STATUS FROM PEDIDO_VENDA WHERE ID = :ID AND EMPRESA_ID = :EMP';
-    LQuery.ParamByName('ID').AsLargeInt := APedidoId;
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.Open;
-    if LQuery.IsEmpty then
-      raise EProducao.Create('Pedido de venda não encontrado (ID ' +
-        IntToStr(APedidoId) + ').');
-    LAtual := Trim(LQuery.FieldByName('STATUS').AsString);
-    LQuery.Close;
-
-    if LAtual = ANovoStatus then
-      Exit;
-
-    ValidarTransicao(LAtual, ANovoStatus);
-
-    LQuery.SQL.Text :=
-      'UPDATE PEDIDO_VENDA SET STATUS = :STATUS ' +
-      'WHERE ID = :ID AND EMPRESA_ID = :EMP';
-    LQuery.ParamByName('STATUS').AsString := ANovoStatus;
-    LQuery.ParamByName('ID').AsLargeInt := APedidoId;
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.ExecSQL;
-
-    RegistrarAuditoria('PEDIDO_VENDA', 'STATUS', APedidoId,
-      'STATUS=' + LAtual,
-      'STATUS=' + ANovoStatus + ' (' + DescricaoDoStatus(ANovoStatus) + ')');
-  finally
-    LQuery.Free;
-  end;
+  { implementação compartilhada em uProducaoBipagem }
+  ProducaoAplicarStatusPedido(FConexao.Connection,
+    FConexao.Transaction, TSessao.GetInstance.EmpresaId,
+    TSessao.GetInstance.UsuarioId, APedidoId, ANovoStatus);
 end;
 
 procedure TProducaoService.ReavaliarPedido(APedidoId: Int64);
-var
-  LQuery: TSQLQuery;
-  LAtual: string;
-  LAtivos: Integer;
-  LProduzido, LTotal, LDummy: Double;
-  LNovo: string;
 begin
-  LAtivos := 0;
-  LProduzido := 0;
-  LTotal := 0;
-
-  LQuery := NovaConsulta;
-  try
-    LQuery.SQL.Text :=
-      'SELECT STATUS, ' +
-      '  (SELECT COUNT(*) FROM MAPA_PRODUCAO M ' +
-      '     WHERE M.PEDIDO_VENDA_ID = :PED AND M.STATUS IN (''ABERTO'', ''EM_PRODUCAO'') ' +
-      '       AND M.EMPRESA_ID = :EMP) AS ATIVOS, ' +
-      '  CAST(COALESCE((SELECT SUM(MI.QUANTIDADE) FROM MAPA_PRODUCAO_ITEM MI ' +
-      '      JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
-      '      WHERE M.PEDIDO_VENDA_ID = :PED AND M.STATUS <> ''CANCELADO'' ' +
-      '        AND M.EMPRESA_ID = :EMP), 0) AS NUMERIC(18,4)) AS TOTAL, ' +
-      '  CAST(COALESCE((SELECT SUM(T.QUANTIDADE) FROM TALAO T ' +
-      '      JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
-      '      JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
-      '      WHERE M.PEDIDO_VENDA_ID = :PED AND T.STATUS = ''CONCLUIDO'' ' +
-      '        AND M.EMPRESA_ID = :EMP), 0) AS NUMERIC(18,4)) AS PRODUZIDO ' +
-      'FROM PEDIDO_VENDA WHERE ID = :PED AND EMPRESA_ID = :EMP';
-    LQuery.ParamByName('PED').AsLargeInt := APedidoId;
-    LQuery.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-    LQuery.Open;
-    if LQuery.IsEmpty then
-      Exit;
-    LAtual := Trim(LQuery.FieldByName('STATUS').AsString);
-    LAtivos := LQuery.FieldByName('ATIVOS').AsInteger;
-    LTotal := LQuery.FieldByName('TOTAL').AsFloat;
-    LProduzido := LQuery.FieldByName('PRODUZIDO').AsFloat;
-    LQuery.Close;
-  finally
-    LQuery.Free;
-  end;
-
-  // Pedido faturado ou cancelado não é alterado pela produção
-  if (LAtual = PEDIDO_STATUS_FATURADO) or (LAtual = PEDIDO_STATUS_CANCELADO) then
-    Exit;
-
-  if LAtivos > 0 then
-    LNovo := PEDIDO_STATUS_EM_PRODUCAO
-  else if (LTotal > TOLERANCIA_QTD) and (LProduzido >= LTotal - TOLERANCIA_QTD) then
-    LNovo := PEDIDO_STATUS_PRODUZIDO
-  else if LProduzido > TOLERANCIA_QTD then
-    LNovo := PEDIDO_STATUS_EM_PRODUCAO
-  else
-    LNovo := PEDIDO_STATUS_PENDENTE;
-
-  AplicarStatusPedido(APedidoId, LNovo);
+  { implementação compartilhada em uProducaoBipagem }
+  ProducaoReavaliarPedido(FConexao.Connection,
+    FConexao.Transaction, TSessao.GetInstance.EmpresaId,
+    TSessao.GetInstance.UsuarioId, APedidoId);
 end;
 
 // Gera o mapa de produção a partir de um pedido de venda.
@@ -1342,281 +1193,21 @@ end;
   Fase 4 - BIPAGEM DE TALÕES
   ------------------------------------------------------------ }
 
-procedure TProducaoService.RegistrarBipagem(ATalaoId: Int64; const AEtapa,
-  AOrigem, AResultado, AObservacao: string);
-var
-  LIns: TSQLQuery;
-begin
-  LIns := NovaConsulta;
-  try
-    LIns.SQL.Text :=
-      'INSERT INTO TALAO_BIPAGEM ' +
-      '  (TALAO_ID, USUARIO_ID, DATA_HORA, ETAPA, ORIGEM, RESULTADO, OBSERVACAO) ' +
-      'VALUES ' +
-      '  (:TAL, :USR, CURRENT_TIMESTAMP, :ETAPA, :ORI, :RES, :OBS)';
-    LIns.ParamByName('TAL').AsLargeInt := ATalaoId;
-    LIns.ParamByName('USR').AsLargeInt := TSessao.GetInstance.UsuarioId;
-    LIns.ParamByName('ETAPA').AsString := AEtapa;
-    LIns.ParamByName('ORI').AsString := AOrigem;
-    LIns.ParamByName('RES').AsString := AResultado;
-    if AObservacao = '' then
-      LIns.ParamByName('OBS').Clear
-    else
-      LIns.ParamByName('OBS').AsString := AObservacao;
-    LIns.ExecSQL;
-  finally
-    LIns.Free;
-  end;
-end;
-
 function TProducaoService.BiparTalao(const ACodigoBarras: string;
   const AOrigem: string): TBipagemTalao;
-var
-  LTalao, LUpd: TSQLQuery;
-  LCodigo: string;
-  LTalaoId, LItemId, LMapaId, LPedidoId: Int64;
-  LNumero, LMapaNumero: Integer;
-  LStatus, LStatusMapa: string;
-  LConcluiuMapa: Boolean;
 begin
-  { resultado padrão: inválido — preenchido conforme a análise }
-  Result.TalaoId := 0;
-  Result.NumeroTalao := 0;
-  Result.CodigoBarras := Trim(UpperCase(ACodigoBarras));
-  Result.Produto := '';
-  Result.Quantidade := 0;
-  Result.MapaId := 0;
-  Result.MapaNumero := 0;
-  Result.StatusAnterior := '';
-  Result.StatusNovo := '';
-  Result.Etapa := 'BIPAGEM';
-  Result.Resultado := 'INVALIDO';
-  Result.Mensagem := '';
-  Result.MapaConcluido := False;
-
-  LCodigo := Result.CodigoBarras;
-  if LCodigo = '' then
-  begin
-    Result.Mensagem := 'Informe o código de barras do talão.';
-    Exit;
-  end;
-
-  { digitação manual só com o número (ex.: "3") vira o formato T000003 }
-  if (Length(LCodigo) <= 9) and (LCodigo[1] >= '0') and (LCodigo[1] <= '9') then
-    LCodigo := Format('T%.6d', [StrToIntDef(LCodigo, 0)]);
-  Result.CodigoBarras := LCodigo;
-
+  { a máquina de estados da bipagem é compartilhada com a API REST
+    (uProducaoBipagem): aqui só abrimos a transação e repassamos
+    empresa/usuário da sessão }
   FConexao.IniciarTransacao;
-  LTalao := NovaConsulta;
-  LUpd := NovaConsulta;
   try
-    try
-      LTalao.SQL.Text :=
-        'SELECT T.ID, T.NUMERO, T.STATUS, T.QUANTIDADE, ' +
-        '  T.MAPA_PRODUCAO_ITEM_ID, ' +
-        '  M.ID AS MAPA_ID, M.NUMERO AS MAPA_NUMERO, M.STATUS AS MAPA_STATUS, ' +
-        '  M.PEDIDO_VENDA_ID, PR.DESCRICAO AS PRODUTO ' +
-        'FROM TALAO T ' +
-        '  JOIN MAPA_PRODUCAO_ITEM MI ON MI.ID = T.MAPA_PRODUCAO_ITEM_ID ' +
-        '  JOIN MAPA_PRODUCAO M ON M.ID = MI.MAPA_PRODUCAO_ID ' +
-        '  LEFT JOIN PRODUTO PR ON PR.ID = MI.PRODUTO_ID ' +
-        'WHERE T.CODIGO_BARRAS = :COD AND T.EMPRESA_ID = :EMP';
-      LTalao.ParamByName('COD').AsString := LCodigo;
-      LTalao.ParamByName('EMP').AsLargeInt := TSessao.GetInstance.EmpresaId;
-      LTalao.Open;
-
-      if LTalao.IsEmpty then
-      begin
-        { tentativa de leitura inválida fica registrada para rastreio;
-          TALAO_ID = 0 marca "código inexistente" (sem FK na tabela) }
-        RegistrarBipagem(0, 'BIPAGEM', AOrigem, 'INVALIDO',
-          'Código não encontrado: ' + LCodigo);
-        RegistrarAuditoria('TALAO_BIPAGEM', 'BIPAGEM', 0, '',
-          'CODIGO=' + LCodigo + '; RESULTADO=INVALIDO; ORIGEM=' + AOrigem);
-        FConexao.Confirmar;
-        Result.Mensagem := Format(
-          'Código de barras "%s" não corresponde a nenhum talão.', [LCodigo]);
-        Exit;
-      end;
-
-      LTalaoId := LTalao.FieldByName('ID').AsLargeInt;
-      LNumero := LTalao.FieldByName('NUMERO').AsInteger;
-      LStatus := Trim(LTalao.FieldByName('STATUS').AsString);
-      LItemId := LTalao.FieldByName('MAPA_PRODUCAO_ITEM_ID').AsLargeInt;
-      LMapaId := LTalao.FieldByName('MAPA_ID').AsLargeInt;
-      LMapaNumero := LTalao.FieldByName('MAPA_NUMERO').AsInteger;
-      LStatusMapa := Trim(LTalao.FieldByName('MAPA_STATUS').AsString);
-      LPedidoId := LTalao.FieldByName('PEDIDO_VENDA_ID').AsLargeInt;
-
-      Result.TalaoId := LTalaoId;
-      Result.NumeroTalao := LNumero;
-      Result.Quantidade := LTalao.FieldByName('QUANTIDADE').AsFloat;
-      Result.Produto := Trim(LTalao.FieldByName('PRODUTO').AsString);
-      Result.MapaId := LMapaId;
-      Result.MapaNumero := LMapaNumero;
-      Result.StatusAnterior := LStatus;
-      Result.StatusNovo := LStatus;
-      LTalao.Close;
-
-      { --- bipagens rejeitadas (mas auditadas) ----------------------- }
-      if (LStatusMapa = 'CANCELADO') or (LStatus = 'CANCELADO') then
-      begin
-        RegistrarBipagem(LTalaoId, 'BIPAGEM', AOrigem, 'INVALIDO',
-          'Talão ou mapa cancelado');
-        RegistrarAuditoria('TALAO_BIPAGEM', 'BIPAGEM', LTalaoId, LStatus,
-          'RESULTADO=INVALIDO; MOTIVO=CANCELADO');
-        FConexao.Confirmar;
-        Result.Mensagem := Format(
-          'Talão %d não pode ser bipado: está cancelado.', [LNumero]);
-        Exit;
-      end;
-
-      if LStatusMapa = 'CONCLUIDO' then
-      begin
-        RegistrarBipagem(LTalaoId, 'BIPAGEM', AOrigem, 'DUPLICADO',
-          'Mapa já concluído');
-        FConexao.Confirmar;
-        Result.Mensagem := Format(
-          'Talão %d não pode ser bipado: o mapa nº %d já foi concluído.',
-          [LNumero, LMapaNumero]);
-        Result.Resultado := 'DUPLICADO';
-        Exit;
-      end;
-
-      if LStatus = 'CONCLUIDO' then
-      begin
-        RegistrarBipagem(LTalaoId, 'BIPAGEM', AOrigem, 'DUPLICADO',
-          'Talão já concluído');
-        RegistrarAuditoria('TALAO_BIPAGEM', 'BIPAGEM', LTalaoId, LStatus,
-          'RESULTADO=DUPLICADO; MOTIVO=JA_CONCLUIDO');
-        FConexao.Confirmar;
-        Result.Resultado := 'DUPLICADO';
-        Result.Mensagem := Format(
-          'Talão %d já foi concluído anteriormente.', [LNumero]);
-        Exit;
-      end;
-
-      { --- bipagens válidas: transição de status --------------------- }
-      if (LStatus = 'GERADO') or (LStatus = 'IMPRESSO') then
-      begin
-        { INICIO: talão entra em produção }
-        LUpd.SQL.Text :=
-          'UPDATE TALAO SET STATUS = ''EM_PRODUCAO'', ' +
-          '  DATA_INICIO = CURRENT_TIMESTAMP ' +
-          'WHERE ID = :ID';
-        LUpd.ParamByName('ID').AsLargeInt := LTalaoId;
-        LUpd.ExecSQL;
-        RegistrarAuditoria('TALAO', 'BIPAGEM', LTalaoId, LStatus, 'EM_PRODUCAO');
-
-        { item: pendente -> em produção }
-        LUpd.Close;
-        LUpd.SQL.Text :=
-          'UPDATE MAPA_PRODUCAO_ITEM SET STATUS = ''EM_PRODUCAO'' ' +
-          'WHERE ID = :ID AND STATUS = ''PENDENTE''';
-        LUpd.ParamByName('ID').AsLargeInt := LItemId;
-        LUpd.ExecSQL;
-
-        { mapa: aberto -> em produção (fica registrado o início) }
-        LUpd.Close;
-        LUpd.SQL.Text :=
-          'UPDATE MAPA_PRODUCAO SET STATUS = ''EM_PRODUCAO'', ' +
-          '  DATA_INICIO = COALESCE(DATA_INICIO, CURRENT_TIMESTAMP) ' +
-          'WHERE ID = :ID AND STATUS = ''ABERTO''';
-        LUpd.ParamByName('ID').AsLargeInt := LMapaId;
-        LUpd.ExecSQL;
-
-        { andamento do consumo do mapa acompanha o início do talão }
-        AtualizarStatusProducaoConsumo(LMapaId);
-
-        Result.Etapa := 'INICIO';
-        Result.StatusNovo := 'EM_PRODUCAO';
-        Result.Mensagem := Format('Talão %d iniciado. Bom trabalho!', [LNumero]);
-      end
-      else
-      begin
-        { EM_PRODUCAO -> CONCLUSAO }
-        LUpd.SQL.Text :=
-          'UPDATE TALAO SET STATUS = ''CONCLUIDO'', ' +
-          '  DATA_CONCLUSAO = CURRENT_TIMESTAMP ' +
-          'WHERE ID = :ID';
-        LUpd.ParamByName('ID').AsLargeInt := LTalaoId;
-        LUpd.ExecSQL;
-        RegistrarAuditoria('TALAO', 'BIPAGEM', LTalaoId, 'EM_PRODUCAO',
-          'CONCLUIDO');
-
-        { o item termina quando todos os seus talões forem concluídos }
-        LUpd.Close;
-        LUpd.SQL.Text :=
-          'SELECT COUNT(*) AS FALTAM FROM TALAO ' +
-          'WHERE MAPA_PRODUCAO_ITEM_ID = :ITEM ' +
-          '  AND STATUS NOT IN (''CONCLUIDO'', ''CANCELADO'')';
-        LUpd.ParamByName('ITEM').AsLargeInt := LItemId;
-        LUpd.Open;
-        if LUpd.FieldByName('FALTAM').AsInteger = 0 then
-        begin
-          LUpd.Close;
-          LUpd.SQL.Text :=
-            'UPDATE MAPA_PRODUCAO_ITEM SET STATUS = ''CONCLUIDO'' ' +
-            'WHERE ID = :ID';
-          LUpd.ParamByName('ID').AsLargeInt := LItemId;
-          LUpd.ExecSQL;
-          RegistrarAuditoria('MAPA_PRODUCAO_ITEM', 'BIPAGEM', LItemId,
-            'EM_PRODUCAO', 'CONCLUIDO');
-        end
-        else
-          LUpd.Close;
-
-        { o mapa termina quando todos os itens estiverem finalizados }
-        LUpd.SQL.Text :=
-          'SELECT COUNT(*) AS FALTAM FROM MAPA_PRODUCAO_ITEM ' +
-          'WHERE MAPA_PRODUCAO_ID = :MAPA ' +
-          '  AND STATUS NOT IN (''CONCLUIDO'', ''CANCELADO'')';
-        LUpd.ParamByName('MAPA').AsLargeInt := LMapaId;
-        LUpd.Open;
-        LConcluiuMapa := LUpd.FieldByName('FALTAM').AsInteger = 0;
-        LUpd.Close;
-
-        if LConcluiuMapa then
-        begin
-          LUpd.SQL.Text :=
-            'UPDATE MAPA_PRODUCAO SET STATUS = ''CONCLUIDO'', ' +
-            '  DATA_FIM = CURRENT_TIMESTAMP ' +
-            'WHERE ID = :ID';
-          LUpd.ParamByName('ID').AsLargeInt := LMapaId;
-          LUpd.ExecSQL;
-          RegistrarAuditoria('MAPA_PRODUCAO', 'CONCLUSAO', LMapaId,
-            'EM_PRODUCAO', 'CONCLUIDO');
-          Result.MapaConcluido := True;
-        end;
-
-        { o pedido é sempre reavaliado após uma conclusão de talão:
-          ele só vira "Produzido" quando toda a quantidade mapeada
-          foi produzida (ReavaliarPedido decide) }
-        ReavaliarPedido(LPedidoId);
-
-        { andamento do consumo do mapa acompanha a conclusão do talão }
-        AtualizarStatusProducaoConsumo(LMapaId);
-
-        Result.Etapa := 'CONCLUSAO';
-        Result.StatusNovo := 'CONCLUIDO';
-        Result.Mensagem := Format('Talão %d concluído com sucesso.', [LNumero]);
-        if LConcluiuMapa then
-          Result.Mensagem := Result.Mensagem + sLineBreak +
-            Format('Mapa nº %d concluído — produção finalizada!', [LMapaNumero]);
-      end;
-
-      { registro da bipagem aceita }
-      RegistrarBipagem(LTalaoId, Result.Etapa, AOrigem, 'OK', '');
-      Result.Resultado := 'OK';
-
-      FConexao.Confirmar;
-    except
-      FConexao.Cancelar;
-      raise;
-    end;
-  finally
-    LTalao.Free;
-    LUpd.Free;
+    Result := ExecutarBipagemTalao(FConexao.Connection,
+      FConexao.Transaction, TSessao.GetInstance.EmpresaId,
+      TSessao.GetInstance.UsuarioId, ACodigoBarras, AOrigem);
+    FConexao.Confirmar;
+  except
+    FConexao.Cancelar;
+    raise;
   end;
 end;
 
