@@ -23,7 +23,8 @@ uses
   uRotasVendas,
   uRotasOrcamentos,
   uRotasFinanceiro,
-  uRotasProducao;
+  uRotasProducao,
+  uRotasPDV;
 
 procedure RotaHealth(Req: THorseRequest; Res: THorseResponse);
 begin
@@ -68,6 +69,7 @@ begin
   RegistrarRotasOrcamentos;
   RegistrarRotasFinanceiro;
   RegistrarRotasProducao;
+  RegistrarRotasPDV;
 
   WriteLn('=== ERP 2026 API REST ===');
   WriteLn('Servidor iniciado na porta 9000');
@@ -82,6 +84,7 @@ begin
   WriteLn('  POST /api/orcamentos/:id/converter');
   WriteLn('  GET/POST /api/financeiro');
   WriteLn('  POST /api/producao/bipar');
+  WriteLn('  GET/POST /api/pdv (status, caixa, produtos, vendas)');
 
   // Primeira conexao (do thread principal) sinaliza que o banco esta no ar;
   // as requisicoes usam cada uma a sua conexao tirada do pool
