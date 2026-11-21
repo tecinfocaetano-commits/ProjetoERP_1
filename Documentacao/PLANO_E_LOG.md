@@ -2227,7 +2227,9 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   rede); "Ver bipagens do servidor" listou 95 registros com operador.
 - **App `:app` (ERP2026 Mobile) — aprovado:** login → dashboard com
   dados reais da API (faturamento, a receber/pagar, clientes, últimas
-  vendas) e aba Vendas com a lista completa.
+  vendas) e **todas as 5 abas verificadas**: Início, Clientes (8 com
+  busca), Estoque (4 produtos com saldo), Vendas (5 pedidos) e
+  Financeiro (contas a receber/pagar detalhadas).
 - **Coordenacao:** `Documentacao\COMUNICACAO_AGENTES.md` criado para os
   dois agentes (ERP/desktop e `:bipe`) registrarem o que estão fazendo —
   a reinicialização da API pelo outro agente foi absorvida pela fila
