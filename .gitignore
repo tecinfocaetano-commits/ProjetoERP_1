@@ -23,7 +23,7 @@ Backups/
 # ---- Android / Gradle ----
 Android/android/.gradle/
 Android/android/build/
-Android/android/app/build/
+Android/android/*/build/
 Android/.idea/
 Android/android/local.properties
 *.apk
@@ -39,3 +39,4 @@ desktop.ini
 # ---- Evidencias de teste (capturas de tela, apenas local) ----
 Documentacao/evidencias/
 
+Android/android/bipe/build/
