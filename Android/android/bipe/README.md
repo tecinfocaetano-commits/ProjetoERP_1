@@ -26,7 +26,18 @@ a mesma máquina de estados do `uFrmBipagem` do desktop.
   `OK` (talão avança GERADO/IMPRESSO→EM_PRODUCAO→CONCLUIDO),
   `DUPLICADO` (já concluído) e `INVALIDO` (não encontrado/cancelado),
   cada um com bipe sonoro diferente.
-- **Turno:** contadores OK/Duplicados/Inválidos + histórico das
+- **Modo offline:** sem rede, a bipagem entra numa fila local
+  (`pendente` no `erp2026_bipe.db`, DB v2) com a hora do bipe — o
+  operador não para. Ao voltar a rede (ou pelo botão "Enviar fila"),
+  os códigos sobem em ordem FIFO para `POST /api/producao/bipar` com
+  `origem=APP_BIPE_OFFLINE`; o resultado real do servidor entra no
+  histórico com a hora original. Se a rede cair no meio, o restante
+  continua na fila. "Zerar turno" limpa só o histórico — a fila de
+  pendentes nunca é apagada (são bipagens de produção reais).
+- **Histórico do servidor:** `GET /api/producao/bipagens?limite=N`
+  lista as últimas bipagens da empresa (isolamento via
+  `USUARIO.EMPRESA_ID`, pois `TALAO_BIPAGEM` não tem `EMPRESA_ID`).
+- **Turno:** contadores OK/Duplicados/Inválidos/Fila + histórico das
   últimas 50 bipagens no SQLite local (`bipe.db`), que sobrevive a
   queda do app.
 

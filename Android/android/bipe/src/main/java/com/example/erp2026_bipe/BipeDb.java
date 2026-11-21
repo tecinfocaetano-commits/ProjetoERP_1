@@ -19,7 +19,7 @@ import java.util.List;
 public class BipeDb extends SQLiteOpenHelper {
 
     private static final String DB_NOME = "erp2026_bipe.db";
-    private static final int DB_VERSAO = 1;
+    private static final int DB_VERSAO = 2;
 
     private static final String T_BIPE = "bipe";
     private static final String B_ID = "id";
@@ -32,6 +32,25 @@ public class BipeDb extends SQLiteOpenHelper {
     private static final String B_CONCLUIDO = "mapa_concluido";
     private static final String B_ETAPA = "etapa";
     private static final String B_HORA = "hora";
+
+    // fila offline: códigos bipados sem rede, enviados quando voltar
+    private static final String T_PEND = "pendente";
+    private static final String P_ID = "id";
+    private static final String P_CODIGO = "codigo";
+    private static final String P_HORA = "hora";
+
+    /** Item da fila offline. */
+    public static class Pendente {
+        public final long id;
+        public final String codigo;
+        public final String hora;
+
+        Pendente(long id, String codigo, String hora) {
+            this.id = id;
+            this.codigo = codigo;
+            this.hora = hora;
+        }
+    }
 
     private static BipeDb instancia;
 
@@ -59,11 +78,21 @@ public class BipeDb extends SQLiteOpenHelper {
                 + B_CONCLUIDO + " INTEGER, "
                 + B_ETAPA + " TEXT, "
                 + B_HORA + " TEXT NOT NULL)");
+        criarFila(db);
+    }
+
+    private void criarFila(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS " + T_PEND + " ("
+                + P_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + P_CODIGO + " TEXT NOT NULL, "
+                + P_HORA + " TEXT NOT NULL)");
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int antiga, int nova) {
-        // v1: sem migrações ainda
+        if (antiga < 2) {
+            criarFila(db);
+        }
     }
 
     public void registrar(String codigo, String resultado, String mensagem,
@@ -132,5 +161,52 @@ public class BipeDb extends SQLiteOpenHelper {
 
     public void limpar() {
         getWritableDatabase().delete(T_BIPE, null, null);
+    }
+
+    // ---- fila offline -------------------------------------------------
+
+    public void enfileirar(String codigo, String hora) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put(P_CODIGO, codigo);
+        v.put(P_HORA, hora);
+        db.insert(T_PEND, null, v);
+    }
+
+    /** Fila na ordem em que foi bipada (FIFO — a ordem importa:
+        o servidor processa INICIO antes de CONCLUSAO). */
+    public List<Pendente> pendentes() {
+        List<Pendente> itens = new ArrayList<>();
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery(
+                "SELECT " + P_ID + ", " + P_CODIGO + ", " + P_HORA
+                        + " FROM " + T_PEND + " ORDER BY " + P_ID,
+                null);
+        try {
+            while (c.moveToNext()) {
+                itens.add(new Pendente(
+                        c.getLong(c.getColumnIndexOrThrow(P_ID)),
+                        c.getString(c.getColumnIndexOrThrow(P_CODIGO)),
+                        c.getString(c.getColumnIndexOrThrow(P_HORA))));
+            }
+        } finally {
+            c.close();
+        }
+        return itens;
+    }
+
+    public void removerPendente(long id) {
+        getWritableDatabase().delete(T_PEND, P_ID + " = ?",
+                new String[]{String.valueOf(id)});
+    }
+
+    public int totalPendentes() {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor c = db.rawQuery("SELECT COUNT(*) FROM " + T_PEND, null);
+        try {
+            return c.moveToFirst() ? c.getInt(0) : 0;
+        } finally {
+            c.close();
+        }
     }
 }

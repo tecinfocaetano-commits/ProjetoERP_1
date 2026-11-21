@@ -23,7 +23,9 @@ import com.journeyapps.barcodescanner.ScanOptions;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -42,7 +44,7 @@ public class BipagemActivity extends AppCompatActivity {
 
     private EditText editCodigo;
     private TextView txtResultado, txtOperador, txtContadores;
-    private Button btnBipar, btnCamera, btnZerar, btnSair;
+    private Button btnBipar, btnCamera, btnZerar, btnSair, btnSync;
     private ListView listaHistorico;
     private ArrayAdapter<String> adaptador;
 
@@ -50,6 +52,7 @@ public class BipagemActivity extends AppCompatActivity {
     private int totalDuplicado = 0;
     private int totalInvalido = 0;
     private boolean bipando = false;
+    private boolean sincronizando = false;
 
     private final ActivityResultLauncher<ScanOptions> scanner =
             registerForActivityResult(
@@ -78,6 +81,7 @@ public class BipagemActivity extends AppCompatActivity {
         btnCamera = findViewById(R.id.btnCamera);
         btnZerar = findViewById(R.id.btnZerar);
         btnSair = findViewById(R.id.btnSair);
+        btnSync = findViewById(R.id.btnSync);
         listaHistorico = findViewById(R.id.listaHistorico);
 
         txtOperador.setText("Operador: " + Sessao.nome(this));
@@ -128,6 +132,8 @@ public class BipagemActivity extends AppCompatActivity {
             Sessao.encerrar(this);
             Sessao.irParaLogin(this);
         });
+        // envio manual da fila offline (além do automático no onResume)
+        btnSync.setOnClickListener(v -> sincronizar());
 
         editCodigo.requestFocus();
     }
@@ -137,6 +143,8 @@ public class BipagemActivity extends AppCompatActivity {
         super.onResume();
         // se a sessão expirou (401), volta ao login
         Sessao.restaurar(this);
+        // voltou a ter rede? envia a fila offline acumulada
+        sincronizar();
     }
 
     private void bipar(String codigoDigitado) {
@@ -176,10 +184,13 @@ public class BipagemActivity extends AppCompatActivity {
             return;
         }
         if (r.status < 0) {
+            // sem rede: entra na fila offline e será enviado depois —
+            // o servidor é quem decide o resultado real da bipagem
             tocar(ToneGenerator.TONE_CDMA_ABBR_ALERT);
-            txtResultado.setText("✗ Sem conexão com o servidor.\n"
-                    + "Verifique a rede e tente novamente.");
-            totalInvalido++;
+            String hora = horaAgora();
+            BipeDb.get(this).enfileirar(codigo, hora);
+            txtResultado.setText("⚡ Sem conexão — bipagem na fila.\n"
+                    + "Será enviada quando a rede voltar.");
             atualizarContadores();
             return;
         }
@@ -236,6 +247,104 @@ public class BipagemActivity extends AppCompatActivity {
             totalInvalido++;
             atualizarContadores();
         }
+        // rede OK agora? aproveita para esvaziar a fila offline
+        sincronizar();
+    }
+
+    private static String horaAgora() {
+        return new SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                .format(new Date());
+    }
+
+    /**
+     * Envia à API os códigos bipados sem rede (fila FIFO do BipeDb).
+     * O servidor processa na ordem — INICIO antes de CONCLUSAO — e o
+     * resultado real (OK/DUPLICADO/INVALIDO) entra no histórico local.
+     * Para no primeiro erro de rede: o resto continua na fila.
+     */
+    private void sincronizar() {
+        if (sincronizando) {
+            return;
+        }
+        final List<BipeDb.Pendente> fila;
+        try {
+            fila = BipeDb.get(this).pendentes();
+        } catch (Exception e) {
+            return;
+        }
+        if (fila.isEmpty()) {
+            atualizarContadores();
+            return;
+        }
+        sincronizando = true;
+        btnSync.setEnabled(false);
+
+        new Thread(() -> {
+            List<BipeDb.Pendente> enviadas = new ArrayList<>();
+            List<JSONObject> respostas = new ArrayList<>();
+            boolean offline = false;
+            for (BipeDb.Pendente p : fila) {
+                ApiClient.Result r;
+                try {
+                    JSONObject corpo = new JSONObject();
+                    corpo.put("codigo", p.codigo);
+                    corpo.put("origem", "APP_BIPE_OFFLINE");
+                    r = ApiClient.post("/api/producao/bipar", corpo.toString());
+                } catch (Exception e) {
+                    r = new ApiClient.Result(-1, "");
+                }
+                if (r.status < 0) {
+                    offline = true;
+                    break; // rede caiu de novo — para e tenta depois
+                }
+                enviadas.add(p);
+                try {
+                    respostas.add(new JSONObject(r.body));
+                } catch (Exception e) {
+                    respostas.add(null);
+                }
+            }
+
+            final boolean parouOffline = offline;
+            final List<BipeDb.Pendente> enviadasFinal = enviadas;
+            final List<JSONObject> respostasFinal = respostas;
+            runOnUiThread(() -> {
+                sincronizando = false;
+                btnSync.setEnabled(true);
+                BipeDb db = BipeDb.get(BipagemActivity.this);
+                for (int i = 0; i < enviadasFinal.size(); i++) {
+                    BipeDb.Pendente p = enviadasFinal.get(i);
+                    JSONObject json = respostasFinal.get(i);
+                    db.removerPendente(p.id);
+                    if (json == null) {
+                        continue; // resposta ilegível: já saiu da fila
+                    }
+                    String resultado = json.optString("resultado", "INVALIDO");
+                    String mensagem = json.optString("mensagem", "");
+                    String etapa = json.optString("etapa", "");
+                    db.registrar(p.codigo, resultado, mensagem,
+                            json.optInt("numero_talao", 0),
+                            json.optString("produto", ""),
+                            json.optInt("mapa_numero", 0),
+                            json.optBoolean("mapa_concluido", false),
+                            etapa, p.hora);
+                    switch (resultado) {
+                        case "OK": totalOk++; break;
+                        case "DUPLICADO": totalDuplicado++; break;
+                        default: totalInvalido++; break;
+                    }
+                }
+                if (!enviadasFinal.isEmpty()) {
+                    tocar(ToneGenerator.TONE_PROP_ACK);
+                    recarregarHistorico();
+                }
+                atualizarContadores();
+                if (parouOffline && !fila.isEmpty()) {
+                    txtResultado.setText("⚡ Rede caiu — "
+                            + db.totalPendentes() + " bipagem(ns) ainda na fila.");
+                }
+            });
+        }).start();
     }
 
     private void tocar(int tom) {
@@ -253,9 +362,11 @@ public class BipagemActivity extends AppCompatActivity {
     }
 
     private void atualizarContadores() {
+        int fila = BipeDb.get(this).totalPendentes();
         txtContadores.setText("Turno — OK: " + totalOk
                 + "   |   Duplicados: " + totalDuplicado
-                + "   |   Inválidos: " + totalInvalido);
+                + "   |   Inválidos: " + totalInvalido
+                + (fila > 0 ? "   |   ⚡ Fila: " + fila : ""));
     }
 
     private void recarregarHistorico() {
