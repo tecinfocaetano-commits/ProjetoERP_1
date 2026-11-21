@@ -2096,6 +2096,46 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 
 ---
 
+### 3.72 F4 + D9 — API de clientes com ID/PUT e índices únicos (21/11)
+
+- **Objetivo:** fechar o bloco da API em clientes. O app Android casava o
+  cliente por nome+CPF porque `POST /api/clientes` não devolvia o ID, não
+  existia edição e o banco não impedia login/CPF/número de pedido repetidos.
+- **F4 (API):** `uRotasClientes.pas` passou a usar `TPessoaService` em todas
+  as operações de cliente (exceto o `DELETE`, que segue com SQL parametrizado
+  e `EMPRESA_ID`). `POST` devolve `{"id":..., "message":...}` com 201; novo
+  `PUT /api/clientes/:id` aplica campos parciais, confirma empresa e
+  `TIPO='C'` e grava auditoria pelo Service; `GET /:id` passou a incluir
+  `telefone`. Corpo inválido e exceções viram 400 com `{"error":...}`.
+- **D9 (banco):** nova migration `Banco\021_indices_unicos.sql` (+ rollback)
+  cria `UQ_USUARIO_EMPRESA_LOGIN`,
+  `UQ_PESSOA_EMPRESA_TIPO_CPF` e `UQ_PEDIDO_VENDA_EMPRESA_NUMERO`.
+  **Decisão:** o índice de pessoa é composto com `TIPO` porque o Service
+  permite o mesmo CPF em cliente e fornecedor (`TestPermitirMesmoCpfTiposDiferentes`).
+  Antes dos índices a migration apaga duplicatas antigas sem vínculo; no
+  banco real foram removidos os IDs `1237`, `1246`, `1247` (o `999`, com um
+  pedido, foi mantido), depois de gbak em
+  `Backups\DADOS_20261121_164032.fbk`. Os três índices foram aplicados e
+  conferidos no `DADOS.FDB`, e `schema_canonico.sql` foi atualizado.
+- **Android:** `Sincronizacao.java` lê o `id` do corpo do POST e marca o
+  cliente sincronizado; o casamento por nome+CPF e o helper `chaveCliente`
+  saíram. O servidor falso do teste agora devolve `{"id":77,...}`.
+- **Testes e ajustes:** novo `Scripts\testes\api_clientes_crud.ps1`
+  (POST→ID, GET, PUT, CPF duplicado→400, limpeza no `finally`) passou.
+  `uPessoaTest` passou a exigir 8 clientes (piso após a limpeza D9) e
+  `banco_fresco.ps1` a exigir 48 generators — D3 fundiu `GEN_CLIENTE_ID` e
+  `GEN_FORNECEDOR_ID` em `GEN_PESSOA_ID`. Ajustes pendentes no app `:bipe`
+  (empresa no login, limpeza do histórico ao trocar de empresa, sufixo Tab
+  e erro HTTP visível) também foram lidos e compilados.
+- **Verificação:** API recompilada (startup agora anuncia
+  `GET/POST/PUT/DELETE /api/clientes`); desktop build **0/0**; suíte
+  **384/384**; Android **OK** e `:bipe` compila; telas **33/33**;
+  `permissoes_menu.ps1` **0 falhas**; `schema_roundtrip.ps1` e
+  `banco_fresco.ps1` **OK** (585 campos, diff vazio).
+- **Commits:** `91c420e` (código) e `a6bdfd8` (ajustes do `:bipe`).
+
+---
+
 ## 4. Convenções e avisos (não reabrir)
 
 - Firebird 5: **não** renomeia tabela/coluna (`ALTER ... RENAME`) — usar ADD+cópia+DROP.

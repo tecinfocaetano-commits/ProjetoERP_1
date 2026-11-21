@@ -35,19 +35,32 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**HEAD:** `223b85e` — "App Android de bipagem de taloes (modulo :bipe)" (o
-commit de docs deste marco vem logo acima). Árvore: limpa. Build: desktop **0/0** ·
-suíte desktop **384/384** · API compilada (`Scripts\build_api.bat`) ·
-testes Android **OK** (`Scripts\run_tests_android.bat`) · `:bipe` compila e
-gera `bipe-debug.apk` · smoke de telas
-**33/33** · `permissoes_menu.ps1` **0 falhas**. Smoke da API: health `ok`,
-login (empresa 1), 10 clientes e detalhe OK.
+**HEAD:** `a6bdfd8` — "Bipe: login com empresa_id, erros HTTP visiveis e sufixo Tab"
+(logo abaixo, `91c420e` — "F4/D9: POST devolve ID, PUT de clientes e indices
+unicos"; o commit de docs deste marco vem acima). Árvore: limpa após os commits. Build: desktop **0/0** · suíte desktop
+**384/384** · API compilada com o startup atualizado · testes Android **OK** ·
+`:bipe` compila · smoke de telas **33/33** · `permissoes_menu.ps1`
+**0 falhas** · `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos,
+diff vazio) · smoke `api_clientes_crud.ps1` **OK**.
 
 > Se `git log -1` mostrar um hash diferente, o disco vence, como sempre.
 
 ### Em andamento (não commitado)
 
 - Nada.
+
+### O que fechou nesta sessão (marco 3.72 — F4 + D9: API de clientes e índices únicos)
+
+| Item | Entrega |
+|---|---|
+| **F4 (API)** | `POST /api/clientes` usa `TPessoaService` e devolve `{"id":...}` (201); novo `PUT /api/clientes/:id` edita campos parciais (confere empresa + `TIPO='C'`, validação e auditoria no Service); `GET /:id` passou a devolver `telefone`. `DELETE` segue parametrizado e no escopo da empresa. |
+| **D9 (banco)** | `Banco\021_indices_unicos.sql` + rollback com `UQ_USUARIO_EMPRESA_LOGIN`, `UQ_PESSOA_EMPRESA_TIPO_CPF` (composto com `TIPO`, para não quebrar `TestPermitirMesmoCpfTiposDiferentes`) e `UQ_PEDIDO_VENDA_EMPRESA_NUMERO`. A migration remove duplicatas sem vínculo antes de criar os índices; backup `Backups\DADOS_20261121_164032.fbk`. Aplicada e conferida no `DADOS.FDB` real; `schema_canonico.sql` acompanha. |
+| **Android** | `Sincronizacao.java` usa o `id` devolvido pelo POST (não casa mais nome+CPF); servidor falso do teste devolve `id:77`. `run_tests_android.bat` OK. |
+| **Verificação** | Novo `Scripts\testes\api_clientes_crud.ps1`: POST→ID, GET/PUT, CPF duplicado 400 e limpeza no `finally`. `uPessoaTest` ajustado ao piso de 8 clientes após a limpeza D9; `banco_fresco.ps1` ajustado a 48 generators (D3 fundiu CLIENTE+FORNECEDOR). Suíte **384/384**, telas **33/33**, permissões **0 falhas**. |
+| **Ajuste `:bipe`** | Alterações pendentes no app de bipagem (campo Empresa no login, limpeza do histórico ao trocar de empresa, leitor com Tab e mensagem de erro da API) foram lidas, compiladas e incluídas. |
+
+> O rollback de D9 remove só os índices: as duplicatas eliminadas não voltam
+> (restaure o backup gbak se precisar delas).
 
 ### O que fechou nesta sessão (marco 3.71 — app Android de bipagem)
 

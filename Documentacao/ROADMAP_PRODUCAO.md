@@ -28,8 +28,8 @@ polimento/dívida.
 | # | Prior. | Item | Onde |
 |---|---|---|---|
 | D3 | A | **CONCLUÍDO (marco 3.70):** build linka Services/Repositories, sessão por thread via JWT e rotas de clientes migradas para `TPessoaService`. | `Scripts\build_api.bat`, `uMiddlewareSessao.pas`, `uRotasClientes.pas` |
-| F4 | A | `POST /api/clientes` não devolve o ID; app casa por nome+CPF. Sem `PUT /api/clientes`. | `uRotasClientes.pas`, `Sincronizacao.java` |
-| D9 | A | Faltam índices únicos `USUARIO(EMPRESA_ID,LOGIN)`, `PESSOA(EMPRESA_ID,CPF_CNPJ)`, `PEDIDO_VENDA(EMPRESA_ID,NUMERO)`. | `Banco\schema_canonico.sql` |
+| F4 | A | **CONCLUÍDO (marco 3.72):** `POST /api/clientes` devolve o ID (201), novo `PUT /:id`, `GET /:id` com telefone; app usa o ID do POST em vez de casar nome+CPF. | `uRotasClientes.pas`, `Sincronizacao.java` |
+| D9 | A | **CONCLUÍDO (marco 3.72):** migration 021 com `UQ_USUARIO_EMPRESA_LOGIN`, `UQ_PESSOA_EMPRESA_TIPO_CPF` (TIPO faz parte da chave) e `UQ_PEDIDO_VENDA_EMPRESA_NUMERO`, aplicadas ao banco real e ao canônico. | `Banco\021_indices_unicos.sql`, `Banco\schema_canonico.sql` |
 | D4 | A | Zero auditoria (`LOG_SISTEMA`) na API. | `API\src\Rotas\*` |
 | D5 | A | `POST /api/estoque/movimento` aceita produto de outra empresa e não atualiza saldo. | `uRotasEstoque.pas` |
 | F5 | A | Numeração de orçamento global na API (sem `EMPRESA_ID`). | `uRotasOrcamentos.pas` |
@@ -52,7 +52,7 @@ polimento/dívida.
 
 | # | Prior. | Item | Onde |
 |---|---|---|---|
-| D7 | A | Schema não reproduzível: `USUARIO.TELEFONE` fora do canônico, 48 generators vs 49 esperados, `script_completo.sql` incompleto. | `Banco\schema_canonico.sql`, `Scripts\testes\banco_fresco.ps1` |
+| D7 | A | **Em parte (marco 3.72):** `USUARIO.TELEFONE` e os 3 índices únicos já estão no canônico; `banco_fresco.ps1` aceita 48 generators (D3 fundiu CLIENTE+FORNECEDOR) e valida 585 campos com diff vazio. Falta revisar `script_completo.sql`. | `Banco\schema_canonico.sql`, `Scripts\testes\banco_fresco.ps1` |
 | D8 | M | `007_initial_data.sql` sem `SET NAMES UTF8` (acentos corrompem em banco novo). | `Banco\007_initial_data.sql` |
 | F15 | M | Backup/restauração só por `.bat`; sem tela nem agendamento no app. | `Scripts\backup_banco.bat` |
 | — | M | HTTPS/rate limiting, monitoramento e manual de deploy. | operação |
@@ -76,7 +76,7 @@ polimento/dívida.
 
 1. **F3 — CONCLUÍDO** (F1 no marco 3.63, F2 no 3.64, CC-e/inutilização/manifestação no 3.65, DANFE/cupom em PDF no 3.66 e NFC-e no PDV no 3.67).
 2. **T1 + T4 + F7 (login da API) — CONCLUÍDO** (T1 no marco 3.68, T4 no 3.69 e F7 no 3.62) — controle de acesso e isolamento por empresa.
-3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services (D3 **concluído no marco 3.70**); restam ID/índices, auditoria e numeração por empresa.
+3. **D3 + F4 + D9 + D4 + D5 + F5** — API com Services (D3 no marco 3.70; F4+D9 no 3.72); restam auditoria (`D4`), estoque (`D5`) e numeração por empresa (`F5`).
 4. **D7 + D8** — banco novo confiável a partir do repositório.
 5. **F6 + F9** — paginação e visibilidade de erros na API/Android.
 6. **F5/F6/F9 + F4/F13 + F7 (relatórios)/F15** — ciclo de vida de pedidos, financeiro real, cadastros estruturantes, relatórios e backup pela aplicação.
@@ -93,6 +93,7 @@ polimento/dívida.
 - **T1** — permissões nas 33 telas via catálogo canônico, abertura em falha fechada, menu/ações por permissão e seed idempotente; teste de UI `permissoes_menu.ps1` com 0 falhas (marco 3.68).
 - **T4** — isolamento por empresa no copiloto (12 consultas com `:EMP`), produção (mapa/pedido/talão/consumo), bipagem (via `TALAO`/`USUARIO`) e caixa (via `JOIN CAIXA`); `CriarMapa` recusa pedido de outra empresa (marco 3.69).
 - **D3** — API compila com `Desktop\src\Services` + `Repositories`; `uSessao` por thread e `uMiddlewareSessao` levam `empresa_id` do JWT aos Services, sem singleton compartilhado; clientes passaram a usar `TPessoaService` (marco 3.70).
+- **F4 + D9** — `POST /api/clientes` devolve o ID, `PUT /:id` edita e o sync Android usa o ID do POST; migration 021 cria 3 índices únicos e remove duplicatas sem vínculo, com backup gbak (marco 3.72).
 - **D6** — conexões da API devolvidas ao pool ao fim de cada requisição (marco 3.61).
 - **D12 (health)** — `GET /api/health` público; teste de conexão do Android exige 2xx (marco 3.61).
 - **T2/T3/F7 (login da API)** — login sem credenciais padrão, desambiguado por empresa no desktop e na API (marco 3.62).

@@ -10,12 +10,12 @@ Regras: responder em português; terminar toda resposta com exatamente 3 linhas 
 
 Estado em 21/11/2026:
 
-- **HEAD:** `f1b19ef` (D3: API linka Services e usa sessao por thread). Árvore limpa após o commit de docs.
-- Suíte desktop **384/384**; build desktop **0/0** (sem avisos do compilador); API compilada; testes Android **OK**; smoke de telas **33/33**; `permissoes_menu.ps1` **0 falhas**.
-- **Concluído nesta etapa:** **D3 — API com Services e sessão por thread** (marco 3.70, §3.70): `build_api.bat` linka Services/Repositories; `uSessao` usa `threadvar` e o novo `uMiddlewareSessao` passa `empresa_id` do JWT aos Services (rotas públicas isentas); `GET /api/clientes` e `/:id` migrados para `TPessoaService`. Antes: **T4** (3.69, isolamento por empresa), **T1** (3.68, permissões em 33 telas) e **F3** (fiscal, 3.65–3.67). Também no remoto: motor de bipagem compartilhado (`uProducaoBipagem`) e `POST /api/producao/bipar`.
-- Banco real conferido sem resíduos (`LOG_SISTEMA` sem `CCE`).
-- **Auditorias de completude concluídas** (desktop e API/Android/banco): itens priorizados em `Documentacao\ROADMAP_PRODUCAO.md`, com T1/T4 marcados como concluídos. Ordem restante: API D3, F4+D9, D4, D7/D8, F6/F9; gestão F5/F6/F9, F4/F13, relatórios/backup.
-- **Próximo passo:** bloco da **API** — (a) **F4+D9**: devolver ID em `POST /api/clientes`, criar `PUT /api/clientes` e índices únicos; (b) **D4**: auditoria `LOG_SISTEMA` nas rotas; (c) **D5/F5**: movimento de estoque e numeração via Services; depois D7/D8 e F6/F9. Repetir a bateria completa (desktop, **384/384**, API, Android, smoke e permissões de menu) a cada marco.
+- **HEAD:** `a6bdfd8` (ajustes do app `:bipe`); logo abaixo, `91c420e` (F4/D9). Árvore limpa após o commit de docs.
+- Suíte desktop **384/384**; build desktop **0/0**; API compilada e startup atualizado; testes Android **OK** e `:bipe` compila; smoke de telas **33/33**; `permissoes_menu.ps1` **0 falhas**; `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (585 campos, diff vazio).
+- **Concluído nesta etapa:** **F4 + D9** (marco 3.72, §3.72): `POST /api/clientes` devolve o ID, novo `PUT /api/clientes/:id`, `GET /:id` com telefone; Sync Android usa o ID do POST; migration `021_indices_unicos.sql` criou 3 índices únicos (o de PESSOA inclui `TIPO`, para não quebrar CPF igual em cliente/fornecedor), com limpeza de duplicatas e backup gbak. Antes: **D3** (3.70, Services + sessão por thread), **T4** (3.69), **T1** (3.68) e **F3** (3.65–3.67, fiscal).
+- Banco real com índices conferidos; duplicatas sem vínculo removidas (IDs 1237/1246/1247); `LOG_SISTEMA` sem resíduo de `CCE`.
+- **Auditorias de completude concluídas** (desktop e API/Android/banco): itens priorizados em `Documentacao\ROADMAP_PRODUCAO.md`, com F3/T1/T4/D3/F4/D9 concluídos. Ordem restante: D4, D5/F5, D7/D8, F6/F9; gestão F5/F6/F9, F4/F13, relatórios/backup.
+- **Próximo passo:** bloco da **API** — (a) **D4**: auditoria `LOG_SISTEMA` nas rotas (via `LogOperacao`, com empresa/usuário do JWT); (b) **D5/F5**: movimento de estoque pelo Service e numeração de orçamento por empresa; (c) **D7/D8** (banco novo) e **F6/F9** (paginação e erros de sync). Repetir a bateria completa (desktop, **384/384**, API, smoke CRUD, Android, telas, permissões, schema e banco fresco) a cada marco.
 
 Comandos:
 
