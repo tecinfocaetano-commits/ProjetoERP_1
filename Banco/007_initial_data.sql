@@ -2,7 +2,15 @@
    ERP 2026 - FASE 1 - FUNDAÇÃO
    Arquivo: 007_initial_data.sql
    Descrição: Dados iniciais obrigatórios para funcionamento
+
+   D8: o arquivo é UTF-8 sem BOM. SET NAMES UTF8 fixa o charset da
+   sessão antes dos INSERTs com acento (ex.: UNIDADE 'Peça'), para que
+   o valor não seja duplamente codificado se o cliente isql vier com
+   outro charset. Mesmo assim, SEMPRE execute o isql com `-ch UTF8`
+   (é o que fazem executar_banco.bat e banco_fresco.ps1).
    ============================================================ */
+
+SET NAMES UTF8;
 
 /* === Unidades de Medida padrão === */
 INSERT INTO UNIDADE (SIGLA, DESCRICAO, NOME) VALUES ('UN', 'Unidade', 'Unidade');

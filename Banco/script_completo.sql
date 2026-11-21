@@ -1,25 +1,26 @@
-CONNECT 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\dados.fdb' USER 'SYSDBA' PASSWORD 'masterkey';
+/* ============================================================
+   ERP 2026 - SCRIPT COMPLETO (banco novo)
+   ------------------------------------------------------------
+   Fonte única da estrutura: schema_canonico.sql (gerado do banco
+   real por Scripts\gerar_schema.bat). As sementes ficam em
+   007_initial_data.sql.
 
--- Execute domains
-INPUT 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\002_domains.sql';
+   O caminho antigo (002_domains -> 003_generators -> 004_tables ->
+   005_triggers -> 006_indexes -> 007_initial_data ->
+   008_tabelas_adicionais) ficou defasado: criava só parte das
+   tabelas e precisava dos remendos 009..021. Não é mais usado.
 
--- Execute generators
-INPUT 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\003_generators.sql';
+   Como executar (a partir desta pasta Banco):
+     isql -user SYSDBA -password masterkey -ch UTF8 -i script_completo.sql
 
--- Execute tables
-INPUT 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\004_tables.sql';
+   Os INPUTs são RELATIVOS a esta pasta para não prender o
+   repositório a um diretório de usuário específico. Para escolher
+   outro caminho de .fdb, use Scripts\executar_banco.bat (ou
+   GerarSchema.exe), que gera o CREATE DATABASE com o destino desejado.
+   ============================================================ */
 
--- Execute triggers
-INPUT 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\005_triggers.sql';
-
--- Execute indexes
-INPUT 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\006_indexes.sql';
-
--- Execute initial data
-INPUT 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\007_initial_data.sql';
-
--- Execute additional tables
-INPUT 'C:\Users\Charles\Documents\ProjetoERP_1\Banco\008_tabelas_adicionais.sql';
+INPUT 'schema_canonico.sql';
+INPUT '007_initial_data.sql';
 
 COMMIT;
 QUIT;

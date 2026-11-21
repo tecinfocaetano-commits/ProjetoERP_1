@@ -17,7 +17,8 @@ procedure RegistrarRotasVendas;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uPedidoStatus, uMiddlewareJWT;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uPedidoStatus, uMiddlewareJWT,
+  uPaginacao;
 
 procedure GetVendas(Req: THorseRequest; Res: THorseResponse);
 var
@@ -26,6 +27,9 @@ var
   LArray: TJSONArray;
   LObj: TJSONObject;
   LUsuarioId, LEmpresaId: Int64;
+  P: TPaginacao;
+  LTotal: Int64;
+  LSql: string;
 begin
   DadosDoToken(Req, LUsuarioId, LEmpresaId);
   if LEmpresaId <= 0 then
@@ -40,15 +44,40 @@ begin
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text :=
+
+    { F6: sem parâmetros, mantém o array de até 100 do contrato antigo.
+      Com pagina/por_pagina, informa total e devolve só a fatia pedida. }
+    LerPaginacao(Req, P);
+    if P.Ativa then
+    begin
+      LQuery.SQL.Text :=
+        'SELECT COUNT(*) FROM PEDIDO_VENDA PV WHERE PV.EMPRESA_ID = :EMP';
+      LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
+      LQuery.Open;
+      LTotal := LQuery.Fields[0].AsLargeInt;
+      LQuery.Close;
+    end
+    else
+      LTotal := 0;
+
+    LSql :=
       'SELECT PV.ID, PV.NUMERO, C.NOME AS CLIENTE, PV.TOTAL, PV.DATA_EMISSAO, ' +
       // rótulos de status centralizados em uPedidoStatus; 'O' (orçamento) à parte
       'CASE WHEN PV.STATUS = ''O'' THEN ''Orçamento'' ELSE ' +
         SqlCaseStatusPedido('PV.STATUS') + ' END AS STATUS ' +
       'FROM PEDIDO_VENDA PV LEFT JOIN PESSOA C ON C.ID = PV.CLIENTE_ID AND C.TIPO = ''C'' ' +
-      'WHERE PV.EMPRESA_ID = :EMP ' +
-      'ORDER BY PV.DATA_EMISSAO DESC ROWS 100';
+      'WHERE PV.EMPRESA_ID = :EMP ';
+    if P.Ativa then
+      LSql := LSql + 'ORDER BY PV.DATA_EMISSAO DESC, PV.ID DESC ROWS :LINI TO :LIMF'
+    else
+      LSql := LSql + 'ORDER BY PV.DATA_EMISSAO DESC ROWS 100';
+    LQuery.SQL.Text := LSql;
     LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
+    if P.Ativa then
+    begin
+      LQuery.ParamByName('LINI').AsInteger := PrimeiraLinha(P);
+      LQuery.ParamByName('LIMF').AsInteger := UltimaLinha(P);
+    end;
     LQuery.Open;
 
     LArray := TJSONArray.Create;
@@ -64,7 +93,10 @@ begin
       LArray.Add(LObj);
       LQuery.Next;
     end;
-    Res.Send(LArray.AsJSON).Status(THTTPStatus.OK);
+    if P.Ativa then
+      EnviarPagina(Res, LArray, LTotal, P)
+    else
+      Res.Send(LArray.AsJSON).Status(THTTPStatus.OK);
     LArray.Free;
   finally
     LQuery.Free;

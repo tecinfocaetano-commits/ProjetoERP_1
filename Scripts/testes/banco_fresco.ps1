@@ -21,8 +21,10 @@ $tmpSql  = Join-Path $env:TEMP ("erp_banco_fresco_" + $guid + '.sql')
 function Step($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 
 function Invoke-Iql($db, $script) {
-  if ($db) { & $isql $db -user SYSDBA -password masterkey -i $script -q }
-  else     { & $isql      -user SYSDBA -password masterkey -i $script -q }
+  # D8: forcar UTF8 no cliente tambem (SET NAMES no seed so nao basta
+  # se o isql abrir a conexao com WIN1252, por exemplo).
+  if ($db) { & $isql $db -user SYSDBA -password masterkey -ch UTF8 -i $script -q }
+  else     { & $isql      -user SYSDBA -password masterkey -ch UTF8 -i $script -q }
 }
 
 function Query-One($db, $sql) {
@@ -44,6 +46,18 @@ function Query-One($db, $sql) {
 }
 
 try {
+  # D7: o script_completo.sql precisa apontar para o fluxo canonico
+  # e nao pode prender o repositorio a um caminho absoluto.
+  Step 'Conferindo script_completo.sql (D7)'
+  $legado = [IO.File]::ReadAllText((Join-Path $banco 'script_completo.sql'))
+  if ($legado -notmatch "INPUT\s+'schema_canonico\.sql'") { throw 'script_completo.sql nao inclui schema_canonico.sql' }
+  if ($legado -notmatch "INPUT\s+'007_initial_data\.sql'") { throw 'script_completo.sql nao inclui 007_initial_data.sql' }
+  if ($legado -match '(?i)C:\\|/Users/|/home/') { throw 'script_completo.sql ainda tem caminho absoluto' }
+  $inputs = @($legado -split "`r?`n" | Where-Object { $_ -match '^\s*INPUT\s+' })
+  if ($inputs.Count -ne 2) { throw "script_completo.sql deve ter exatamente 2 INPUTs (veio $($inputs.Count))" }
+  $foraDoFluxo = @($inputs | Where-Object { $_ -notmatch "'(schema_canonico|007_initial_data)\.sql'" })
+  if ($foraDoFluxo.Count) { throw 'script_completo.sql ainda referencia migrations legacy 002..008' }
+
   Step 'Compilando ferramentas'
   & (Join-Path $root 'Scripts\gerar_schema.bat') | Out-Null
   if ($LASTEXITCODE -ne 0) { throw 'Falha ao compilar GerarSchema' }
@@ -104,6 +118,14 @@ try {
   $grade = Query-One $scratch "SELECT COUNT(*) FROM CONFIGURACAO WHERE CHAVE = 'USA_GRADE' ;"
   if ([int]$grade -lt 1) { $falhas += "preferencia USA_GRADE ausente" }
 
+  # D8: 'Peça' em UTF-8 = 4 caracteres / 5 bytes. Com dupla codificacao
+  # (cliente WIN1252 lendo arquivo UTF-8) vira 5 caracteres / 7 bytes.
+  $caracteres = Query-One $scratch "SELECT CHAR_LENGTH(DESCRICAO) FROM UNIDADE WHERE SIGLA = 'PC' ;"
+  $bytes = Query-One $scratch "SELECT OCTET_LENGTH(DESCRICAO) FROM UNIDADE WHERE SIGLA = 'PC' ;"
+  if (($caracteres -ne '4') -or ($bytes -ne '5')) {
+    $falhas += "acento da seed UNIDADE.PC corrompido (chars='$caracteres', bytes='$bytes'; esperado 4/5)"
+  }
+
   if ($falhas.Count) {
     Write-Host "!!! SEMENTES INCOMPLETAS !!!" -ForegroundColor Red
     $falhas | ForEach-Object { Write-Host ("  - " + $_) }
@@ -113,7 +135,7 @@ try {
   Write-Host ""
   Write-Host ("OK: banco novo pelo fluxo consolidado = " + $real.Count +
               " campos (diff vazio), 49 tabelas, 48 generators, admin/permissoes," +
-              " Brasil + 27 UFs e USA_GRADE presentes.") -ForegroundColor Green
+              " Brasil + 27 UFs, USA_GRADE, acentos UTF-8 e script_completo canonico.") -ForegroundColor Green
   exit 0
 }
 finally {

@@ -17,7 +17,7 @@ procedure RegistrarRotasFinanceiro;
 implementation
 
 uses
-  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT;
+  SysUtils, fpjson, jsonparser, SQLDB, uConexao, uMiddlewareJWT, uPaginacao;
 
 procedure GetResumoFinanceiro(Req: THorseRequest; Res: THorseResponse);
 var
@@ -101,6 +101,9 @@ var
   LArray: TJSONArray;
   LObj: TJSONObject;
   LUsuarioId, LEmpresaId: Int64;
+  P: TPaginacao;
+  LTotal: Int64;
+  LSql: string;
 begin
   DadosDoToken(Req, LUsuarioId, LEmpresaId);
   if LEmpresaId <= 0 then
@@ -115,13 +118,37 @@ begin
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text :=
+
+    LerPaginacao(Req, P);
+    if P.Ativa then
+    begin
+      LQuery.SQL.Text :=
+        'SELECT COUNT(*) FROM CONTA_RECEBER CR ' +
+        'WHERE CR.STATUS = ''A'' AND CR.EMPRESA_ID = :EMP';
+      LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
+      LQuery.Open;
+      LTotal := LQuery.Fields[0].AsLargeInt;
+      LQuery.Close;
+    end
+    else
+      LTotal := 0;
+
+    LSql :=
       'SELECT CR.ID, C.NOME AS CLIENTE, CR.DESCRICAO, CR.VALOR, ' +
       'CR.DATA_VENCIMENTO, CR.STATUS ' +
       'FROM CONTA_RECEBER CR LEFT JOIN PESSOA C ON C.ID = CR.CLIENTE_ID AND C.TIPO = ''C'' ' +
-      'WHERE CR.STATUS = ''A'' AND CR.EMPRESA_ID = :EMP ' +
-      'ORDER BY CR.DATA_VENCIMENTO ROWS 100';
+      'WHERE CR.STATUS = ''A'' AND CR.EMPRESA_ID = :EMP ';
+    if P.Ativa then
+      LSql := LSql + 'ORDER BY CR.DATA_VENCIMENTO, CR.ID ROWS :LINI TO :LIMF'
+    else
+      LSql := LSql + 'ORDER BY CR.DATA_VENCIMENTO ROWS 100';
+    LQuery.SQL.Text := LSql;
     LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
+    if P.Ativa then
+    begin
+      LQuery.ParamByName('LINI').AsInteger := PrimeiraLinha(P);
+      LQuery.ParamByName('LIMF').AsInteger := UltimaLinha(P);
+    end;
     LQuery.Open;
 
     LArray := TJSONArray.Create;
@@ -136,7 +163,10 @@ begin
       LArray.Add(LObj);
       LQuery.Next;
     end;
-    Res.Send(LArray.AsJSON).Status(THTTPStatus.OK);
+    if P.Ativa then
+      EnviarPagina(Res, LArray, LTotal, P)
+    else
+      Res.Send(LArray.AsJSON).Status(THTTPStatus.OK);
     LArray.Free;
   finally
     LQuery.Free;
@@ -150,6 +180,9 @@ var
   LArray: TJSONArray;
   LObj: TJSONObject;
   LUsuarioId, LEmpresaId: Int64;
+  P: TPaginacao;
+  LTotal: Int64;
+  LSql: string;
 begin
   DadosDoToken(Req, LUsuarioId, LEmpresaId);
   if LEmpresaId <= 0 then
@@ -164,13 +197,37 @@ begin
   try
     LQuery.DataBase := LConexao.Connection;
     LQuery.Transaction := LConexao.Transaction;
-    LQuery.SQL.Text :=
+
+    LerPaginacao(Req, P);
+    if P.Ativa then
+    begin
+      LQuery.SQL.Text :=
+        'SELECT COUNT(*) FROM CONTA_PAGAR CP ' +
+        'WHERE CP.STATUS = ''A'' AND CP.EMPRESA_ID = :EMP';
+      LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
+      LQuery.Open;
+      LTotal := LQuery.Fields[0].AsLargeInt;
+      LQuery.Close;
+    end
+    else
+      LTotal := 0;
+
+    LSql :=
       'SELECT CP.ID, COALESCE(F.NOME_FANTASIA, F.NOME) AS FORNECEDOR, CP.DESCRICAO, CP.VALOR, ' +
       'CP.DATA_VENCIMENTO, CP.STATUS ' +
       'FROM CONTA_PAGAR CP LEFT JOIN PESSOA F ON F.ID = CP.FORNECEDOR_ID AND F.TIPO = ''F'' ' +
-      'WHERE CP.STATUS = ''A'' AND CP.EMPRESA_ID = :EMP ' +
-      'ORDER BY CP.DATA_VENCIMENTO ROWS 100';
+      'WHERE CP.STATUS = ''A'' AND CP.EMPRESA_ID = :EMP ';
+    if P.Ativa then
+      LSql := LSql + 'ORDER BY CP.DATA_VENCIMENTO, CP.ID ROWS :LINI TO :LIMF'
+    else
+      LSql := LSql + 'ORDER BY CP.DATA_VENCIMENTO ROWS 100';
+    LQuery.SQL.Text := LSql;
     LQuery.ParamByName('EMP').AsLargeInt := LEmpresaId;
+    if P.Ativa then
+    begin
+      LQuery.ParamByName('LINI').AsInteger := PrimeiraLinha(P);
+      LQuery.ParamByName('LIMF').AsInteger := UltimaLinha(P);
+    end;
     LQuery.Open;
 
     LArray := TJSONArray.Create;
@@ -185,7 +242,10 @@ begin
       LArray.Add(LObj);
       LQuery.Next;
     end;
-    Res.Send(LArray.AsJSON).Status(THTTPStatus.OK);
+    if P.Ativa then
+      EnviarPagina(Res, LArray, LTotal, P)
+    else
+      Res.Send(LArray.AsJSON).Status(THTTPStatus.OK);
     LArray.Free;
   finally
     LQuery.Free;

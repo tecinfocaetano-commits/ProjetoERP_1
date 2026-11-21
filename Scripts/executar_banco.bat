@@ -38,7 +38,7 @@ if exist "%DBPATH%" (
 )
 
 echo [1/3] Criando banco e estrutura completa...
-%ISQL% -user %USER% -password %PASS% -i "%BANCO_DIR%\schema_canonico.sql" -q
+%ISQL% -user %USER% -password %PASS% -ch UTF8 -i "%BANCO_DIR%\schema_canonico.sql" -q
 if errorlevel 1 goto :erro
 
 goto :sementes
@@ -51,12 +51,12 @@ if exist "%DBPATH%.FL" del "%DBPATH%.FL"
 if exist "%DBPATH%.FDB" del "%DBPATH%.FDB"
 
 echo [1/3] Criando banco e estrutura completa...
-%ISQL% -user %USER% -password %PASS% -i "%BANCO_DIR%\schema_canonico.sql" -q
+%ISQL% -user %USER% -password %PASS% -ch UTF8 -i "%BANCO_DIR%\schema_canonico.sql" -q
 if errorlevel 1 goto :erro
 
 :sementes
 echo [2/3] Inserindo dados iniciais...
-%ISQL% "%DBPATH%" -user %USER% -password %PASS% -i "%BANCO_DIR%\007_initial_data.sql"
+%ISQL% "%DBPATH%" -user %USER% -password %PASS% -ch UTF8 -i "%BANCO_DIR%\007_initial_data.sql"
 if errorlevel 1 goto :erro
 
 echo [3/3] Verificando estrutura...
