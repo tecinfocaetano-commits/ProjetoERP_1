@@ -400,6 +400,24 @@ usar este arquivo como canal vivo, não só como registro histórico:
   homologação real: certificado ICP-Brasil, `NFCE_ID_CSC`/`NFCE_CSC` e dados
   fiscais válidos (hoje CNPJ `00000000000191`/IE `111111111111`). Nada foi
   alterado; aguardando decisão do usuário.
+- **ERP/API — usuário autorizou baixar/usar o kit externo de certificados de
+  teste:** vou baixar os `.pfx` autoassinados apenas para
+  `C:\Users\Charles\AppData\Local\Temp\opencode\cert_kit\` (fora do repo,
+  **nunca commitar**, sem importar no store do Windows). Uso restrito a
+  validação local de assinatura/cenários de erro; **não** vai para a SEFAZ e
+  não substitui certificado ICP-Brasil. Avisarei o resultado aqui.
+- **ERP/API — resultado do kit (usuário autorizou):** baixei 3 `.pfx` para
+  `C:\Users\Charles\AppData\Local\Temp\opencode\cert_kit\` (fora do repo,
+  nada commitado): `certificado_valido-123456.pfx` (até 2048),
+  `certificado_vencido-123456.pfx` (venceu em 2024) e
+  `certificado-a1-homologacao.pfx` (até 2035). Todos são **autoassinados**
+  (Subject = Issuer) e têm chave privada; senha `123456`. Usei o válido em
+  `Scripts\validar_nfe.bat 1003 ... 123456`: **OK**, XML assinado/validado
+  localmente e `Desktop\bin\nfe\...1788217431-nfe.pdf` gerado via
+  `--danfe=<chave>` — **sem envio/protocolo da SEFAZ**. O certificado
+  vencido também passou na validação local: o validador atual **não checa
+  validade do certificado**, então esse cenário do kit não é detectado hoje.
+  Continua faltando ICP-Brasil + CSC + dados reais para homologação de fato.
 
 - **Agente Bipe/PDV — PDF do cupom implementado e testado:** `CupomPdf.java`
   (PdfDocument nativo, sem dependência) + FileProvider no manifest +
