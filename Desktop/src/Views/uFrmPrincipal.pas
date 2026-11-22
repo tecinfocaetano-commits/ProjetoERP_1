@@ -71,6 +71,9 @@ type
     lblEmpresa: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure VerificarApiEmBackground;
+    procedure ProcessarResultadoApi(AOk: Boolean; const AUrl: string);
+    procedure AvisarApiOffline(const AUrl: string);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure mnuCadPessoasClick(Sender: TObject);
     procedure mnuCadProdutosClick(Sender: TObject);
@@ -130,7 +133,8 @@ uses
   uFrmProdutoFiscal, uFrmMaterial,
   uFrmMovimentoFinanceiro, uFrmCompras,
   uFrmPais, uFrmEstado, uFrmCidade, uFrmGrade,
-  uFrmCaixa, uFrmConfiguracoes, uFrmPermissoes, uFrmCentralRelatorios;
+  uFrmCaixa, uFrmConfiguracoes, uFrmPermissoes, uFrmCentralRelatorios,
+  uApiSaude;
 
 {$R *.lfm}
 
@@ -151,6 +155,50 @@ begin
   lblBemVindo.Caption := 'Bem-vindo, ' + LSessao.UsuarioNome;
   AplicarPermissoesNoMenu;
   AtualizarStatusBar;
+  VerificarApiEmBackground;
+end;
+
+{ Confere se a API REST esta no ar sem travar a abertura da tela.
+  Se estiver fora: em localhost oferece subir a API local; em URL
+  remota (servidor) apenas avisa — nao da para ligar remotamente. }
+procedure TfrmPrincipal.VerificarApiEmBackground;
+var
+  LUrl: string;
+begin
+  LUrl := ApiUrlPadrao;
+  TApiCheckThread.Create(LUrl, @ProcessarResultadoApi).Start;
+end;
+
+{ Callback na thread da UI (Synchronize dentro de TApiCheckThread). }
+procedure TfrmPrincipal.ProcessarResultadoApi(AOk: Boolean;
+  const AUrl: string);
+begin
+  if not AOk then
+    AvisarApiOffline(AUrl);
+end;
+
+procedure TfrmPrincipal.AvisarApiOffline(const AUrl: string);
+var
+  LResp: TModalResult;
+begin
+  if ApiEhLocal(AUrl) then
+  begin
+    LResp := MessageDlg(
+      'A API REST nao esta respondendo em ' + AUrl + '.' + sLineBreak +
+      'Os apps moveis (PDV/Bipe) ficarao indisponiveis.' + sLineBreak +
+      'Deseja iniciar a API local agora?',
+      mtConfirmation, [mbYes, mbNo], 0);
+    if LResp = mrYes then
+      if IniciarApiLocal then
+        MessageDlg('API iniciada com sucesso.', mtInformation,
+          [mbOK], 0);
+  end
+  else
+    MessageDlg(
+      'Nao foi possivel contatar a API em ' + AUrl + '.' + sLineBreak +
+      'Verifique a rede ou se o servidor esta ligado.' + sLineBreak +
+      'Os apps moveis (PDV/Bipe) ficarao indisponiveis.',
+      mtWarning, [mbOK], 0);
 end;
 
 { Cada item do menu aponta para uma tela do catálogo de permissões.
