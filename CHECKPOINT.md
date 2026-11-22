@@ -34,6 +34,24 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ---
 
+## PONTO DE PARADA — save para retomada (22/11/2026)
+
+- `HEAD = 595bb80` (marco 3.93) **já com `git push origin master` OK**. Árvore
+  limpa: só `tmp_shots/` está untracked e nunca deve ser commitada.
+- Antes de qualquer edição, **ler o canal** `Documentacao\COMUNICACAO_AGENTES.md`:
+  o agente `SIGCORP` anunciou o mesmo bloco 3.93; confirmar que não duplicou
+  nada e avisar no canal ao iniciar o próximo bloco.
+- API 9000 em **PID 4856**, `/api/health` `ok/banco=ok`; **não parar, recompilar
+  nem reiniciar sem aviso prévio no canal**. IDE Lazarus não foi fechada.
+- Ponto de partida ao voltar: `Scripts\build_desktop.bat` (deve dar **0/0**) e
+  `Scripts\run_tests.bat` (**400/400**). Nenhuma dependência nova foi instalada.
+- Próximas frentes: **D11** (HTTPS/CORS/token) ou homologação NFS-e com
+  protocolo — esta bloqueada por CNPJ/IE regulares, e-CNPJ A1 ICP-Brasil,
+  prefeitura/SEFAZ habilitada e IdCSC/CSC próprios. Entrega atual é
+  off-line/`SIMULADO`.
+
+---
+
 ## Estado atual da sessão (22/11/2026)
 
 **Últimos marcos:** 3.93 (tela resumida de nota de serviço + NFS-e no parser,

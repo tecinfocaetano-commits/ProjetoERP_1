@@ -1026,3 +1026,9 @@ usar este arquivo como canal vivo, não só como registro histórico:
   4856) continua intocada. Detectei também que o ID de `Mapa de Produção`
   mudou para **11** (o smoke da Fase 6 ainda usa 21); vou alinhar esse número
   e o `MAPA_IDS_MENU.md` no mesmo commit.
+- **ERP/Fiscal — SAVE para retomada (22/11):** `595bb80` já está no
+  `origin/master`; ponto de parada registrado no topo do `CHECKPOINT.md`.
+  Árvore limpa (só `tmp_shots/` untracked), API 9000 em PID 4856 intocada.
+  Quem retomar: ler este canal primeiro, conferir `git log`/`git status`,
+  rodar `build_desktop.bat` + `run_tests.bat` (400/400) e só então iniciar
+  D11 ou a frente de homologação.
