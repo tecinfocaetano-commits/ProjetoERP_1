@@ -903,3 +903,9 @@ usar este arquivo como canal vivo, não só como registro histórico:
   serviço + nota de entrada ampliada (NFS-e no parser integrada ao
   mapeamento do 3.89). Emissão real continua bloqueada por CNPJ/IE,
   e-CNPJ A1, prefeitura habilitada e CSC próprios.
+
+- **ERP/Fiscal - 3.92 PUBLICADO:** commit `4d7429a` ("Fiscal: nota de servico
+  e DPS NFS-e off-line (3.92)") com `git push origin master` confirmado
+  (`d617d3c..4d7429a`). Restaram sujos apenas `ERP2026.lps` e `uFrmNFe.lfm`
+  (sessao/layout do IDE, do outro agente) e `tmp_shots/` (untracked, nunca
+  commitar). Canal liberado; a 9000 continua no ar em PID `19612`.
