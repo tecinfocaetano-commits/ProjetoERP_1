@@ -1,4 +1,4 @@
-# CHECKPOINT - último ponto de parada (21/11/2026)
+# CHECKPOINT - último ponto de parada (22/11/2026)
 
 > Documento de retomada. **Leia só este arquivo para continuar.**
 > O log vivo (decisões + backlog + executado) fica em
@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **388/388**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **397/397**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (**9/9**, cobre `:app`,
    `:bipe` e `:pdv`) e `Scripts\build_pdv.bat` (APK do PDV).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
@@ -34,9 +34,10 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ---
 
-## Estado atual da sessão (21/11/2026)
+## Estado atual da sessão (22/11/2026)
 
-**Últimos marcos:** 3.91 (`:pdv` na bateria/CI/docs), 3.90 (pagamentos MP
+**Últimos marcos:** 3.92 (NFS-e nacional + nota de serviço, **abaixo**),
+3.91 (`:pdv` na bateria/CI/docs), 3.90 (pagamentos MP
 do outro agente), 3.89-fiscal (rastro de importação XML + mapeamento de
 produto — §3.89 no `PLANO_E_LOG.md` por colisão de numeração), 3.87
 (prompt completo de retomada + novos requisitos fiscais), 3.86
@@ -44,17 +45,17 @@ produto — §3.89 no `PLANO_E_LOG.md` por colisão de numeração), 3.87
 3.84 (cupom PDF), 3.83 (D10), 3.81 (homologação) e 3.80 (`:bipe`); 3.82 é
 o app PDV mobile. O marco 3.86 está em `9fa4a87` (código + docs). Pode
 haver commit de outro agente acima. Build: desktop **0/0** ·
-suíte desktop **388/388** · `build_api.bat` **OK** (pare a API antes de
+suíte desktop **397/397** · `build_api.bat` **OK** (pare a API antes de
 compilar, senão o `.exe` fica travado) · testes Android **9/9** ·
 `build_bipe.bat` e `build_pdv.bat` **OK** (APKs de bipagem e PDV) · smoke de
 telas **33/33** · `permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1`
-e `banco_fresco.ps1` **OK** (630 campos no round-trip, 629 no banco fresco,
-diff vazio, **51 tabelas / 50 generators**, acentos conferidos) · na
+e `banco_fresco.ps1` **OK** (659 campos nos dois, diff vazio,
+**52 tabelas / 51 generators**, acentos conferidos — reexecutados no 3.92) · na
 API 9000: `api_todos.ps1` **6 smokes OK** (`api_clientes_crud.ps1`,
 `api_auditoria.ps1` 6 logs, `api_estoque_service.ps1`,
 `api_numeracao_empresa.ps1`, `api_paginacao.ps1`, `api_f1.ps1` 7 logs).
-API no ar em **PID 10136** (rebuild do outro agente; o PID 9076 era o
-restart anterior para o DDL da migração 023) com o fix do pool, a Fase 0,
+API no ar em **PID 19612** (rebuild do outro agente; não foi reiniciada
+neste bloco) com o fix do pool, a Fase 0,
 o fix de idempotência e o adapter Mercado Pago dele. `/api/health` =
 `{"status":"ok","servico":"ERP2026API","banco":"ok","pool":"pool=8 conexoes, 1 em uso"}`;
 com `ERP_DB_PATH` inválido devolve **503**. Carga final: 60/60 logins
@@ -65,10 +66,22 @@ sequenciais e **60/60 concorrentes (20 simultâneos, `KeepAlive=false`)**,
 
 ### Em andamento (não commitado)
 
-- Nada deste agente. Outro agente está editando
-  `Desktop\src\Views\uFrmPrincipal.pas` e `Desktop\src\Utils\uApiSaude.pas`
-  (checagem da API ao abrir), ainda não commitados; não foram tocados nem
-  commitados aqui. API 9000 em PID `10136` (dele), sem restart.
+- Nada deste agente. O outro agente commitou a config de servidor em
+  `d617d3c`; deixou `Desktop\ERP2026.lps` e `Desktop\src\Views\uFrmNFe.lfm`
+  sujos (sessão/layout do IDE) — **não foram tocados nem commitados aqui**.
+  API 9000 em PID `19612` (dele), sem restart neste bloco.
+
+### O que fechou nesta sessão (marco 3.92 — NFS-e nacional + nota de serviço)
+
+| Item | Entrega |
+|---|---|
+| **Escopo** | Frente 5.1 do `PROMPT_RETOMADA_COMPLETO.md`: nota de serviço "diverso"/resumida, DPS da NFS-e Nacional 1.01 off-line, modo de teste do desenvolvedor. Nenhum envio à prefeitura/SEFAZ em `SIMULADO`. |
+| **Banco** | `Banco\024_nota_saida_servico.sql` (+ rollback): tabela `NOTA_SAIDA_SERVICO`, 2 índices únicos, generator e trigger; aplicada só em `DADOS.FDB`. Sementes `NFSE_*` também em `007_initial_data.sql` para banco fresco. `schema_canonico.sql` regenerado: 6 domains, 51 generators, 52 tabelas, 247 constraints, 78 índices, 61 triggers. |
+| **Código** | `uNFSeXmlCrypto.pas` (única porta ACBr, `IFDEF ACBR`, `TDFeSSL` local com `cryOpenSSL`/`httpNone`/`xsLibXml2`/SHA256), `uTNFSeHelper.pas` (DPS 1.01, Id `DPS`+42 dígitos, retenções, validação estrutural), `uNotaSaidaServicoService.pas` (criar/gerar XML/cancelar, dedupe, auditoria `LOG_SISTEMA/NFSE`, sem estoque e sem contas a receber). |
+| **Modo de teste** | `NFSE_MODO=SIMULADO` (padrão) gera e valida sem certificado e sem assinatura; `REAL` exige `-dACBr`, PFX e validação XSD. Senha de certificado **nunca** gravada no banco. Preferências lidas com `TConfiguracaoService.LerValor`. |
+| **Ajuste Firebird 5** | Índice `UNIQUE` trata `NULL` como repetido; por isso `ID_DPS` é gerado já no `INSERT`, evitando que a segunda nota pendente estoure `UQ_NSS_EMP_ID_DPS`. |
+| **Validação** | Desktop build **0/0** (com `-dACBr` nas units, verificado em projeto temporário fora do repo), suíte **397/397** (9 testes NFS-e novos), `schema_roundtrip.ps1`/`banco_fresco.ps1` **659 campos/diff vazio**, `api_todos.ps1` **6 smokes OK**, `/api/health` `ok/banco=ok` (PID `19612`, sem restart). Telas/permissões não reexecutadas: nenhuma alteração de menu/UI neste marco. |
+| **Fora do escopo** | Tela de cadastro de nota de serviço, emissão/protocolo e integração com prefeitura ficam para o próximo marco; homologação real exige CNPJ/IE regulares, e-CNPJ A1, prefeitura habilitada e CSC próprios. Nada em `:pdv/**`, `:bipe/**`, NF-e/NFC-e existente, rotas/middlewares, cenário 533/1014/3581, `tmp_shots/` ou arquivos sujos do outro agente. |
 
 ### O que fechou nesta sessão (marco 3.91 — `:pdv` incluído na rotina)
 

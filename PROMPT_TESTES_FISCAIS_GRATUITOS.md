@@ -190,7 +190,15 @@ Limitações encontradas:
 
 ---
 
-## 5. Melhoria futura — NFS-e de prefeitura (ANOTAR, NÃO IMPLEMENTAR AGORA)
+## 5. NFS-e de prefeitura — geração off-line CONCLUÍDA no marco 3.92
+
+> Já entregue (22/11): preferências `NFSE_*`, DPS nacional 1.01 em
+> `NFSE_MODO=SIMULADO` (sem certificado/assinatura/envio), tabela
+> `NOTA_SAIDA_SERVICO`, retenções, auditoria e dedupe.Para conferir, rode
+> `Scripts\run_tests.bat` e veja os 9 testes `TestNFSe*` (suíte 397/397).
+> O XSD oficial está em `Schemas\NFSe\1.01` e é copiado por
+> `Scripts\preparar_nfse.bat`. **Ainda é plano:** emissão com protocolo,
+> tela de cadastro, adapters Sigcorp/Beta e integração homologada.
 
 Motivo: nota de serviço está em alta e, a partir de 2026, o padrão nacional
 de NFS-e passou a ser exigido (confirmar prazos específicos no portal oficial
@@ -219,7 +227,7 @@ Plano proposto:
    dedupe por chave + provedor.
 5. **Testes locais gratuitos**: validar XML contra schemas do padrão
    nacional/adapter com token fictício, sem envio; estender a suíte sem
-   quebrar os 385 testes atuais.
+   quebrar os 397 testes atuais.
 
 ---
 
@@ -247,7 +255,7 @@ Plano proposto (implementar depois do ciclo atual de pagamentos/API):
 5. **Auditoria e dedupe**: `XML_FISCAL/IMPORTACAO_XML` passa a registrar o
    tipo e o provedor; chave repetida só é recusada dentro do mesmo tipo.
 6. **Testes**: XMLs sintéticos de NFS-e nacional + Sigcorp/Beta, com e sem
-   ISS, e a garantia de que os 385 testes atuais continuam verdes.
+   ISS, e a garantia de que os 397 testes atuais continuam verdes.
 
 ---
 

@@ -53,7 +53,7 @@ Regras obrigatórias:
 
 ---
 
-## 2. Estado atual (21/11/2026 — gravado após o marco 3.86)
+## 2. Estado atual (22/11/2026 — gravado após o marco 3.86)
 
 - **HEAD esperado:** `3672290` (canal) e, logo atrás, `9fa4a87` (código+docs do marco
   3.86), `1313eff`, `09024b6` (docs/canal), `d580eb4`, `3f74ee5`, `5e4e527`
@@ -74,7 +74,7 @@ Regras obrigatórias:
   3.86 (API/pool + prompt fiscal), 3.85 (pagamentos), 3.84 (cupom PDF
   `:pdv`), 3.83 (D10/CI), 3.82 (app `:pdv`), 3.81 (homologação),
   3.80 (`:bipe`), F9 (3.78), F1 (3.79).
-- Bateria esperada após o reboot: desktop **388/388**, `build_api.bat` **OK**
+- Bateria esperada após o reboot: desktop **397/397**, `build_api.bat` **OK**
   (pare a API antes de compilar), Android **9/9**, `build_bipe.bat` e
   `build_pdv.bat` **OK**, telas **33/33**, permissões **0 falhas**,
   schema/banco fresco **OK**, `api_todos.ps1` **6 smokes OK**. Ruído
@@ -104,7 +104,7 @@ Regras obrigatórias:
    não sobrevive ao reboot.**
 6. Rodar a bateria curta:
    `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_todos.ps1`
-   e `Scripts\run_tests.bat` (388/388). Se o `ERP2026.exe` estiver aberto,
+   e `Scripts\run_tests.bat` (397/397). Se o `ERP2026.exe` estiver aberto,
    o `build_desktop.bat` falha com `error code 5`: feche-o antes (com
    autorização) ou use o `.exe` já gerado.
 
@@ -146,7 +146,13 @@ Regras obrigatórias:
 
 Traduzido em 3 frentes (implementar nesta ordem, com marcos separados):
 
-### 5.1 Nota de serviço diverso + geração de XML
+### 5.1 Nota de serviço diverso + geração de XML — **CONCLUÍDO no marco 3.92 (22/11)**
+
+> Entregue: `uTNFSeHelper.pas`, `uNFSeXmlCrypto.pas` (`IFDEF ACBr`),
+> `uNotaSaidaServicoService.pas`, migração `024`, sementes `NFSE_*` e 9
+> testes (`uNFSeTest.pas`). DPS 1.01 gerada/validada off-line em
+> `NFSE_MODO=SIMULADO`, sem certificado e sem envio. **Não refazer.**
+> Falta apenas a tela de cadastro e a integração homologada (marco seguinte).
 
 - Preparar o ERP para **notas de serviço diverso** (serviços em geral,
   comunicação/internet, notas municipais), sem estoque e sem NF-e de produtos.
@@ -252,12 +258,14 @@ quatro campos que o usuário explicitamente pediu para guardar.
    §3.89 no `PLANO_E_LOG.md`, pois o outro agente ocupou o §3.88 com o fix de
    idempotência). Migração `023` aplicada, `IMPORTACAO_XML_ITEM`, service
    `uImportacaoXmlMapService`, tela `uFrmMapearProdutoXML`, auditoria e 3
-   testes novos (achou / não achou / reimportar). Suíte 388/388.
-4. **Marco 3.90 — nota de serviço diverso + XML:** `TNFSeHelper`, preferências
-   `NFSE_*`, XML assinado/validado off-line, testes novos.
-5. **Marco 3.91 — nota de entrada ampliada:** NFS-e/serviços no parser,
-   integração com o mapeamento do 3.88, bateria completa.
-6. A cada marco: bateria (388/388, `api_todos.ps1` 6 smokes, Android 9/9,
+   testes novos (achou / não achou / reimportar). Suíte 397/397.
+4. **Marco 3.92 — nota de serviço diverso + XML: CONCLUÍDO em 22/11.**
+   `TNFSeHelper`, preferências `NFSE_*`, DPS 1.01 off-line, migração `024`,
+   modo SIMULADO sem certificado e 9 testes novos. Suíte 397/397.
+5. **Marco 3.93 (próximo) — nota de entrada ampliada + tela de serviço:**
+   NFS-e/serviços no parser, integração com o mapeamento do 3.89, tela
+   resumida de nota de serviço, bateria completa.
+6. A cada marco: bateria (397/397, `api_todos.ps1` 6 smokes, Android 9/9,
    telas 33/33, permissões 0 falhas, schema/banco fresco) + commit + push.
 
 ---
@@ -267,10 +275,10 @@ quatro campos que o usuário explicitamente pediu para guardar.
 - Certificado autoassinado nunca autoriza nota na SEFAZ/prefeitura.
 - PDF local não tem protocolo e não substitui cupom autorizado.
 - Homologação real exige CNPJ/IE/e-CNPJ A1/CSC próprios — não usar terceiros.
-- NFS-e, nota de serviço diverso, `TNFSeHelper`, tabela
-  `IMPORTACAO_XML_ITEM` e a tela de mapeamento **são plano até serem
-  implementados e testados**. Não marcar como concluído só por estar neste
-  prompt.
+- NFS-e off-line, `TNFSeHelper`, `IMPORTACAO_XML_ITEM` e a tela de mapeamento
+  **já estão implementados e testados** (3.92/3.89). Ainda é plano: emissão
+  com protocolo, tela de nota de serviço e integração homologada; não marcar
+  como concluído só por estar neste prompt.
 - `:pdv` **já está** em build/CI/bateria/docs (marco 3.91); não afirmar que
   ainda está suspenso. Continua sem NFC-e no app (emissão fiscal é no
   desktop) e sem teste real de PSP: pagamentos e TEF/PIX reais aguardam

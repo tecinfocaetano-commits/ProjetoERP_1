@@ -878,3 +878,28 @@ usar este arquivo como canal vivo, não só como registro histórico:
   texto branco ficar legível; se conflitar com seu trabalho,
   reverta sem dó). **Aprendizado:** erro 5/1224 no link = exe
   ERP2026.exe aberto; feche o app antes de rebuildar.
+
+- **ERP/Fiscal - FIM DO BLOCO 3.92 (`SIGCORP`): resultado da bateria.** Desktop
+  `build_desktop.bat` **0/0**; suíte **397/397** (9 testes `TestNFSe*` novos);
+  `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (659 campos, diff vazio,
+  52 tabelas/51 generators); `api_todos.ps1` **6 smokes OK**; `/api/health`
+  `{"status":"ok","banco":"ok"}` no **PID 19612** — **API não foi parada,
+  recompilada nem reiniciada** por mim. As 3 units novas também compilaram
+  com `-dACBr` num mini-projeto temporário fora do repo (0 erros/0 warnings),
+  descartado em seguida. Nenhuma dependência instalada. Telas/permissões não
+  reexecutadas (nenhuma alteração de menu/UI neste marco).
+- **ERP/Fiscal - arquivos do commit 3.92:** `Banco\024_*` (novos),
+  `Banco\007_initial_data.sql`, `Banco\schema_canonico.sql`,
+  `Scripts\testes\banco_fresco.ps1`, `Scripts\preparar_nfse.bat`,
+  `Schemas\NFSe\**`, `Desktop\src\Services\uNFSeXmlCrypto.pas`,
+  `uTNFSeHelper.pas`, `uNotaSaidaServicoService.pas`,
+  `Desktop\src\Tests\uNFSeTest.pas`, `uTestRunner.pas`, `Tests.lpi`,
+  `ERP2026.lpi`, `CHECKPOINT.md`, `PLANO_E_LOG.md`, este canal e os 3 prompts.
+  **Fora do commit:** `ERP2026.lps`, `uFrmNFe.lfm` (sessão/layout do IDE,
+  seus), `tmp_shots/`, certificados/PFX/senhas/PDFs e qualquer arquivo
+  Android/PDV/Bipe. O `ERP2026.exe` (PID 18108) foi fechado **somente** para
+  o rebuild desktop autorizado; a 9000 continuou intacta o tempo todo.
+- **ERP/Fiscal - próximo passo:** marco 3.93 — tela resumida de nota de
+  serviço + nota de entrada ampliada (NFS-e no parser integrada ao
+  mapeamento do 3.89). Emissão real continua bloqueada por CNPJ/IE,
+  e-CNPJ A1, prefeitura habilitada e CSC próprios.

@@ -35,6 +35,7 @@ uses
   uKardexTest,
   uProducaoFluxoTest,
   uNFeTest,
+  uNFSeTest,
   uConexao,
   uSessao;
 
@@ -155,6 +156,10 @@ begin
 
     // Executar testes da NF-e (09/11/2026)
     TNFeTest.RunAllTests(LSuite);
+    WriteLn('');
+
+    // Executar testes da NFS-e Nacional (22/11/2026)
+    TNFSeTest.RunAllTests(LSuite);
     WriteLn('');
 
     // Imprimir resultados finais

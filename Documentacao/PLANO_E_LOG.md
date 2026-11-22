@@ -2820,3 +2820,73 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Numeração:** 3.90 já era do outro agente; por isso este marco é 3.91.
   A ordem fiscal futura passa a ser 3.92 (nota de serviço + XML) e 3.93
   (nota de entrada ampliada).
+
+---
+
+### 3.92 NFS-e Nacional - nota de serviço resumida + DPS off-line (22/11)
+
+- **Pedido/autorização:** usuário pediu para retomar a frente 5.1 do
+  `PROMPT_RETOMADA_COMPLETO.md` (marco 3.92): nota de serviço diverso,
+  geração de XML NFS-e/DPS, tabela `NOTA_SAIDA_SERVICO` e modo de teste
+  para desenvolvedor. Autorizou buscar/incluir o XSD nacional e criar a
+  tabela resumida.
+- **Padrão escolhido:** XSD oficial do **Sistema Nacional da NFS-e v1.01**
+  (09/02/2026), baixado de `gov.br/nfse`, em `Schemas\NFSe\1.01` (10
+  arquivos + `LEIAME.md`); `Scripts\preparar_nfse.bat` copia para
+  `Desktop\bin\schemas\nfse`, separado dos schemas de NF-e/NFC-e. Não foi
+  usado XSD municipal legado como principal.
+- **Isolamento ACBr:** `uNFSeXmlCrypto.pas` é a única porta de entrada do
+  ACBr nesta frente. Interface só com `String`/`Boolean`; implementação
+  real sob `{$IFDEF ACBR}` usa `TDFeSSL` (`Assinar`, `Validar`,
+  `VerificarAssinatura`), com `cryOpenSSL`, `httpNone`, `xsLibXml2`,
+  `dgstSHA256`, `docElement='DPS'`, `infElement='infDPS'`, `IdAttr='Id'`.
+  `ConverteXMLtoUTF8` vem de `ACBrUtil.XMLHTML`. `Tests.lpi` continua sem
+  `-dACBr` e sem pacotes ACBr: a suíte usa validação estrutural. As três
+  units foram compiladas também com `-dACBr` num mini-projeto temporário
+  fora do repo (0 erros, 0 warnings) antes de serem descartadas.
+- **DPS 1.01:** `uTNFSeHelper.pas` gera `infDPS` com `tpAmb`, `dhEmi` (TZD
+  com offset), `verAplic`, `serie`, `nDPS`, `dCompet`, `tpEmit`, `cLocEmi`,
+  `prest`, `toma`, `serv` e `valores`. Id = `DPS` + 42 dígitos
+  (`cLocEmi(7)+tpEmit(1)+CNPJ(14)+serie(5)+nDPS(15)`). Validação estrutural
+  sempre; XSD completo quando `-dACBr` e o schema existem. A ordem dos
+  elementos foi conferida contra `TCInfDPS`, `TCInfoValores`,
+  `TCInfoTributacao`, `TCTribMunicipal`, `TCTribFederal` e `TCServ`.
+- **Modos:** `NFSE_MODO=SIMULADO` (padrão) = gera/valida sem certificado e
+  sem assinatura, é o modo de teste do desenvolvedor; `REAL` exige PFX,
+  `-dACBr`, assinatura SHA256 e validação XSD. Nenhum modo faz HTTP neste
+  marco. `NFSE_*` lidos por `TConfiguracaoService.LerValor`; senha/token
+  nunca gravados no banco.
+- **Service:** `uNotaSaidaServicoService.pas` cria/gera XML/cancela a nota
+  resumida, com dedupe por empresa+série+número, `ID_DPS` único e auditoria
+  `LOG_SISTEMA` (`NFSE`/`GERAR`, `NFSE`/`CANCELAR`). Serviço não baixa
+  estoque nem cria conta a receber. `SITUACAO`: `GERADA` → `VALIDADA`
+  (SIMULADO) ou `ASSINADA` (REAL) → `EMITIDA`/`CANCELADA`. XML fica em
+  `Desktop\bin\xml\nfse\nfse_<empresa>_<serie>_<numero>.xml`.
+- **Banco:** migração aditiva `024_nota_saida_servico.sql` (+ rollback),
+  aplicada somente em `Banco\DADOS.FDB` com aviso prévio no canal. Sementes
+  `NFSE_*` acrescentadas também a `007_initial_data.sql` para banco fresco.
+  `schema_canonico.sql` regenerado (6 domains, 51 generators, 52 tabelas,
+  247 constraints, 78 índices, 61 triggers) e `banco_fresco.ps1` ajustado.
+- **Ajuste Firebird 5:** índice `UNIQUE` indexa `NULL` como repetido, então
+  duas notas com `ID_DPS` ainda vazio estouravam `UQ_NSS_EMP_ID_DPS`.
+  Corrigido gerando o `ID_DPS` já no `INSERT` do service.
+- **Testes:** `uNFSeTest.pas` com 9 cenários (padrões `NFSE_*`, DPS em modo
+  teste sem assinatura, recusa de código de serviço inválido, retenções
+  ISS/PIS/COFINS/INSS no XML, sequência/dedupe, sem estoque/financeiro,
+  validação estrutural, recusa de REAL sem certificado e cancelamento),
+  registrado em `uTestRunner.pas` e `Tests.lpi`.
+- **Bateria:** desktop `build_desktop.bat` **0/0**; suíte **397/397**
+  (388 + 9); `schema_roundtrip.ps1`/`banco_fresco.ps1` **659 campos, diff
+  vazio, 52 tabelas/51 generators**; `api_todos.ps1` **6 smokes OK**;
+  `/api/health` `ok/banco=ok` em PID `19612` — **API não foi parada nem
+  reiniciada** neste bloco. Telas (33/33) e permissões (0 falhas) não foram
+  reexecutadas porque não houve alteração de menu/UI. Nenhuma dependência
+  instalada.
+- **Fora do escopo / próximo passo:** tela de cadastro de nota de serviço,
+  emissão com protocolo e integração homologada com a prefeitura ficam para
+  o marco seguinte. Homologação real continua bloqueada por CNPJ/IE
+  regulares, e-CNPJ A1 ICP-Brasil, prefeitura/SEFAZ habilitada e IdCSC/CSC
+  próprios. Nada em `Android/android/pdv/**`, `:bipe/**`, `uRotasPDV.pas`,
+  `uPagamentoService.pas`, middlewares, NF-e/NFC-e existentes, cenário
+  fiscal 533/1014/3581 ou arquivos sujos do outro agente; `tmp_shots/`
+  segue untracked.

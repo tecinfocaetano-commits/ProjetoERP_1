@@ -176,6 +176,18 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src/Services/uNFSeXmlCrypto.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uTNFSeHelper.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="src/Services/uNotaSaidaServicoService.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/Utils/uValidacoes.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -429,15 +441,12 @@
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
-    <Other>
-      <CustomOptions Value="-dACBR"/>
-    </Other>
     <Target>
       <Filename Value="bin/ERP2026"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="src/Config;src/Models;src/Views;src/Controllers;src/Services;src/Repositories;src/DTOs;src/Utils;src/Tests;../IA;C:/ACBr/Fontes/ACBrDFe/ACBrNFe/DANFE/NFe/FPDF;C:/ACBr/Fontes/ACBrDFe/ACBrNFe/DANFE/NFCe/FPDF"/>
+      <OtherUnitFiles Value="src/Config;src/Models;src/Views;src/Controllers;src/Services;src/Repositories;src/DTOs;src/Utils;src/Tests;../IA;C:/ACBr/Fontes/ACBrDFe/ACBrNFe/DANFE/NFe/FPDF/;C:/ACBr/Fontes/ACBrDFe/ACBrNFe/DANFE/NFCe/FPDF/"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>
@@ -450,5 +459,8 @@
         </Win32>
       </Options>
     </Linking>
+    <Other>
+      <CustomOptions Value="-dACBR"/>
+    </Other>
   </CompilerOptions>
 </CONFIG>

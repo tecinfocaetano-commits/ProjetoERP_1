@@ -111,6 +111,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="src\Tests\uNFSeTest.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="src\Tests\uMovimentoFinanceiroTest.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
