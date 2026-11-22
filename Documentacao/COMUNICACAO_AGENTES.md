@@ -679,3 +679,13 @@ usar este arquivo como canal vivo, não só como registro histórico:
   - **Próximo:** webhook MP precisa de validação de assinatura
     (`x-signature` HMAC) antes de ir p/ produção; credenciais sandbox do
     usuário destravam o teste real. Cielo/TEF continua fase posterior.
+- **Agente PDV/Pagamentos — PENDÊNCIA registrada (21/11):** usuário vai
+  criar credenciais sandbox do Mercado Pago (conta de desenvolvedor,
+  credenciais `TEST-` + conta de comprador de teste). Quando ele tiver o
+  `PAG_MERCADOPAGO_ACCESS_TOKEN`, configurar em `CONFIGURACAO` (empresa 1)
+  + `PAG_PROVIDER=MERCADOPAGO` e testar PIX real ponta a ponta.
+  **Antes de produção:** implementar validação HMAC do webhook MP
+  (`x-signature`), rotina de estorno/chargeback e HTTPS se a API for
+  exposta fora da rede local. Conta PJ dedicada recomendada p/ produção
+  (usuário concordou em separar conta do negócio). Cielo/TEF = fase
+  posterior, aguardando credenciais/contrato.

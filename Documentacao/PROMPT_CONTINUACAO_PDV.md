@@ -75,23 +75,29 @@ COMO SUBIR O AMBIENTE APÓS REINICIAR
 
 PENDÊNCIAS IMEDIATAS (em ordem)
 
-A) TESTAR NO CELULAR o fluxo PIX SIMULADO de ponta a ponta:
-   venda → forma PIX → "Confirmar pagamento" → espera ~8s →
-   cupom aparece. Depois testar "Cancelar cobrança" e uma forma
-   CARTAO. Reportar resultado no canal.
+A) ~~TESTAR PIX SIMULADO~~ — FEITO (21/11): fluxo completo validado
+   no Samsung (venda → PIX → espera → cupom) + bug crítico de
+   idempotência corrigido (`b3dc8b6`). Bandeiras de cartão e botão
+   "Já paguei — verificar" também entregues (`5686a72`).
 
-B) DECISÃO DO USUÁRIO sobre PSP real — PERGUNTAR:
-   - PIX: Mercado Pago ou Asaas? (sandbox grátis, ~10 min de
-     cadastro; precisa do access token de teste)
-   - Cartão: qual adquirente/maquininha? (Cielo, Stone, Rede,
-     Getnet, PagBank...)
-   Com a resposta, executar PROMPT_EXECUCAO_PAGAMENTOS.md
-   (Fase 1 = adapter PIX real + provar registry com 2º PSP;
-   Fase 2 = TEF conforme adquirente).
+B) DECISÃO JÁ TOMADA (21/11): PIX = **Mercado Pago**, cartão =
+   **Cielo** (depois do PIX). Adapter `uPagamentoMercadoPago.pas`
+   JÁ IMPLEMENTADO e registrado no factory (`PAG_PROVIDER`).
+   **PENDENTE — só falta o usuário criar as credenciais sandbox:**
+   conta de desenvolvedor MP → aplicação → credenciais `TEST-`
+   (access token) + conta de comprador de teste. Quando ele tiver:
+   1. Gravar `PAG_MERCADOPAGO_ACCESS_TOKEN`,
+      `PAG_MERCADOPAGO_PAYER_EMAIL`, `PAG_PROVIDER=MERCADOPAGO`
+      em CONFIGURACAO (empresa 1) — NUNCA commitar o token.
+   2. Implementar validação HMAC do webhook (`x-signature` MP).
+   3. Testar PIX real ponta a ponta no Samsung (QR verdadeiro,
+      webhook confirma → cupom sem polling).
+   4. Depois: Cielo/TEF (fase posterior, precisa contrato).
+   Em produção: conta PJ dedicada + HTTPS + rotina de estorno.
 
-C) Se o usuário adiar credenciais: implementar o fallback do
-   prompt (botão "Já paguei, verificar", endpoint de conciliação
-   GET /api/pdv/pagamentos?status=&de=&ate=).
+C) Fallback SEM credenciais — ENTREGUE (`5686a72`): conciliação
+   `GET /api/pdv/pagamentos?status=&de=&ate=` + botão "Já paguei —
+   verificar" no app. Nada mais a fazer aqui.
 
 REGRAS INEGOCIÁVEIS
 - Regras de negócio em Services; SQL parametrizado; EMPRESA_ID
