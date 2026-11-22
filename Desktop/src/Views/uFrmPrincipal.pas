@@ -184,20 +184,24 @@ begin
   if ApiEhLocal(AUrl) then
   begin
     LResp := MessageDlg(
-      'A API REST nao esta respondendo em ' + AUrl + '.' + sLineBreak +
-      'Os apps moveis (PDV/Bipe) ficarao indisponiveis.' + sLineBreak +
+      'A API REST não está respondendo em ' + AUrl + '.' + sLineBreak +
+      'Os apps móveis (PDV/Bipe) ficarão indisponíveis.' + sLineBreak +
       'Deseja iniciar a API local agora?',
       mtConfirmation, [mbYes, mbNo], 0);
     if LResp = mrYes then
       if IniciarApiLocal then
         MessageDlg('API iniciada com sucesso.', mtInformation,
-          [mbOK], 0);
+          [mbOK], 0)
+      else
+        MessageDlg('Não foi possível iniciar a API automaticamente.' +
+          sLineBreak + 'Abra Scripts\run_api.bat manualmente.',
+          mtWarning, [mbOK], 0);
   end
   else
     MessageDlg(
-      'Nao foi possivel contatar a API em ' + AUrl + '.' + sLineBreak +
-      'Verifique a rede ou se o servidor esta ligado.' + sLineBreak +
-      'Os apps moveis (PDV/Bipe) ficarao indisponiveis.',
+      'Não foi possível contatar a API em ' + AUrl + '.' + sLineBreak +
+      'Verifique a rede ou se o servidor está ligado.' + sLineBreak +
+      'Os apps móveis (PDV/Bipe) ficarão indisponíveis.',
       mtWarning, [mbOK], 0);
 end;
 

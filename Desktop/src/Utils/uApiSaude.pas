@@ -99,13 +99,15 @@ end;
 function IniciarApiLocal: Boolean;
 var
   LExe, LProjeto: string;
+  LTentativas: Integer;
 begin
   { ERP2026.exe está em <projeto>\Desktop\bin — sobe dois níveis
-    até a raiz e entra em API\bin\ERP2026API.exe }
-  LProjeto := ExtractFilePath(ExtractFilePath(
-    ExtractFilePath(Application.ExeName)));
-  LExe := IncludeTrailingPathDelimiter(LProjeto) +
-    'API' + PathDelim + 'bin' + PathDelim + 'ERP2026API.exe';
+    até a raiz e entra em API\bin\ERP2026API.exe. ExpandFileName
+    resolve os '..' para o caminho absoluto. }
+  LProjeto := ExtractFilePath(Application.ExeName);
+  LExe := ExpandFileName(IncludeTrailingPathDelimiter(LProjeto) +
+    '..' + PathDelim + '..' + PathDelim + 'API' + PathDelim +
+    'bin' + PathDelim + 'ERP2026API.exe');
   Result := FileExists(LExe);
   if not Result then
     Exit;
@@ -114,9 +116,21 @@ begin
     console visível, com o log); não bloqueia o desktop }
   Result := PtrUInt(ShellExecute(0, 'open', PChar(LExe),
     PChar(''), PChar(''), SW_SHOWNORMAL)) > 32;
-  { dá um tempo para a API abrir a porta antes de responder }
-  Sleep(1500);
-  Result := VerificarApi(API_URL_PADRAO);
+  if not Result then
+    Exit;
+
+  { a API demora alguns segundos para abrir a porta (banner +
+    pool de conexões); tenta de novo por até ~12s }
+  Result := False;
+  for LTentativas := 1 to 12 do
+  begin
+    Sleep(1000);
+    if VerificarApi(API_URL_PADRAO) then
+    begin
+      Result := True;
+      Break;
+    end;
+  end;
 end;
 
 { ------------------------------------------------------------------
