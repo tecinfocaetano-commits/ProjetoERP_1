@@ -1,8 +1,8 @@
 @echo off
 REM ============================================================
-REM ERP 2026 - Testes unitarios do app Android (JVM + Robolectric)
-REM Nao precisa de emulador: usa SQLite real via Robolectric e um
-REM servidor HTTP falso local.
+REM ERP 2026 - Testes unitarios dos apps Android (JVM + Robolectric)
+REM Abrange :app, :bipe e :pdv. Nao precisa de emulador: usa SQLite
+REM real via Robolectric e um servidor HTTP falso local.
 REM ============================================================
 setlocal
 cd /d "%~dp0..\Android\android"

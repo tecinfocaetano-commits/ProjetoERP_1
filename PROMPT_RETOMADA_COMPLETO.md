@@ -39,9 +39,10 @@ Regras obrigatórias:
    pedido 3581** (`CEN-FISCAL-01`).
 6. **Não tocar** em `Android\android\pdv\**`, `Android\android\settings.gradle`,
    `API\src\Rotas\uRotasPDV.pas`, `uMiddlewareJWT.pas`,
-   `uMiddlewareSessao.pas`, `uPagamentoService.pas` nem incluir `:pdv` em
-   bateria/CI/docs **sem autorização explícita do usuário**. Rotina do `:pdv`
-   suspensa até lá.
+   `uMiddlewareSessao.pas` ou `uPagamentoService.pas` sem pedido específico.
+   A **rotina do `:pdv` já foi autorizada pelo usuário (21/11, marco 3.91)**:
+   `Scripts\build_pdv.bat`, CI/bateria e docs podem incluí-lo; não precisa
+   pedir de novo.
 7. Regras técnicas: SQL sempre parametrizado; regra de negócio em **Services**;
    transação + auditoria via `LogOperacao`; LazReport apenas; Firebird 5 —
    identificadores **≤31 chars**, `DEFAULT` **antes** de `NOT NULL`,
@@ -68,13 +69,16 @@ Regras obrigatórias:
   `"banco":"ok"` e **503** quando o banco falha. Validação: 60/60 logins
   concorrentes (20 simultâneos, `KeepAlive=false`), 0 exceções, PID estável;
   6 smokes OK; suíte 385/385. **Não reabrir esse bug.**
-- Últimos marcos: 3.86 (API/pool + prompt fiscal), 3.85 (esqueleto de
-  pagamentos do outro agente), 3.84 (cupom PDF `:pdv`), 3.83 (D10/CI),
-  3.82 (app `:pdv`), 3.81 (homologação), 3.80 (`:bipe`), F9 (3.78), F1 (3.79).
-- Bateria esperada após o reboot: desktop **385/385**, `build_api.bat` **OK**
-  (pare a API antes de compilar), Android **9/9**, `build_bipe.bat` **OK**,
-  telas **33/33**, permissões **0 falhas**, schema/banco fresco **OK**,
-  `api_todos.ps1` **6 smokes OK**. Ruído conhecido: `InitializeFppkg failed`.
+- Últimos marcos: 3.91 (`:pdv` na bateria/CI/docs, autorizado), 3.90
+  (Mercado Pago do outro agente), 3.89 (rastro de XML/mapeamento fiscal),
+  3.86 (API/pool + prompt fiscal), 3.85 (pagamentos), 3.84 (cupom PDF
+  `:pdv`), 3.83 (D10/CI), 3.82 (app `:pdv`), 3.81 (homologação),
+  3.80 (`:bipe`), F9 (3.78), F1 (3.79).
+- Bateria esperada após o reboot: desktop **388/388**, `build_api.bat` **OK**
+  (pare a API antes de compilar), Android **9/9**, `build_bipe.bat` e
+  `build_pdv.bat` **OK**, telas **33/33**, permissões **0 falhas**,
+  schema/banco fresco **OK**, `api_todos.ps1` **6 smokes OK**. Ruído
+  conhecido: `InitializeFppkg failed`.
 - Outro agente: pagamentos eletrônicos PDV (Fase 0 no ar, webhook idempotente
   validado em `d580eb4`), escreveu `Documentacao\PROMPT_CONTINUACAO_PDV.md`
   e `Documentacao\PROMPT_EXECUCAO_PAGAMENTOS.md`. Pode seguir no app `:pdv`;
@@ -100,7 +104,9 @@ Regras obrigatórias:
    não sobrevive ao reboot.**
 6. Rodar a bateria curta:
    `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_todos.ps1`
-   e `Scripts\run_tests.bat` (385/385).
+   e `Scripts\run_tests.bat` (388/388). Se o `ERP2026.exe` estiver aberto,
+   o `build_desktop.bat` falha com `error code 5`: feche-o antes (com
+   autorização) ou use o `.exe` já gerado.
 
 ---
 
@@ -265,8 +271,10 @@ quatro campos que o usuário explicitamente pediu para guardar.
   `IMPORTACAO_XML_ITEM` e a tela de mapeamento **são plano até serem
   implementados e testados**. Não marcar como concluído só por estar neste
   prompt.
-- `:pdv` continua fora da bateria/CI/docs sem autorização; pagamentos e TEF/
-  PIX reais aguardam escolha de provedor do usuário.
+- `:pdv` **já está** em build/CI/bateria/docs (marco 3.91); não afirmar que
+  ainda está suspenso. Continua sem NFC-e no app (emissão fiscal é no
+  desktop) e sem teste real de PSP: pagamentos e TEF/PIX reais aguardam
+  credenciais/escolha de provedor do usuário.
 
 ---
 
@@ -282,6 +290,7 @@ Scripts\build_tests.bat
 Scripts\build_desktop.bat
 Scripts\run_tests_android.bat
 Scripts\build_bipe.bat
+Scripts\build_pdv.bat
 powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_todos.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\telas_todas_ui.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\permissoes_menu.ps1

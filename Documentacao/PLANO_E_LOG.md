@@ -2780,3 +2780,43 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
 - **Validado:** pagamento 7 CARTAO/MASTERCARD → APROVADO → venda 6693;
   conciliação retorna bandeira; provider MP sem token falha limpo.
 - **Bloqueio:** credenciais sandbox Mercado Pago (usuário) p/ teste real.
+
+---
+
+### 3.91 `:pdv` incluído em build/CI/bateria/docs (21/11)
+
+- **Pedido/autorização:** o usuário pediu "pode fazer este procedimento no
+  pdv", referindo-se à inclusão do app mobile na rotina do projeto. O outro
+  agente já havia registrado no canal (marco 3.82) que o `:pdv` estava
+  fechado e testado no Samsung A55 e liberado para inclusão. Até então, as
+  regras proibiam mexer em build/CI/docs dele sem autorização explícita.
+- **`Scripts\build_pdv.bat` (novo):** espelho do `build_bipe.bat`, com
+  `gradlew.bat :pdv:assembleDebug --console=plain` e mensagens em português.
+  Validado com `BUILD SUCCESSFUL`; APK em
+  `Android\android\pdv\build\outputs\apk\debug\pdv-debug.apk`.
+- **CI:** `.github\workflows\bateria.yml` — job `desktop-e-android`
+  renomeado para "Desktop, testes, `:bipe`, `:pdv` e `:app`", novo passo
+  "Build do app PDV (`:pdv`)" e passo de testes renomeado para
+  "Testes Android (`:app`, `:bipe` e `:pdv`)". Continua `self-hosted`, sem
+  recompilar nem reiniciar a API (job `api-smoke` inalterado).
+- **`Scripts\run_tests_android.bat`:** apenas o cabeçalho passou a citar
+  os três módulos; o comando `testDebugUnitTest` já cobre todos.
+  Resultado: **9/9** no `:app`, `NO-SOURCE` em `:bipe`/`:pdv`, 0 falhas.
+- **Docs atualizados:** `CHECKPOINT.md`, `PROMPT_RETOMADA_COMPLETO.md`
+  (regra 6, estado e comandos), `PROMPT_AMANHA.md` e
+  `PROMPT_TESTES_FISCAIS_GRATUITOS.md` (regra 5): a inclusão do `:pdv` em
+  build/CI/bateria/docs deixou de ser pendente. Continua valendo a
+  proibição de editar `Android\android\pdv\**`, `settings.gradle`,
+  `uRotasPDV.pas`, `uPagamentoService.pas` etc. sem pedido específico.
+- **Bateria:** `build_pdv.bat` **OK**, Android **9/9**, `api_todos.ps1`
+  **6 smokes OK** com `/api/health` `ok/banco=ok` (PID `10136`), desktop
+  **0/0**, suíte **388/388**, telas **33/33**, permissões **0 falhas**,
+  `schema_roundtrip.ps1`/`banco_fresco.ps1` **OK** (630 campos, diff
+  vazio). Nenhum restart de API, nenhuma dependência instalada.
+- **Escopo:** nenhum arquivo de `Android\android\pdv\**`, manifest,
+  `uPagamento*.pas`, migrações do PDV, cenário fiscal 533/1014/3581 ou do
+  bloco aberto do outro agente em `uFrmPrincipal.pas`/`uApiSaude.pas`
+  foi tocado ou commitado. `tmp_shots/` segue untracked.
+- **Numeração:** 3.90 já era do outro agente; por isso este marco é 3.91.
+  A ordem fiscal futura passa a ser 3.92 (nota de serviço + XML) e 3.93
+  (nota de entrada ampliada).

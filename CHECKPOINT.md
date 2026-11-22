@@ -15,8 +15,9 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **384/384**). Ruído conhecido: `InitializeFppkg failed`.
-   Para o Android: `Scripts\run_tests_android.bat` (deve dar **9/9**).
+   (deve dar **388/388**). Ruído conhecido: `InitializeFppkg failed`.
+   Para o Android: `Scripts\run_tests_android.bat` (**9/9**, cobre `:app`,
+   `:bipe` e `:pdv`) e `Scripts\build_pdv.bat` (APK do PDV).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
    `powershell -ExecutionPolicy Bypass -File Scripts\gerar_certificado_teste.ps1`
    (uma vez, gera `C:\certificados\teste.pfx`) e `Scripts\validar_nfe.bat 1003`
@@ -35,26 +36,26 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (21/11/2026)
 
-**Últimos marcos:** 3.88-fiscal (rastro de importação XML + mapeamento de
-produto — §3.89 no `PLANO_E_LOG.md` por colisão de numeração com o outro
-agente), 3.87 (prompt completo de retomada + novos requisitos fiscais),
-3.86 (pool/health da API — **a API caindo toda hora**),
-3.85 (pagamentos PDV do outro agente), 3.84 (cupom PDF), 3.83 (D10),
-3.81 (homologação) e 3.80 (`:bipe`); 3.82 é o app PDV mobile. O marco 3.86
-está em `9fa4a87` (código + docs). Pode haver commit de outro agente
-acima. Build: desktop **0/0** ·
+**Últimos marcos:** 3.91 (`:pdv` na bateria/CI/docs), 3.90 (pagamentos MP
+do outro agente), 3.89-fiscal (rastro de importação XML + mapeamento de
+produto — §3.89 no `PLANO_E_LOG.md` por colisão de numeração), 3.87
+(prompt completo de retomada + novos requisitos fiscais), 3.86
+(pool/health da API — **a API caindo toda hora**), 3.85 (pagamentos PDV),
+3.84 (cupom PDF), 3.83 (D10), 3.81 (homologação) e 3.80 (`:bipe`); 3.82 é
+o app PDV mobile. O marco 3.86 está em `9fa4a87` (código + docs). Pode
+haver commit de outro agente acima. Build: desktop **0/0** ·
 suíte desktop **388/388** · `build_api.bat` **OK** (pare a API antes de
 compilar, senão o `.exe` fica travado) · testes Android **9/9** ·
-`build_bipe.bat` **OK** (APK do app de bipagem de talão) · smoke de
+`build_bipe.bat` e `build_pdv.bat` **OK** (APKs de bipagem e PDV) · smoke de
 telas **33/33** · `permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1`
 e `banco_fresco.ps1` **OK** (630 campos no round-trip, 629 no banco fresco,
 diff vazio, **51 tabelas / 50 generators**, acentos conferidos) · na
 API 9000: `api_todos.ps1` **6 smokes OK** (`api_clientes_crud.ps1`,
 `api_auditoria.ps1` 6 logs, `api_estoque_service.ps1`,
 `api_numeracao_empresa.ps1`, `api_paginacao.ps1`, `api_f1.ps1` 7 logs).
-API recompilada e no ar em **PID 9076** (após reinício da máquina e curto
-restart para o DDL da migração 023) com o fix do pool, a Fase 0 e o fix de
-idempotência de pagamentos do outro agente. `/api/health` =
+API no ar em **PID 10136** (rebuild do outro agente; o PID 9076 era o
+restart anterior para o DDL da migração 023) com o fix do pool, a Fase 0,
+o fix de idempotência e o adapter Mercado Pago dele. `/api/health` =
 `{"status":"ok","servico":"ERP2026API","banco":"ok","pool":"pool=8 conexoes, 1 em uso"}`;
 com `ERP_DB_PATH` inválido devolve **503**. Carga final: 60/60 logins
 sequenciais e **60/60 concorrentes (20 simultâneos, `KeepAlive=false`)**,
@@ -64,8 +65,21 @@ sequenciais e **60/60 concorrentes (20 simultâneos, `KeepAlive=false`)**,
 
 ### Em andamento (não commitado)
 
-- Nada deste agente. Outro agente segue no app `:pdv` (tela de espera/polling
-  de pagamento); arquivos dele não são editados nem commitados aqui.
+- Nada deste agente. Outro agente está editando
+  `Desktop\src\Views\uFrmPrincipal.pas` e `Desktop\src\Utils\uApiSaude.pas`
+  (checagem da API ao abrir), ainda não commitados; não foram tocados nem
+  commitados aqui. API 9000 em PID `10136` (dele), sem restart.
+
+### O que fechou nesta sessão (marco 3.91 — `:pdv` incluído na rotina)
+
+| Item | Entrega |
+|---|---|
+| **Autorização** | Usuário confirmou explicitamente "pode fazer este procedimento no pdv", liberando a inclusão do app em build/CI/bateria/docs. O outro agente já havia avisado no canal (3.82) que o módulo estava fechado e testado no Samsung A55. |
+| **Build** | Novo `Scripts\build_pdv.bat` (`gradlew :pdv:assembleDebug`), validado com `BUILD SUCCESSFUL`; APK em `Android\android\pdv\build\outputs\apk\debug\pdv-debug.apk` (7,05 MB). Nenhum `.java`/XML ou `settings.gradle` alterado. |
+| **CI/bateria** | `.github\workflows\bateria.yml` (job `desktop-e-android`, self-hosted) passou a ter o passo "Build do app PDV (`:pdv`)" e o teste Android cobre `:app`, `:bipe` e `:pdv`; `Scripts\run_tests_android.bat` teve só o cabeçalho ajustado. CI continua sem recompilar/reiniciar a API. |
+| **Docs** | `CHECKPOINT.md`, `PLANO_E_LOG.md` §3.91, `PROMPT_RETOMADA_COMPLETO.md`, `PROMPT_AMANHA.md` e `PROMPT_TESTES_FISCAIS_GRATUITOS.md` atualizados: a inclusão do `:pdv` não é mais "suspensa"; segue proibido editar o código dele sem pedido específico. |
+| **Bateria** | `build_pdv.bat` **OK**, Android **9/9** (relatório JVM, 0 falhas), `api_todos.ps1` **6 smokes OK**, desktop build **0/0**, suíte **388/388**, telas **33/33**, permissões **0 falhas**, `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK** (630 campos/diff vazio, 51 tabelas/50 generators). API `/api/health` `ok/banco=ok`, PID `10136`, sem restart. |
+| **Escopo/numeração** | 3.90 foi tomado pelo outro agente (Mercado Pago), então este marco é 3.91. Nada em `Android\android\pdv\**`, `uRotasPDV.pas`, `uPagamentoService.pas`, migrações do PDV, cenário fiscal 533/1014/3581 ou arquivos do outro agente. `tmp_shots/` segue untracked. |
 
 ### O que fechou nesta sessão (marco 3.88-fiscal — rastro de XML + mapeamento de produto)
 
@@ -77,7 +91,7 @@ sequenciais e **60/60 concorrentes (20 simultâneos, `KeepAlive=false`)**,
 | **Integração** | `uNFeXmlService.Importar` grava o rastro de cada item (PENDENTE ou MAPEADO) e limpa o rastro em caso de compensação. `uFrmNotaEntrada` abre a nova tela modal `uFrmMapearProdutoXML` para as pendências após a importação; units registradas no `.lpr`/`.lpi`. |
 | **Regras preservadas** | Nenhum produto é criado automaticamente pela importação; CATEGORIA/UNIDADE vêm do cadastro; isolamento por `EMPRESA_ID`; chave repetida continua recusada; nada em `:pdv/**`, `:bipe/**`, `uRotasPDV.pas`, cenário fiscal 533/1014/3581. |
 | **Bateria** | Desktop `0/0` · suíte **388/388** (3 testes novos: rastro, compatível, produto novo/reprocessamento) · `api_todos.ps1` **6 smokes OK** · `schema_roundtrip.ps1` **630 campos/diff vazio** · `banco_fresco.ps1` **OK** · health `ok/banco=ok`. |
-| **Numeração** | O outro agente já tinha tomado o §3.88 do log com o fix de idempotência (`b3dc8b6`); este marco fiscal é registrado como **§3.89 no `PLANO_E_LOG.md`**. A ordem futura passa a ser: 3.89 (aqui) → 3.90 nota de serviço + XML → 3.91 nota de entrada ampliada. |
+| **Numeração** | O outro agente já tinha tomado o §3.88 do log com o fix de idempotência (`b3dc8b6`); este marco fiscal é registrado como **§3.89 no `PLANO_E_LOG.md`**. A ordem futura passou a ser: 3.90 pagamentos Mercado Pago (outro agente) → 3.91 `:pdv` na bateria → **3.92 nota de serviço + XML → 3.93 nota de entrada ampliada**. |
 
 ### O que fechou nesta sessão (marco 3.87 — prompt de retomada + requisitos fiscais)
 

@@ -1,6 +1,6 @@
 ﻿# Teste de UI em todas as telas do desktop
 
-Gerado por `Scripts\testes\telas_todas_ui.ps1` em 21/11/2026 18:24 (HEAD `b88cc85`).
+Gerado por `Scripts\testes\telas_todas_ui.ps1` em 21/11/2026 23:53 (HEAD `e36e2b7`).
 
 **Resultado: 33 OK, 0 aviso(s), 0 falha(s)** - 33 telas do menu.
 

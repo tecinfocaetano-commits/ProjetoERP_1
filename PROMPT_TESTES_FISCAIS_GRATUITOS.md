@@ -23,10 +23,11 @@ prévio do projeto além dos comandos e regras abaixo.
 4. **Não commitar** certificados (`.pfx`, `.p12`), senhas,
    `Desktop\bin\nfe\*` nem `tmp_shots/`. Certificados ficam **fora** do repo.
 5. **Não tocar** em `Android\android\pdv\**`, `Android\android\bipe\**`,
-   `HistoricoActivity.java`, `API\src\Rotas\uRotasPDV.pas`,
-   `Android\android\settings.gradle`, nem incluir `:pdv` em builds/CI/docs
-   sem autorização explícita do usuário (o app PDV mobile ainda está em
-   trabalho).
+   `HistoricoActivity.java`, `API\src\Rotas\uRotasPDV.pas` ou
+   `Android\android\settings.gradle`. O `:pdv` **já está** em
+   `Scripts\build_pdv.bat`, no CI/bateria e nos docs (marco 3.91, usuário
+   autorizou em 21/11) — não precisa mais pedir licença para incluí-lo,
+   mas não edite o código dele sem pedido específico.
 6. **Comunicação:** ler e escrever `Documentacao\COMUNICACAO_AGENTES.md` no
    início e no fim do bloco, antes de mexer em arquivo compartilhado e antes
    de parar/reiniciar a API na porta 9000. Deixar recado mesmo que seja
