@@ -34,7 +34,7 @@ unit uConexao;
 interface
 
 uses
-  Classes, SysUtils, SQLDB, IBConnection;
+  Classes, SysUtils, SQLDB, IBConnection, inifiles;
 
 type
   TConexaoPool = class;
@@ -149,6 +149,46 @@ begin
     '..' + PathDelim + '..' + PathDelim + 'Banco' + PathDelim + 'dados.fdb');
 end;
 
+{ erp2026.ini ao lado do exe da API (o instalador copia o mesmo
+  arquivo do desktop para a pasta da API). }
+function CaminhoIniServidor: string;
+begin
+  Result := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
+    'erp2026.ini';
+end;
+
+function LerIniServidor(const AChave, APadrao: string): string;
+var
+  LIni: TIniFile;
+begin
+  Result := APadrao;
+  if not FileExists(CaminhoIniServidor) then
+    Exit;
+  LIni := TIniFile.Create(CaminhoIniServidor);
+  try
+    Result := Trim(LIni.ReadString('servidor', AChave, APadrao));
+    if Result = '' then
+      Result := APadrao;
+  finally
+    LIni.Free;
+  end;
+end;
+
+{ Precedencia: variavel de ambiente > erp2026.ini > padrao. }
+function ValorConfig(const ANomeEnv, AChaveIni,
+  APadrao: string): string;
+var
+  LValor: string;
+begin
+  LValor := ValorAmbiente(ANomeEnv, '');
+  if LValor = '' then
+    LValor := LerIniServidor(AChaveIni, '');
+  if LValor = '' then
+    Result := APadrao
+  else
+    Result := LValor;
+end;
+
 { ------------------------------------------------------------
   Tamanho do pool (ERP_API_POOL, com limites de seguranca)
   ------------------------------------------------------------ }
@@ -220,11 +260,13 @@ begin
   Transaction.Params.Add('nowait');
   Connection.Transaction := Transaction;
   Transaction.DataBase := Connection;
-  Host := ValorAmbiente('ERP_DB_HOST', '');
-  Database := ValorAmbiente('ERP_DB_PATH', CaminhoPadraoBanco);
-  User := ValorAmbiente('ERP_DB_USER', 'SYSDBA');
-  Password := ValorAmbiente('ERP_DB_PASSWORD', 'masterkey');
-  Port := StrToIntDef(ValorAmbiente('ERP_DB_PORT', '3050'), 3050);
+  Host := ValorConfig('ERP_DB_HOST', 'banco_host', '');
+  Database := ValorConfig('ERP_DB_PATH', 'banco_caminho',
+    CaminhoPadraoBanco);
+  User := ValorConfig('ERP_DB_USER', 'banco_usuario', 'SYSDBA');
+  Password := ValorConfig('ERP_DB_PASSWORD', 'banco_senha', 'masterkey');
+  Port := StrToIntDef(ValorConfig('ERP_DB_PORT', 'banco_porta', '3050'),
+    3050);
 end;
 
 class function TConexao.GetInstance: TConexao;

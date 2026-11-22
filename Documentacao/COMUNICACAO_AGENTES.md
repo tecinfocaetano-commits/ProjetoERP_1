@@ -938,3 +938,19 @@ usar este arquivo como canal vivo, não só como registro histórico:
   usam fbclient embarcado). `Deploy/` adicionado ao .gitignore.
   **Pendente:** validar INSTALADOR.exe numa máquina limpa; banco
   zerado = trocar DADOS.FDB por base do executar_banco.bat antes.
+- **Agente PDV/Desktop — credenciais Firebird no ini + alias (22/11):**
+  o pacote do cliente agora configura TUDO sozinho. `erp2026.ini`
+  ganhou `banco_usuario`/`banco_senha` — lidos por desktop
+  (`Desktop\src\Config\uConexao.pas`) e API
+  (`API\src\Config\uConexao.pas`, que passou a ler o ini ao lado do
+  próprio exe; o instalador copia o ini para a pasta da API).
+  Wizard de 1º uso (`uFrmConfigServidor`) ganhou campos usuário/
+  senha do banco. `INSTALAR_CLIENTE.bat` agora pergunta as
+  credenciais do Firebird e grava nos dois inis. Novo
+  `Scripts\firebird_alias_erp.bat` (admin): cria alias `erp2026`
+  no `databases.conf` do Firebird — permite conectar com
+  `banco_caminho=erp2026` em vez do caminho completo. O
+  `security5.fdb` já vem protegido de fábrica
+  (`security.db` → RemoteAccess=false). Senha do banco fica em
+  texto no ini local — aceitável (config de máquina), env vars
+  continuam tendo precedência. Builds verde (API+Desktop).

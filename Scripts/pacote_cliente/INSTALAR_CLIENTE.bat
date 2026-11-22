@@ -31,6 +31,9 @@ echo Se o banco estiver em outro PC da rede, informe o IP/nome.
 set /p SRV="IP ou nome do servidor do banco (vazio = este PC): "
 set /p APIURL="Endereco da API para os apps moveis [http://127.0.0.1:9000]: "
 if "%APIURL%"=="" set APIURL=http://127.0.0.1:9000
+set /p DBUSER="Usuario do banco Firebird [SYSDBA]: "
+if "%DBUSER%"=="" set DBUSER=SYSDBA
+set /p DBPASS="Senha do banco Firebird: "
 
 REM erp2026.ini lido pelo uConexao/uApiSaude antes de conectar
 (
@@ -38,8 +41,13 @@ echo [servidor]
 echo banco_host=%SRV%
 echo banco_porta=3050
 echo banco_caminho=%DIR%\Banco\DADOS.FDB
+echo banco_usuario=%DBUSER%
+echo banco_senha=%DBPASS%
 echo api_url=%APIURL%
 ) > "%DIR%\ERP2026\erp2026.ini"
+
+REM a API tambem le erp2026.ini ao lado do proprio exe
+copy /y "%DIR%\ERP2026\erp2026.ini" "%DIR%\API\erp2026.ini" >nul
 
 REM atalho da API na Inicializar do Windows (sobe no login)
 powershell -NoProfile -Command "$s=[Environment]::GetFolderPath('Startup');$w=New-Object -ComObject WScript.Shell;$l=$w.CreateShortcut(\"$s\ERP2026 API.lnk\");$l.TargetPath='%DIR%\API\ERP2026API.exe';$l.WorkingDirectory='%DIR%';$l.WindowStyle=7;$l.Save()"
@@ -57,6 +65,7 @@ echo    no erp2026.ini para o caminho do .FDB NO SERVIDOR.
 echo  - Para banco zerado, substitua DADOS.FDB antes de usar
 echo    (ou rode Scripts\executar_banco.bat no projeto).
 echo  - Senha do Firebird nesta instalacao: a do SYSDBA definida
-echo    no ambiente (ERP_DB_USER/ERP_DB_PASSWORD).
+echo    no ambiente (ERP_DB_USER/ERP_DB_PASSWORD) - ou ajuste
+   banco_usuario/banco_senha no erp2026.ini.
 echo.
 pause

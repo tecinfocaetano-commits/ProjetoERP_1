@@ -20,6 +20,10 @@ type
     edtPorta: TEdit;
     lblCaminho: TLabel;
     edtCaminho: TEdit;
+    lblUsuario: TLabel;
+    edtUsuario: TEdit;
+    lblSenha: TLabel;
+    edtSenha: TEdit;
     lblApi: TLabel;
     edtApiUrl: TEdit;
     lblObs: TLabel;
@@ -69,7 +73,7 @@ begin
   Caption := 'Configuração do Servidor — ERP 2026';
   Position := poScreenCenter;
   ClientWidth := 560;
-  ClientHeight := 400;
+  ClientHeight := 470;
   BorderStyle := bsDialog;
 
   lblTitulo := TLabel.Create(Self);
@@ -82,7 +86,7 @@ begin
   grpBanco := TGroupBox.Create(Self);
   grpBanco.Parent := Self;
   grpBanco.Left := 16; grpBanco.Top := 44;
-  grpBanco.Width := 528; grpBanco.Height := 240;
+  grpBanco.Width := 528; grpBanco.Height := 310;
   grpBanco.Caption := 'Banco de dados (Firebird)';
 
   lblHost := TLabel.Create(Self);
@@ -119,21 +123,44 @@ begin
   edtCaminho.Text := LerServidor('banco_caminho',
     CaminhoBancoPadrao);
 
+  lblUsuario := TLabel.Create(Self);
+  lblUsuario.Parent := grpBanco;
+  lblUsuario.Left := 16; lblUsuario.Top := 180;
+  lblUsuario.Caption := 'Usuário do banco (Firebird)';
+  lblUsuario.AutoSize := True;
+  edtUsuario := TEdit.Create(Self);
+  edtUsuario.Parent := grpBanco;
+  edtUsuario.Left := 16; edtUsuario.Top := 200;
+  edtUsuario.Width := 496;
+  edtUsuario.Text := LerServidor('banco_usuario', 'SYSDBA');
+
+  lblSenha := TLabel.Create(Self);
+  lblSenha.Parent := grpBanco;
+  lblSenha.Left := 16; lblSenha.Top := 232;
+  lblSenha.Caption := 'Senha do banco';
+  lblSenha.AutoSize := True;
+  edtSenha := TEdit.Create(Self);
+  edtSenha.Parent := grpBanco;
+  edtSenha.Left := 16; edtSenha.Top := 252;
+  edtSenha.Width := 496;
+  edtSenha.PasswordChar := '*';
+  edtSenha.Text := LerServidor('banco_senha', '');
+
   lblApi := TLabel.Create(Self);
   lblApi.Parent := grpBanco;
-  lblApi.Left := 16; lblApi.Top := 180;
+  lblApi.Left := 16; lblApi.Top := 284;
   lblApi.Caption := 'Endereço da API REST (para os apps móveis)';
   lblApi.AutoSize := True;
   edtApiUrl := TEdit.Create(Self);
   edtApiUrl.Parent := grpBanco;
-  edtApiUrl.Left := 16; edtApiUrl.Top := 200;
+  edtApiUrl.Left := 16; edtApiUrl.Top := 304;
   edtApiUrl.Width := 496;
   edtApiUrl.Text := LerServidor('api_url',
     'http://127.0.0.1:9000');
 
   lblObs := TLabel.Create(Self);
   lblObs.Parent := Self;
-  lblObs.Left := 16; lblObs.Top := 292;
+  lblObs.Left := 16; lblObs.Top := 362;
   lblObs.AutoSize := False;
   lblObs.Width := 528; lblObs.Height := 40;
   lblObs.WordWrap := True;
@@ -143,21 +170,21 @@ begin
 
   btnTeste := TButton.Create(Self);
   btnTeste.Parent := Self;
-  btnTeste.Left := 16; btnTeste.Top := 340;
+  btnTeste.Left := 16; btnTeste.Top := 410;
   btnTeste.Width := 130; btnTeste.Height := 30;
   btnTeste.Caption := 'Testar conexão';
   btnTeste.OnClick := @btnTesteClick;
 
   btnLocal := TButton.Create(Self);
   btnLocal.Parent := Self;
-  btnLocal.Left := 156; btnLocal.Top := 340;
+  btnLocal.Left := 156; btnLocal.Top := 410;
   btnLocal.Width := 200; btnLocal.Height := 30;
   btnLocal.Caption := 'Usar configuração local';
   btnLocal.OnClick := @btnLocalClick;
 
   btnSalvar := TButton.Create(Self);
   btnSalvar.Parent := Self;
-  btnSalvar.Left := 366; btnSalvar.Top := 340;
+  btnSalvar.Left := 366; btnSalvar.Top := 410;
   btnSalvar.Width := 90; btnSalvar.Height := 30;
   btnSalvar.Caption := 'Salvar';
   btnSalvar.ModalResult := mrOk;
@@ -165,7 +192,7 @@ begin
 
   btnSair := TButton.Create(Self);
   btnSair.Parent := Self;
-  btnSair.Left := 462; btnSair.Top := 340;
+  btnSair.Left := 462; btnSair.Top := 410;
   btnSair.Width := 82; btnSair.Height := 30;
   btnSair.Caption := 'Sair';
   btnSair.ModalResult := mrCancel;
@@ -189,8 +216,8 @@ begin
     LTrans.DataBase := LConn;
     LConn.HostName := Trim(edtHost.Text);
     LConn.DatabaseName := Trim(edtCaminho.Text);
-    LConn.UserName := 'SYSDBA';
-    LConn.Password := 'masterkey';
+    LConn.UserName := Trim(edtUsuario.Text);
+    LConn.Password := edtSenha.Text;
     LConn.Port := StrToIntDef(Trim(edtPorta.Text), 3050);
     LConn.CharSet := 'UTF8';
     LConn.LoginPrompt := False;
@@ -230,6 +257,8 @@ begin
   edtHost.Text := '';
   edtPorta.Text := '3050';
   edtCaminho.Text := CaminhoBancoPadrao;
+  edtUsuario.Text := 'SYSDBA';
+  edtSenha.Text := '';
   edtApiUrl.Text := 'http://127.0.0.1:9000';
 end;
 
@@ -245,6 +274,8 @@ begin
   GravarServidor('banco_host', Trim(edtHost.Text));
   GravarServidor('banco_porta', Trim(edtPorta.Text));
   GravarServidor('banco_caminho', Trim(edtCaminho.Text));
+  GravarServidor('banco_usuario', Trim(edtUsuario.Text));
+  GravarServidor('banco_senha', edtSenha.Text);
   GravarServidor('api_url', Trim(edtApiUrl.Text));
 end;
 

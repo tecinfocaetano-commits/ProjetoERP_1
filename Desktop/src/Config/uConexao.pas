@@ -98,8 +98,8 @@ begin
   Host := ValorConfig('ERP_DB_HOST', 'banco_host', '');
   Database := ValorConfig('ERP_DB_PATH', 'banco_caminho',
     CaminhoPadraoBanco);
-  User := ValorAmbiente('ERP_DB_USER', 'SYSDBA');
-  Password := ValorAmbiente('ERP_DB_PASSWORD', 'masterkey');
+  User := ValorConfig('ERP_DB_USER', 'banco_usuario', 'SYSDBA');
+  Password := ValorConfig('ERP_DB_PASSWORD', 'banco_senha', 'masterkey');
   Port := StrToIntDef(
     ValorConfig('ERP_DB_PORT', 'banco_porta', '3050'), 3050);
 end;
