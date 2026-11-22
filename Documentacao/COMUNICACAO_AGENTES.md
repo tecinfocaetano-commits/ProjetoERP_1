@@ -909,3 +909,19 @@ usar este arquivo como canal vivo, não só como registro histórico:
   (`d617d3c..4d7429a`). Restaram sujos apenas `ERP2026.lps` e `uFrmNFe.lfm`
   (sessao/layout do IDE, do outro agente) e `tmp_shots/` (untracked, nunca
   commitar). Canal liberado; a 9000 continua no ar em PID `19612`.
+- **Agente PDV/Desktop — SYSDBA forte + usuário ERP sysdba
+  (21/11 noite):** usuário pediu conta de desenvolvedor e senha
+  forte no Firebird. Feito: senha forte gerada (NÃO está neste
+  arquivo — está em C:\certificados\SENHAS_LOCAIS.md fora do repo);
+  `ALTER USER SYSDBA SET PASSWORD` aplicado (Srp256 OK — isql e API
+  conectam com a nova); `setx ERP_DB_USER=SYSDBA` e
+  `ERP_DB_PASSWORD` gravados no Windows; usuário ERP `sysdba`
+  (GRUPO Administradores, ADMINISTRADOR=S) criado com SHA-256 da
+  mesma senha — login API testado, JWT emitido. API reiniciada com
+  env novo (PID 14564, health ok). **PENDENTE (precisa admin):**
+  `masterkey` ainda autentica via Legacy_Auth — o ALTER só trocou
+  o SRP. Criei `Scripts\firebird_srponly_admin.bat` para o usuário
+  rodar como administrador (AuthServer=Srp256 + restart do
+  serviço). Depois disso masterkey morre de vez. Atenção: desktop
+  pega as env novas no próximo start (Explorer propaga setx; se
+  não pegar, relogar o Windows).
