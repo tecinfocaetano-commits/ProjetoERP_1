@@ -354,6 +354,13 @@ end;
 
 procedure TfrmPrincipal.mnuCadUsuariosClick(Sender: TObject);
 begin
+  { Tela de usuários: só administrador (USUARIO.ADMINISTRADOR='S'). }
+  if not TSessao.GetInstance.Administrador then
+  begin
+    MessageDlg('Apenas administradores podem acessar a tela de Usuários.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
   AbrirFormulario(TfrmUsuarios);
 end;
 
@@ -521,6 +528,13 @@ end;
 // === SISTEMA ===
 procedure TfrmPrincipal.mnuSisConfiguracoesClick(Sender: TObject);
 begin
+  { Preferências/Configurações: só administrador. }
+  if not TSessao.GetInstance.Administrador then
+  begin
+    MessageDlg('Apenas administradores podem acessar as Configurações.',
+      mtWarning, [mbOK], 0);
+    Exit;
+  end;
   if not TemPermissao(MODULO_SISTEMA, TELA_CONFIGURACOES, PERM_VISUALIZAR) then
   begin
     MessageDlg('Seu usuário não tem permissão para acessar as Configurações.',
