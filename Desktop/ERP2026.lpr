@@ -20,6 +20,8 @@ uses
   Forms, Controls, Classes, SysUtils, SQLDB,
   // Config
   uConexao,
+  uIniServidor,
+  uFrmConfigServidor,
   uSessao,
   // Models
   uModelBase,
@@ -411,6 +413,19 @@ begin
   // Reimpressão do DANFE/cupom a partir do XML autorizado.
   if (ParamCount >= 1) and (Pos('--danfe=', ParamStr(1)) = 1) then
     GerarDANFEPorLinhaDeComando(ParamStr(1));
+
+  // Primeira execução: sem erp2026.ini o usuário configura onde está
+  // o banco/API ANTES do login (o ini guia a conexão — CONFIGURACAO
+  // fica dentro do banco e não pode guiar a primeira conexão).
+  if not ServidorConfigurado then
+  begin
+    TfrmConfigServidor.CreateNew(Application).ShowModal;
+    if not ServidorConfigurado then
+    begin
+      Application.Terminate;
+      Halt(0);
+    end;
+  end;
 
   // Login
   Application.CreateForm(TfrmLogin, frmLogin);

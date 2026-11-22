@@ -41,6 +41,9 @@ type
 
 implementation
 
+uses
+  uIniServidor;
+
 { Configuracao do banco por variaveis de ambiente:
     ERP_DB_HOST, ERP_DB_PATH, ERP_DB_USER, ERP_DB_PASSWORD, ERP_DB_PORT.
   Sem ERP_DB_PATH, usa <pasta do exe>\..\..\Banco\dados.fdb, o mesmo
@@ -63,6 +66,22 @@ begin
     '..' + PathDelim + '..' + PathDelim + 'Banco' + PathDelim + 'dados.fdb');
 end;
 
+{ Precedência: variável de ambiente (override explícito de admin)
+  > erp2026.ini (tela de configuração do usuário) > padrão. }
+function ValorConfig(const ANomeEnv, AChaveIni,
+  APadrao: string): string;
+var
+  LValor: string;
+begin
+  LValor := ValorAmbiente(ANomeEnv, '');
+  if LValor = '' then
+    LValor := LerServidor(AChaveIni, '');
+  if LValor = '' then
+    Result := APadrao
+  else
+    Result := LValor;
+end;
+
 constructor TConexao.CreatePrivate;
 begin
   inherited Create;
@@ -76,11 +95,13 @@ begin
   Transaction.Params.Add('nowait');
   Connection.Transaction := Transaction;
   Transaction.DataBase := Connection;
-  Host := ValorAmbiente('ERP_DB_HOST', '');
-  Database := ValorAmbiente('ERP_DB_PATH', CaminhoPadraoBanco);
+  Host := ValorConfig('ERP_DB_HOST', 'banco_host', '');
+  Database := ValorConfig('ERP_DB_PATH', 'banco_caminho',
+    CaminhoPadraoBanco);
   User := ValorAmbiente('ERP_DB_USER', 'SYSDBA');
   Password := ValorAmbiente('ERP_DB_PASSWORD', 'masterkey');
-  Port := StrToIntDef(ValorAmbiente('ERP_DB_PORT', '3050'), 3050);
+  Port := StrToIntDef(
+    ValorConfig('ERP_DB_PORT', 'banco_porta', '3050'), 3050);
 end;
 
 class function TConexao.GetInstance: TConexao;

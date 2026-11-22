@@ -11,6 +11,8 @@ inherited frmConfiguracoes: TfrmConfiguracoes
       Top = 8
       Width = 370
       Caption = 'Usar grade de tamanhos no pedido e no mapa'
+      Color = clNavy
+      ParentColor = False
       Font.Color = clWhite
       ParentFont = False
       TabOrder = 0
@@ -22,6 +24,8 @@ inherited frmConfiguracoes: TfrmConfiguracoes
       Top = 40
       Width = 370
       Caption = 'Modo homologação (NF-e/NFC-e e PDV)'
+      Color = clNavy
+      ParentColor = False
       Font.Color = clWhite
       ParentFont = False
       TabOrder = 1

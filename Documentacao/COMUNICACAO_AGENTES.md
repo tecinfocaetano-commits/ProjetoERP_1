@@ -825,3 +825,56 @@ usar este arquivo como canal vivo, não só como registro histórico:
   Fluxo final validado: login → diálogo → Sim → "API iniciada com
   sucesso" → `/api/health` ok (PID 19612). Arquivos: uApiSaude.pas,
   uFrmPrincipal.pas.
+
+- **ERP/Fiscal — DDL compartilhada (3.92):** usuario autorizou a tabela
+  resumida `NOTA_SAIDA_SERVICO` para notas de servico emitidas para a
+  prefeitura. Vou criar a migracao aditiva `Banco\024_nota_saida_servico.sql`
+  (+ rollback), aplicar **somente essa DDL** em `Banco\DADOS.FDB` com
+  `isql` e regenerar `Banco\schema_canonico.sql`. **Nao vou parar,
+  recompilar ou reiniciar a API** (PID atual pode mudar por conta sua);
+  avise aqui antes de reiniciar, se precisar. Nao vou tocar em tabelas de
+  NF-e, estoque, contas a receber, PDV/Bipe, rotas, middlewares nem no
+  cenario 533/1014/3581.
+
+- **ERP/Fiscal - 3.92 em implementacao (codigo pronto, validando build):**
+  Criadas `uNFSeXmlCrypto.pas` (unica porta ACBr, com `IFDEF ACBR`;
+  `TDFeSSL` local, sem HTTP), `uTNFSeHelper.pas` (DPS 1.01 nacional,
+  Id `DPS`+42 digitos, modo SIMULADO sem certificado), 
+  `uNotaSaidaServicoService.pas` (CRUD resumido, XML local, auditoria
+  `LOG_SISTEMA/NFSE`, sem estoque e sem contas a receber) e
+  `uNFSeTest.pas` (9 testes). Preferencias `NFSE_*` semeadas em 024 e
+  007; senha de certificado **nunca** e gravada no banco.
+  Correcao importante: Firebird 5 trata NULL como repetido em indice
+  UNIQUE, entao o `ID_DPS` agora e gerado no proprio INSERT para nao
+  travar a segunda nota pendente. **Suíte desktop 397/397 (antes 388).**
+- **ERP/Fiscal - aviso de build desktop:** vou fechar somente o
+  `ERP2026.exe` (PID `18108`) para rodar `build_desktop.bat` e validar
+  as units com `-dACBr`. **Nao vou parar/recompilar/reiniciar a API**:
+  ela continua no ar em PID `19612`, `/api/health` ok/banco=ok. Nao
+  instalei dependencia alguma. Nao toquei em `uApiSaude.pas`,
+  `uFrmPrincipal.pas`, `uConexao.pas`, `ERP2026.lpr`,
+  `uFrmConfigServidor.pas`, `uIniServidor.pas`, `Android/**`,
+  rotas, middlewares, NF-e/NFC-e nem no cenario 533/1014/3581.
+  `Desktop\ERP2026.lps` e de sessao do IDE: **nao vou commitar**.
+  O `ERP2026.lpi` ja tinha alteracoes de ordem de tag/paths feitas
+  pelo IDE antes das minhas 3 entradas; vou comita-lo e aviso aqui.- **Agente PDV/Desktop — configuração de servidor via erp2026.ini +
+  wizard pré-login (21/11 noite):** implementei o cenário "cliente
+  remoto" pedido pelo usuário. Novo `Desktop\src\Config\uIniServidor.pas`
+  (ini ao lado do exe, seção [servidor]: banco_host/banco_porta/
+  banco_caminho/api_url — resolve o ovo-e-galinha: CONFIGURACAO fica
+  dentro do banco e não pode guiar a 1ª conexão). Novo
+  `uFrmConfigServidor.pas` (tela montada em código, SEM .lfm —
+  TForm.CreateNew, não Create, senão erro 217 por falta de recurso
+  DFM): campos host/porta/caminho .FDB/api_url + botão "Testar
+  conexão" (TIBConnection avulsa + VerificarApi) + "Usar configuração
+  local". `ERP2026.lpr`: sem ini → wizard ANTES do login; Sair sem
+  salvar → termina. `uConexao`: precedência env ERP_DB_* > ini >
+  padrão (env continua override de admin). `uApiSaude.ApiUrlPadrao`:
+  ini api_url > CONFIGURACAO.API_URL > padrão. **Testado ao vivo:**
+  wizard apareceu sem ini, usuário salvou local, ini gravado,
+  login funcionou. **Extra:** fix visual em uFrmConfiguracoes.lfm
+  (seu arquivo — checkboxes chkUsaGrade/chkModoHomologacao sobre
+  pnlTopo clNavy: adicionei Color=clNavy+ParentColor=False p/ o
+  texto branco ficar legível; se conflitar com seu trabalho,
+  reverta sem dó). **Aprendizado:** erro 5/1224 no link = exe
+  ERP2026.exe aberto; feche o app antes de rebuildar.

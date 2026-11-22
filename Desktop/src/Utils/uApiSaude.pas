@@ -47,7 +47,7 @@ type
 implementation
 
 uses
-  fphttpclient, uConfiguracaoService;
+  fphttpclient, uConfiguracaoService, uIniServidor;
 
 const
   CHAVE_API_URL = 'API_URL';
@@ -58,6 +58,15 @@ var
   LUrl: string;
   LConfig: TConfiguracaoService;
 begin
+  { 1) erp2026.ini — funciona até sem banco conectado;
+    2) CONFIGURACAO.API_URL — override por empresa no banco;
+    3) padrão local }
+  LUrl := Trim(LerServidor('api_url', ''));
+  if LUrl <> '' then
+  begin
+    Result := LUrl;
+    Exit;
+  end;
   LConfig := TConfiguracaoService.Create;
   try
     LUrl := Trim(LConfig.LerValor(CHAVE_API_URL));
