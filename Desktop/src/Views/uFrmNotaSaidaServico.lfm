@@ -1,0 +1,321 @@
+object frmNotaSaidaServico: TfrmNotaSaidaServico
+  Left = 0
+  Height = 720
+  Top = 0
+  Width = 1100
+  Caption = 'Nota de Serviço (NFS-e resumida)'
+  ClientHeight = 720
+  ClientWidth = 1100
+  OnCreate = FormCreate
+  OnShow = FormShow
+  Position = poScreenCenter
+  LCLVersion = '3.2.0.0'
+  object pnlTopo: TPanel
+    Left = 0
+    Height = 56
+    Top = 0
+    Width = 1100
+    Align = alTop
+    ClientHeight = 56
+    ClientWidth = 1100
+    Color = clNavy
+    ParentBackground = False
+    ParentColor = False
+    TabOrder = 0
+    object lblTitulo: TLabel
+      Left = 16
+      Height = 28
+      Top = 6
+      Width = 700
+      Caption = 'Nota de Serviço - NFS-e Nacional 1.01 (resumida)'
+      Font.Color = clWhite
+      Font.Height = -20
+      Font.Style = [fsBold]
+      ParentFont = False
+    end
+    object lblModo: TLabel
+      Left = 18
+      Height = 18
+      Top = 34
+      Width = 900
+      Caption = 'Modo SIMULADO: gera e valida localmente, sem envio.'
+      Font.Color = clWhite
+      ParentFont = False
+    end
+  end
+  object pnlCadastro: TPanel
+    Left = 0
+    Height = 200
+    Top = 56
+    Width = 1100
+    Align = alTop
+    ClientHeight = 200
+    ClientWidth = 1100
+    TabOrder = 1
+    object lblMunicipio: TLabel
+      Left = 12
+      Height = 18
+      Top = 12
+      Width = 110
+      Caption = 'Município IBGE (7):'
+    end
+    object edtMunicipio: TEdit
+      Left = 130
+      Height = 24
+      Top = 9
+      Width = 160
+      TabOrder = 0
+    end
+    object lblCodigoServico: TLabel
+      Left = 310
+      Height = 18
+      Top = 12
+      Width = 110
+      Caption = 'Código serviço (6):'
+    end
+    object edtCodigoServico: TEdit
+      Left = 430
+      Height = 24
+      Top = 9
+      Width = 130
+      TabOrder = 1
+    end
+    object lblDescricao: TLabel
+      Left = 580
+      Height = 18
+      Top = 12
+      Width = 100
+      Caption = 'Descrição:'
+    end
+    object edtDescricao: TEdit
+      Left = 690
+      Height = 24
+      Top = 9
+      Width = 396
+      TabOrder = 2
+    end
+    object lblValor: TLabel
+      Left = 12
+      Height = 18
+      Top = 50
+      Width = 60
+      Caption = 'Valor:'
+    end
+    object edtValor: TEdit
+      Left = 130
+      Height = 24
+      Top = 47
+      Width = 130
+      TabOrder = 3
+    end
+    object lblDesconto: TLabel
+      Left = 280
+      Height = 18
+      Top = 50
+      Width = 70
+      Caption = 'Desconto:'
+    end
+    object edtDesconto: TEdit
+      Left = 370
+      Height = 24
+      Top = 47
+      Width = 130
+      TabOrder = 4
+    end
+    object lblAliquota: TLabel
+      Left = 520
+      Height = 18
+      Top = 50
+      Width = 80
+      Caption = 'Alíquota ISS:'
+    end
+    object edtAliquota: TEdit
+      Left = 620
+      Height = 24
+      Top = 47
+      Width = 100
+      TabOrder = 5
+    end
+    object lblRetencao: TLabel
+      Left = 740
+      Height = 18
+      Top = 50
+      Width = 90
+      Caption = 'Retenção ISS:'
+    end
+    object cboRetencao: TComboBox
+      Left = 840
+      Height = 24
+      Top = 47
+      Width = 246
+      ItemHeight = 16
+      TabOrder = 6
+    end
+    object lblTomador: TLabel
+      Left = 12
+      Height = 18
+      Top = 88
+      Width = 80
+      Caption = 'Tomador:'
+    end
+    object cboTomador: TComboBox
+      Left = 130
+      Height = 24
+      Top = 85
+      Width = 520
+      ItemHeight = 16
+      TabOrder = 7
+    end
+    object lblSenha: TLabel
+      Left = 670
+      Height = 18
+      Top = 88
+      Width = 90
+      Caption = 'Senha PFX:'
+    end
+    object edtSenhaCertificado: TEdit
+      Left = 770
+      Height = 24
+      Top = 85
+      Width = 316
+      PasswordChar = '*'
+      TabOrder = 8
+    end
+    object lblRetPis: TLabel
+      Left = 12
+      Height = 18
+      Top = 126
+      Width = 70
+      Caption = 'Ret. PIS:'
+    end
+    object edtRetPis: TEdit
+      Left = 130
+      Height = 24
+      Top = 123
+      Width = 130
+      TabOrder = 9
+    end
+    object lblRetCofins: TLabel
+      Left = 280
+      Height = 18
+      Top = 126
+      Width = 80
+      Caption = 'Ret. COFINS:'
+    end
+    object edtRetCofins: TEdit
+      Left = 370
+      Height = 24
+      Top = 123
+      Width = 130
+      TabOrder = 10
+    end
+    object lblRetInss: TLabel
+      Left = 520
+      Height = 18
+      Top = 126
+      Width = 75
+      Caption = 'Ret. INSS:'
+    end
+    object edtRetInss: TEdit
+      Left = 620
+      Height = 24
+      Top = 123
+      Width = 130
+      TabOrder = 11
+    end
+    object lblAviso: TLabel
+      Left = 12
+      Height = 36
+      Top = 158
+      Width = 1060
+      AutoSize = False
+      Caption = 'Sem estoque, sem conta a receber e sem envio fiscal. A senha do certificado não é gravada no banco.'
+    end
+  end
+  object gridNotas: TStringGrid
+    Left = 0
+    Height = 412
+    Top = 256
+    Width = 1100
+    Align = alClient
+    ColCount = 7
+    FixedCols = 0
+    FixedRows = 1
+    RowCount = 1
+    ScrollBars = ssBoth
+    TabOrder = 2
+    OnSelectCell = gridNotasSelectCell
+  end
+  object pnlBotoes: TPanel
+    Left = 0
+    Height = 52
+    Top = 668
+    Width = 1100
+    Align = alBottom
+    ClientHeight = 52
+    ClientWidth = 1100
+    TabOrder = 3
+    object btnNovo: TBitBtn
+      Left = 12
+      Height = 32
+      Top = 10
+      Width = 100
+      Caption = 'Novo'
+      TabOrder = 0
+      OnClick = btnNovoClick
+    end
+    object btnGravar: TBitBtn
+      Left = 122
+      Height = 32
+      Top = 10
+      Width = 130
+      Caption = 'Gravar nota'
+      TabOrder = 1
+      OnClick = btnGravarClick
+    end
+    object btnGerarXML: TBitBtn
+      Left = 262
+      Height = 32
+      Top = 10
+      Width = 140
+      Caption = 'Gerar XML'
+      TabOrder = 2
+      OnClick = btnGerarXMLClick
+    end
+    object btnCancelarNota: TBitBtn
+      Left = 412
+      Height = 32
+      Top = 10
+      Width = 140
+      Caption = 'Cancelar nota'
+      TabOrder = 3
+      OnClick = btnCancelarNotaClick
+    end
+    object btnAtualizar: TBitBtn
+      Left = 562
+      Height = 32
+      Top = 10
+      Width = 110
+      Caption = 'Atualizar'
+      TabOrder = 4
+      OnClick = btnAtualizarClick
+    end
+    object btnFechar: TBitBtn
+      Left = 682
+      Height = 32
+      Top = 10
+      Width = 100
+      Caption = 'Fechar'
+      TabOrder = 5
+      OnClick = btnFecharClick
+    end
+    object lblSelecionada: TLabel
+      Left = 800
+      Height = 32
+      Top = 12
+      Width = 288
+      AutoSize = False
+      Caption = 'Nenhuma nota selecionada'
+    end
+  end
+end

@@ -2890,3 +2890,75 @@ encoding) para **12** — o UTF-8 correto — e o build continuou com
   `uPagamentoService.pas`, middlewares, NF-e/NFC-e existentes, cenário
   fiscal 533/1014/3581 ou arquivos sujos do outro agente; `tmp_shots/`
   segue untracked.
+
+---
+
+### 3.93 Tela resumida de nota de serviço + nota de entrada ampliada (22/11)
+
+- **Abertura do bloco:** canal lido e atualizado; disco conferido em `64acf6e`
+  (4 commits novos de outros agentes: SYSDBA forte, pacote cliente,
+  credenciais no ini e restrição de telas administrativas). API 9000 no ar em
+  **PID 4856**, `/api/health` ok — sem restart por este agente. IDE Lazarus
+  aberto em PID `18028`; não será fechado sem aviso no canal.
+- **Escopo em duas frentes:** (1) tela de cadastro resumida ligada a
+  `TNotaSaidaServicoService` (marco 3.92), sem estoque e sem contas a receber;
+  (2) parser de XML de nota de entrada aceitando `infNFe` (55/65) **e** NFS-e
+  nacional (`DPS`/`NFSe`/`InfDeclaracaoPrestacaoServico`), integrado ao
+  rastro `IMPORTACAO_XML_ITEM` e ao service de mapeamento do 3.89.
+- **Requisito literal do usuário (§5.3 do prompt de retomada):** a tela de
+  mapeamento precisa guardar e exibir CNPJ do fornecedor, descrição original
+  da nota, produto da nota e classificação fiscal que veio; item sem
+  produto correspondente **não** é criado automaticamente — o usuário escolhe
+  um compatível ou cadastra outro. Reimportar a mesma chave reaproveita o
+  mapeamento; serviços/comunicação entram sem NCM/CFOP e sem estoque.
+- **Decisão inicial:** nenhuma dependência nova e nenhum envio fiscal;
+  reaproveitar `uTNFSeHelper`/`uNFSeXmlCrypto` somente leitura/validação
+  local. O modo continua `SIMULADO` por padrão. Antes de editar `ERP2026.lpi`,
+  menu/permissões ou services compartilhados, registrar aviso no canal.
+- **Fora do escopo:** emissão com protocolo/adapters municipais, certificado
+  real, alterações em Android/PDV/Bipe, NF-e/NFC-e existentes, cenário fiscal
+  533/1014/3581 e os arquivos sujos `ERP2026.lps`, `uFrmNFe.lfm`, `tmp_shots/`.
+- **Leitura do XSD:** raiz `NFSe/infNFSe`, `Id` no padrão `NFS` + 50 dígitos
+  (53 posições), `nNFSe`, `dhProc`, `emit/CNPJ|xNome`,
+  `DPS/infDPS/serv/cServ/cTribNac|xDescServ`, `valores/vLiq` e tributos.
+  A NFS-e tem um único serviço por DPS; por isso o parser sintetiza 1 item
+  em `TNFeXml.Itens`, sem NCM/CFOP e sem movimento de estoque.
+- **Decisão de chave:** `CHAVE_ACESSO` e `IMPORTACAO_XML_ITEM.CHAVE` têm 44
+  posições. Adotou-se chave interna `NFS` + SHA-1 hexadecimal (43),
+  determinística e estável para dedupe/reimportação; a chave original de 53
+  posições é gravada no `LOG_SISTEMA` (`XML_FISCAL/IMPORTACAO_XML`). Isso
+  evitou DDL nova, migração de dados e restart da API.
+- **Código fiscal:** `uNFeXmlService.pas` passou a reconhecer `infNFSe` antes
+  de `infNFe`, preencher `TipoDocumento='NFS-e'`, `Modelo='NFS'` e
+  `Provedor='NACIONAL'`, e reaproveitar `TNFeImportService.Importar`.
+  `LClassificacao` de serviço virou `SERVICO <cTribNac>`. O rastro 3.89
+  recebe `TIPO_DOCUMENTO='NFS-e'`, `PROVEDOR='NACIONAL'`, CNPJ do emitente,
+  descrição original e código do serviço; item sem produto fica `PENDENTE`.
+- **Ajuste de estoque:** `SalvarItem` de `uNotaEntradaService` recebeu
+  `AAtualizaEstoque: Boolean = True`. Só o `INSERT` usa `:ESTOQUE/:CUSTO`:
+  NFS-e grava `'N'/'N'`; NF-e continua `'S'/'S'`. A assinatura antiga não
+  mudou para os chamadores existentes. Nenhuma conta a receber é criada.
+- **Tela e menu:** `Desktop\src\Views\uFrmNotaSaidaServico.pas/.lfm` cria,
+  lista, gera/valida XML e cancela notas de serviço; a senha do certificado
+  fica só no controle de edição e é limpa após o uso, nunca no banco.
+  Item `Fiscal > Nota de Serviço` (ID 25) em `uFrmPrincipal`, classe
+  `TfrmNotaSaidaServico` no catálogo `FISCAL / NOTA_SAIDA_SERVICO`,
+  seed idempotente em `007`/`020` (aplicado em `DADOS.FDB`) e units em
+  `ERP2026.lpr/.lpi`. `MAPA_IDS_MENU.md` e `TESTE_TELAS_DESKTOP.md`
+  regenerados.
+- **Validação final:** `build_desktop.bat` **0/0**; suíte **400/400** (3
+  testes novos em `uNFeTest`: parser sem banco, rastro/importação sem
+  estoque, duplicidade recusada); `telas_todas_ui.ps1` **34/34** com a nova
+  tela OK; `permissoes_menu.ps1` e `telas_adm_ui.ps1` **0 falhas**;
+  `schema_roundtrip.ps1`/`banco_fresco.ps1` **659 campos, diff vazio, 52
+  tabelas/51 generators**; `api_todos.ps1` **6 smokes OK**. API 9000 seguiu
+  no PID `4856` com `/api/health` `ok/banco=ok` — sem parar, recompilar ou
+  reiniciar. Nenhuma dependência instalada.
+- **Ajuste colateral de automação:** ao regenerar `MAPA_IDS_MENU.md` o dump
+  revelou que o ID de `Produção > Mapa de Produção` é **11** (mudança de menu
+  de commits anteriores), enquanto `fase6_01.ps1` ainda usava **21**. Alinhei
+  o smoke e a expectativa do dump para 11 e regenerei o mapa sem avisos. Isso
+  não altera nenhuma regra de negócio nem a API.
+- **Fechamento:** entrega é off-line/`SIMULADO`. Homologação real continua
+  bloqueada por CNPJ/IE regulares, e-CNPJ A1 ICP-Brasil, prefeitura/SEFAZ
+  habilitada e IdCSC/CSC próprios.

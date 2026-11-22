@@ -1486,6 +1486,239 @@ var
     end;
   end;
 
+  // ------------------------------------------------------------------
+  { Ordem de argumentos da suíte: condição, mensagem. O bloco 3.93 usa
+    Check(mensagem, condição) para manter as mensagens legíveis. }
+  procedure Check(const AMsg: string; ACond: Boolean);
+  begin
+    AssertTrue(ACond, AMsg);
+  end;
+
+
+  // Marco 3.93 - NFS-e Nacional 1.01 no parser e no rastro de importação
+  // ------------------------------------------------------------------
+
+  function ChaveNFS_e(const ASufixo: string; ASeq: Integer): string;
+  begin
+    Result := Copy(ASufixo + IntToStr(ASeq) +
+      StringOfChar('0', 53), 1, 50);
+  end;
+
+  function XmlNFS_e(const AId, ADoc, ADescricao: string): string;
+  var
+    LData: string;
+  begin
+    LData := '2026-11-22T10:00:00-03:00';
+    Result :=
+      '<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">' +
+      '<infNFSe Id="' + AId + '">' +
+      '<xLocEmi>SAO PAULO</xLocEmi>' +
+      '<xLocPrestacao>SAO PAULO</xLocPrestacao>' +
+      '<nNFSe>9001</nNFSe>' +
+      '<xTribNac>SERVICOS EM GERAL</xTribNac>' +
+      '<verAplic>ERP2026</verAplic><ambGer>2</ambGer><tpEmis>1</tpEmis>' +
+      '<cStat>100</cStat><dhProc>' + LData + '</dhProc><nDFSe>12345</nDFSe>' +
+      '<emit><CNPJ>' + ADoc + '</CNPJ>' +
+      '<xNome>FORNECEDOR NFS ' + LSufixo + '</xNome></emit>' +
+      '<valores><vISSQN>2.00</vISSQN><vLiq>100.00</vLiq></valores>' +
+      '<DPS versao="1.01"><infDPS Id="DPS' + Copy(AId, 4, 42) + '">' +
+      '<tpAmb>2</tpAmb><dhEmi>' + LData + '</dhEmi>' +
+      '<verAplic>ERP2026</verAplic><serie>1</serie><nDPS>9001</nDPS>' +
+      '<dCompet>2026-11-22</dCompet><tpEmit>1</tpEmit>' +
+      '<cLocEmi>3550308</cLocEmi>' +
+      '<prest><CNPJ>' + ADoc + '</CNPJ>' +
+      '<xNome>FORNECEDOR NFS ' + LSufixo + '</xNome></prest>' +
+      '<serv><locPrest><cLocPrestacao>3550308</cLocPrestacao></locPrest>' +
+      '<cServ><cTribNac>010101</cTribNac>' +
+      '<xDescServ>' + ADescricao + '</xDescServ></cServ></serv>' +
+      '<valores><vServPrest><vServ>100.00</vServ></vServPrest>' +
+      '<trib><tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>1</tpRetISSQN>' +
+      '<pAliq>2.00</pAliq></tribMun></trib></valores>' +
+      '</infDPS></DPS></infNFSe></NFSe>';
+  end;
+
+  procedure PrepararXmlNFS_e(const AChave, ADoc, ADescricao: string;
+    out AFornecedorId: Int64; out AArquivo: string);
+  var
+    LLista: TStringList;
+  begin
+    Inc(LSeq);
+    LQuery.Close;
+    LQuery.SQL.Text :=
+      'INSERT INTO PESSOA (EMPRESA_ID, TIPO, TIPO_PESSOA, NOME, CPF_CNPJ, ' +
+      '  ATIVO, DATA_CADASTRO) ' +
+      'VALUES (:EMP, ''F'', ''J'', :NOME, :DOC, ''A'', CURRENT_TIMESTAMP) ' +
+      'RETURNING ID';
+    LQuery.ParamByName('EMP').AsLargeInt := LSessao.EmpresaId;
+    LQuery.ParamByName('NOME').AsString := NovoNome('FORNECEDOR NFS');
+    LQuery.ParamByName('DOC').AsString := ADoc;
+    LQuery.Open;
+    AFornecedorId := LQuery.FieldByName('ID').AsLargeInt;
+    LQuery.Close;
+    LConexao.Confirmar;
+
+    AArquivo := IncludeTrailingPathDelimiter(GetTempDir) + 'nfse_mapa_' +
+      LSufixo + '_' + IntToStr(LSeq) + '.xml';
+    LLista := TStringList.Create;
+    try
+      LLista.Text := XmlNFS_e('NFS' + AChave, ADoc, ADescricao);
+      LLista.SaveToFile(AArquivo);
+    finally
+      LLista.Free;
+    end;
+  end;
+
+  procedure TestParserNFS_eSemBanco;
+  var
+    LId: string;
+    LNFe: TNFeXml;
+  begin
+    LId := 'NFS' + ChaveNFS_e(LSufixo, 501);
+    LNFe := nil;
+    try
+      try
+        LNFe := TNFeXmlParser.DeTexto(XmlNFS_e(LId, '12345678000199',
+          'SERVICO DE TESTE NFS-E'));
+        Check('NFS-e: tipo', LNFe.TipoDocumento = 'NFS-e');
+        Check('NFS-e: modelo', LNFe.Modelo = 'NFS');
+        Check('NFS-e: provedor', LNFe.Provedor = 'NACIONAL');
+        Check('NFS-e: chave original', LNFe.ChaveOriginal = LId);
+        Check('NFS-e: chave interna cabe em 44',
+          (Length(LNFe.ChaveAcesso) = 43) and
+          (Copy(LNFe.ChaveAcesso, 1, 3) = 'NFS'));
+        Check('NFS-e: número', LNFe.Numero = '9001');
+        Check('NFS-e: código do serviço', LNFe.CodigoServico = '010101');
+        Check('NFS-e: 1 item sintético', Length(LNFe.Itens) = 1);
+        Check('NFS-e: descrição do item',
+          LNFe.Itens[0].Descricao = 'SERVICO DE TESTE NFS-E');
+        Check('NFS-e: sem NCM/CFOP',
+          (LNFe.Itens[0].Ncm = '') and (LNFe.Itens[0].Cfop = '') and
+          (LNFe.Cfop = ''));
+        Check('NFS-e: valor do serviço', LNFe.ValorTotal = 100);
+        ASuite.AddResult('TestParserNFS_eSemBanco', True);
+      except
+        on E: Exception do
+          ASuite.AddResult('TestParserNFS_eSemBanco', False, E.Message);
+      end;
+    finally
+      LNFe.Free;
+    end;
+  end;
+
+  procedure TestImportacaoNFS_eRastro;
+  var
+    LFornecedor, LNota: Int64;
+    LChave, LArquivo, LDoc, LDesc: string;
+    LIncluidos, LSem: Integer;
+  begin
+    LFornecedor := 0;
+    LNota := 0;
+    LChave := ChaveNFS_e(LSufixo, 502);
+    LDoc := Copy('98' + LSufixo, 1, 14);
+    LDesc := 'SERVICO NFS-E INTERNET';
+    PrepararXmlNFS_e(LChave, LDoc, LDesc, LFornecedor, LArquivo);
+    try
+      try
+        Check('NFS-e: importou',
+          TNFeImportService.Importar(LArquivo, LNota, LIncluidos, LSem));
+        Check('NFS-e: nota criada', LNota > 0);
+        Check('NFS-e: 1 item', LIncluidos = 1);
+        Check('NFS-e: item sem produto', LSem = 1);
+
+        LQuery.Close;
+        LQuery.SQL.Text :=
+          'SELECT MODELO, CHAVE_ACESSO FROM NOTA_ENTRADA WHERE ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LNota;
+        LQuery.Open;
+        Check('NFS-e: modelo na nota',
+          LQuery.FieldByName('MODELO').AsString = 'NFS');
+        Check('NFS-e: chave interna gravada',
+          Length(LQuery.FieldByName('CHAVE_ACESSO').AsString) = 43);
+        LQuery.Close;
+
+        LQuery.SQL.Text :=
+          'SELECT ATUALIZA_ESTOQUE, DESCRICAO, NCM, CFOP ' +
+          'FROM NOTA_ENTRADA_ITEM WHERE NOTA_ENTRADA_ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LNota;
+        LQuery.Open;
+        Check('NFS-e: sem movimento de estoque',
+          LQuery.FieldByName('ATUALIZA_ESTOQUE').AsString = 'N');
+        Check('NFS-e: descrição original no item',
+          LQuery.FieldByName('DESCRICAO').AsString = LDesc);
+        Check('NFS-e: item sem NCM/CFOP',
+          (LQuery.FieldByName('NCM').AsString = '') and
+          (LQuery.FieldByName('CFOP').AsString = ''));
+        LQuery.Close;
+
+        LQuery.SQL.Text :=
+          'SELECT TIPO_DOCUMENTO, PROVEDOR, FORNECEDOR_CNPJ, ' +
+          '  DESCRICAO_ORIGINAL, CODIGO_PRODUTO_NOTA, CLASSIFICACAO_FISCAL, ' +
+          '  SITUACAO FROM IMPORTACAO_XML_ITEM WHERE NOTA_ENTRADA_ID = :ID';
+        LQuery.ParamByName('ID').AsLargeInt := LNota;
+        LQuery.Open;
+        Check('NFS-e: tipo no rastro',
+          LQuery.FieldByName('TIPO_DOCUMENTO').AsString = 'NFS-e');
+        Check('NFS-e: provedor',
+          LQuery.FieldByName('PROVEDOR').AsString = 'NACIONAL');
+        Check('NFS-e: CNPJ do fornecedor',
+          LQuery.FieldByName('FORNECEDOR_CNPJ').AsString = LDoc);
+        Check('NFS-e: descrição original',
+          LQuery.FieldByName('DESCRICAO_ORIGINAL').AsString = LDesc);
+        Check('NFS-e: produto da nota',
+          LQuery.FieldByName('CODIGO_PRODUTO_NOTA').AsString = '010101');
+        Check('NFS-e: classificação fiscal',
+          LQuery.FieldByName('CLASSIFICACAO_FISCAL').AsString =
+          'SERVICO 010101');
+        Check('NFS-e: pendente de mapeamento',
+          LQuery.FieldByName('SITUACAO').AsString = 'PENDENTE');
+        LQuery.Close;
+        ASuite.AddResult('TestImportacaoNFS_eRastro', True);
+      except
+        on E: Exception do
+          ASuite.AddResult('TestImportacaoNFS_eRastro', False, E.Message);
+      end;
+    finally
+      LimparCenario(LNota, LFornecedor, 0, LArquivo);
+    end;
+  end;
+
+  procedure TestImportacaoNFS_eDuplicidade;
+  var
+    LFornecedor, LNota: Int64;
+    LChave, LArquivo, LDoc: string;
+    LIncluidos, LSem: Integer;
+    LDuplicataId: Int64;
+    LRecusou: Boolean;
+  begin
+    LFornecedor := 0;
+    LNota := 0;
+    LDuplicataId := 0;
+    LChave := ChaveNFS_e(LSufixo, 503);
+    LDoc := Copy('98' + LSufixo, 1, 14);
+    PrepararXmlNFS_e(LChave, LDoc, 'SERVICO DUPLICADO', LFornecedor, LArquivo);
+    try
+      try
+        Check('NFS-e: primeira importação',
+          TNFeImportService.Importar(LArquivo, LNota, LIncluidos, LSem));
+        LRecusou := False;
+        try
+          TNFeImportService.Importar(LArquivo, LDuplicataId, LIncluidos,
+            LSem);
+        except
+          on E: ENFeXml do
+            LRecusou := Pos('já foi importado', E.Message) > 0;
+        end;
+        Check('NFS-e: reimportação recusada', LRecusou);
+        ASuite.AddResult('TestImportacaoNFS_eDuplicidade', True);
+      except
+        on E: Exception do
+          ASuite.AddResult('TestImportacaoNFS_eDuplicidade', False, E.Message);
+      end;
+    finally
+      LimparCenario(LNota, LFornecedor, 0, LArquivo);
+    end;
+  end;
+
   procedure TestImportacaoXmlRastroItem;
   var
     LFornecedor, LNota: Int64;
@@ -1785,6 +2018,9 @@ begin
     TestModoHomologacao;
     TestDestinatarioOpcionalNFCe;
     TestImportarXmlNotaEntrada;
+    TestParserNFS_eSemBanco;
+    TestImportacaoNFS_eRastro;
+    TestImportacaoNFS_eDuplicidade;
     TestImportacaoXmlRastroItem;
     TestImportacaoXmlMapeiaProdutoExistente;
     TestImportacaoXmlCriaProdutoNovo;

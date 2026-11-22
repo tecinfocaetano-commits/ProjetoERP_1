@@ -59,6 +59,18 @@ type
     ValorDesconto: Double;
     ValorOutras: Double;
     ValorTotal: Double;
+    { Campos preenchidos somente quando o XML é uma NFS-e nacional 1.01.
+      Modelo = 'NFS' (3 posições) e TipoDocumento = 'NFS-e'. }
+    TipoDocumento: string;
+    Provedor: string;
+    ChaveOriginal: string;
+    InscricaoMunicipal: string;
+    MunicipioIBGE: string;
+    CodigoServico: string;
+    ValorISS: Double;
+    ValorRetPis: Double;
+    ValorRetCofins: Double;
+    ValorRetInss: Double;
     Itens: array of TNFeXmlItem;
     { Acrescenta um item vazio e devolve o indice criado. }
     function AdicionarItem: Integer;
@@ -87,8 +99,20 @@ type
 implementation
 
 uses
-  StrUtils, SQLDB, uConexao, uSessao, uAuditoria, uNotaEntradaService,
+  StrUtils, sha1, SQLDB, uConexao, uSessao, uAuditoria, uNotaEntradaService,
   uImportacaoXmlMapService;
+
+const
+  { XSD nacional 1.01: TSIdNFSe = 'NFS' + 50 dígitos (53 posições).
+    CHAVE_ACESSO e IMPORTACAO_XML_ITEM.CHAVE têm só 44, por isso a chave
+    interna é 'NFS' + SHA-1 em hexadecimal (43). A chave original fica no
+    log de auditoria; a interna é determinística e cabe nas duas colunas. }
+  NFS_ID_PREFIXO = 'NFS';
+
+function ChaveInternaNFS(const AIdOriginal: string): string;
+begin
+  Result := NFS_ID_PREFIXO + SHA1Print(SHA1String(AIdOriginal));
+end;
 
 function SomenteDigitos(const AValor: string): string;
 var
@@ -222,6 +246,153 @@ begin
     Result := Copy(Result, 4, Length(Result));
 end;
 
+{ Lê um atributo da tag de abertura (ex.: Id em <infNFSe Id="...">).
+  TagBlocos devolve só o conteúdo, por isso o atributo é lido do texto todo. }
+function AtributoTag(const ATexto, ATag, AAtrib: string): string;
+var
+  LP, LFim, LPos: Integer;
+  LAbre, LCabecalho, LPadrao: string;
+begin
+  Result := '';
+  LAbre := '<' + ATag;
+  LP := PosEx(LAbre, ATexto, 1);
+  if LP = 0 then
+    Exit;
+  LFim := PosEx('>', ATexto, LP);
+  if LFim = 0 then
+    Exit;
+  LCabecalho := Copy(ATexto, LP, LFim - LP);
+  LPadrao := AAtrib + '=';
+  LPos := PosEx(LPadrao, LCabecalho);
+  if LPos = 0 then
+    Exit;
+  LPos := LPos + Length(LPadrao);
+  if (LPos > Length(LCabecalho)) or (LCabecalho[LPos] <> '"') then
+    Exit;
+  Inc(LPos);
+  LFim := PosEx('"', LCabecalho, LPos);
+  if LFim = 0 then
+    Exit;
+  Result := DecodificarXml(Trim(Copy(LCabecalho, LPos, LFim - LPos)));
+end;
+
+{ ------------------------------------------------------------------
+  NFS-e Nacional 1.01 (Sistema Nacional) — leitura pura, sem ACBr/rede.
+  Estrutura XSD: NFSe/infNFSe/emit + valores + DPS/infDPS(serv,valores).
+  Como a NFS-e tem um único serviço por DPS, o parser sintetiza 1 item
+  em TNFeXml.Itens para reaproveitar o importador e o rastro do 3.89.
+  ------------------------------------------------------------------ }
+function ParseNFSe(const LTexto, LBloco: string): TNFeXml;
+var
+  LIdNFSe, LDps, LInfDps, LServ, LCServ, LValServ, LValores, LTotal: string;
+  LEmit, LPrest, LTrib, LTribMun, LTribFed, LPisCofins: string;
+  LItem: TNFeXmlItem;
+  LIndice: Integer;
+  LValorServico: Double;
+begin
+  Result := TNFeXml.Create;
+  try
+    LIdNFSe := AtributoTag(LTexto, 'infNFSe', 'Id');
+    if (Length(LIdNFSe) <> 53) or
+       (Copy(LIdNFSe, 1, 3) <> NFS_ID_PREFIXO) or
+       (Length(SomenteDigitos(Copy(LIdNFSe, 4, 50))) <> 50) then
+      raise ENFeXml.Create('NFS-e sem Id válido (NFS + 50 dígitos).');
+
+    Result.TipoDocumento := 'NFS-e';
+    Result.Provedor := 'NACIONAL';
+    Result.Modelo := 'NFS';
+    Result.ChaveOriginal := LIdNFSe;
+    Result.ChaveAcesso := ChaveInternaNFS(LIdNFSe);
+    Result.NaturezaOperacao := 'PRESTACAO DE SERVICOS';
+    Result.Cfop := '';
+
+    LDps := TagTexto(LBloco, 'DPS');
+    LInfDps := TagTexto(LDps, 'infDPS');
+    Result.Numero := TagTexto(LBloco, 'nNFSe');
+    Result.Serie := TagTexto(LInfDps, 'serie');
+    if Trim(Result.Serie) = '' then
+      Result.Serie := '1';
+    Result.DataEmissao := DataXml(TagTexto(LBloco, 'dhProc'));
+    if Result.DataEmissao <= 0 then
+      Result.DataEmissao := DataXml(TagTexto(LInfDps, 'dhEmi'));
+
+    LEmit := TagTexto(LBloco, 'emit');
+    LPrest := TagTexto(LInfDps, 'prest');
+    Result.EmitenteNome := TagTexto(LEmit, 'xNome');
+    Result.EmitenteCnpj := TagTexto(LEmit, 'CNPJ');
+    if Trim(Result.EmitenteCnpj) = '' then
+      Result.EmitenteCnpj := TagTexto(LEmit, 'CPF');
+    if Trim(Result.EmitenteNome) = '' then
+      Result.EmitenteNome := TagTexto(LPrest, 'xNome');
+    if Trim(Result.EmitenteCnpj) = '' then
+      Result.EmitenteCnpj := TagTexto(LPrest, 'CNPJ');
+    if Trim(Result.EmitenteCnpj) = '' then
+      Result.EmitenteCnpj := TagTexto(LPrest, 'CPF');
+    Result.InscricaoMunicipal := TagTexto(LEmit, 'IM');
+    if Trim(Result.InscricaoMunicipal) = '' then
+      Result.InscricaoMunicipal := TagTexto(LPrest, 'IM');
+    Result.MunicipioIBGE := TagTexto(LInfDps, 'cLocEmi');
+    if Trim(Result.MunicipioIBGE) = '' then
+      Result.MunicipioIBGE := TagTexto(
+        TagTexto(LInfDps, 'locPrest'), 'cLocPrestacao');
+
+    LServ := TagTexto(LInfDps, 'serv');
+    LCServ := TagTexto(LServ, 'cServ');
+    Result.CodigoServico := TagTexto(LCServ, 'cTribNac');
+
+    LValores := TagTexto(LInfDps, 'valores');
+    LValServ := TagTexto(LValores, 'vServPrest');
+    LValorServico := NumXml(TagTexto(LValServ, 'vServ'));
+    if LValorServico <= 0 then
+      LValorServico := NumXml(TagTexto(LValores, 'vServ'));
+    LTotal := TagTexto(LBloco, 'valores');
+    Result.ValorTotal := NumXml(TagTexto(LTotal, 'vLiq'));
+    if Result.ValorTotal <= 0 then
+      Result.ValorTotal := LValorServico;
+    Result.ValorProdutos := LValorServico;
+    Result.ValorDesconto := NumXml(TagTexto(
+      TagTexto(LValores, 'vDescCondIncond'), 'vDescIncond'));
+
+    LTrib := TagTexto(LValores, 'trib');
+    LTribMun := TagTexto(LTrib, 'tribMun');
+    LTribFed := TagTexto(LTrib, 'tribFed');
+    LPisCofins := TagTexto(LTribFed, 'piscofins');
+    Result.ValorISS := NumXml(TagTexto(LTotal, 'vISSQN'));
+    if Result.ValorISS <= 0 then
+      Result.ValorISS := NumXml(TagTexto(LTribMun, 'pAliq')) *
+        LValorServico / 100;
+    Result.ValorRetPis := NumXml(TagTexto(LPisCofins, 'vPis'));
+    Result.ValorRetCofins := NumXml(TagTexto(LPisCofins, 'vCofins'));
+    Result.ValorRetInss := NumXml(TagTexto(LTribFed, 'vRetCP'));
+
+    LItem.Codigo := Result.CodigoServico;
+    LItem.Ean := '';
+    LItem.Descricao := TagTexto(LCServ, 'xDescServ');
+    LItem.Ncm := '';
+    LItem.Cfop := '';
+    LItem.CstIcms := '';
+    LItem.Unidade := 'UN';
+    LItem.Quantidade := 1;
+    LItem.ValorUnitario := LValorServico;
+    LItem.Desconto := Result.ValorDesconto;
+    LIndice := Result.AdicionarItem;
+    Result.Itens[LIndice] := LItem;
+
+    if Trim(Result.Numero) = '' then
+      raise ENFeXml.Create('NFS-e sem número (nNFSe).');
+    if Trim(LItem.Descricao) = '' then
+      raise ENFeXml.Create('NFS-e sem descrição do serviço (xDescServ).');
+    if LValorServico <= 0 then
+      raise ENFeXml.Create('NFS-e sem valor de serviço (vServ).');
+    if (Trim(Result.EmitenteCnpj) = '') and
+       (Trim(Result.EmitenteNome) = '') then
+      raise ENFeXml.Create('NFS-e sem emitente (CNPJ/CPF/nome).');
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
 { ------------------------------------------------------------------
   TNFeXml
   ------------------------------------------------------------------ }
@@ -285,10 +456,25 @@ begin
 
   LTexto := Normalizar(AXml);
 
+  { NFS-e Nacional 1.01 tem prioridade na detecção: o bloco infNFSe
+    carrega a DPS anexa e não deve cair no parser de NF-e. }
+  if Pos('<infNFSe', LTexto) > 0 then
+  begin
+    LLista := TagBlocos(LTexto, 'infNFSe');
+    try
+      if LLista.Count = 0 then
+        raise ENFeXml.Create('XML NFS-e inválido (infNFSe sem fechamento).');
+      Exit(ParseNFSe(LTexto, LLista[0]));
+    finally
+      LLista.Free;
+    end;
+  end;
+
   LLista := TagBlocos(LTexto, 'infNFe');
   try
     if LLista.Count = 0 then
-      raise ENFeXml.Create('XML não parece ser uma NF-e (tag infNFe ausente).');
+      raise ENFeXml.Create(
+        'XML não parece ser NF-e nem NFS-e (tags infNFe/infNFSe ausentes).');
     LBloco := LLista[0];
   finally
     LLista.Free;
@@ -302,6 +488,8 @@ begin
     Result.Modelo := TagTexto(LBloco, 'mod');
     if Trim(Result.Modelo) = '' then
       Result.Modelo := '55';
+    Result.TipoDocumento := Result.Modelo;
+    Result.Provedor := 'NACIONAL';
     Result.DataEmissao := DataXml(TagTexto(LBloco, 'dhEmi'));
     if Result.DataEmissao <= 0 then
       Result.DataEmissao := DataXml(TagTexto(LBloco, 'dEmi'));
@@ -539,7 +727,7 @@ var
   LDados: TNotaEntradaCabecalho;
   LFornecedorId, LProdutoId, LNotaExistente, LItemId: Int64;
   LI: Integer;
-  LClassificacao, LSituacao: string;
+  LClassificacao, LSituacao, LChaveAuditoria: string;
 begin
   Result := False;
   ANotaId := 0;
@@ -548,6 +736,12 @@ begin
 
   LNFe := TNFeXmlParser.DeArquivo(ACaminhoXML);
   try
+    { NFS-e: a chave original (53 posições) não cabe em CHAVE_ACESSO;
+      o log guarda o valor completo, o banco usa a chave interna de 43. }
+    if LNFe.TipoDocumento = 'NFS-e' then
+      LChaveAuditoria := LNFe.ChaveOriginal
+    else
+      LChaveAuditoria := LNFe.ChaveAcesso;
     LConexao := TConexao.GetInstance;
     LQuery := TSQLQuery.Create(nil);
     try
@@ -557,8 +751,8 @@ begin
       LNotaExistente := NotaDaChave(LNFe.ChaveAcesso, LQuery);
       if LNotaExistente > 0 then
         raise ENFeXml.Create(Format(
-          'Esta NF-e já foi importada (nota de entrada %d).',
-          [LNotaExistente]));
+          'Este XML (%s) já foi importado (nota de entrada %d).',
+          [LNFe.TipoDocumento, LNotaExistente]));
 
       LFornecedorId := LocalizarFornecedor(LNFe, LQuery);
       if LFornecedorId <= 0 then
@@ -603,11 +797,16 @@ begin
               LNFe.Itens[LI].Descricao, LNFe.Itens[LI].Quantidade,
               LNFe.Itens[LI].ValorUnitario, LNFe.Itens[LI].Desconto,
               LNFe.Itens[LI].Ncm, LNFe.Itens[LI].Cfop,
-              LNFe.Itens[LI].CstIcms, -1);
-            LClassificacao := TImportacaoXmlMapService.ClassificacaoDoItem(
-              LNFe.Itens[LI].Ncm, LNFe.Itens[LI].Cfop,
-              LNFe.Itens[LI].CstIcms, '');
-            LMapa.RegistrarItem(LNFe.ChaveAcesso, LNFe.Modelo, 'NACIONAL',
+              LNFe.Itens[LI].CstIcms, -1,
+              LNFe.TipoDocumento <> 'NFS-e');
+            if LNFe.TipoDocumento = 'NFS-e' then
+              LClassificacao := 'SERVICO ' + LNFe.CodigoServico
+            else
+              LClassificacao := TImportacaoXmlMapService.ClassificacaoDoItem(
+                LNFe.Itens[LI].Ncm, LNFe.Itens[LI].Cfop,
+                LNFe.Itens[LI].CstIcms, '');
+            LMapa.RegistrarItem(LNFe.ChaveAcesso, LNFe.TipoDocumento,
+              LNFe.Provedor,
               LNFe.EmitenteCnpj, LNFe.Itens[LI].Descricao,
               LNFe.Itens[LI].Codigo, LClassificacao,
               LNFe.Itens[LI].Ncm, LNFe.Itens[LI].Cfop,
@@ -630,7 +829,8 @@ begin
 
           RegistrarAuditoria('XML_FISCAL', 'IMPORTACAO_XML', ANotaId, '',
             'Arquivo=' + ExtractFileName(ACaminhoXML) +
-            '; Chave=' + LNFe.ChaveAcesso +
+            '; Tipo=' + LNFe.TipoDocumento +
+            '; Chave=' + LChaveAuditoria +
             '; Itens=' + IntToStr(AItensIncluidos) +
             '; SemProduto=' + IntToStr(AItensSemProduto));
 

@@ -403,6 +403,13 @@
         <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
+        <Filename Value="src/Views/uFrmNotaSaidaServico.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmNotaSaidaServico"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
         <Filename Value="src/Views/uFrmCopiloto.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="frmCopiloto"/>

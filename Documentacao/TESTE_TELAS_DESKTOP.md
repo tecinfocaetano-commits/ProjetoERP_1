@@ -1,8 +1,8 @@
 ﻿# Teste de UI em todas as telas do desktop
 
-Gerado por `Scripts\testes\telas_todas_ui.ps1` em 21/11/2026 23:53 (HEAD `e36e2b7`).
+Gerado por `Scripts\testes\telas_todas_ui.ps1` em 22/11/2026 01:45 (HEAD `7e4c1e5`).
 
-**Resultado: 33 OK, 0 aviso(s), 0 falha(s)** - 33 telas do menu.
+**Resultado: 34 OK, 0 aviso(s), 0 falha(s)** - 34 telas do menu.
 
 Criterio: o item de menu foi acionado por `WM_COMMAND`; a tela precisa abrir uma
 janela visivel com pelo menos um controle. Avisos de negocio (ex.: caixa fechado)
@@ -28,21 +28,22 @@ sao lidos e fechados, e a tela por tras continua sendo validada.
 | 16 | 22 | Fiscal > Nota de Saída | Nota de Saída (Faturamento de Venda) | 16 | **OK** | evidencias/telas_22_nota_de_saida_faturamento_de_venda.png |
 | 17 | 23 | Fiscal > Nota de Entrada | Nota de Entrada (Compra de Mercadoria) | 18 | **OK** | evidencias/telas_23_nota_de_entrada_compra_de_mercadoria.png |
 | 18 | 24 | Fiscal > NF-e / NFC-e | NF-e / NFC-e - Notas Fiscais Eletrônicas | 22 | **OK** | evidencias/telas_24_nf_e_nfc_e_notas_fiscais_eletronicas.png |
-| 19 | 26 | Cadastros > Pessoas | Pessoas | 39 | **OK** | evidencias/telas_26_pessoas.png |
-| 20 | 27 | Cadastros > Categorias | Categorias | 18 | **OK** | evidencias/telas_27_categorias.png |
-| 21 | 28 | Cadastros > Grades | Grades | 22 | **OK** | evidencias/telas_28_grades.png |
-| 22 | 29 | Cadastros > Países | Países | 19 | **OK** | evidencias/telas_29_paises.png |
-| 23 | 30 | Cadastros > Estados | Estados | 20 | **OK** | evidencias/telas_30_estados.png |
-| 24 | 31 | Cadastros > Cidades | Cidades | 20 | **OK** | evidencias/telas_31_cidades.png |
-| 25 | 33 | Cadastros > Usuários | Usuários | 24 | **OK** | evidencias/telas_33_usuarios.png |
-| 26 | 35 | Estoque > Movimentação | Movimentação de Estoque | 11 | **OK** | evidencias/telas_35_movimentacao_de_estoque.png |
-| 27 | 36 | Estoque > Inventário | Inventário de Estoque | 9 | **OK** | evidencias/telas_36_inventario_de_estoque.png |
-| 28 | 37 | Estoque > Kardex | Kardex do Produto | 12 | **OK** | evidencias/telas_37_kardex_do_produto.png |
-| 29 | 39 | PDV > Abrir PDV | PDV - Ponto de Venda | 19 | **OK** | evidencias/telas_39_pdv_ponto_de_venda.png |
-| 30 | 41 | Relatórios > Central de Relatórios... | Central de Relatórios | 6 | **OK** | evidencias/telas_41_central_de_relatorios.png |
-| 31 | 43 | IA Copiloto > Abrir Copiloto ERP | Copiloto ERP - Assistente Inteligente | 16 | **OK** | evidencias/telas_43_copiloto_erp_assistente_inteligente.png |
-| 32 | 45 | Sistema > Configurações | Configurações | 20 | **OK** | evidencias/telas_45_configuracoes.png |
-| 33 | 46 | Sistema > Permissões | Permissões | 16 | **OK** | evidencias/telas_46_permissoes.png |
+| 19 | 25 | Fiscal > Nota de Serviço | Nota de Serviço (NFS-e resumida) | 24 | **OK** | evidencias/telas_25_nota_de_servico_nfs_e_resumida.png |
+| 20 | 27 | Cadastros > Pessoas | Pessoas | 39 | **OK** | evidencias/telas_27_pessoas.png |
+| 21 | 28 | Cadastros > Categorias | Categorias | 18 | **OK** | evidencias/telas_28_categorias.png |
+| 22 | 29 | Cadastros > Grades | Grades | 22 | **OK** | evidencias/telas_29_grades.png |
+| 23 | 30 | Cadastros > Países | Países | 19 | **OK** | evidencias/telas_30_paises.png |
+| 24 | 31 | Cadastros > Estados | Estados | 20 | **OK** | evidencias/telas_31_estados.png |
+| 25 | 32 | Cadastros > Cidades | Cidades | 20 | **OK** | evidencias/telas_32_cidades.png |
+| 26 | 34 | Cadastros > Usuários | Usuários | 24 | **OK** | evidencias/telas_34_usuarios.png |
+| 27 | 36 | Estoque > Movimentação | Movimentação de Estoque | 11 | **OK** | evidencias/telas_36_movimentacao_de_estoque.png |
+| 28 | 37 | Estoque > Inventário | Inventário de Estoque | 9 | **OK** | evidencias/telas_37_inventario_de_estoque.png |
+| 29 | 38 | Estoque > Kardex | Kardex do Produto | 12 | **OK** | evidencias/telas_38_kardex_do_produto.png |
+| 30 | 40 | PDV > Abrir PDV | PDV - Ponto de Venda | 19 | **OK** | evidencias/telas_40_pdv_ponto_de_venda.png |
+| 31 | 42 | Relatórios > Central de Relatórios... | Central de Relatórios | 6 | **OK** | evidencias/telas_42_central_de_relatorios.png |
+| 32 | 44 | IA Copiloto > Abrir Copiloto ERP | Copiloto ERP - Assistente Inteligente | 16 | **OK** | evidencias/telas_44_copiloto_erp_assistente_inteligente.png |
+| 33 | 46 | Sistema > Configurações | Configurações | 20 | **OK** | evidencias/telas_46_configuracoes.png |
+| 34 | 47 | Sistema > Permissões | Permissões | 16 | **OK** | evidencias/telas_47_permissoes.png |
 
 Telas fora do menu cobertas em outros testes: **Login** (fluxo do `Start-ERPApp`),
 dialogos `uFrmCoresProduto` e `uFrmGradeQuantidades` (abertos por botao nas telas

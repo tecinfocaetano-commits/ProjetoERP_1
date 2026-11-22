@@ -84,7 +84,8 @@ type
     function  SalvarItem(ANotaId, AItemId, AProdutoId: Int64;
       const ADescricao: string; AQuantidade, AValorUnitario,
       ADesconto: Double; const ANcm: string = ''; const ACfop: string = '';
-      const ACstIcms: string = ''; AAliqIcms: Double = -1): Int64;
+      const ACstIcms: string = ''; AAliqIcms: Double = -1;
+      AAtualizaEstoque: Boolean = True): Int64;
     procedure Processar(ANotaId: Int64);
     procedure Cancelar(ANotaId: Int64);
     procedure ExcluirItem(AItemId: Int64);
@@ -392,7 +393,7 @@ end;
 function TNotaEntradaService.SalvarItem(ANotaId, AItemId, AProdutoId: Int64;
   const ADescricao: string; AQuantidade, AValorUnitario,
   ADesconto: Double; const ANcm: string; const ACfop: string;
-  const ACstIcms: string; AAliqIcms: Double): Int64;
+  const ACstIcms: string; AAliqIcms: Double; AAtualizaEstoque: Boolean): Int64;
 var
   LQuery: TSQLQuery;
   LProdutoFiscalId: Int64;
@@ -444,8 +445,21 @@ begin
             '  ALIQ_ICMS, VALOR_ICMS, QUANTIDADE, VALOR_UNITARIO, ' +
             '  VALOR_TOTAL, DESCONTO, ATUALIZA_ESTOQUE, ATUALIZA_CUSTO) ' +
             'VALUES (:NOTA, :PROD, :PFISCAL, :DESC, :NCM, :CFOP, :CST, ' +
-            '  :ALIQ, :VICMS, :QTD, :VUN, :VTOT, :DSC, ''S'', ''S'') ' +
+            '  :ALIQ, :VICMS, :QTD, :VUN, :VTOT, :DSC, :ESTOQUE, :CUSTO) ' +
             'RETURNING ID';
+          { NFS-e/serviços não entram no estoque nem no custo médio;
+            NF-e continua com o padrão 'S','S'. O UPDATE não tem esses
+            parâmetros; por isso eles são setados só neste branch. }
+          if AAtualizaEstoque then
+          begin
+            LQuery.ParamByName('ESTOQUE').AsString := 'S';
+            LQuery.ParamByName('CUSTO').AsString := 'S';
+          end
+          else
+          begin
+            LQuery.ParamByName('ESTOQUE').AsString := 'N';
+            LQuery.ParamByName('CUSTO').AsString := 'N';
+          end;
         end
         else
         begin

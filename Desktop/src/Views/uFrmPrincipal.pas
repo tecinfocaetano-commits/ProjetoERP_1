@@ -56,6 +56,7 @@ type
     mnuFinMovimentacao: TMenuItem;
     mnuFiscal: TMenuItem;
     mnuFisNFe: TMenuItem;
+    mnuFisNotaServico: TMenuItem;
     mnuRelatorios: TMenuItem;
     mnuRelCentral: TMenuItem;
     mnuIA: TMenuItem;
@@ -104,6 +105,7 @@ procedure mnuVenNotaSaidaClick(Sender: TObject);
     procedure mnuSupMateriaisClick(Sender: TObject);
     procedure mnuSupComprasClick(Sender: TObject);
     procedure mnuFisNFeClick(Sender: TObject);
+    procedure mnuFisNotaServicoClick(Sender: TObject);
     procedure mnuIACopilotoClick(Sender: TObject);
     procedure mnuRelCentralClick(Sender: TObject);
     procedure mnuSisConfiguracoesClick(Sender: TObject);
@@ -129,7 +131,7 @@ uses
   uFrmFichaTecnica, uFrmConsumoMaterial,
   uFrmPedidoVenda, uFrmListaPedidos, uFrmOrcamento,
   uFrmPDV, uFrmContasReceber, uFrmContasPagar,
-  uFrmNFe, uFrmCopiloto,
+  uFrmNFe, uFrmNotaSaidaServico, uFrmCopiloto,
   uFrmProdutoFiscal, uFrmMaterial,
   uFrmMovimentoFinanceiro, uFrmCompras,
   uFrmPais, uFrmEstado, uFrmCidade, uFrmGrade,
@@ -210,8 +212,8 @@ end;
   precisa descobrir a recusa só depois de clicar. }
 procedure TfrmPrincipal.AplicarPermissoesNoMenu;
 var
-  LPar: array[0..32] of TMenuItem;
-  LClasses: array[0..32] of TFormClass;
+  LPar: array[0..33] of TMenuItem;
+  LClasses: array[0..33] of TFormClass;
   I: Integer;
   LModulo, LTela: string;
 
@@ -241,21 +243,22 @@ begin
   LPar[15] := mnuVenNotaSaida;      LClasses[15] := TfrmNotaSaida;
   LPar[16] := mnuComNotaEntrada;    LClasses[16] := TfrmNotaEntrada;
   LPar[17] := mnuFisNFe;            LClasses[17] := TfrmNFe;
-  LPar[18] := mnuCadPessoas;        LClasses[18] := TfrmPessoas;
-  LPar[19] := mnuCadCategorias;     LClasses[19] := TfrmCategorias;
-  LPar[20] := mnuCadGrades;         LClasses[20] := TfrmGrade;
-  LPar[21] := mnuCadPaises;         LClasses[21] := TfrmPais;
-  LPar[22] := mnuCadEstados;        LClasses[22] := TfrmEstado;
-  LPar[23] := mnuCadCidades;        LClasses[23] := TfrmCidade;
-  LPar[24] := mnuCadUsuarios;       LClasses[24] := TfrmUsuarios;
-  LPar[25] := mnuEstMovimentacao;   LClasses[25] := TfrmMovEstoque;
-  LPar[26] := mnuEstInventario;     LClasses[26] := TfrmInventario;
-  LPar[27] := mnuEstKardex;         LClasses[27] := TfrmKardex;
-  LPar[28] := mnuPDVAbrirPDV;       LClasses[28] := TfrmPDV;
-  LPar[29] := mnuRelCentral;        LClasses[29] := TfrmCentralRelatorios;
-  LPar[30] := mnuIACopiloto;        LClasses[30] := TfrmCopiloto;
-  LPar[31] := mnuSisConfiguracoes;  LClasses[31] := TfrmConfiguracoes;
-  LPar[32] := mnuSisPermissoes;     LClasses[32] := TfrmPermissoes;
+  LPar[18] := mnuFisNotaServico;    LClasses[18] := TfrmNotaSaidaServico;
+  LPar[19] := mnuCadPessoas;        LClasses[19] := TfrmPessoas;
+  LPar[20] := mnuCadCategorias;     LClasses[20] := TfrmCategorias;
+  LPar[21] := mnuCadGrades;         LClasses[21] := TfrmGrade;
+  LPar[22] := mnuCadPaises;         LClasses[22] := TfrmPais;
+  LPar[23] := mnuCadEstados;        LClasses[23] := TfrmEstado;
+  LPar[24] := mnuCadCidades;        LClasses[24] := TfrmCidade;
+  LPar[25] := mnuCadUsuarios;       LClasses[25] := TfrmUsuarios;
+  LPar[26] := mnuEstMovimentacao;   LClasses[26] := TfrmMovEstoque;
+  LPar[27] := mnuEstInventario;     LClasses[27] := TfrmInventario;
+  LPar[28] := mnuEstKardex;         LClasses[28] := TfrmKardex;
+  LPar[29] := mnuPDVAbrirPDV;       LClasses[29] := TfrmPDV;
+  LPar[30] := mnuRelCentral;        LClasses[30] := TfrmCentralRelatorios;
+  LPar[31] := mnuIACopiloto;        LClasses[31] := TfrmCopiloto;
+  LPar[32] := mnuSisConfiguracoes;  LClasses[32] := TfrmConfiguracoes;
+  LPar[33] := mnuSisPermissoes;     LClasses[33] := TfrmPermissoes;
 
   for I := Low(LPar) to High(LPar) do
     Marcar(LPar[I], LClasses[I]);
@@ -504,6 +507,11 @@ end;
 procedure TfrmPrincipal.mnuFisNFeClick(Sender: TObject);
 begin
   AbrirFormulario(TfrmNFe);
+end;
+
+procedure TfrmPrincipal.mnuFisNotaServicoClick(Sender: TObject);
+begin
+  AbrirFormulario(TfrmNotaSaidaServico);
 end;
 
 // === IA COPILOTO ===

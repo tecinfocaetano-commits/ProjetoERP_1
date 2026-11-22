@@ -195,10 +195,12 @@ Limitações encontradas:
 > Já entregue (22/11): preferências `NFSE_*`, DPS nacional 1.01 em
 > `NFSE_MODO=SIMULADO` (sem certificado/assinatura/envio), tabela
 > `NOTA_SAIDA_SERVICO`, retenções, auditoria e dedupe.Para conferir, rode
-> `Scripts\run_tests.bat` e veja os 9 testes `TestNFSe*` (suíte 397/397).
-> O XSD oficial está em `Schemas\NFSe\1.01` e é copiado por
-> `Scripts\preparar_nfse.bat`. **Ainda é plano:** emissão com protocolo,
-> tela de cadastro, adapters Sigcorp/Beta e integração homologada.
+> `Scripts\run_tests.bat` e veja os 9 testes `TestNFSe*` e os 3 testes
+> `Test*NFS_e*` do parser/importação (suíte 400/400). O XSD oficial está em
+> `Schemas\NFSe\1.01` e é copiado por `Scripts\preparar_nfse.bat`.
+> **Concluído no 3.93:** tela resumida de nota de serviço e NFS-e no parser
+> da nota de entrada. **Ainda é plano:** emissão com protocolo, adapters
+> Sigcorp/Beta e integração homologada.
 
 Motivo: nota de serviço está em alta e, a partir de 2026, o padrão nacional
 de NFS-e passou a ser exigido (confirmar prazos específicos no portal oficial

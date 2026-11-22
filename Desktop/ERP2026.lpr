@@ -101,6 +101,8 @@ uses
   uFrmContasPagar,
   // Views - Fase 6
   uFrmNFe,
+  // Views - Fase 3.93: nota de serviço resumida (NFS-e)
+  uFrmNotaSaidaServico,
   // Views - Fase 9
   uFrmCopiloto,
   // Views - telas de administração (menu Sistema / Financeiro / Relatórios)

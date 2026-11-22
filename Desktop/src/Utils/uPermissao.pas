@@ -69,7 +69,7 @@ const
 { Catálogo canônico: uma linha por tela do menu principal. A ordem
   segue o menu (Suprimentos, Produção, Financeiro, Fiscal, Cadastros,
   Estoque, PDV, Relatórios, IA, Sistema). }
-  CATALOGO_TELAS: array[0..32] of TTelaPermissao = (
+  CATALOGO_TELAS: array[0..33] of TTelaPermissao = (
     (FormClass: 'TfrmMaterial';        Modulo: MODULO_SUPRIMENTOS; Tela: 'MATERIAIS';         Descricao: 'Suprimentos > Materiais'),
     (FormClass: 'TfrmCompras';         Modulo: MODULO_SUPRIMENTOS; Tela: 'COMPRAS';          Descricao: 'Suprimentos > Compras'),
     (FormClass: 'TfrmConsumoMaterial';  Modulo: MODULO_SUPRIMENTOS; Tela: TELA_CONSUMO;      Descricao: 'Suprimentos > Consumo de Materiais'),
@@ -88,6 +88,7 @@ const
     (FormClass: 'TfrmNotaSaida';        Modulo: MODULO_FISCAL;      Tela: 'NOTA_SAIDA';       Descricao: 'Fiscal > Nota de Saída'),
     (FormClass: 'TfrmNotaEntrada';      Modulo: MODULO_FISCAL;      Tela: 'NOTA_ENTRADA';     Descricao: 'Fiscal > Nota de Entrada'),
     (FormClass: 'TfrmNFe';              Modulo: MODULO_FISCAL;      Tela: 'NFE';             Descricao: 'Fiscal > NF-e / NFC-e'),
+    (FormClass: 'TfrmNotaSaidaServico'; Modulo: MODULO_FISCAL;      Tela: 'NOTA_SAIDA_SERVICO'; Descricao: 'Fiscal > Nota de Serviço'),
     (FormClass: 'TfrmPessoas';          Modulo: MODULO_CADASTROS;   Tela: 'PESSOAS';          Descricao: 'Cadastros > Pessoas'),
     (FormClass: 'TfrmCategorias';       Modulo: MODULO_CADASTROS;   Tela: 'CATEGORIAS';       Descricao: 'Cadastros > Categorias'),
     (FormClass: 'TfrmGrade';            Modulo: MODULO_CADASTROS;   Tela: 'GRADES';           Descricao: 'Cadastros > Grades'),

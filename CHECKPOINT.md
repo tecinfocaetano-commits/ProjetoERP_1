@@ -15,7 +15,7 @@
    este texto pode estar um passo atrás.
 3. Ler "Estado atual" abaixo e abrir os arquivos citados.
 4. `Scripts\build_desktop.bat` (deve linkar) e `Scripts\run_tests.bat`
-   (deve dar **397/397**). Ruído conhecido: `InitializeFppkg failed`.
+   (deve dar **400/400**). Ruído conhecido: `InitializeFppkg failed`.
    Para o Android: `Scripts\run_tests_android.bat` (**9/9**, cobre `:app`,
    `:bipe` e `:pdv`) e `Scripts\build_pdv.bat` (APK do PDV).
 4.1. Para validar o XML da NF-e **sem SEFAZ**:
@@ -36,7 +36,8 @@ Firebird: **31 chars** por identificador e `DEFAULT` **antes** de `NOT NULL`;
 
 ## Estado atual da sessão (22/11/2026)
 
-**Últimos marcos:** 3.92 (NFS-e nacional + nota de serviço, **abaixo**),
+**Últimos marcos:** 3.93 (tela resumida de nota de serviço + NFS-e no parser,
+**abaixo**), 3.92 (NFS-e nacional + DPS off-line),
 3.91 (`:pdv` na bateria/CI/docs), 3.90 (pagamentos MP
 do outro agente), 3.89-fiscal (rastro de importação XML + mapeamento de
 produto — §3.89 no `PLANO_E_LOG.md` por colisão de numeração), 3.87
@@ -45,16 +46,16 @@ produto — §3.89 no `PLANO_E_LOG.md` por colisão de numeração), 3.87
 3.84 (cupom PDF), 3.83 (D10), 3.81 (homologação) e 3.80 (`:bipe`); 3.82 é
 o app PDV mobile. O marco 3.86 está em `9fa4a87` (código + docs). Pode
 haver commit de outro agente acima. Build: desktop **0/0** ·
-suíte desktop **397/397** · `build_api.bat` **OK** (pare a API antes de
+suíte desktop **400/400** · `build_api.bat` **OK** (pare a API antes de
 compilar, senão o `.exe` fica travado) · testes Android **9/9** ·
 `build_bipe.bat` e `build_pdv.bat` **OK** (APKs de bipagem e PDV) · smoke de
-telas **33/33** · `permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1`
+telas **34/34** (inclui `Fiscal > Nota de Serviço`) · `permissoes_menu.ps1` **0 falhas** · `schema_roundtrip.ps1`
 e `banco_fresco.ps1` **OK** (659 campos nos dois, diff vazio,
-**52 tabelas / 51 generators**, acentos conferidos — reexecutados no 3.92) · na
+**52 tabelas / 51 generators**, acentos conferidos — reexecutados no 3.93) · na
 API 9000: `api_todos.ps1` **6 smokes OK** (`api_clientes_crud.ps1`,
 `api_auditoria.ps1` 6 logs, `api_estoque_service.ps1`,
 `api_numeracao_empresa.ps1`, `api_paginacao.ps1`, `api_f1.ps1` 7 logs).
-API no ar em **PID 19612** (rebuild do outro agente; não foi reiniciada
+API no ar em **PID 4856** (rebuild do outro agente; não foi reiniciada
 neste bloco) com o fix do pool, a Fase 0,
 o fix de idempotência e o adapter Mercado Pago dele. `/api/health` =
 `{"status":"ok","servico":"ERP2026API","banco":"ok","pool":"pool=8 conexoes, 1 em uso"}`;
@@ -66,10 +67,21 @@ sequenciais e **60/60 concorrentes (20 simultâneos, `KeepAlive=false`)**,
 
 ### Em andamento (não commitado)
 
-- Nada deste agente. O outro agente commitou a config de servidor em
-  `d617d3c`; deixou `Desktop\ERP2026.lps` e `Desktop\src\Views\uFrmNFe.lfm`
-  sujos (sessão/layout do IDE) — **não foram tocados nem commitados aqui**.
-  API 9000 em PID `19612` (dele), sem restart neste bloco.
+- Nada deste agente após o commit/push do 3.93. `Desktop\ERP2026.lps`,
+  `Desktop\src\Views\uFrmNFe.lfm` e `tmp_shots/` continuam sendo artefatos
+  de sessão/layout/e evidências de outros agentes — **não foram tocados nem
+  commitados aqui**. API 9000 em PID `4856` (dele), sem restart neste bloco.
+
+### O que fechou nesta sessão (marco 3.93 — tela de serviço + NFS-e no parser)
+
+| Item | Entrega |
+|---|---|
+| **Escopo** | Frente 5.3 do `PROMPT_RETOMADA_COMPLETO.md`: tela resumida de nota de serviço ligada a `TNotaSaidaServicoService` e ampliação do parser de XML de entrada para NFS-e nacional 1.01, integrada ao rastro/mapeamento do 3.89. Nenhum envio fiscal; `NFSE_MODO=SIMULADO` segue o padrão. |
+| **Parser/importador** | `uNFeXmlService.pas` detecta `infNFSe`, lê `emit/DPS/serv/valores`, sintetiza 1 item de serviço (sem NCM/CFOP) e reaproveita `TNFeImportService.Importar`. Chave interna determinística `NFS` + SHA-1 (43 posições) cabe em `CHAVE_ACESSO`/`IMPORTACAO_XML_ITEM.CHAVE`; a chave original de 53 posições fica no log de auditoria. **Sem DDL nova.** |
+| **Estoque/custo** | `TNotaEntradaService.SalvarItem` ganhou parâmetro opcional `AAtualizaEstoque=True`; itens de serviço gravam `ATUALIZA_ESTOQUE='N'` e `ATUALIZA_CUSTO='N'` somente no `INSERT`. Assinatura antiga continua válida. Nenhuma conta a receber é criada. |
+| **Tela/permissões** | Nova `uFrmNotaSaidaServico.pas/.lfm` (criar/gerar XML/cancelar/listar, senha do PFX só em memória), item `Fiscal > Nota de Serviço`, catálogo `FISCAL / NOTA_SAIDA_SERVICO`, seeds idempotentes em `007_initial_data.sql` e `020_permissoes_telas.sql` (também aplicado em `DADOS.FDB`). Units registradas em `ERP2026.lpr/.lpi`; `MAPA_IDS_MENU.md` regenerado (ID 25). |
+| **Validação** | Desktop `build_desktop.bat` **0/0**; suíte **400/400** (3 testes novos: parser NFS-e, rastro/importação sem estoque, reimportação recusada); `api_todos.ps1` **6 smokes OK**; ID do Mapa de Produção alinhado para **11** no smoke da Fase 6 e no mapa de menu; telas **34/34** (nova tela OK); `permissoes_menu.ps1`, `telas_adm_ui.ps1`, `schema_roundtrip.ps1` e `banco_fresco.ps1` **OK**. API 9000 em PID `4856`, `/api/health` `ok/banco=ok` — não foi parada, recompilada nem reiniciada. |
+| **Fora do escopo** | Protocolo/adapters municipais, certificado real, Android/PDV/Bipe, rotas/middlewares, NF-e/NFC-e existentes, cenário fiscal 533/1014/3581, certificados/senhas/PDFs, `tmp_shots/` e arquivos sujos de outros agentes. Dependência nova: nenhuma. |
 
 ### O que fechou nesta sessão (marco 3.92 — NFS-e nacional + nota de serviço)
 

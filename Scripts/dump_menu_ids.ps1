@@ -159,6 +159,7 @@ $mapa = @{
   'contas a pagar'       = @('mnuFinContasPagar', 'TfrmContasPagar')
   'caixa'                = @('mnuFinCaixa', 'TfrmCaixa (consulta de caixas e movimentos)')
   'nf-e / nfc-e'        = @('mnuFisNFe', 'TfrmNFe')
+  'nota de servico'     = @('mnuFisNotaServico', 'TfrmNotaSaidaServico')
   'central de relatorios...' = @('mnuRelCentral', 'TfrmCentralRelatorios (caminhos/.lrf, modelo ativo, atalho p/ tela do Mapa)')
   'abrir copiloto erp'   = @('mnuIACopiloto', 'TfrmCopiloto')
   'configuracoes'        = @('mnuSisConfiguracoes', 'TfrmConfiguracoes (editor da CONFIGURACAO da empresa)')
@@ -225,7 +226,7 @@ $md += ''
 $md += 'Exemplo (tela Producao > Mapa de Producao, usada nos testes da Fase 6):'
 $md += ''
 $md += '```pascal'
-$md += 'PostMessage(hMain, 0x0111, 21, 0);   // ID 21 = Mapa de Producao'
+$md += 'PostMessage(hMain, 0x0111, 11, 0);   // ID 11 = Mapa de Producao'
 $md += '```'
 $md += ''
 $md += '## Tabela'
@@ -256,7 +257,7 @@ $md += '- Menus de popup das telas (ex.: botao "Relatorio" da tela do Mapa) nao 
 $md += '  janela: a automacao de testes le por MSAA e clica por coordenadas.'
 $md += ''
 if ($mapaIdEsperado -ne $null) {
-  $md += ('Controle de sanidade: ID de "Mapa de Producao" = {0} (testes da Fase 6 usam 21).' -f $mapaIdEsperado)
+  $md += ('Controle de sanidade: ID de "Mapa de Producao" = {0} (testes da Fase 6 usam 11).' -f $mapaIdEsperado)
 } else {
   $md += 'Controle de sanidade: "Mapa de Producao" nao encontrado na leitura!'
 }
@@ -265,6 +266,6 @@ $out = Join-Path $PSScriptRoot '..\Documentacao\MAPA_IDS_MENU.md'
 $md | Out-File -FilePath $out -Encoding utf8
 Write-Host ("linhas do menu: {0}" -f $rows.Count)
 Write-Host ("gerado: {0}" -f (Resolve-Path $out))
-if ($mapaIdEsperado -ne 21) {
-  Write-Host ("AVISO: esperava ID 21 para 'Mapa de Producao', veio: {0}" -f $mapaIdEsperado)
+if ($mapaIdEsperado -ne 11) {
+  Write-Host ("AVISO: esperava ID 11 para 'Mapa de Producao', veio: {0}" -f $mapaIdEsperado)
 }

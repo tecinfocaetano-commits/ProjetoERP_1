@@ -150,6 +150,10 @@ object frmPrincipal: TfrmPrincipal
         Caption = 'NF-e / NFC-e'
         OnClick = mnuFisNFeClick
       end
+      object mnuFisNotaServico: TMenuItem
+        Caption = 'Nota de Serviço'
+        OnClick = mnuFisNotaServicoClick
+      end
     end
     object mnuCadastros: TMenuItem
       Caption = 'Cadastros'

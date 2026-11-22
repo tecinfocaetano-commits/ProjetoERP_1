@@ -234,9 +234,9 @@ function Get-NovoPdf([string]$pasta, [datetime]$inicio, [string]$onde) {
 
 # ============ 1. app + login + tela Mapa ============
 $hMain = Start-ERPApp
-[ERPUI]::PostMessage($hMain, 0x0111, [IntPtr]21, [IntPtr]0) | Out-Null
+[ERPUI]::PostMessage($hMain, 0x0111, [IntPtr]11, [IntPtr]0) | Out-Null
 $hMapa = Wait-Window 'Mapa de Produ' 10
-if ($hMapa -eq [IntPtr]::Zero) { throw 'Mapa de Producao nao abriu (cmd 21)' }
+if ($hMapa -eq [IntPtr]::Zero) { throw 'Mapa de Producao nao abriu (cmd 11)' }
 Start-Sleep -Seconds 3
 Force-Foreground $hMapa
 

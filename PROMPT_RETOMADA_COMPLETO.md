@@ -74,9 +74,9 @@ Regras obrigatórias:
   3.86 (API/pool + prompt fiscal), 3.85 (pagamentos), 3.84 (cupom PDF
   `:pdv`), 3.83 (D10/CI), 3.82 (app `:pdv`), 3.81 (homologação),
   3.80 (`:bipe`), F9 (3.78), F1 (3.79).
-- Bateria esperada após o reboot: desktop **397/397**, `build_api.bat` **OK**
+- Bateria esperada após o reboot: desktop **400/400**, `build_api.bat` **OK**
   (pare a API antes de compilar), Android **9/9**, `build_bipe.bat` e
-  `build_pdv.bat` **OK**, telas **33/33**, permissões **0 falhas**,
+  `build_pdv.bat` **OK**, telas **34/34**, permissões **0 falhas**,
   schema/banco fresco **OK**, `api_todos.ps1` **6 smokes OK**. Ruído
   conhecido: `InitializeFppkg failed`.
 - Outro agente: pagamentos eletrônicos PDV (Fase 0 no ar, webhook idempotente
@@ -104,7 +104,7 @@ Regras obrigatórias:
    não sobrevive ao reboot.**
 6. Rodar a bateria curta:
    `powershell -NoProfile -ExecutionPolicy Bypass -File Scripts\testes\api_todos.ps1`
-   e `Scripts\run_tests.bat` (397/397). Se o `ERP2026.exe` estiver aberto,
+   e `Scripts\run_tests.bat` (400/400). Se o `ERP2026.exe` estiver aberto,
    o `build_desktop.bat` falha com `error code 5`: feche-o antes (com
    autorização) ou use o `.exe` já gerado.
 
@@ -258,15 +258,17 @@ quatro campos que o usuário explicitamente pediu para guardar.
    §3.89 no `PLANO_E_LOG.md`, pois o outro agente ocupou o §3.88 com o fix de
    idempotência). Migração `023` aplicada, `IMPORTACAO_XML_ITEM`, service
    `uImportacaoXmlMapService`, tela `uFrmMapearProdutoXML`, auditoria e 3
-   testes novos (achou / não achou / reimportar). Suíte 397/397.
+   testes novos (achou / não achou / reimportar). Suíte 400/400.
 4. **Marco 3.92 — nota de serviço diverso + XML: CONCLUÍDO em 22/11.**
    `TNFSeHelper`, preferências `NFSE_*`, DPS 1.01 off-line, migração `024`,
-   modo SIMULADO sem certificado e 9 testes novos. Suíte 397/397.
-5. **Marco 3.93 (próximo) — nota de entrada ampliada + tela de serviço:**
-   NFS-e/serviços no parser, integração com o mapeamento do 3.89, tela
-   resumida de nota de serviço, bateria completa.
-6. A cada marco: bateria (397/397, `api_todos.ps1` 6 smokes, Android 9/9,
-   telas 33/33, permissões 0 falhas, schema/banco fresco) + commit + push.
+   modo SIMULADO sem certificado e 9 testes novos. Suíte 400/400.
+5. **Marco 3.93 — nota de entrada ampliada + tela de serviço: CONCLUÍDO em
+   22/11.** `infNFSe` no parser com chave interna `NFS`+SHA-1 (sem DDL),
+   rastro 3.89 com `TIPO_DOCUMENTO='NFS-e'` e item sem estoque/custo,
+   `uFrmNotaSaidaServico` no menu `Fiscal > Nota de Serviço` (permissão
+   `FISCAL / NOTA_SAIDA_SERVICO`), 3 testes novos e bateria completa.
+6. A cada marco: bateria (400/400, `api_todos.ps1` 6 smokes, Android 9/9,
+   telas 34/34, permissões 0 falhas, schema/banco fresco) + commit + push.
 
 ---
 
@@ -275,10 +277,10 @@ quatro campos que o usuário explicitamente pediu para guardar.
 - Certificado autoassinado nunca autoriza nota na SEFAZ/prefeitura.
 - PDF local não tem protocolo e não substitui cupom autorizado.
 - Homologação real exige CNPJ/IE/e-CNPJ A1/CSC próprios — não usar terceiros.
-- NFS-e off-line, `TNFSeHelper`, `IMPORTACAO_XML_ITEM` e a tela de mapeamento
-  **já estão implementados e testados** (3.92/3.89). Ainda é plano: emissão
-  com protocolo, tela de nota de serviço e integração homologada; não marcar
-  como concluído só por estar neste prompt.
+- NFS-e off-line, `TNFSeHelper`, `IMPORTACAO_XML_ITEM`, a tela de mapeamento
+  e a tela resumida de nota de serviço **já estão implementados e testados**
+  (3.92/3.89/3.93). Ainda é plano: emissão com protocolo e integração
+  homologada; não marcar como concluído só por estar neste prompt.
 - `:pdv` **já está** em build/CI/bateria/docs (marco 3.91); não afirmar que
   ainda está suspenso. Continua sem NFC-e no app (emissão fiscal é no
   desktop) e sem teste real de PSP: pagamentos e TEF/PIX reais aguardam
