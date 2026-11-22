@@ -925,3 +925,16 @@ usar este arquivo como canal vivo, não só como registro histórico:
   serviço). Depois disso masterkey morre de vez. Atenção: desktop
   pega as env novas no próximo start (Explorer propaga setx; se
   não pegar, relogar o Windows).
+- **Agente PDV/Desktop — pacote instalável do cliente (21/11
+  noite):** novo `Scripts\pacote_cliente\` — `gerar_pacote.bat`
+  monta `Deploy\ERP2026_Cliente\` (ERP2026\ c/ exe+dlls+fbclient
+  embarcado, API\ c/ exe+dlls+fbclient, Banco\DADOS.FDB), gera
+  `ERP2026_Cliente.zip` e `INSTALADOR.exe` via IExpress
+  (`%SystemRoot%\System32\iexpress.exe` — o nome `iexpress` não
+  resolve no PATH do cmd; SED precisa CRLF senão abre o wizard).
+  `INSTALAR_CLIENTE.bat` descompacta, pede IP do servidor e grava
+  `erp2026.ini` + atalho da API no Inicializar. `LEIA-ME.txt` com
+  requisitos (Firebird Server só na máquina do banco; estações
+  usam fbclient embarcado). `Deploy/` adicionado ao .gitignore.
+  **Pendente:** validar INSTALADOR.exe numa máquina limpa; banco
+  zerado = trocar DADOS.FDB por base do executar_banco.bat antes.

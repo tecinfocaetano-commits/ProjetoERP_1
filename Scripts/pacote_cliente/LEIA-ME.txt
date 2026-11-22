@@ -1,0 +1,39 @@
+ERP 2026 - PACOTE CLIENTE
+=========================
+
+Conteudo do kit:
+  ERP2026\   aplicativo desktop + DLLs + cliente Firebird embarcado
+  API\       API REST (ERP2026API.exe) + DLLs
+  Banco\     DADOS.FDB (copia do banco atual)
+
+INSTALACAO
+----------
+1. Execute INSTALADOR.exe como usuario normal.
+2. Escolha a pasta de destino (padrao C:\ERP2026).
+3. Informe o IP do servidor do banco (ou vazio se for o mesmo PC)
+   e o endereco da API (padrao http://127.0.0.1:9000).
+
+O instalador ja grava ERP2026\erp2026.ini com essas informacoes
+e cria o atalho da API na Inicializar do Windows.
+
+REQUISITOS NO SERVIDOR (maquina do banco)
+-----------------------------------------
+- Firebird 5 Server instalado e servico rodando
+- Porta 3050 liberada no firewall para as estacoes
+- API na porta 9000 acessivel pelas estacoes/apps moveis
+- As estacoes NAO precisam de Firebird instalado (fbclient vai
+  embarcado no pacote)
+
+BANCO ZERADO / COM DADOS DE TESTE
+---------------------------------
+O kit leva uma copia do DADOS.FDB atual. Para enviar banco zerado,
+substitua Banco\DADOS.FDB pela base gerada por
+Scripts\executar_banco.bat antes de rodar gerar_pacote.bat.
+
+SENHAS
+------
+- Login do ERP: usuarios da tabela USUARIO (admin, sysdba...)
+- Firebird: SYSDBA com a senha forte definida no ambiente
+  (ERP_DB_USER / ERP_DB_PASSWORD). Esta instalacao usa os mesmos
+  valores do projeto; para troca, ajuste as variaveis de ambiente
+  da maquina ou o firebird.conf do servidor.
