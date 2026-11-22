@@ -1,9 +1,18 @@
 # PROMPT — Execução dos Pagamentos Reais no PDV (PIX PSP + TEF)
 
-> Prompt de execução para o próximo agente/sessão. Depende das decisões
-> do usuário sobre provedor. O esqueleto (Fase 0) já está implementado e
-> testado — este prompt cobre a Fase 1 (PIX real com sandbox) e a
-> Fase 2 (TEF/adquirente).
+> **STATUS ATUALIZADO (21/11 noite):** decisões tomadas — PIX =
+> **Mercado Pago**, cartão = **Cielo** (depois). Adapter
+> `uPagamentoMercadoPago.pas` JÁ IMPLEMENTADO e registrado no
+> factory; `uPagamentoTipos.pas` extraiu os tipos compartilhados;
+> `PAGAMENTO.BANDEIRA` criada (migração 023); conciliação
+> `GET /api/pdv/pagamentos` no ar; app tem seletor de bandeira
+> (só p/ CARTAO) + botão "Já paguei — verificar". **Falta apenas:**
+> credenciais sandbox MP do usuário → configurar PAG_MERCADOPAGO_*
+> → implementar HMAC do webhook → testar PIX real. Depois Cielo.
+>
+> Prompt de execução para o próximo agente/sessão. O esqueleto
+> (Fase 0) já está implementado e testado — este prompt cobre a
+> Fase 1 (PIX real com sandbox) e a Fase 2 (TEF/adquirente).
 
 ---
 

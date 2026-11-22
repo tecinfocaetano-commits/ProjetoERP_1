@@ -1,7 +1,7 @@
 # PROMPT DE CONTINUIDADE — PDV Mobile + Pagamentos Eletrônicos
 
 > Cole o bloco abaixo em uma nova sessão após reiniciar a máquina.
-> Captura o estado exato do trabalho em 21/11/2026.
+> Captura o estado exato do trabalho em 21/11/2026 (noite).
 
 ---
 
@@ -18,8 +18,8 @@ Você é um agente continuando o ERP 2026:
   (192.168.100.126:43511; também aparece como USB RQCX40A28AD)
 
 LEITURA OBRIGATÓRIA ANTES DE QUALQUER COISA
-1. CHECKPOINT.md — estado consolidado (últimos marcos 3.86/3.85)
-2. Documentacao/PLANO_E_LOG.md — marcos 3.82 a 3.86
+1. CHECKPOINT.md — estado consolidado (últimos marcos ~3.90)
+2. Documentacao/PLANO_E_LOG.md — marcos 3.82 a 3.90
 3. Documentacao/COMUNICACAO_AGENTES.md — canal vivo com o outro
    agente (ele trabalha no desktop/testes; coordenar sempre)
 4. Documentacao/INSTRUCOES_AGENTE.md
@@ -44,34 +44,57 @@ App :pdv (com.example.erp2026_pdv) — PDV mobile completo:
   RECUSADO/CANCELADO/EXPIRADO não geram venda nem cupom.
 - APK instalado no Samsung (pdv-debug.apk)
 
-Backend de pagamentos (esqueleto multi-provedor, marco 3.85):
-- Banco\022_pdv_pagamentos.sql APLICADA → tabela PAGAMENTO
-  (PENDENTE/PROCESSANDO/APROVADO/RECUSADO/CANCELADO/EXPIRADO,
-  IDEMPOTENCY_KEY única/empresa, PROVEDOR_TXID imutável,
-  DADOS_JSON=carrinho, PEDIDO_VENDA_ID só após aprovação)
-- Desktop\src\Services\uPagamentoService.pas — TPaymentProvider
-  abstrato + ProvedorPagamento (config PAG_PROVIDER, padrão
-  SIMULADO que aprova ~8s — SÓ TESTE, sem PSP real)
-- API\src\Rotas\uRotasPDV.pas — iniciar/status/cancelar/webhook
-  (webhook pública, auth por PAG_WEBHOOK_SECRET em CONFIGURACAO)
-- Validado ao vivo: PIX SIMULADO → APROVADO gerou vendas 6383,
-  6384, 6462; webhook duplicado = aplicado:false (idempotente)
+Backend de pagamentos (esqueleto multi-provedor, marcos 3.85/3.90):
+- Banco\022_pdv_pagamentos.sql + 023_pdv_pagamento_bandeira.sql
+  APLICADAS → tabela PAGAMENTO (PENDENTE/PROCESSANDO/APROVADO/
+  RECUSADO/CANCELADO/EXPIRADO, IDEMPOTENCY_KEY única/empresa,
+  PROVEDOR_TXID imutável, BANDEIRA p/ cartão, DADOS_JSON=carrinho,
+  PEDIDO_VENDA_ID só após aprovação)
+- Desktop\src\Services\uPagamentoTipos.pas — tipos/providers
+  compartilhados (TStatusPagamento, TProviderCobranca, TPaymentProvider)
+- Desktop\src\Services\uPagamentoService.pas — service + factory
+  ProvedorPagamento (config PAG_PROVIDER, padrão SIMULADO ~8s)
+- Desktop\src\Services\uPagamentoMercadoPago.pas — adapter PIX real
+  (POST /v1/payments, QR point_of_interaction, cancel PUT;
+  credenciais PAG_MERCADOPAGO_* em CONFIGURACAO; sem token = erro
+  limpo; webhook HMAC ainda pendente)
+- API\src\Rotas\uRotasPDV.pas — iniciar/status/cancelar/webhook +
+  GET /api/pdv/pagamentos (conciliação c/ filtros)
+- Validado: PIX SIMULADO → venda automática; idempotência e webhook
+  duplicado OK; bandeira MASTERCARD persistida (pagamento 7→venda 6693);
+  PAG_PROVIDER=MERCADOPAGO sem token → erro controlado
+- BUG CRÍTICO JÁ CORRIGIDO (`b3dc8b6`): PEDIDO_VENDA_ID fora de
+  transação era revertido → vendas duplicadas. Claim atômico
+  APROVADO→PROCESSANDO + transação explícita. Lição: mutação sem
+  transação explícita é revertida pelo pool da API.
 
 API estável (marco 3.86, outro agente): pool corrigido — conexão
 viva volta ao pool, ping real, health 503 se banco falhar.
-60/60 logins concorrentes OK. API rodando PID 18576 na :9000.
+60/60 logins concorrentes OK.
+
+WATCHDOG DA API (marco novo, `7d0b7f5` — testado ao vivo):
+- Atalho "ERP2026 API.lnk" na pasta Inicializar do Windows → API
+  sobe no login do Windows (antes do ERP).
+- Desktop\src\Utils\uApiSaude.pas + uFrmPrincipal: ao abrir o ERP,
+  checa /api/health em background; se local caiu → pergunta e sobe
+  API\bin\ERP2026API.exe (ShellExecute, poll até ~12s); se URL
+  remota falha → só avisa. URL via CONFIGURACAO.API_URL
+  (padrão http://127.0.0.1:9000) — preparado p/ API em servidor.
+- ATENÇÃO se testar de novo: NÃO usar ExtractFilePath 3x p/ subir
+  diretório (não funciona) — usar ExpandFileName+.. (ver código).
 
 COMO SUBIR O AMBIENTE APÓS REINICIAR
 1. git pull origin master (ou git status para conferir)
-2. Subir Firebird (serviço) e a API:
-   cd C:\Users\Charles\Documents\ProjetoERP_1
-   API\bin\ERP2026API.exe   (deixar rodando em background)
+2. Firebird é serviço AUTO_START — já sobe com o Windows.
+   API também sobe sozinha no login do Windows (atalho Inicializar).
    Verificar: curl http://localhost:9000/api/health
    → {"status":"ok","banco":"ok",...}
+   Se não estiver: Scripts\run_api.bat OU abrir o ERP desktop e
+   logar (o watchdog oferece subir a API).
 3. Celular: adb connect 192.168.100.126:43511
    adb reverse tcp:9000 tcp:9000
-   No app: servidor http://127.0.0.1:9000, admin/senha do usuário,
-   empresa_id=1
+   No app: servidor http://127.0.0.1:9000, login admin,
+   senha admin123, empresa_id=1
 
 PENDÊNCIAS IMEDIATAS (em ordem)
 
@@ -111,7 +134,7 @@ REGRAS INEGOCIÁVEIS
 - Commits em português com trailer Devin; push a cada marco;
   atualizar COMUNICACAO_AGENTES.md a cada etapa.
 - Não instalar dependências novas sem avisar o usuário.
-- Baseline a manter: suíte desktop 385/385, builds Android OK.
+- Baseline a manter: suíte desktop 388/388, builds Android OK.
 
 TESTES RÁPIDOS DE API (após subir)
   curl http://localhost:9000/api/health
@@ -134,8 +157,7 @@ TESTES RÁPIDOS DE API (após subir)
 
 ## Notas rápidas pós-reboot
 
-- Senha do `admin`: a de desenvolvimento documentada no repositório
-  (não colar em docs públicos).
+- Senha do `admin` de desenvolvimento: `admin123` (login `admin`).
 - Se o adb Wi-Fi cair: `adb kill-server && adb start-server`,
   reconectar pelo USB ou `adb connect` no IP do celular.
 - `tmp_shots/` é untracked (screenshots de teste) — ignorar.
