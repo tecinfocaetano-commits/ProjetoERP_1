@@ -1,27 +1,32 @@
 object frmNFe: TfrmNFe
-  Left = 0
+  Left = 329
   Height = 550
-  Top = 0
+  Top = 168
   Width = 900
   Caption = 'NF-e / NFC-e - Notas Fiscais Eletrônicas'
-  Position = poScreenCenter
+  ClientHeight = 550
+  ClientWidth = 900
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  LCLVersion = '3.0.0.0'
+  Position = poScreenCenter
+  LCLVersion = '3.2.0.0'
   object pnlTopo: TPanel
     Left = 0
     Height = 50
     Top = 0
     Width = 900
     Align = alTop
+    ClientHeight = 50
+    ClientWidth = 900
     Color = clNavy
+    ParentBackground = False
     ParentColor = False
     TabOrder = 0
     object lblTitulo: TLabel
       Left = 16
-      Height = 24
+      Height = 28
       Top = 12
-      Width = 300
+      Width = 266
       Caption = 'NF-e / NFC-e - Notas Fiscais'
       Font.Color = clWhite
       Font.Height = -20
@@ -35,37 +40,41 @@ object frmNFe: TfrmNFe
     Top = 50
     Width = 900
     Align = alTop
+    ClientHeight = 35
+    ClientWidth = 900
     TabOrder = 1
     object lblAmbiente: TLabel
       Left = 8
-      Height = 16
+      Height = 15
       Top = 8
-      Width = 60
+      Width = 55
       Caption = 'Ambiente:'
     end
     object cmbAmbiente: TComboBox
       Left = 74
-      Height = 25
+      Height = 23
       Top = 5
       Width = 120
+      ItemHeight = 15
+      ItemIndex = 1
       Items.Strings = (
         'Produção'
         'Homologação'
       )
-      ItemIndex = 1
       Style = csDropDownList
       TabOrder = 0
+      Text = 'Homologação'
     end
     object lblCertificado: TLabel
       Left = 210
-      Height = 16
+      Height = 15
       Top = 8
-      Width = 70
+      Width = 61
       Caption = 'Certificado:'
     end
     object edtCertificado: TEdit
       Left = 286
-      Height = 25
+      Height = 23
       Top = 5
       Width = 350
       ReadOnly = True
@@ -78,12 +87,13 @@ object frmNFe: TfrmNFe
       Width = 30
       Caption = '...'
       OnClick = btnSelecionarCertClick
+      TabOrder = 3
     end
     object chkSimulado: TCheckBox
       Left = 690
-      Height = 25
+      Height = 19
       Top = 5
-      Width = 140
+      Width = 102
       Caption = 'Modo simulado'
       TabOrder = 2
     end
@@ -94,34 +104,36 @@ object frmNFe: TfrmNFe
     Top = 85
     Width = 900
     Align = alTop
+    ClientHeight = 36
+    ClientWidth = 900
     TabOrder = 2
     object lblDataInicio: TLabel
       Left = 8
-      Height = 16
+      Height = 15
       Top = 8
-      Width = 20
+      Width = 17
       Caption = 'De:'
     end
     object edtDataInicio: TEdit
       Left = 30
-      Height = 25
+      Height = 23
       Top = 5
       Width = 110
       TabOrder = 2
     end
     object lblDataFim: TLabel
       Left = 150
-      Height = 16
+      Height = 15
       Top = 8
-      Width = 25
+      Width = 21
       Caption = 'Até:'
     end
     object edtDataFim: TEdit
       Left = 178
-      Height = 25
+      Height = 23
       Top = 5
       Width = 110
-      TabOrder = 3
+      TabOrder = 0
     end
     object btnFiltrar: TBitBtn
       Left = 300
@@ -130,6 +142,7 @@ object frmNFe: TfrmNFe
       Width = 80
       Caption = 'Filtrar'
       OnClick = btnFiltrarClick
+      TabOrder = 1
     end
   end
   object pnlBotoes: TPanel
@@ -138,6 +151,8 @@ object frmNFe: TfrmNFe
     Top = 121
     Width = 900
     Align = alTop
+    ClientHeight = 72
+    ClientWidth = 900
     TabOrder = 3
     object btnEmitirNFe: TBitBtn
       Left = 8
@@ -146,8 +161,9 @@ object frmNFe: TfrmNFe
       Width = 110
       Caption = 'Emitir NF-e'
       Font.Style = [fsBold]
-      ParentFont = False
       OnClick = btnEmitirNFeClick
+      ParentFont = False
+      TabOrder = 0
     end
     object btnConsultar: TBitBtn
       Left = 130
@@ -156,6 +172,7 @@ object frmNFe: TfrmNFe
       Width = 100
       Caption = 'Consultar'
       OnClick = btnConsultarClick
+      TabOrder = 1
     end
     object btnCancelar: TBitBtn
       Left = 242
@@ -164,6 +181,7 @@ object frmNFe: TfrmNFe
       Width = 100
       Caption = 'Cancelar NF-e'
       OnClick = btnCancelarClick
+      TabOrder = 2
     end
     object btnImportarXML: TBitBtn
       Left = 354
@@ -172,6 +190,7 @@ object frmNFe: TfrmNFe
       Width = 110
       Caption = 'Importar XML'
       OnClick = btnImportarXMLClick
+      TabOrder = 3
     end
     object btnValidar: TBitBtn
       Left = 476
@@ -180,6 +199,7 @@ object frmNFe: TfrmNFe
       Width = 110
       Caption = 'Validar dados'
       OnClick = btnValidarClick
+      TabOrder = 4
     end
     object btnFechar: TBitBtn
       Left = 800
@@ -188,6 +208,7 @@ object frmNFe: TfrmNFe
       Width = 90
       Caption = 'Fechar'
       OnClick = btnFecharClick
+      TabOrder = 5
     end
     object btnCartaCorrecao: TBitBtn
       Left = 8
@@ -196,6 +217,7 @@ object frmNFe: TfrmNFe
       Width = 140
       Caption = 'Carta de Correção'
       OnClick = btnCartaCorrecaoClick
+      TabOrder = 6
     end
     object btnInutilizar: TBitBtn
       Left = 156
@@ -204,6 +226,7 @@ object frmNFe: TfrmNFe
       Width = 110
       Caption = 'Inutilizar'
       OnClick = btnInutilizarClick
+      TabOrder = 7
     end
     object btnManifestar: TBitBtn
       Left = 274
@@ -212,6 +235,7 @@ object frmNFe: TfrmNFe
       Width = 120
       Caption = 'Manifestar'
       OnClick = btnManifestarClick
+      TabOrder = 8
     end
     object btnDANFE: TBitBtn
       Left = 402
@@ -220,6 +244,7 @@ object frmNFe: TfrmNFe
       Width = 90
       Caption = 'DANFE'
       OnClick = btnDANFEClick
+      TabOrder = 9
     end
   end
   object dbGrid: TDBGrid
@@ -228,6 +253,8 @@ object frmNFe: TfrmNFe
     Top = 193
     Width = 900
     Align = alClient
+    Color = clWindow
+    Columns = <>
     DataSource = DataSource1
     Options = [dgTitles, dgIndicator, dgColumnResize, dgColLines, dgRowLines, dgRowSelect, dgAlwaysShowSelection]
     ReadOnly = True

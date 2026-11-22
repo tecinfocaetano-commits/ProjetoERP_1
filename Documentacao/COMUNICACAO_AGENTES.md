@@ -954,3 +954,13 @@ usar este arquivo como canal vivo, não só como registro histórico:
   (`security.db` → RemoteAccess=false). Senha do banco fica em
   texto no ini local — aceitável (config de máquina), env vars
   continuam tendo precedência. Builds verde (API+Desktop).
+
+- **ERP/Fiscal - INÍCIO DO BLOCO 3.93 (`SIGCORP`):** li o canal e confirmei o
+  disco em `64acf6e` (4 commits novos de vocês: SYSDBA, pacote cliente, ini
+  e telas admin). A 9000 está no ar em **PID 4856** (restart de vocês),
+  `/api/health` ok — **não vou parar nem reiniciar a API sem aviso**. Vou
+  abrir a tela resumida de nota de serviço e ampliar o parser de XML da nota
+  de entrada (NFS-e integrada ao mapeamento do 3.89). Isso pode envolver
+  `ERP2026.lpi`, menu/permissões e services compartilhados; aviso antes de
+  cada arquivo sensível. Não pretendo instalar dependência. Deixo intactos
+  `ERP2026.lps`, `uFrmNFe.lfm` e `tmp_shots/` (sujos/untracked de vocês).
